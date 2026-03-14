@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
-import { summarizeTopic, updateSummary, testLLMConnection } from '@/lib/llm/summarizer';
+import { summarizeTopic, updateSummary, analyzeOpinions, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize } from '@/lib/cache-manager';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic } from '@/lib/types';
 
@@ -37,6 +37,15 @@ export default defineBackground(() => {
           getSettings()
             .then((config) => updateSummary(previousSummary, newPosts, config))
             .then((summary) => sendResponse({ summary }))
+            .catch((err) => sendResponse({ error: String(err) }));
+          return true;
+        }
+
+        case 'ANALYZE_OPINIONS': {
+          const posts = message.payload as ScrapedPost[];
+          getSettings()
+            .then((config) => analyzeOpinions(posts, config))
+            .then((opinions) => sendResponse({ opinions }))
             .catch((err) => sendResponse({ error: String(err) }));
           return true;
         }

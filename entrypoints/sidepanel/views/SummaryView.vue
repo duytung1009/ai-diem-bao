@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, Message, PageProgress } from '@/lib/types';
+import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress } from '@/lib/types';
 import type { MultiPageResult } from '@/lib/scrapers/page-loader';
 import TopicMeta from '../components/TopicMeta.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -14,8 +15,13 @@ const error = ref('');
 const loadingText = ref('');
 const isDetecting = ref(true);
 const summarizedPostCount = ref(0);
-const isScraping = ref(false);         // Fix 2: track multi-page scraping state
-const scrapingWarnings = ref<string[]>([]); // Fix 3: surface page errors
+const isScraping = ref(false);
+const scrapingWarnings = ref<string[]>([]);
+
+// Token estimation state (Phase 3)
+const pendingPosts = ref<ScrapedPost[] | null>(null);
+const pendingIncremental = ref(false);
+const currentConfig = ref<LLMConfig | null>(null);
 
 // Cache state
 const cachedTopic = ref<CachedTopic | null>(null);
@@ -23,7 +29,19 @@ const cacheFreshness = ref<CacheFreshness | null>(null);
 
 let currentTabId: number | undefined;
 
-// Fix 1: listen for real-time progress from content script
+const tokenEstimation = computed(() => {
+  if (!pendingPosts.value || !currentConfig.value) return null;
+  const check = willExceedContext(pendingPosts.value, currentConfig.value.model);
+  const cost = estimateCost(check.estimatedTokens, 800, currentConfig.value.model);
+  return {
+    tokens: check.estimatedTokens,
+    tokensFormatted: formatTokenCount(check.estimatedTokens),
+    cost: formatCost(cost.total),
+    exceeds: check.exceeds,
+    chunksNeeded: check.chunksNeeded,
+  };
+});
+
 function onRuntimeMessage(message: Message) {
   if (message.type === 'SCRAPE_PROGRESS') {
     const { currentPage, totalPages, postsScraped } = message.payload as PageProgress;
@@ -45,11 +63,14 @@ function resetState() {
   cacheFreshness.value = null;
   error.value = '';
   scrapingWarnings.value = [];
+  pendingPosts.value = null;
 }
 
 onMounted(async () => {
   browser.tabs.onActivated.addListener(onTabActivated);
-  browser.runtime.onMessage.addListener(onRuntimeMessage); // Fix 1
+  browser.runtime.onMessage.addListener(onRuntimeMessage);
+  // Load config for token estimation
+  sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => { currentConfig.value = cfg; }).catch(() => {});
   await detectTopic();
 });
 
@@ -128,8 +149,9 @@ async function handleCancel() {
 async function handleSummarize(incremental = false) {
   if (!topicInfo.value) return;
   error.value = '';
-  scrapingWarnings.value = []; // Fix 3: clear previous warnings
+  scrapingWarnings.value = [];
   if (!incremental) summary.value = '';
+  pendingPosts.value = null;
 
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -138,26 +160,23 @@ async function handleSummarize(incremental = false) {
     let posts: ScrapedPost[];
 
     if (topicInfo.value.pageCount > 1) {
-      // Multi-page scraping
-      isScraping.value = true; // Fix 2: show cancel button
+      isScraping.value = true;
       loadingText.value = `Đang đọc trang 1/${topicInfo.value.pageCount}...`;
       const result = await browser.tabs.sendMessage(tab.id, {
         type: 'SCRAPE_ALL_PAGES',
         payload: { totalPages: topicInfo.value.pageCount },
       }) as MultiPageResult & { error?: string };
 
-      isScraping.value = false; // Fix 2: done
+      isScraping.value = false;
       if (result.error) throw new Error(result.error);
       if (!result.posts?.length) throw new Error('Không tìm thấy bài viết nào.');
 
       posts = result.posts;
 
-      // Fix 3: surface page errors to user
       if (result.errors.length > 0) {
         scrapingWarnings.value = result.errors;
       }
     } else {
-      // Single page scraping
       loadingText.value = 'Đang đọc bài viết...';
       const scraped = await browser.tabs.sendMessage(tab.id, {
         type: 'SCRAPE_TOPIC',
@@ -168,9 +187,26 @@ async function handleSummarize(incremental = false) {
       posts = scraped.posts;
     }
 
-    summarizedPostCount.value = posts.length;
+    loadingText.value = '';
+    // Phase 3: show token estimation, wait for confirm
+    pendingPosts.value = posts;
+    pendingIncremental.value = incremental;
+  } catch (err) {
+    isScraping.value = false;
+    error.value = err instanceof Error ? err.message : String(err);
+    loadingText.value = '';
+  }
+}
 
-    // Summarize
+async function confirmSummarize() {
+  const posts = pendingPosts.value;
+  const incremental = pendingIncremental.value;
+  if (!posts || !topicInfo.value) return;
+
+  pendingPosts.value = null;
+  summarizedPostCount.value = posts.length;
+
+  try {
     if (incremental && cachedTopic.value?.summary) {
       loadingText.value = `Đang cập nhật tóm tắt với bài viết mới...`;
       const newPosts = posts.filter(
@@ -197,18 +233,17 @@ async function handleSummarize(incremental = false) {
       summary.value = result.summary || 'Không có kết quả.';
     }
 
-    // Save to cache — Fix 5: include version field
+    // Save to cache
     const lastPost = posts[posts.length - 1];
     await sendMessage('SAVE_CACHED_TOPIC', {
       title: topicInfo.value.title,
-      version: topicInfo.value.version, // Fix 5
+      version: topicInfo.value.version,
       posts,
       summary: summary.value,
       lastPostNumber: lastPost?.postNumber ?? 0,
       totalPosts: posts.length,
     } satisfies Partial<CachedTopic>);
 
-    // Fix 6: restore cache indicator as 'fresh' after successful summarize
     cachedTopic.value = {
       url: '',
       title: topicInfo.value.title,
@@ -222,11 +257,15 @@ async function handleSummarize(incremental = false) {
     };
     cacheFreshness.value = 'fresh';
   } catch (err) {
-    isScraping.value = false; // Fix 2: cleanup on error
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     loadingText.value = '';
   }
+}
+
+function cancelPendingSummarize() {
+  pendingPosts.value = null;
+  pendingIncremental.value = false;
 }
 </script>
 
@@ -252,7 +291,7 @@ async function handleSummarize(incremental = false) {
 
       <!-- Summarize button -->
       <button
-        v-if="!loadingText && !summary"
+        v-if="!loadingText && !summary && !pendingPosts"
         class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
         @click="handleSummarize(false)"
       >
@@ -270,6 +309,34 @@ async function handleSummarize(incremental = false) {
         >
           Huỷ
         </button>
+      </div>
+
+      <!-- Phase 3: Token estimation confirmation -->
+      <div
+        v-if="pendingPosts && tokenEstimation"
+        class="border border-blue-200 bg-blue-50 rounded-lg p-3 space-y-3"
+      >
+        <p class="text-sm font-medium text-blue-900">Xác nhận trước khi gọi API</p>
+        <div class="text-xs text-blue-800 space-y-1">
+          <p>Ước tính: <strong>{{ tokenEstimation.tokensFormatted }}</strong> (~{{ tokenEstimation.cost }})</p>
+          <p v-if="tokenEstimation.exceeds" class="text-orange-700">
+            Topic dài, sẽ tự động chia thành <strong>{{ tokenEstimation.chunksNeeded }} phần</strong> để tóm tắt.
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <button
+            class="flex-1 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+            @click="confirmSummarize"
+          >
+            Xác nhận tóm tắt
+          </button>
+          <button
+            class="flex-1 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-xs hover:bg-gray-50 transition-colors"
+            @click="cancelPendingSummarize"
+          >
+            Huỷ
+          </button>
+        </div>
       </div>
 
       <!-- Error -->

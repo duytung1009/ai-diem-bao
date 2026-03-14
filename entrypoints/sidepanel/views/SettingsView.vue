@@ -13,9 +13,17 @@ const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
 const MAX_CACHE_BYTES = 8 * 1024 * 1024; // 8MB soft limit
 
+const claudeModels = [
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5-20251001',
+];
+
 const cacheSizeMB = computed(() => (cacheSizeBytes.value / (1024 * 1024)).toFixed(1));
 const cacheUsagePercent = computed(() => Math.round((cacheSizeBytes.value / MAX_CACHE_BYTES) * 100));
 const cacheNearFull = computed(() => cacheUsagePercent.value >= 80);
+const isClaude = computed(() => config.value.provider === 'claude');
+const isCustom = computed(() => config.value.provider === 'custom');
 
 onMounted(async () => {
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
@@ -70,22 +78,25 @@ async function testConnection() {
       >
         <option value="openai">OpenAI</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
+        <option value="claude">Anthropic Claude</option>
       </select>
     </div>
 
     <!-- API Key -->
     <div>
-      <label class="block text-xs font-medium text-gray-600 mb-1">API Key</label>
+      <label class="block text-xs font-medium text-gray-600 mb-1">
+        {{ isClaude ? 'Anthropic API Key' : 'API Key' }}
+      </label>
       <input
         v-model="config.apiKey"
         type="password"
-        placeholder="sk-..."
+        :placeholder="isClaude ? 'sk-ant-...' : 'sk-...'"
         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
       />
     </div>
 
-    <!-- Base URL -->
-    <div>
+    <!-- Base URL (only for OpenAI/Custom) -->
+    <div v-if="!isClaude">
       <label class="block text-xs font-medium text-gray-600 mb-1">Base URL</label>
       <input
         v-model="config.baseUrl"
@@ -95,8 +106,21 @@ async function testConnection() {
       />
     </div>
 
-    <!-- Model -->
-    <div>
+    <!-- Model selector for Claude -->
+    <div v-if="isClaude">
+      <label class="block text-xs font-medium text-gray-600 mb-1">Model</label>
+      <select
+        v-model="config.model"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+      >
+        <option v-for="model in claudeModels" :key="model" :value="model">
+          {{ model }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Model input for OpenAI/Custom -->
+    <div v-if="!isClaude">
       <label class="block text-xs font-medium text-gray-600 mb-1">Model</label>
       <input
         v-model="config.model"

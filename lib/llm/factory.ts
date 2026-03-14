@@ -1,6 +1,7 @@
 import type { LLMConfig } from '../types';
 import type { LLMProvider } from './types';
 import { OpenAIAdapter } from './openai-adapter';
+import { ClaudeAdapter } from './claude-adapter';
 
 export function createProvider(config: LLMConfig): LLMProvider {
   switch (config.provider) {
@@ -8,8 +9,7 @@ export function createProvider(config: LLMConfig): LLMProvider {
     case 'custom':
       return new OpenAIAdapter(config);
     case 'claude':
-      // Claude adapter will be added in Phase 3
-      throw new Error('Claude adapter not yet implemented');
+      return new ClaudeAdapter(config);
     default:
       throw new Error(`Unknown provider: ${config.provider}`);
   }

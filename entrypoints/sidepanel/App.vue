@@ -24,6 +24,17 @@ const route = useRoute();
         Tóm tắt
       </router-link>
       <router-link
+        to="/opinions"
+        class="flex-1 text-center py-2.5 text-sm font-medium transition-colors"
+        :class="
+          route.name === 'opinions'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+        "
+      >
+        Ý kiến
+      </router-link>
+      <router-link
         to="/settings"
         class="flex-1 text-center py-2.5 text-sm font-medium transition-colors"
         :class="

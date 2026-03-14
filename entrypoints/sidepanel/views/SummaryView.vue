@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness } from '@/lib/types';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, Message, PageProgress } from '@/lib/types';
 import type { MultiPageResult } from '@/lib/scrapers/page-loader';
 import TopicMeta from '../components/TopicMeta.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -14,12 +14,22 @@ const error = ref('');
 const loadingText = ref('');
 const isDetecting = ref(true);
 const summarizedPostCount = ref(0);
+const isScraping = ref(false);         // Fix 2: track multi-page scraping state
+const scrapingWarnings = ref<string[]>([]); // Fix 3: surface page errors
 
 // Cache state
 const cachedTopic = ref<CachedTopic | null>(null);
 const cacheFreshness = ref<CacheFreshness | null>(null);
 
 let currentTabId: number | undefined;
+
+// Fix 1: listen for real-time progress from content script
+function onRuntimeMessage(message: Message) {
+  if (message.type === 'SCRAPE_PROGRESS') {
+    const { currentPage, totalPages, postsScraped } = message.payload as PageProgress;
+    loadingText.value = `Đang đọc trang ${currentPage}/${totalPages} (${postsScraped} bài)...`;
+  }
+}
 
 function onTabActivated(activeInfo: { tabId: number }) {
   if (activeInfo.tabId === currentTabId) return;
@@ -34,15 +44,18 @@ function resetState() {
   cachedTopic.value = null;
   cacheFreshness.value = null;
   error.value = '';
+  scrapingWarnings.value = [];
 }
 
 onMounted(async () => {
   browser.tabs.onActivated.addListener(onTabActivated);
+  browser.runtime.onMessage.addListener(onRuntimeMessage); // Fix 1
   await detectTopic();
 });
 
 onUnmounted(() => {
   browser.tabs.onActivated.removeListener(onTabActivated);
+  browser.runtime.onMessage.removeListener(onRuntimeMessage); // Fix 1
 });
 
 async function detectTopic() {
@@ -102,9 +115,20 @@ function evaluateFreshness(cached: CachedTopic, currentPostCount: number): Cache
   return 'fresh';
 }
 
+// Fix 2: cancel multi-page scraping
+async function handleCancel() {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id) {
+    await browser.tabs.sendMessage(tab.id, { type: 'CANCEL_SCRAPE' }).catch(() => {});
+  }
+  isScraping.value = false;
+  loadingText.value = '';
+}
+
 async function handleSummarize(incremental = false) {
   if (!topicInfo.value) return;
   error.value = '';
+  scrapingWarnings.value = []; // Fix 3: clear previous warnings
   if (!incremental) summary.value = '';
 
   try {
@@ -115,18 +139,22 @@ async function handleSummarize(incremental = false) {
 
     if (topicInfo.value.pageCount > 1) {
       // Multi-page scraping
-      loadingText.value = `Đang đọc ${topicInfo.value.pageCount} trang...`;
+      isScraping.value = true; // Fix 2: show cancel button
+      loadingText.value = `Đang đọc trang 1/${topicInfo.value.pageCount}...`;
       const result = await browser.tabs.sendMessage(tab.id, {
         type: 'SCRAPE_ALL_PAGES',
         payload: { totalPages: topicInfo.value.pageCount },
       }) as MultiPageResult & { error?: string };
 
+      isScraping.value = false; // Fix 2: done
       if (result.error) throw new Error(result.error);
       if (!result.posts?.length) throw new Error('Không tìm thấy bài viết nào.');
 
       posts = result.posts;
+
+      // Fix 3: surface page errors to user
       if (result.errors.length > 0) {
-        console.warn('Page scraping warnings:', result.errors);
+        scrapingWarnings.value = result.errors;
       }
     } else {
       // Single page scraping
@@ -169,18 +197,32 @@ async function handleSummarize(incremental = false) {
       summary.value = result.summary || 'Không có kết quả.';
     }
 
-    // Save to cache
+    // Save to cache — Fix 5: include version field
     const lastPost = posts[posts.length - 1];
     await sendMessage('SAVE_CACHED_TOPIC', {
       title: topicInfo.value.title,
+      version: topicInfo.value.version, // Fix 5
       posts,
       summary: summary.value,
       lastPostNumber: lastPost?.postNumber ?? 0,
       totalPosts: posts.length,
     } satisfies Partial<CachedTopic>);
-    cachedTopic.value = null;
-    cacheFreshness.value = null;
+
+    // Fix 6: restore cache indicator as 'fresh' after successful summarize
+    cachedTopic.value = {
+      url: '',
+      title: topicInfo.value.title,
+      version: topicInfo.value.version,
+      posts,
+      summary: summary.value,
+      llmConfig: { provider: '', model: '' },
+      cachedAt: Date.now(),
+      lastPostNumber: lastPost?.postNumber ?? 0,
+      totalPosts: posts.length,
+    };
+    cacheFreshness.value = 'fresh';
   } catch (err) {
+    isScraping.value = false; // Fix 2: cleanup on error
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     loadingText.value = '';
@@ -217,8 +259,18 @@ async function handleSummarize(incremental = false) {
         Tóm tắt
       </button>
 
-      <!-- Loading -->
-      <LoadingSpinner v-if="loadingText" :text="loadingText" />
+      <!-- Loading + Cancel -->
+      <div v-if="loadingText" class="space-y-2">
+        <LoadingSpinner :text="loadingText" />
+        <!-- Fix 2: Cancel button for multi-page -->
+        <button
+          v-if="isScraping"
+          class="w-full py-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          @click="handleCancel"
+        >
+          Huỷ
+        </button>
+      </div>
 
       <!-- Error -->
       <div
@@ -234,6 +286,23 @@ async function handleSummarize(incremental = false) {
         </button>
       </div>
 
+      <!-- Fix 3: Page scraping warnings -->
+      <div
+        v-if="scrapingWarnings.length > 0"
+        class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 space-y-1"
+      >
+        <p class="font-medium">Một số trang bị bỏ qua:</p>
+        <ul class="list-disc list-inside space-y-0.5">
+          <li v-for="(w, i) in scrapingWarnings" :key="i">{{ w }}</li>
+        </ul>
+        <button
+          class="text-yellow-700 underline mt-1"
+          @click="scrapingWarnings = []"
+        >
+          Ẩn
+        </button>
+      </div>
+
       <!-- Summary result -->
       <div v-if="summary" class="space-y-3">
         <div class="flex items-center justify-between">
@@ -246,6 +315,7 @@ async function handleSummarize(incremental = false) {
             </svg>
             <span>Đã tóm tắt {{ summarizedPostCount }} bài viết</span>
           </div>
+          <!-- Fix 6: CacheIndicator now persists after summarize with 'fresh' state -->
           <CacheIndicator
             v-if="cacheFreshness && cachedTopic"
             :freshness="cacheFreshness"

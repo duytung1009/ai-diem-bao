@@ -8,6 +8,7 @@ export default defineContentScript({
   matches: ['*://*/*'],
   main() {
     const version = detectXenForoVersion();
+    let scrapeAbortController: AbortController | null = null;
 
     browser.runtime.onMessage.addListener(
       (message: Message, _sender, sendResponse) => {
@@ -56,10 +57,37 @@ export default defineContentScript({
           }
           const baseUrl = scraper.scrape().url;
 
-          scrapeAllPages(version, baseUrl, totalPages)
-            .then((result) => sendResponse(result))
-            .catch((err) => sendResponse({ error: String(err) }));
+          // Create new abort controller for this scrape session
+          scrapeAbortController = new AbortController();
+          const signal = scrapeAbortController.signal;
+
+          const onProgress = (currentPage: number, tp: number, postsScraped: number) => {
+            // Fire-and-forget: send progress to sidepanel via runtime messaging
+            browser.runtime.sendMessage({
+              type: 'SCRAPE_PROGRESS',
+              payload: { currentPage, totalPages: tp, postsScraped },
+            }).catch(() => { /* no listener yet or already done */ });
+          };
+
+          scrapeAllPages(version, baseUrl, totalPages, onProgress, signal)
+            .then((result) => {
+              scrapeAbortController = null;
+              sendResponse(result);
+            })
+            .catch((err) => {
+              scrapeAbortController = null;
+              sendResponse({ error: String(err) });
+            });
           return true; // async response
+        }
+
+        if (message.type === 'CANCEL_SCRAPE') {
+          if (scrapeAbortController) {
+            scrapeAbortController.abort();
+            scrapeAbortController = null;
+          }
+          sendResponse({ cancelled: true });
+          return false;
         }
 
         return false;

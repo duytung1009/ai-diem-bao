@@ -34,6 +34,8 @@ export type MessageType =
   | 'DETECT_XF'
   | 'SCRAPE_TOPIC'
   | 'SCRAPE_ALL_PAGES'
+  | 'SCRAPE_PROGRESS'
+  | 'CANCEL_SCRAPE'
   | 'SUMMARIZE'
   | 'SUMMARIZE_INCREMENTAL'
   | 'GET_SETTINGS'
@@ -41,7 +43,8 @@ export type MessageType =
   | 'TEST_CONNECTION'
   | 'GET_CACHED_TOPIC'
   | 'SAVE_CACHED_TOPIC'
-  | 'DELETE_CACHED_TOPIC';
+  | 'DELETE_CACHED_TOPIC'
+  | 'GET_CACHE_SIZE';
 
 export interface Message<T = unknown> {
   type: MessageType;

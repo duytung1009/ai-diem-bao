@@ -1,6 +1,6 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
 import { summarizeTopic, updateSummary, testLLMConnection } from '@/lib/llm/summarizer';
-import { getCachedTopic, saveCachedTopic, deleteCachedTopic } from '@/lib/cache-manager';
+import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize } from '@/lib/cache-manager';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic } from '@/lib/types';
 
 export default defineBackground(() => {
@@ -87,6 +87,17 @@ export default defineBackground(() => {
             .catch((err) => sendResponse({ error: String(err) }));
           return true;
         }
+
+        case 'GET_CACHE_SIZE':
+          getCacheSize()
+            .then((bytes) => sendResponse({ bytes }))
+            .catch(() => sendResponse({ bytes: 0 }));
+          return true;
+
+        // Fire-and-forget from content script — sidepanel listens directly
+        case 'SCRAPE_PROGRESS':
+        case 'CANCEL_SCRAPE':
+          return false;
 
         default:
           return false;

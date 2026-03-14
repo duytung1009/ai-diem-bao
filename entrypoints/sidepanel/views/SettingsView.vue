@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG } from '@/lib/constants';
 import type { LLMConfig } from '@/lib/types';
@@ -10,12 +10,21 @@ const saving = ref(false);
 const testing = ref(false);
 const testResult = ref<'success' | 'fail' | ''>('');
 const saveMessage = ref('');
+const cacheSizeBytes = ref(0);
+const MAX_CACHE_BYTES = 8 * 1024 * 1024; // 8MB soft limit
+
+const cacheSizeMB = computed(() => (cacheSizeBytes.value / (1024 * 1024)).toFixed(1));
+const cacheUsagePercent = computed(() => Math.round((cacheSizeBytes.value / MAX_CACHE_BYTES) * 100));
+const cacheNearFull = computed(() => cacheUsagePercent.value >= 80);
 
 onMounted(async () => {
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
     config.value = loaded;
   }
+  // Load cache size
+  const sizeResult = await sendMessage<{ bytes: number }>('GET_CACHE_SIZE').catch(() => null);
+  if (sizeResult) cacheSizeBytes.value = sizeResult.bytes;
 });
 
 async function save() {
@@ -134,6 +143,26 @@ async function testConnection() {
     <p v-if="saveMessage" class="text-xs text-green-600 text-center">
       {{ saveMessage }}
     </p>
+
+    <!-- Cache storage info -->
+    <div class="border border-gray-200 rounded-lg p-3 space-y-2">
+      <div class="flex items-center justify-between text-xs">
+        <span class="font-medium text-gray-700">Cache local</span>
+        <span :class="cacheNearFull ? 'text-orange-600 font-medium' : 'text-gray-500'">
+          {{ cacheSizeMB }} MB / 8 MB ({{ cacheUsagePercent }}%)
+        </span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-1.5">
+        <div
+          class="h-1.5 rounded-full transition-all"
+          :class="cacheNearFull ? 'bg-orange-500' : 'bg-blue-500'"
+          :style="{ width: `${Math.min(cacheUsagePercent, 100)}%` }"
+        />
+      </div>
+      <p v-if="cacheNearFull" class="text-xs text-orange-600">
+        ⚠ Cache gần đầy. Các cache cũ sẽ tự động bị xoá khi lưu mới.
+      </p>
+    </div>
 
     <!-- Test result -->
     <LoadingSpinner v-if="testing" text="Đang kiểm tra kết nối..." />

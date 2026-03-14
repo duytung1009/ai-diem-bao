@@ -54,14 +54,27 @@ export async function scrapeAllPages(
 
     const pageUrl = buildPageUrl(baseUrl, page);
     try {
-      const res = await fetch(pageUrl);
+      const res = await fetch(pageUrl, { credentials: 'include' });
+      if (res.status === 401 || res.status === 403) {
+        errors.push(`Trang ${page}: Không có quyền truy cập — diễn đàn có thể yêu cầu đăng nhập.`);
+        continue;
+      }
       if (!res.ok) {
-        errors.push(`Page ${page}: HTTP ${res.status}`);
+        errors.push(`Trang ${page}: HTTP ${res.status}`);
         continue;
       }
       const html = await res.text();
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
+
+      // Detect login redirect
+      const isLoginPage =
+        /login|sign.?in|đăng.nhập/i.test(res.url) ||
+        doc.querySelector('form[action*="login"], input[name="password"]') !== null;
+      if (isLoginPage) {
+        errors.push(`Trang ${page}: Chuyển hướng đến trang đăng nhập — bỏ qua.`);
+        continue;
+      }
 
       const pageData = scraper.scrape(doc, pageUrl);
       allPosts.push(...pageData.posts);

@@ -33,10 +33,15 @@ export interface LLMConfig {
 export type MessageType =
   | 'DETECT_XF'
   | 'SCRAPE_TOPIC'
+  | 'SCRAPE_ALL_PAGES'
   | 'SUMMARIZE'
+  | 'SUMMARIZE_INCREMENTAL'
   | 'GET_SETTINGS'
   | 'SAVE_SETTINGS'
-  | 'TEST_CONNECTION';
+  | 'TEST_CONNECTION'
+  | 'GET_CACHED_TOPIC'
+  | 'SAVE_CACHED_TOPIC'
+  | 'DELETE_CACHED_TOPIC';
 
 export interface Message<T = unknown> {
   type: MessageType;
@@ -48,4 +53,24 @@ export interface DetectResult {
   title: string;
   postCount: number;
   pageCount: number;
+}
+
+export interface PageProgress {
+  currentPage: number;
+  totalPages: number;
+  postsScraped: number;
+}
+
+export type CacheFreshness = 'fresh' | 'stale' | 'outdated';
+
+export interface CachedTopic {
+  url: string;
+  title: string;
+  version: XenForoVersion;
+  posts: ScrapedPost[];
+  summary: string;
+  llmConfig: { provider: string; model: string };
+  cachedAt: number;
+  lastPostNumber: number;
+  totalPosts: number;
 }

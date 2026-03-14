@@ -2,23 +2,23 @@ import type { ScrapedPost, TopicData } from '../types';
 import type { TopicScraper } from './types';
 
 export class XF2Scraper implements TopicScraper {
-  scrape(): TopicData {
+  scrape(doc: Document = document, url: string = window.location.href): TopicData {
     return {
-      url: this.normalizeUrl(window.location.href),
-      title: this.getTitle(),
+      url: this.normalizeUrl(url),
+      title: this.getTitle(doc),
       version: 'xf2',
-      posts: this.scrapePosts(),
-      totalPages: this.getPageCount(),
-      currentPage: this.getCurrentPage(),
+      posts: this.scrapePosts(doc),
+      totalPages: this.getPageCount(doc),
+      currentPage: this.getCurrentPage(doc, url),
     };
   }
 
-  getPostCount(): number {
-    return document.querySelectorAll('article.message').length;
+  getPostCount(doc: Document = document): number {
+    return doc.querySelectorAll('article.message').length;
   }
 
-  getPageCount(): number {
-    const lastPageLink = document.querySelector('.pageNav-main .pageNav-page:last-child a');
+  getPageCount(doc: Document = document): number {
+    const lastPageLink = doc.querySelector('.pageNav-main .pageNav-page:last-child a');
     if (lastPageLink) {
       const num = parseInt(lastPageLink.textContent?.trim() || '1', 10);
       return isNaN(num) ? 1 : num;
@@ -26,27 +26,26 @@ export class XF2Scraper implements TopicScraper {
     return 1;
   }
 
-  private getTitle(): string {
+  private getTitle(doc: Document): string {
     const el =
-      document.querySelector('h1.p-title-value') ||
-      document.querySelector('.p-title-value');
-    return el?.textContent?.trim() || document.title;
+      doc.querySelector('h1.p-title-value') ||
+      doc.querySelector('.p-title-value');
+    return el?.textContent?.trim() || doc.title;
   }
 
-  private getCurrentPage(): number {
-    const currentPageEl = document.querySelector('.pageNav-page--current .pageNav-page');
+  private getCurrentPage(doc: Document, url: string): number {
+    const currentPageEl = doc.querySelector('.pageNav-page--current .pageNav-page');
     if (currentPageEl) {
       const num = parseInt(currentPageEl.textContent?.trim() || '1', 10);
       return isNaN(num) ? 1 : num;
     }
-    // Fallback: check URL for page-N pattern
-    const match = window.location.href.match(/\/page-(\d+)/);
+    const match = url.match(/\/page-(\d+)/);
     return match ? parseInt(match[1], 10) : 1;
   }
 
-  private scrapePosts(): ScrapedPost[] {
+  scrapePosts(doc: Document = document): ScrapedPost[] {
     const posts: ScrapedPost[] = [];
-    const articles = document.querySelectorAll('article.message');
+    const articles = doc.querySelectorAll('article.message');
 
     articles.forEach((article) => {
       const author = this.extractAuthor(article);
@@ -111,7 +110,7 @@ export class XF2Scraper implements TopicScraper {
     return 0;
   }
 
-  private normalizeUrl(url: string): string {
+  normalizeUrl(url: string): string {
     try {
       const u = new URL(url);
       // Remove page-N from path

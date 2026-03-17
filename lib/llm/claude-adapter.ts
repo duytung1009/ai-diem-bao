@@ -62,6 +62,8 @@ export class ClaudeAdapter implements LLMProvider {
 
     return withRetry(async () => {
       const url = 'https://api.anthropic.com/v1/messages';
+      const model = this.config.model;
+      if (!model) throw new Error('Model không được cấu hình. Vui lòng chọn model trong cài đặt.');
 
       const res = await fetch(url, {
         method: 'POST',
@@ -71,7 +73,7 @@ export class ClaudeAdapter implements LLMProvider {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: this.config.model || 'claude-opus-4-6',
+          model,
           max_tokens: 2000,
           system: systemPrompt,
           messages,

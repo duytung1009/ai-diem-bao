@@ -41,7 +41,7 @@ export async function updateSummary(
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
-  const systemPrompt = customPrompts?.summary || INCREMENTAL_UPDATE_PROMPT;
+  const systemPrompt = INCREMENTAL_UPDATE_PROMPT;
   // Prepend the previous summary as a context post
   const postsWithContext: ScrapedPost[] = [
     {
@@ -194,6 +194,7 @@ async function summaryChunks(
   onProgress?: (message: string) => void,
   suggestedChunks?: number,
   mapPrompt: string = CHUNK_SUMMARY_PROMPT,
+  reducePrompt: string = REDUCE_SUMMARY_PROMPT,
 ): Promise<string> {
   const provider = createProvider(config);
   const chunks = chunkPosts(posts, config.model, suggestedChunks);
@@ -235,7 +236,7 @@ async function summaryChunks(
       postNumber: i + 1,
     } as ScrapedPost));
     onProgress?.(`Gộp đệ quy (${partialSummaries.length} phần)...`);
-    return summaryChunks(partialAsPosts, config, onProgress, undefined, REDUCE_SUMMARY_PROMPT);
+    return summaryChunks(partialAsPosts, config, onProgress, undefined, REDUCE_SUMMARY_PROMPT, reducePrompt);
   }
 
   const reduceChunks: ScrapedPost[] = [
@@ -247,7 +248,7 @@ async function summaryChunks(
     } as ScrapedPost,
   ];
 
-  const finalResponse = await provider.summarize(reduceChunks, REDUCE_SUMMARY_PROMPT);
+  const finalResponse = await provider.summarize(reduceChunks, reducePrompt);
   return finalResponse.content;
 }
 
@@ -259,8 +260,8 @@ async function summarizeWithMapReduce(
   config: LLMConfig,
   onProgress?: (message: string) => void,
   suggestedChunks?: number,
-  _finalPrompt?: string,
+  finalPrompt?: string,
 ): Promise<string> {
-  const combined = await summaryChunks(posts, config, onProgress, suggestedChunks);
+  const combined = await summaryChunks(posts, config, onProgress, suggestedChunks, undefined, finalPrompt);
   return combined;
 }

@@ -77,17 +77,35 @@ export function llmErrorFromStatus(status: number, body: string): LLMError {
 
 // ─── Cache Errors ─────────────────────────────────────────────────────────────
 
+export enum CacheErrorCode {
+  READ_FAILED = 'READ_FAILED',
+  WRITE_FAILED = 'WRITE_FAILED',
+  QUOTA_EXCEEDED = 'QUOTA_EXCEEDED',
+}
+
 export class CacheError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(
+    public readonly code: CacheErrorCode,
+    message?: string,
+  ) {
+    super(message ?? code);
     this.name = 'CacheError';
   }
 }
 
 // ─── Network Errors ───────────────────────────────────────────────────────────
 
+export enum NetworkErrorCode {
+  OFFLINE = 'OFFLINE',
+  TIMEOUT = 'TIMEOUT',
+  DNS_FAILED = 'DNS_FAILED',
+}
+
 export class NetworkError extends Error {
-  constructor(message = 'Không thể kết nối. Kiểm tra kết nối mạng của bạn.') {
+  constructor(
+    public readonly code: NetworkErrorCode = NetworkErrorCode.OFFLINE,
+    message = 'Không thể kết nối. Kiểm tra kết nối mạng của bạn.',
+  ) {
     super(message);
     this.name = 'NetworkError';
   }

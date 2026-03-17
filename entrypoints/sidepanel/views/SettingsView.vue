@@ -91,14 +91,6 @@ async function testConnection() {
 
 async function savePrompts() {
   promptError.value = '';
-  // Validate: if a custom prompt is set, it must contain {{posts}} placeholder
-  for (const key of ['summary', 'opinions', 'research'] as const) {
-    const val = customPrompts.value[key];
-    if (val && !val.includes('{{posts}}') && key !== 'research') {
-      promptError.value = `Prompt "${promptTabLabels[key]}" phải chứa placeholder {{posts}}.`;
-      return;
-    }
-  }
   try {
     await sendMessage('SAVE_CUSTOM_PROMPTS', customPrompts.value);
     promptSaveMessage.value = 'Đã lưu prompt!';
@@ -285,10 +277,6 @@ function resetPrompt() {
           class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
           :placeholder="defaultPrompts[activePromptTab].slice(0, 120) + '...'"
         />
-        <p class="text-xs text-gray-400">
-          Placeholder: <code v-text="'{{posts}}'" class="bg-gray-100 px-1 rounded" />,
-          <code v-text="'{{topic_title}}'" class="bg-gray-100 px-1 rounded" />
-        </p>
         <div class="flex gap-2">
           <button
             class="flex-1 text-xs py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"

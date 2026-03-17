@@ -4,6 +4,7 @@ import type { CachedTopic, ResearchEntry } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
+import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const cachedTopic = ref<CachedTopic | null>(null);
 const question = ref('');
@@ -16,9 +17,9 @@ const suggestedQuestions = computed(() => {
   const title = cachedTopic.value?.title;
   if (!title) return [];
   return [
+    `Kết luận chính của topic "${title}" là gì?`,
     `Ai đề cập đến vấn đề quan trọng nhất trong topic này?`,
     `Các giải pháp nào được đề xuất?`,
-    `Kết luận cuối cùng của thảo luận là gì?`,
     `Ai có quan điểm ủng hộ và ai phản đối?`,
   ];
 });
@@ -139,9 +140,7 @@ function formatDate(ts: number): string {
       <LoadingSpinner v-if="isLoading" text="Đang tra cứu câu trả lời..." />
 
       <!-- Error -->
-      <div v-if="error && !isLoading" class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-        {{ error }}
-      </div>
+      <ErrorDisplay v-if="error && !isLoading" :message="error" action="retry" @retry="handleResearch" />
 
       <!-- Q&A History -->
       <div v-if="history.length" class="space-y-3">
@@ -156,8 +155,8 @@ function formatDate(ts: number): string {
         </div>
 
         <div
-          v-for="(entry, idx) in history"
-          :key="idx"
+          v-for="entry in history"
+          :key="entry.askedAt"
           class="border border-gray-200 rounded-lg overflow-hidden"
         >
           <!-- Question -->

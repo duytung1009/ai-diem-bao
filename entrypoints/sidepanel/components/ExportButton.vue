@@ -51,14 +51,22 @@ function stripMarkdown(md: string): string {
 }
 
 async function copyMarkdown() {
-  await navigator.clipboard.writeText(buildMarkdown());
-  showToast('Đã sao chép Markdown!');
+  try {
+    await navigator.clipboard.writeText(buildMarkdown());
+    showToast('Đã sao chép Markdown!');
+  } catch {
+    showToast('Không thể sao chép. Thử lại sau.');
+  }
   showDropdown.value = false;
 }
 
 async function copyText() {
-  await navigator.clipboard.writeText(stripMarkdown(buildMarkdown()));
-  showToast('Đã sao chép văn bản!');
+  try {
+    await navigator.clipboard.writeText(stripMarkdown(buildMarkdown()));
+    showToast('Đã sao chép văn bản!');
+  } catch {
+    showToast('Không thể sao chép. Thử lại sau.');
+  }
   showDropdown.value = false;
 }
 
@@ -67,12 +75,12 @@ function downloadMd() {
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  // Sanitize filename
-  const safeName = props.topic.title.replace(/[^a-zA-Z0-9À-ỹ\s]/g, '').trim().slice(0, 60) || 'topic';
+  // Sanitize filename — keep Unicode letters, digits, and whitespace
+  const safeName = props.topic.title.replace(/[^\p{L}\p{N}\s]/gu, '').trim().slice(0, 60) || 'topic';
   a.href = url;
   a.download = `${safeName}.md`;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
   showToast('Đã tải file!');
   showDropdown.value = false;
 }

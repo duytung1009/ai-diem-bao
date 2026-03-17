@@ -4,6 +4,7 @@ import type { CachedTopic } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
+import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 
 const { analyzeOpinions: runAnalysis, isLoading, error, progress } = useLLM();
@@ -93,9 +94,7 @@ function getSentimentColor(sentiment: string): string {
     <LoadingSpinner v-if="isLoading" :text="progress || 'Đang phân tích ý kiến...'" />
 
     <!-- Error -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-      {{ error }}
-    </div>
+    <ErrorDisplay v-if="error" :message="error" action="retry" @retry="handleAnalyze" />
 
     <!-- Opinions -->
     <div v-if="opinions && !isLoading" class="space-y-4">

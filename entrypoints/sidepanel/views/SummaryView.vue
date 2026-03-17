@@ -9,6 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import CacheIndicator from '../components/CacheIndicator.vue';
 import ExportButton from '../components/ExportButton.vue';
+import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const topicInfo = ref<DetectResult | null>(null);
 const summary = ref('');
@@ -335,18 +336,12 @@ function cancelPendingSummarize() {
       </div>
 
       <!-- Error -->
-      <div
+      <ErrorDisplay
         v-if="error"
-        class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700"
-      >
-        {{ error }}
-        <button
-          class="block mt-2 text-red-600 hover:text-red-700 font-medium"
-          @click="handleSummarize(false)"
-        >
-          Thử lại
-        </button>
-      </div>
+        :message="error"
+        action="retry"
+        @retry="handleSummarize(false)"
+      />
 
       <!-- Fix 3: Page scraping warnings -->
       <div

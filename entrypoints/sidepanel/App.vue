@@ -14,7 +14,7 @@ const route = useRoute();
     <nav class="bg-white border-b border-gray-200 flex">
       <router-link
         to="/"
-        class="flex-1 text-center py-2.5 text-sm font-medium transition-colors"
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
         :class="
           route.name === 'summary'
             ? 'text-blue-600 border-b-2 border-blue-600'
@@ -25,7 +25,7 @@ const route = useRoute();
       </router-link>
       <router-link
         to="/opinions"
-        class="flex-1 text-center py-2.5 text-sm font-medium transition-colors"
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
         :class="
           route.name === 'opinions'
             ? 'text-blue-600 border-b-2 border-blue-600'
@@ -35,8 +35,19 @@ const route = useRoute();
         Ý kiến
       </router-link>
       <router-link
+        to="/research"
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
+        :class="
+          route.name === 'research'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+        "
+      >
+        Tra cứu
+      </router-link>
+      <router-link
         to="/settings"
-        class="flex-1 text-center py-2.5 text-sm font-medium transition-colors"
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
         :class="
           route.name === 'settings'
             ? 'text-blue-600 border-b-2 border-blue-600'

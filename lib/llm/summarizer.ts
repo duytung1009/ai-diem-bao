@@ -1,4 +1,4 @@
-import type { ScrapedPost, LLMConfig } from '../types';
+import type { ScrapedPost, LLMConfig, CustomPrompts } from '../types';
 import { createProvider } from './factory';
 import {
   SUMMARY_PROMPT,
@@ -7,6 +7,7 @@ import {
   OPINION_CHUNK_PROMPT,
   CHUNK_SUMMARY_PROMPT,
   REDUCE_SUMMARY_PROMPT,
+  RESEARCH_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext } from '../token-estimator';
 
@@ -14,19 +15,21 @@ export async function summarizeTopic(
   posts: ScrapedPost[],
   config: LLMConfig,
   onProgress?: (message: string) => void,
+  customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
+  const systemPrompt = customPrompts?.summary || SUMMARY_PROMPT;
 
   // Check if topic will fit in context
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(SUMMARY_PROMPT));
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt));
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     // Use map-reduce for large topics
     onProgress?.(`Đang tóm tắt phần 1/${contextCheck.chunksNeeded}...`);
-    return summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded);
+    return summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
   }
 
   // Direct summarization for small topics
-  const response = await provider.summarize(posts, SUMMARY_PROMPT);
+  const response = await provider.summarize(posts, systemPrompt);
   return response.content;
 }
 
@@ -35,8 +38,10 @@ export async function updateSummary(
   newPosts: ScrapedPost[],
   config: LLMConfig,
   onProgress?: (message: string) => void,
+  customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
+  const systemPrompt = customPrompts?.summary || INCREMENTAL_UPDATE_PROMPT;
   // Prepend the previous summary as a context post
   const postsWithContext: ScrapedPost[] = [
     {
@@ -49,13 +54,13 @@ export async function updateSummary(
   ];
 
   // Check if needs chunking
-  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(INCREMENTAL_UPDATE_PROMPT));
+  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt));
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
     return summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded);
   }
 
-  const response = await provider.summarize(postsWithContext, INCREMENTAL_UPDATE_PROMPT);
+  const response = await provider.summarize(postsWithContext, systemPrompt);
   return response.content;
 }
 
@@ -63,11 +68,13 @@ export async function analyzeOpinions(
   posts: ScrapedPost[],
   config: LLMConfig,
   onProgress?: (message: string) => void,
+  customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
+  const systemPrompt = customPrompts?.opinions || OPINION_ANALYSIS_PROMPT;
 
   // For opinion analysis, check if we need to chunk
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(OPINION_ANALYSIS_PROMPT));
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt));
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Phân tích ý kiến (${contextCheck.chunksNeeded} phần)...`);
     // Use map-reduce to extract opinions
@@ -75,12 +82,50 @@ export async function analyzeOpinions(
     // Then analyze the combined summary
     const opinionResponse = await provider.summarize(
       [{ author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 } as ScrapedPost],
-      OPINION_ANALYSIS_PROMPT,
+      systemPrompt,
     );
     return opinionResponse.content;
   }
 
-  const response = await provider.summarize(posts, OPINION_ANALYSIS_PROMPT);
+  const response = await provider.summarize(posts, systemPrompt);
+  return response.content;
+}
+
+export async function researchTopic(
+  posts: ScrapedPost[],
+  question: string,
+  config: LLMConfig,
+  onProgress?: (message: string) => void,
+  customPrompts?: CustomPrompts,
+): Promise<string> {
+  const provider = createProvider(config);
+  const systemPrompt = customPrompts?.research || RESEARCH_PROMPT;
+
+  // Inject the question at the end of the user turn
+  const questionPost: ScrapedPost = {
+    author: 'USER_QUESTION',
+    content: `\n---\n**Câu hỏi:** ${question}`,
+    timestamp: '',
+    postNumber: 0,
+  };
+
+  const allPosts = [...posts, questionPost];
+
+  // Check if needs chunking
+  const contextCheck = willExceedContext(allPosts, config.model, estimateTokens(systemPrompt));
+  if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
+    onProgress?.(`Đang tra cứu (${contextCheck.chunksNeeded} phần)...`);
+    // Map-reduce: summarize chunks preserving citation info, then answer at reduce
+    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, CHUNK_SUMMARY_PROMPT);
+    const condensedPosts: ScrapedPost[] = [
+      { author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 },
+      questionPost,
+    ] as ScrapedPost[];
+    const response = await provider.summarize(condensedPosts, systemPrompt);
+    return response.content;
+  }
+
+  const response = await provider.summarize(allPosts, systemPrompt);
   return response.content;
 }
 
@@ -214,6 +259,7 @@ async function summarizeWithMapReduce(
   config: LLMConfig,
   onProgress?: (message: string) => void,
   suggestedChunks?: number,
+  _finalPrompt?: string,
 ): Promise<string> {
   const combined = await summaryChunks(posts, config, onProgress, suggestedChunks);
   return combined;

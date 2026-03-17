@@ -92,6 +92,17 @@ Yêu cầu:
 - Format Markdown đơn giản, một mục mỗi tác giả
 - KHÔNG tóm tắt hay diễn giải, chỉ trích xuất có cấu trúc`;
 
+export const RESEARCH_PROMPT = `Bạn là trợ lý AI tra cứu thông tin trong các cuộc thảo luận trên diễn đàn.
+
+Nhiệm vụ: Dựa vào các bài viết trong topic, hãy trả lời câu hỏi của người dùng một cách chính xác và có trích dẫn nguồn.
+
+Yêu cầu:
+- Viết bằng tiếng Việt
+- Trả lời trực tiếp, súc tích
+- Trích dẫn bài viết liên quan (ví dụ: "Theo [Tên tác giả] (#số bài):...")
+- Nếu topic không có thông tin liên quan, hãy nói rõ "Không tìm thấy thông tin về vấn đề này trong topic."
+- Format Markdown, có thể dùng danh sách hoặc tiêu đề nếu phù hợp`;
+
 export const REDUCE_SUMMARY_PROMPT = `Bạn là trợ lý AI gộp nhiều bản tóm tắt thành một tóm tắt cuối cùng.
 
 Nhiệm vụ: Bạn nhận nhiều bản tóm tắt từ các đoạn khác nhau của cùng một topic. Hãy gộp chúng lại thành một tóm tắt hoàn chỉnh.

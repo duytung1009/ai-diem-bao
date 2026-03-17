@@ -1,5 +1,25 @@
 import type { ScrapedPost, LLMConfig } from '../types';
 import type { LLMProvider, LLMResponse } from './types';
+import { llmErrorFromStatus, isRetryableStatus } from '../errors';
+
+const MAX_RETRIES = 3;
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const status = err instanceof Error && 'status' in err ? (err as { status?: number }).status : undefined;
+      if (!status || !isRetryableStatus(status)) throw err;
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastError;
+}
 
 export class ClaudeAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
@@ -40,44 +60,39 @@ export class ClaudeAdapter implements LLMProvider {
       return this.generateMockResponse();
     }
 
-    const url = 'https://api.anthropic.com/v1/messages';
+    return withRetry(async () => {
+      const url = 'https://api.anthropic.com/v1/messages';
 
-    const requestBody = {
-      model: this.config.model || 'claude-opus-4-6',
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages,
-    };
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: this.config.model || 'claude-opus-4-6',
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages,
+        }),
+      });
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(requestBody),
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => '');
+        throw llmErrorFromStatus(res.status, errorBody);
+      }
+
+      const data = await res.json();
+      const content = data.content?.[0]?.text || '';
+
+      return {
+        content,
+        tokensUsed: data.usage
+          ? { prompt: data.usage.input_tokens, completion: data.usage.output_tokens }
+          : undefined,
+      };
     });
-
-    if (!res.ok) {
-      const errorBody = await res.text().catch(() => '');
-
-      if (res.status === 401) throw new Error('Claude API: Invalid API key');
-      if (res.status === 429) throw new Error('Claude API: Rate limit exceeded');
-      if (res.status === 529) throw new Error('Claude API: Service overloaded');
-
-      throw new Error(`Claude API error ${res.status}: ${errorBody || res.statusText}`);
-    }
-
-    const data = await res.json();
-    const content = data.content?.[0]?.text || '';
-
-    return {
-      content,
-      tokensUsed: data.usage
-        ? { prompt: data.usage.input_tokens, completion: data.usage.output_tokens }
-        : undefined,
-    };
   }
 
   private generateMockResponse(): LLMResponse {

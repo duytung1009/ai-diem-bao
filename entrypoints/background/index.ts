@@ -1,7 +1,7 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
-import { summarizeTopic, updateSummary, analyzeOpinions, testLLMConnection } from '@/lib/llm/summarizer';
+import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize } from '@/lib/cache-manager';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic } from '@/lib/types';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
@@ -23,7 +23,10 @@ export default defineBackground(() => {
         case 'SUMMARIZE': {
           const posts = message.payload as ScrapedPost[];
           getSettings()
-            .then((config) => summarizeTopic(posts, config))
+            .then(async (config) => {
+              const prompts = await getCustomPrompts();
+              return summarizeTopic(posts, config, undefined, prompts);
+            })
             .then((summary) => sendResponse({ summary }))
             .catch((err) => sendResponse({ error: String(err) }));
           return true;
@@ -35,7 +38,10 @@ export default defineBackground(() => {
             newPosts: ScrapedPost[];
           };
           getSettings()
-            .then((config) => updateSummary(previousSummary, newPosts, config))
+            .then(async (config) => {
+              const prompts = await getCustomPrompts();
+              return updateSummary(previousSummary, newPosts, config, undefined, prompts);
+            })
             .then((summary) => sendResponse({ summary }))
             .catch((err) => sendResponse({ error: String(err) }));
           return true;
@@ -44,8 +50,23 @@ export default defineBackground(() => {
         case 'ANALYZE_OPINIONS': {
           const posts = message.payload as ScrapedPost[];
           getSettings()
-            .then((config) => analyzeOpinions(posts, config))
+            .then(async (config) => {
+              const prompts = await getCustomPrompts();
+              return analyzeOpinions(posts, config, undefined, prompts);
+            })
             .then((opinions) => sendResponse({ opinions }))
+            .catch((err) => sendResponse({ error: String(err) }));
+          return true;
+        }
+
+        case 'RESEARCH_QUERY': {
+          const { posts, question } = message.payload as { posts: ScrapedPost[]; question: string };
+          getSettings()
+            .then(async (config) => {
+              const prompts = await getCustomPrompts();
+              return researchTopic(posts, question, config, undefined, prompts);
+            })
+            .then((answer) => sendResponse({ answer }))
             .catch((err) => sendResponse({ error: String(err) }));
           return true;
         }
@@ -55,6 +76,16 @@ export default defineBackground(() => {
             .then((config) => testLLMConnection(config))
             .then((ok) => sendResponse({ ok }))
             .catch((err) => sendResponse({ ok: false, error: String(err) }));
+          return true;
+
+        case 'GET_CUSTOM_PROMPTS':
+          getCustomPrompts().then(sendResponse).catch(() => sendResponse({}));
+          return true;
+
+        case 'SAVE_CUSTOM_PROMPTS':
+          saveCustomPrompts(message.payload as CustomPrompts)
+            .then(() => sendResponse({ success: true }))
+            .catch((err) => sendResponse({ error: String(err) }));
           return true;
 
         case 'GET_CACHED_TOPIC': {
@@ -80,6 +111,7 @@ export default defineBackground(() => {
                 posts: partial.posts ?? existing?.posts ?? [],
                 summary: partial.summary ?? existing?.summary ?? '',
                 opinions: partial.opinions ?? existing?.opinions,
+                researchHistory: partial.researchHistory ?? existing?.researchHistory,
                 llmConfig: { provider: config.provider, model: config.model },
                 cachedAt: Date.now(),
                 lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
@@ -125,6 +157,15 @@ async function getSettings(): Promise<LLMConfig> {
 
 async function saveSettings(config: LLMConfig): Promise<void> {
   await browser.storage.sync.set({ [STORAGE_KEYS.SETTINGS]: config });
+}
+
+async function getCustomPrompts(): Promise<CustomPrompts> {
+  const result = await browser.storage.sync.get(STORAGE_KEYS.CUSTOM_PROMPTS);
+  return (result[STORAGE_KEYS.CUSTOM_PROMPTS] as CustomPrompts) || {};
+}
+
+async function saveCustomPrompts(prompts: CustomPrompts): Promise<void> {
+  await browser.storage.sync.set({ [STORAGE_KEYS.CUSTOM_PROMPTS]: prompts });
 }
 
 async function getActiveTabUrl(): Promise<string | null> {

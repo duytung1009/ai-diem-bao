@@ -3,6 +3,7 @@ import type { LLMConfig } from './types';
 export const STORAGE_KEYS = {
   SETTINGS: 'llm-settings',
   CACHE_PREFIX: 'cache:',
+  CUSTOM_PROMPTS: 'custom-prompts',
 } as const;
 
 export const DEFAULT_LLM_CONFIG: LLMConfig = {

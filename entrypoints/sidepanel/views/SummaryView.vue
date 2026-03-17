@@ -8,6 +8,7 @@ import TopicMeta from '../components/TopicMeta.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import CacheIndicator from '../components/CacheIndicator.vue';
+import ExportButton from '../components/ExportButton.vue';
 
 const topicInfo = ref<DetectResult | null>(null);
 const summary = ref('');
@@ -389,12 +390,15 @@ function cancelPendingSummarize() {
         <div class="bg-white rounded-lg border border-gray-200 p-4">
           <SummaryContent :content="summary" />
         </div>
-        <button
-          class="w-full py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-          @click="handleSummarize(false)"
-        >
-          Tóm tắt lại
-        </button>
+        <div class="flex gap-2">
+          <button
+            class="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+            @click="handleSummarize(false)"
+          >
+            Tóm tắt lại
+          </button>
+          <ExportButton v-if="cachedTopic" :topic="cachedTopic" />
+        </div>
       </div>
     </template>
   </div>

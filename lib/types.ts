@@ -39,9 +39,12 @@ export type MessageType =
   | 'SUMMARIZE'
   | 'SUMMARIZE_INCREMENTAL'
   | 'ANALYZE_OPINIONS'
+  | 'RESEARCH_QUERY'
   | 'GET_SETTINGS'
   | 'SAVE_SETTINGS'
   | 'TEST_CONNECTION'
+  | 'GET_CUSTOM_PROMPTS'
+  | 'SAVE_CUSTOM_PROMPTS'
   | 'GET_CACHED_TOPIC'
   | 'SAVE_CACHED_TOPIC'
   | 'DELETE_CACHED_TOPIC'
@@ -74,8 +77,21 @@ export interface CachedTopic {
   posts: ScrapedPost[];
   summary: string;
   opinions?: string;
+  researchHistory?: ResearchEntry[];
   llmConfig: { provider: string; model: string };
   cachedAt: number;
   lastPostNumber: number;
   totalPosts: number;
+}
+
+export interface ResearchEntry {
+  question: string;
+  answer: string;
+  askedAt: number;
+}
+
+export interface CustomPrompts {
+  summary?: string;
+  opinions?: string;
+  research?: string;
 }

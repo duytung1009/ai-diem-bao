@@ -1,5 +1,25 @@
 import type { ScrapedPost, LLMConfig } from '../types';
 import type { LLMProvider, LLMResponse } from './types';
+import { llmErrorFromStatus, isRetryableStatus } from '../errors';
+
+const MAX_RETRIES = 3;
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const status = err instanceof Error && 'status' in err ? (err as { status?: number }).status : undefined;
+      if (!status || !isRetryableStatus(status)) throw err;
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastError;
+}
 
 export class OpenAIAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
@@ -31,33 +51,35 @@ export class OpenAIAdapter implements LLMProvider {
   private async chatCompletion(
     messages: Array<{ role: string; content: string }>,
   ): Promise<LLMResponse> {
-    const baseUrl = this.config.baseUrl.replace(/\/+$/, '');
-    const url = `${baseUrl}/chat/completions`;
+    return withRetry(async () => {
+      const baseUrl = this.config.baseUrl.replace(/\/+$/, '');
+      const url = `${baseUrl}/chat/completions`;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.config.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.config.model,
-        messages,
-        temperature: this.config.temperature,
-      }),
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.config.model,
+          messages,
+          temperature: this.config.temperature,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => '');
+        throw llmErrorFromStatus(res.status, errorBody);
+      }
+
+      const data = await res.json();
+      return {
+        content: data.choices?.[0]?.message?.content || '',
+        tokensUsed: data.usage
+          ? { prompt: data.usage.prompt_tokens, completion: data.usage.completion_tokens }
+          : undefined,
+      };
     });
-
-    if (!res.ok) {
-      const errorBody = await res.text().catch(() => '');
-      throw new Error(`LLM API error ${res.status}: ${errorBody || res.statusText}`);
-    }
-
-    const data = await res.json();
-    return {
-      content: data.choices?.[0]?.message?.content || '',
-      tokensUsed: data.usage
-        ? { prompt: data.usage.prompt_tokens, completion: data.usage.completion_tokens }
-        : undefined,
-    };
   }
 }

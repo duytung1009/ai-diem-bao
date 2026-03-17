@@ -73,6 +73,7 @@ export interface CachedTopic {
   version: XenForoVersion;
   posts: ScrapedPost[];
   summary: string;
+  opinions?: string;
   llmConfig: { provider: string; model: string };
   cachedAt: number;
   lastPostNumber: number;

@@ -71,16 +71,19 @@ export default defineBackground(() => {
             .then(async (url) => {
               if (!url) throw new Error('No active tab');
               const config = await getSettings();
+              // Load existing so a partial update (e.g. opinions only) doesn't wipe other fields
+              const existing = await getCachedTopic(url);
               const topic: CachedTopic = {
                 url,
-                title: partial.title || '',
-                version: partial.version || 'unknown',
-                posts: partial.posts || [],
-                summary: partial.summary || '',
+                title: partial.title ?? existing?.title ?? '',
+                version: partial.version ?? existing?.version ?? 'unknown',
+                posts: partial.posts ?? existing?.posts ?? [],
+                summary: partial.summary ?? existing?.summary ?? '',
+                opinions: partial.opinions ?? existing?.opinions,
                 llmConfig: { provider: config.provider, model: config.model },
                 cachedAt: Date.now(),
-                lastPostNumber: partial.lastPostNumber || 0,
-                totalPosts: partial.totalPosts || 0,
+                lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
+                totalPosts: partial.totalPosts ?? existing?.totalPosts ?? 0,
               };
               await saveCachedTopic(topic);
               sendResponse({ success: true });

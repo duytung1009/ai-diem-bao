@@ -49,50 +49,35 @@ export class ClaudeAdapter implements LLMProvider {
       messages,
     };
 
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(requestBody),
-      });
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-      if (!res.ok) {
-        const errorBody = await res.text().catch(() => '');
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => '');
 
-        // Handle specific error codes
-        if (res.status === 401) {
-          throw new Error('Claude API: Invalid API key');
-        }
-        if (res.status === 429) {
-          throw new Error('Claude API: Rate limit exceeded');
-        }
-        if (res.status === 529) {
-          throw new Error('Claude API: Service overloaded');
-        }
+      if (res.status === 401) throw new Error('Claude API: Invalid API key');
+      if (res.status === 429) throw new Error('Claude API: Rate limit exceeded');
+      if (res.status === 529) throw new Error('Claude API: Service overloaded');
 
-        throw new Error(`Claude API error ${res.status}: ${errorBody || res.statusText}`);
-      }
-
-      const data = await res.json();
-      const content = data.content?.[0]?.text || '';
-
-      return {
-        content,
-        tokensUsed: data.usage
-          ? { prompt: data.usage.input_tokens, completion: data.usage.output_tokens }
-          : undefined,
-      };
-    } catch (error) {
-      // If real API fails, fall back to mock for testing
-      if (error instanceof Error && error.message.includes('fetch')) {
-        return this.generateMockResponse();
-      }
-      throw error;
+      throw new Error(`Claude API error ${res.status}: ${errorBody || res.statusText}`);
     }
+
+    const data = await res.json();
+    const content = data.content?.[0]?.text || '';
+
+    return {
+      content,
+      tokensUsed: data.usage
+        ? { prompt: data.usage.input_tokens, completion: data.usage.output_tokens }
+        : undefined,
+    };
   }
 
   private generateMockResponse(): LLMResponse {

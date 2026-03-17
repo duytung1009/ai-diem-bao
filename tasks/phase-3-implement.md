@@ -1,8 +1,30 @@
 # Phase 3 Implementation Summary
 
 **Ngày thực hiện:** 2026-03-15
-**Status:** DONE — Build thành công, type-check sạch
-**Bundle size:** 224 kB (tăng từ ~220 kB ở Phase 2)
+**Code review fixes:** 2026-03-15
+**Status:** DONE + Code Review Fixes — Build thành công, type-check sạch
+**Bundle size:** 224.78 kB
+
+---
+
+## Code Review Fixes (review/phase-3.md)
+
+### Critical
+- **[FIXED]** `ClaudeAdapter` silent mock fallback: Removed catch block that returned fake data for any `fetch` error. Real network errors now propagate correctly.
+- **[FIXED]** `OpinionsView` opinions not persisted: After `runAnalysis()` returns, now calls `sendMessage('SAVE_CACHED_TOPIC', { opinions })`. On `onMounted`, restores `opinions.value` from `cached.opinions` if present.
+
+### Important
+- **[FIXED]** `SAVE_CACHED_TOPIC` handler overwrites existing data on partial update: Now loads existing `CachedTopic` first and merges with `??` operator, so saving only `{ opinions }` doesn't wipe `posts`/`summary`.
+- **[FIXED]** `CachedTopic` type missing `opinions` field: Added `opinions?: string` to interface in `lib/types.ts`.
+- **[FIXED]** `OpinionsView` used raw `browser.runtime.sendMessage`: Replaced with typed `sendMessage<CachedTopic | null>('GET_CACHED_TOPIC')`.
+- **[FIXED]** `willExceedContext` double-counting `responseBuffer` in `chunksNeeded`: Separated `contentTokens` (no buffer) for `chunksNeeded` formula; `estimatedTokens` (with buffer) only for the `exceeds` boolean check.
+- **[FIXED]** `chunkPosts` merge path created oversized chunks: Removed post-process merge logic. Instead, when `suggestedChunks` is provided, pre-compute `maxTokensPerChunk` from `totalPostTokens / suggestedChunks` so splitting is correct from the start.
+- **[FIXED]** Stale `cachedTopic.value` in `SummaryView` after save: After `SAVE_CACHED_TOPIC`, reloads with `GET_CACHED_TOPIC` to get authoritative record (real URL + llmConfig) instead of a hand-crafted partial object.
+
+### Minor
+- **[FIXED]** `useScraper.isScripting` false for single-page: `isScripting.value = true` now set unconditionally before `try`, not conditionally on `totalPages > 1`.
+- **[FIXED]** `analyzeOpinions` chunking used wrong intermediate prompt: Added `OPINION_CHUNK_PROMPT` (asks LLM to extract structured author/stance/quote per-chunk) and passed as `mapPrompt` to `summaryChunks` path. Map phase now preserves opinion signals for the reduce step.
+- **[FIXED]** No recursive reduce: `summaryChunks` now checks if `combinedText` of partial summaries would exceed context. If so, converts partials to fake posts and recursively calls itself before final reduce.
 
 ---
 

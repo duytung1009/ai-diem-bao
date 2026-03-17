@@ -4,6 +4,7 @@ import {
   SUMMARY_PROMPT,
   INCREMENTAL_UPDATE_PROMPT,
   OPINION_ANALYSIS_PROMPT,
+  OPINION_CHUNK_PROMPT,
   CHUNK_SUMMARY_PROMPT,
   REDUCE_SUMMARY_PROMPT,
 } from '../prompts';
@@ -70,7 +71,7 @@ export async function analyzeOpinions(
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Phân tích ý kiến (${contextCheck.chunksNeeded} phần)...`);
     // Use map-reduce to extract opinions
-    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded);
+    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, OPINION_CHUNK_PROMPT);
     // Then analyze the combined summary
     const opinionResponse = await provider.summarize(
       [{ author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 } as ScrapedPost],
@@ -94,11 +95,25 @@ export async function testLLMConnection(config: LLMConfig): Promise<boolean> {
 function chunkPosts(
   posts: ScrapedPost[],
   model: string,
-  maxChunks?: number,
+  suggestedChunks?: number,
 ): ScrapedPost[][] {
   const contextLimit = getContextLimit(model);
   const bufferTokens = estimateTokens(CHUNK_SUMMARY_PROMPT) + 2000;
-  const maxTokensPerChunk = contextLimit - bufferTokens;
+
+  // If suggestedChunks is provided, size chunks to fill ~N buckets rather than
+  // greedily filling and then merging (which can produce oversized chunks).
+  let maxTokensPerChunk: number;
+  if (suggestedChunks && suggestedChunks > 0) {
+    const totalPostTokens = posts.reduce(
+      (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
+      0,
+    );
+    const targetPerChunk = Math.ceil(totalPostTokens / suggestedChunks);
+    // Clamp to usable context so we never produce a chunk larger than context
+    maxTokensPerChunk = Math.min(targetPerChunk, contextLimit - bufferTokens);
+  } else {
+    maxTokensPerChunk = contextLimit - bufferTokens;
+  }
 
   const chunks: ScrapedPost[][] = [];
   let currentChunk: ScrapedPost[] = [];
@@ -107,7 +122,7 @@ function chunkPosts(
   for (const post of posts) {
     const postTokens = estimateTokens(`[${post.author}] (#${post.postNumber}):\n${post.content}`);
 
-    // If adding this post exceeds limit and chunk is not empty, start new chunk
+    // If adding this post would exceed limit and chunk is not empty, start a new chunk
     if (currentTokens + postTokens > maxTokensPerChunk && currentChunk.length > 0) {
       chunks.push(currentChunk);
       currentChunk = [post];
@@ -122,18 +137,6 @@ function chunkPosts(
     chunks.push(currentChunk);
   }
 
-  // Respect maxChunks if specified
-  if (maxChunks && chunks.length > maxChunks) {
-    // Further subdivide chunks if needed
-    const targetChunks: ScrapedPost[][] = [];
-    const chunkSize = Math.ceil(chunks.length / maxChunks);
-    for (let i = 0; i < chunks.length; i += chunkSize) {
-      const merged = chunks.slice(i, i + chunkSize).flat();
-      targetChunks.push(merged);
-    }
-    return targetChunks;
-  }
-
   return chunks;
 }
 
@@ -145,13 +148,14 @@ async function summaryChunks(
   config: LLMConfig,
   onProgress?: (message: string) => void,
   suggestedChunks?: number,
+  mapPrompt: string = CHUNK_SUMMARY_PROMPT,
 ): Promise<string> {
   const provider = createProvider(config);
   const chunks = chunkPosts(posts, config.model, suggestedChunks);
 
   if (chunks.length === 1) {
     // No chunking needed
-    const response = await provider.summarize(chunks[0], CHUNK_SUMMARY_PROMPT);
+    const response = await provider.summarize(chunks[0], mapPrompt);
     return response.content;
   }
 
@@ -159,7 +163,7 @@ async function summaryChunks(
   const partialSummaries: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(`Đang tóm tắt phần ${i + 1}/${chunks.length}...`);
-    const response = await provider.summarize(chunks[i], CHUNK_SUMMARY_PROMPT);
+    const response = await provider.summarize(chunks[i], mapPrompt);
     partialSummaries.push(response.content);
 
     // Small delay between requests to avoid rate limiting
@@ -173,6 +177,22 @@ async function summaryChunks(
   const combinedText = partialSummaries
     .map((summary, i) => `--- Phần ${i + 1} ---\n${summary}`)
     .join('\n\n');
+
+  // Recursive reduce: if combinedText itself would exceed context, reduce in stages
+  const combinedTokens = estimateTokens(combinedText) + estimateTokens(REDUCE_SUMMARY_PROMPT) + 2000;
+  const contextLimit = getContextLimit(config.model);
+  if (combinedTokens > contextLimit && partialSummaries.length > 2) {
+    // Convert partials to fake posts and recurse
+    const partialAsPosts: ScrapedPost[] = partialSummaries.map((s, i) => ({
+      author: `PARTIAL_${i + 1}`,
+      content: s,
+      timestamp: '',
+      postNumber: i + 1,
+    } as ScrapedPost));
+    onProgress?.(`Gộp đệ quy (${partialSummaries.length} phần)...`);
+    return summaryChunks(partialAsPosts, config, onProgress, undefined, REDUCE_SUMMARY_PROMPT);
+  }
+
   const reduceChunks: ScrapedPost[] = [
     {
       author: 'PARTIAL_SUMMARIES',

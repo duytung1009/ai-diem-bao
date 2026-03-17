@@ -244,17 +244,11 @@ async function confirmSummarize() {
       totalPosts: posts.length,
     } satisfies Partial<CachedTopic>);
 
-    cachedTopic.value = {
-      url: '',
-      title: topicInfo.value.title,
-      version: topicInfo.value.version,
-      posts,
-      summary: summary.value,
-      llmConfig: { provider: '', model: '' },
-      cachedAt: Date.now(),
-      lastPostNumber: lastPost?.postNumber ?? 0,
-      totalPosts: posts.length,
-    };
+    // Reload from background to get the authoritative stored record
+    const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC');
+    if (saved) {
+      cachedTopic.value = saved;
+    }
     cacheFreshness.value = 'fresh';
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);

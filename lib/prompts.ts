@@ -82,6 +82,16 @@ Yêu cầu:
 - Liệt kê quan điểm chính (nếu có)
 - Format: Markdown tự do, không cần cấu trúc cố định`;
 
+export const OPINION_CHUNK_PROMPT = `Bạn là chuyên gia trích xuất ý kiến từ một đoạn thảo luận trên diễn đàn.
+
+Nhiệm vụ: Đọc đoạn thảo luận này và trích xuất danh sách các ý kiến/quan điểm, giữ nguyên tên tác giả và trích dẫn.
+
+Yêu cầu:
+- Viết bằng tiếng Việt
+- Liệt kê từng quan điểm với: tên tác giả, lập trường (ủng hộ/phản đối/trung lập), trích dẫn ngắn
+- Format Markdown đơn giản, một mục mỗi tác giả
+- KHÔNG tóm tắt hay diễn giải, chỉ trích xuất có cấu trúc`;
+
 export const REDUCE_SUMMARY_PROMPT = `Bạn là trợ lý AI gộp nhiều bản tóm tắt thành một tóm tắt cuối cùng.
 
 Nhiệm vụ: Bạn nhận nhiều bản tóm tắt từ các đoạn khác nhau của cùng một topic. Hãy gộp chúng lại thành một tóm tắt hoàn chỉnh.

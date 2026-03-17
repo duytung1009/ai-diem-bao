@@ -32,7 +32,7 @@ export function useScraper() {
     warnings: string[];
     error?: string;
   }> {
-    isScripting.value = totalPages > 1;
+    isScripting.value = true;
 
     try {
       if (totalPages > 1) {
@@ -41,8 +41,6 @@ export function useScraper() {
           type: 'SCRAPE_ALL_PAGES',
           payload: { totalPages },
         }) as MultiPageResult & { error?: string };
-
-        isScripting.value = false;
 
         if (result.error) return { posts: [], warnings: [], error: result.error };
         if (!result.posts?.length) return { posts: [], warnings: [], error: 'Không tìm thấy bài viết nào.' };

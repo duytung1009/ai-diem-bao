@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import type { CachedTopic } from '@/lib/types';
+import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import { useLLM } from '../composables/useLLM';
@@ -36,19 +37,26 @@ const parsedOpinions = computed(() => {
 
 onMounted(async () => {
   try {
-    const result = await browser.runtime.sendMessage({ type: 'GET_CACHED_TOPIC' });
-    if (result) cachedTopic.value = result as CachedTopic;
+    const result = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC');
+    if (result) {
+      cachedTopic.value = result;
+      // Restore previously saved opinion analysis
+      if (result.opinions) opinions.value = result.opinions;
+    }
   } catch {
     // No cache
   }
 });
 
 async function handleAnalyze() {
-  if (!cachedTopic.value?.posts?.length) {
-    return;
-  }
+  if (!cachedTopic.value?.posts?.length) return;
+
   const result = await runAnalysis(cachedTopic.value.posts);
-  if (result) opinions.value = result;
+  if (result) {
+    opinions.value = result;
+    // Persist opinions to cache so it survives a reload
+    await sendMessage('SAVE_CACHED_TOPIC', { opinions: result }).catch(() => {});
+  }
 }
 
 function getSentimentColor(sentiment: string): string {

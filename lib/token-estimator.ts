@@ -94,9 +94,11 @@ export function willExceedContext(
   const postsText = posts
     .map((p) => `[${p.author}] (#${p.postNumber}):\n${p.content}`)
     .join('\n\n---\n\n');
-  const estimatedTokens = estimateTokens(postsText) + systemPromptLength + responseBuffer;
+  const contentTokens = estimateTokens(postsText) + systemPromptLength;
+  const estimatedTokens = contentTokens + responseBuffer;
 
-  const chunksNeeded = Math.ceil(estimatedTokens / (contextLimit - responseBuffer));
+  const usableTokensPerChunk = contextLimit - responseBuffer;
+  const chunksNeeded = Math.ceil(contentTokens / usableTokensPerChunk);
 
   return {
     exceeds: estimatedTokens > contextLimit,

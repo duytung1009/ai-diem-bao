@@ -24,6 +24,7 @@ function buildMarkdown(): string {
     `> **Ngày lưu:** ${date}`,
     `> **Model:** ${t.llmConfig.provider} / ${t.llmConfig.model}`,
     `> **Tổng bài viết:** ${t.totalPosts}`,
+    `> **Tổng số trang:** ${t.totalPages}`,
     ``,
     `---`,
     ``,

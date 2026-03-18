@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -13,6 +13,7 @@ const store = useTopicStore();
 
 const opinions = ref<string | null>(null);
 const cachedTopic = ref<CachedTopic | null>(null);
+const loadedTopicUrl = ref<string | null>(null);
 
 interface OpinionAnalysis {
   mainTopic: string;
@@ -38,23 +39,24 @@ const parsedOpinions = computed(() => {
   }
 });
 
-onMounted(async () => {
-  // Load from store first
+async function loadTopicData() {
   const topic = store.selectedTopic.value;
-  if (topic) {
-    cachedTopic.value = topic as CachedTopic;
-    if (topic.opinions) opinions.value = topic.opinions;
-  }
-  // Then try to reload from cache for freshest data
-  if (topic?.url) {
-    try {
-      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-      if (fresh) {
-        cachedTopic.value = fresh;
-        if (fresh.opinions) opinions.value = fresh.opinions;
-      }
-    } catch { /* no cache */ }
-  }
+  if (!topic) return;
+  loadedTopicUrl.value = topic.url;
+  cachedTopic.value = topic as CachedTopic;
+  if (topic.opinions) opinions.value = topic.opinions;
+  try {
+    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+    if (fresh) {
+      cachedTopic.value = fresh;
+      if (fresh.opinions) opinions.value = fresh.opinions;
+    }
+  } catch { /* no cache */ }
+}
+
+onActivated(async () => {
+  const url = store.selectedTopic.value?.url;
+  if (url && url !== loadedTopicUrl.value) await loadTopicData();
 });
 
 async function handleAnalyze() {

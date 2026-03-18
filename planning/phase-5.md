@@ -605,7 +605,7 @@ const store = useTopicStore();
 4. **Thay logic `onMounted`:**
 ```typescript
 onMounted(async () => {
-  browser.runtime.onMessage.addListener(onRuntimeMessage);
+  browser.runtime?.onMessage.addListener(onRuntimeMessage);
 
   // Load config for token estimation
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => { currentConfig.value = cfg; }).catch(() => {});

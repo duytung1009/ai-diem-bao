@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic, ResearchEntry } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -26,23 +26,26 @@ const suggestedQuestions = computed(() => {
   ];
 });
 
-onMounted(async () => {
-  // Load from store first
+const loadedTopicUrl = ref<string | null>(null);
+
+async function loadTopicData() {
   const topic = store.selectedTopic.value;
-  if (topic) {
-    cachedTopic.value = topic as CachedTopic;
-    history.value = [...(topic.researchHistory ?? [])];
-  }
-  // Then try to reload from cache for freshest data
-  if (topic?.url) {
-    try {
-      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-      if (fresh) {
-        cachedTopic.value = fresh;
-        history.value = fresh.researchHistory ?? [];
-      }
-    } catch { /* no cache */ }
-  }
+  if (!topic) return;
+  loadedTopicUrl.value = topic.url;
+  cachedTopic.value = topic as CachedTopic;
+  history.value = [...(topic.researchHistory ?? [])];
+  try {
+    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+    if (fresh) {
+      cachedTopic.value = fresh;
+      history.value = fresh.researchHistory ?? [];
+    }
+  } catch { /* no cache */ }
+}
+
+onActivated(async () => {
+  const url = store.selectedTopic.value?.url;
+  if (url && url !== loadedTopicUrl.value) await loadTopicData();
 });
 
 async function handleResearch() {

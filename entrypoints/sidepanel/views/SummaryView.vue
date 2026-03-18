@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
@@ -40,7 +40,7 @@ const topicInfo = computed<DetectResult | null>(() => {
     version: topic.version,
     title: topic.title,
     postCount: topic.totalPosts,
-    pageCount: 1, // Actual pageCount comes from store.activeTabDetect if needed
+    pageCount: topic.totalPages,
   } satisfies DetectResult;
 });
 
@@ -64,44 +64,52 @@ function onRuntimeMessage(message: Message) {
   }
 }
 
-onMounted(async () => {
-  browser.runtime.onMessage.addListener(onRuntimeMessage);
+const loadedTopicUrl = ref<string | null>(null);
 
-  // Load config for token estimation
-  sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => { currentConfig.value = cfg; }).catch(() => {});
-
-  // Load from store's selected topic
+async function loadTopicData() {
   const topic = store.selectedTopic.value;
-  if (topic) {
-    // Populate cachedTopic immediately from store so ExportButton/CacheIndicator won't be hidden
-    // if the GET_CACHED_TOPIC round-trip below fails
-    cachedTopic.value = topic as CachedTopic;
-    if (topic.summary) {
-      summary.value = topic.summary;
-      summarizedPostCount.value = topic.totalPosts;
-    }
-    // Try to reload fresh cache data
-    try {
-      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-      if (fresh) {
-        cachedTopic.value = fresh;
-        if (fresh.summary) {
-          summary.value = fresh.summary;
-          summarizedPostCount.value = fresh.totalPosts;
-        }
-        // Evaluate freshness
-        if (store.activeTabDetect.value && isSameTopicUrl(store.activeTabUrl.value ?? '', topic.url)) {
-          cacheFreshness.value = evaluateFreshness(fresh, store.activeTabDetect.value.postCount);
-        } else {
-          cacheFreshness.value = evaluateFreshness(fresh, fresh.totalPosts);
-        }
-      }
-    } catch { /* cache miss is fine */ }
+  if (!topic) return;
+  loadedTopicUrl.value = topic.url;
+  cachedTopic.value = topic as CachedTopic;
+  if (topic.summary) {
+    summary.value = topic.summary;
+    summarizedPostCount.value = topic.totalPosts;
   }
+  try {
+    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+    if (fresh) {
+      cachedTopic.value = fresh;
+      if (fresh.summary) {
+        summary.value = fresh.summary;
+        summarizedPostCount.value = fresh.totalPosts;
+      }
+      if (store.activeTabDetect.value && isSameTopicUrl(store.activeTabUrl.value ?? '', topic.url)) {
+        cacheFreshness.value = evaluateFreshness(fresh, store.activeTabDetect.value.postCount);
+      } else {
+        cacheFreshness.value = evaluateFreshness(fresh, fresh.totalPosts);
+      }
+    }
+  } catch { /* cache miss is fine */ }
+}
+
+onMounted(() => {
+  sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => { currentConfig.value = cfg; }).catch(() => {});
+});
+
+// With <keep-alive>: onActivated fires on initial mount AND each re-activation.
+// Listener is managed here (not onMounted) to avoid duplicate registration.
+onActivated(async () => {
+  browser.runtime?.onMessage.addListener(onRuntimeMessage);
+  const url = store.selectedTopic.value?.url;
+  if (url && url !== loadedTopicUrl.value) await loadTopicData();
+});
+
+onDeactivated(() => {
+  browser.runtime?.onMessage.removeListener(onRuntimeMessage);
 });
 
 onUnmounted(() => {
-  browser.runtime.onMessage.removeListener(onRuntimeMessage);
+  browser.runtime?.onMessage.removeListener(onRuntimeMessage);
 });
 
 function isSameTopicUrl(url1: string, url2: string): boolean {
@@ -249,10 +257,11 @@ async function confirmSummarize() {
       summary: summary.value,
       lastPostNumber: lastPost?.postNumber ?? 0,
       totalPosts: posts.length,
+      totalPages: topicInfo.value.pageCount,
     });
 
     // Update store
-    store.updateSelectedTopic({ summary: summary.value, posts, totalPosts: posts.length });
+    store.updateSelectedTopic({ summary: summary.value, posts, totalPosts: posts.length, totalPages: topicInfo.value.pageCount });
 
     // Reload from background to get the authoritative stored record
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);

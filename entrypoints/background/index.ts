@@ -10,7 +10,7 @@ export default defineBackground(() => {
   // One-time migration: normalize all existing cache keys and url fields
   migrateNormalizedUrls().catch(console.error);
 
-  browser.runtime.onMessage.addListener(
+  browser.runtime?.onMessage.addListener(
     (message: Message, _sender, sendResponse) => {
       switch (message.type) {
         case 'GET_SETTINGS':
@@ -122,6 +122,7 @@ export default defineBackground(() => {
                 cachedAt: Date.now(),
                 lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
                 totalPosts: partial.totalPosts ?? existing?.totalPosts ?? 0,
+                totalPages: partial.totalPages ?? existing?.totalPages ?? 1,
               };
               await saveCachedTopic(topic);
               sendResponse({ success: true });

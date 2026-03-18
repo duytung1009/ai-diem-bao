@@ -14,11 +14,11 @@ export function useScraper() {
   }
 
   function startListening() {
-    browser.runtime.onMessage.addListener(onRuntimeMessage);
+    browser.runtime?.onMessage.addListener(onRuntimeMessage);
   }
 
   function stopListening() {
-    browser.runtime.onMessage.removeListener(onRuntimeMessage);
+    browser.runtime?.onMessage.removeListener(onRuntimeMessage);
   }
 
   async function cancel(tabId: number): Promise<void> {

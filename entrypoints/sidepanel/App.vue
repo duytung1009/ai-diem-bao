@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { DetectResult } from '@/lib/types';
 import { useTopicStore } from './composables/useTopicStore';
@@ -8,33 +8,53 @@ const route = useRoute();
 const router = useRouter();
 const store = useTopicStore();
 
-// Detect topic on active tab once when sidepanel opens
+let tabActivatedListener: ((activeInfo: { tabId: number }) => void) | null = null;
+let tabUpdatedListener: ((tabId: number, changeInfo: { status?: string }) => void) | null = null;
+
+// Detect topic on active tab when sidepanel opens, re-detect on tab switch/navigate
 onMounted(async () => {
   await detectActiveTabTopic();
+
+  tabActivatedListener = async (_activeInfo) => {
+    await detectActiveTabTopic();
+  };
+  browser.tabs.onActivated.addListener(tabActivatedListener);
+
+  tabUpdatedListener = async (tabId, changeInfo) => {
+    if (changeInfo.status !== 'complete') return;
+    const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (activeTab?.id === tabId) {
+      await detectActiveTabTopic();
+    }
+  };
+  browser.tabs.onUpdated.addListener(tabUpdatedListener);
 });
 
-onUpdated(async () => {
-  await detectActiveTabTopic();
-});
-
-browser.tabs.onUpdated.addListener(async () => {
-  await detectActiveTabTopic();
+onUnmounted(() => {
+  if (tabActivatedListener) browser.tabs.onActivated.removeListener(tabActivatedListener);
+  if (tabUpdatedListener) browser.tabs.onUpdated.removeListener(tabUpdatedListener);
 });
 
 // Topic-specific tabs disabled when no topic selected
 const hasSelectedTopic = computed(() => !!store.selectedTopic.value);
 
 async function detectActiveTabTopic() {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url) return;
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url) return;
 
-  const result = await browser.tabs.sendMessage(tab.id, {
-    type: 'DETECT_XF',
-  }) as DetectResult | undefined;
+    const result = await browser.tabs.sendMessage(tab.id, {
+      type: 'DETECT_XF',
+    }) as DetectResult | undefined;
 
-  console.log('Detect result on active tab:', result);
-  if (result && result.version !== 'unknown') {
-    store.setActiveTab(result, tab.url);
+    if (result && result.version !== 'unknown') {
+      store.setActiveTab(result, tab.url);
+    } else {
+      store.setActiveTab(null, null);
+    }
+  } catch {
+    // Content script not available on this tab (chrome://, about:blank, etc.)
+    store.setActiveTab(null, null);
   }
 }
 
@@ -92,7 +112,11 @@ function navigateTo(path: string) {
 
     <!-- Content -->
     <main class="flex-1 overflow-y-auto">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive>
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </main>
   </div>
 </template>

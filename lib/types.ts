@@ -85,6 +85,7 @@ export interface CachedTopic {
   cachedAt: number;
   lastPostNumber: number;
   totalPosts: number;
+  totalPages: number;
 }
 
 export interface ResearchEntry {

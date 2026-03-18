@@ -14,7 +14,8 @@ export class XF2Scraper implements TopicScraper {
   }
 
   getPostCount(doc: Document = document): number {
-    return doc.querySelectorAll('article.message').length;
+    const dd = doc.querySelector('dl.count--replies dd');
+    return dd?.textContent ? Number(dd.textContent.trim()) + 1 : doc.querySelectorAll('article.message').length;
   }
 
   getPageCount(doc: Document = document): number {

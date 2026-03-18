@@ -19,7 +19,7 @@ export function onMessage(
   type: MessageType,
   handler: (payload: unknown, sender: Browser.runtime.MessageSender) => unknown | Promise<unknown>,
 ): void {
-  browser.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  browser.runtime?.onMessage.addListener((message: Message, sender, sendResponse) => {
     if (message.type !== type) return false;
     const result = handler(message.payload, sender);
     if (result instanceof Promise) {

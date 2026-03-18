@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
-import type { CachedTopic, DetectResult } from '@/lib/types';
+import type { CachedTopic } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -61,6 +61,16 @@ onMounted(async () => {
   }
 });
 
+onActivated(async () => {
+  // Quietly refresh topic list each time user returns to this tab (keep-alive re-activate)
+  try {
+    const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
+    allTopics.value = topics || [];
+  } catch {
+    // Keep existing data on error
+  }
+});
+
 function selectTopic(topic: CachedTopic) {
   store.selectTopic(topic);
   router.push('/summary');
@@ -81,6 +91,7 @@ function handleActiveTabTopic() {
       cachedAt: 0,
       lastPostNumber: 0,
       totalPosts: detect.postCount,
+      totalPages: detect.pageCount,
     };
     store.selectTopic(minimalTopic);
     router.push('/summary');

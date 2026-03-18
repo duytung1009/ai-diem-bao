@@ -32,6 +32,7 @@ export enum LLMErrorCode {
   SERVER_ERROR = 'SERVER_ERROR',
   BAD_REQUEST = 'BAD_REQUEST',
   NETWORK_ERROR = 'NETWORK_ERROR',
+  TIMEOUT = 'TIMEOUT',
 }
 
 const LLM_MESSAGES: Record<LLMErrorCode, string> = {
@@ -40,6 +41,7 @@ const LLM_MESSAGES: Record<LLMErrorCode, string> = {
   [LLMErrorCode.SERVER_ERROR]: 'Lỗi máy chủ LLM. Vui lòng thử lại sau.',
   [LLMErrorCode.BAD_REQUEST]: 'Yêu cầu không hợp lệ. Vui lòng kiểm tra cài đặt model.',
   [LLMErrorCode.NETWORK_ERROR]: 'Không thể kết nối đến API. Kiểm tra kết nối mạng của bạn.',
+  [LLMErrorCode.TIMEOUT]: 'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.',
 };
 
 export class LLMError extends Error {

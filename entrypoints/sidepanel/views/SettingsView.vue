@@ -53,7 +53,7 @@ const isClaude = computed(() => config.value.provider === 'claude');
 onMounted(async () => {
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
-    config.value = loaded;
+    config.value = { ...loaded, timeoutMs: loaded.timeoutMs ?? 120000 };
   }
   const sizeResult = await sendMessage<{ bytes: number }>('GET_CACHE_SIZE').catch(() => null);
   if (sizeResult) cacheSizeBytes.value = sizeResult.bytes;
@@ -184,6 +184,25 @@ function resetPrompt() {
         step="0.1"
         class="w-full"
       />
+    </div>
+
+    <!-- Timeout -->
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">
+        Timeout: {{ Math.round((config.timeoutMs ?? 120000) / 1000) }}s
+      </label>
+      <input
+        v-model.number="config.timeoutMs"
+        type="range"
+        :min="30000"
+        :max="600000"
+        :step="30000"
+        class="w-full"
+      />
+      <div class="flex justify-between text-xs text-gray-400 mt-0.5">
+        <span>30s</span>
+        <span>600s</span>
+      </div>
     </div>
 
     <!-- Actions -->

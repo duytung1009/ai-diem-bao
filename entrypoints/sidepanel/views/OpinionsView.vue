@@ -6,8 +6,10 @@ import LoadingSpinner from '../components/LoadingSpinner.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
+import { useTopicStore } from '../composables/useTopicStore';
 
 const { analyzeOpinions: runAnalysis, isLoading, error, progress } = useLLM();
+const store = useTopicStore();
 
 const opinions = ref<string | null>(null);
 const cachedTopic = ref<CachedTopic | null>(null);
@@ -37,15 +39,21 @@ const parsedOpinions = computed(() => {
 });
 
 onMounted(async () => {
-  try {
-    const result = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC');
-    if (result) {
-      cachedTopic.value = result;
-      // Restore previously saved opinion analysis
-      if (result.opinions) opinions.value = result.opinions;
-    }
-  } catch {
-    // No cache
+  // Load from store first
+  const topic = store.selectedTopic.value;
+  if (topic) {
+    cachedTopic.value = topic as CachedTopic;
+    if (topic.opinions) opinions.value = topic.opinions;
+  }
+  // Then try to reload from cache for freshest data
+  if (topic?.url) {
+    try {
+      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+      if (fresh) {
+        cachedTopic.value = fresh;
+        if (fresh.opinions) opinions.value = fresh.opinions;
+      }
+    } catch { /* no cache */ }
   }
 });
 
@@ -56,7 +64,11 @@ async function handleAnalyze() {
   if (result) {
     opinions.value = result;
     // Persist opinions to cache so it survives a reload
-    await sendMessage('SAVE_CACHED_TOPIC', { opinions: result }).catch(() => {});
+    await sendMessage('SAVE_CACHED_TOPIC', {
+      url: cachedTopic.value.url,
+      opinions: result,
+    }).catch(() => {});
+    store.updateSelectedTopic({ opinions: result });
   }
 }
 

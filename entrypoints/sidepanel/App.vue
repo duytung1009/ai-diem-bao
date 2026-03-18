@@ -1,6 +1,37 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router';
+import { onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { DetectResult } from '@/lib/types';
+import { useTopicStore } from './composables/useTopicStore';
+
 const route = useRoute();
+const router = useRouter();
+const store = useTopicStore();
+
+// Detect topic on active tab once when sidepanel opens
+onMounted(async () => {
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url) return;
+
+    const result = await browser.tabs.sendMessage(tab.id, {
+      type: 'DETECT_XF',
+    }) as DetectResult | undefined;
+
+    if (result && result.version !== 'unknown') {
+      store.setActiveTab(result, tab.url);
+    }
+  } catch {
+    // Content script not available on this tab — that's fine
+  }
+});
+
+// Topic-specific tabs disabled when no topic selected
+const hasSelectedTopic = computed(() => !!store.selectedTopic.value);
+
+function navigateTo(path: string) {
+  router.push(path);
+}
 </script>
 
 <template>
@@ -16,35 +47,55 @@ const route = useRoute();
         to="/"
         class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
         :class="
-          route.name === 'summary'
+          route.name === 'hub'
             ? 'text-blue-600 border-b-2 border-blue-600'
             : 'text-gray-500 hover:text-gray-700'
         "
       >
-        Tóm tắt
+        Chủ đề
       </router-link>
-      <router-link
-        to="/opinions"
+      <button
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
+        :class="
+          route.name === 'summary'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : hasSelectedTopic
+              ? 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-300 cursor-not-allowed'
+        "
+        :disabled="!hasSelectedTopic"
+        @click="hasSelectedTopic && navigateTo('/summary')"
+      >
+        Tóm tắt
+      </button>
+      <button
         class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
         :class="
           route.name === 'opinions'
             ? 'text-blue-600 border-b-2 border-blue-600'
-            : 'text-gray-500 hover:text-gray-700'
+            : hasSelectedTopic
+              ? 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-300 cursor-not-allowed'
         "
+        :disabled="!hasSelectedTopic"
+        @click="hasSelectedTopic && navigateTo('/opinions')"
       >
         Ý kiến
-      </router-link>
-      <router-link
-        to="/research"
+      </button>
+      <button
         class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
         :class="
           route.name === 'research'
             ? 'text-blue-600 border-b-2 border-blue-600'
-            : 'text-gray-500 hover:text-gray-700'
+            : hasSelectedTopic
+              ? 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-300 cursor-not-allowed'
         "
+        :disabled="!hasSelectedTopic"
+        @click="hasSelectedTopic && navigateTo('/research')"
       >
         Tra cứu
-      </router-link>
+      </button>
       <router-link
         to="/settings"
         class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"

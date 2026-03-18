@@ -44,35 +44,48 @@ export class ClaudeAdapter implements LLMProvider {
       const model = this.config.model;
       if (!model) throw new Error('Model không được cấu hình. Vui lòng chọn model trong cài đặt.');
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: this.config.maxTokens ?? 4096,
-          system: systemPrompt,
-          messages,
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 120000);
 
-      if (!res.ok) {
-        const errorBody = await res.text().catch(() => '');
-        throw llmErrorFromStatus(res.status, errorBody);
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: this.config.maxTokens ?? 4096,
+            system: systemPrompt,
+            messages,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const errorBody = await res.text().catch(() => '');
+          throw llmErrorFromStatus(res.status, errorBody);
+        }
+
+        const data = await res.json();
+        const content = data.content?.[0]?.text || '';
+
+        return {
+          content,
+          tokensUsed: data.usage
+            ? { prompt: data.usage.input_tokens, completion: data.usage.output_tokens }
+            : undefined,
+        };
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw new LLMError(LLMErrorCode.TIMEOUT, 'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.');
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const data = await res.json();
-      const content = data.content?.[0]?.text || '';
-
-      return {
-        content,
-        tokensUsed: data.usage
-          ? { prompt: data.usage.input_tokens, completion: data.usage.output_tokens }
-          : undefined,
-      };
     });
   }
 }

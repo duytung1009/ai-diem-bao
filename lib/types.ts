@@ -29,6 +29,7 @@ export interface LLMConfig {
   baseUrl: string;
   temperature: number;
   maxTokens?: number;
+  timeoutMs?: number;
 }
 
 export type MessageType =
@@ -49,7 +50,9 @@ export type MessageType =
   | 'GET_CACHED_TOPIC'
   | 'SAVE_CACHED_TOPIC'
   | 'DELETE_CACHED_TOPIC'
-  | 'GET_CACHE_SIZE';
+  | 'GET_CACHE_SIZE'
+  | 'GET_ALL_CACHED_TOPICS'
+  | 'DETECT_ACTIVE_TAB';
 
 export interface Message<T = unknown> {
   type: MessageType;

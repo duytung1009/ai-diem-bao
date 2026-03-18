@@ -12,4 +12,5 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
   temperature: 0.3,
+  timeoutMs: 120000,
 };

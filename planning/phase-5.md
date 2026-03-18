@@ -1,0 +1,862 @@
+# Phase 5: Topic Hub + Tab-Switch Fix + Timeout Configuration
+
+## Mục tiêu
+1. Không reload toàn bộ app khi chuyển tab — tránh gián đoạn task tóm tắt đang thực hiện
+2. Thêm giao diện Topic Hub hiển thị tất cả chủ đề đã cache, phân loại theo domain
+3. Mỗi chủ đề hiển thị trạng thái tóm tắt, thời gian thực hiện
+4. Chọn chủ đề → xem tóm tắt hoặc nút "Tóm tắt" nếu chưa có
+5. Bổ sung cấu hình timeout cho LLM calls trong Settings
+
+---
+
+## Task 1: Thêm `timeoutMs` vào type system và constants
+
+### File: `lib/types.ts`
+- Thêm `timeoutMs?: number` vào interface `LLMConfig` (sau dòng 31 `maxTokens?: number`)
+- Thêm 2 MessageType mới vào union type `MessageType` (sau dòng 52):
+  - `'GET_ALL_CACHED_TOPICS'`
+  - `'DETECT_ACTIVE_TAB'`
+
+### File: `lib/constants.ts`
+- Thêm `timeoutMs: 120000` vào `DEFAULT_LLM_CONFIG` (sau dòng 14, trước `}`)
+
+---
+
+## Task 2: Thêm `TIMEOUT` error code cho LLM
+
+### File: `lib/errors.ts`
+- Thêm `TIMEOUT = 'TIMEOUT'` vào enum `LLMErrorCode` (dòng 29-35, thêm sau `NETWORK_ERROR`)
+- Thêm message tương ứng vào `LLM_MESSAGES`:
+  ```typescript
+  [LLMErrorCode.TIMEOUT]: 'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.',
+  ```
+
+---
+
+## Task 3: Thêm AbortController timeout vào LLM adapters
+
+### File: `lib/llm/openai-adapter.ts`
+Method `chatCompletion` (dòng 33-66): wrap fetch call với AbortController.
+
+**Cách sửa:** Trong method `chatCompletion`, bên trong callback `withRetry(async () => { ... })`:
+
+1. Trước `const res = await fetch(...)` (dòng 40), thêm:
+```typescript
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 120000);
+```
+
+2. Thêm `signal: controller.signal` vào fetch options (dòng 40-51):
+```typescript
+const res = await fetch(url, {
+  method: 'POST',
+  headers: { ... },
+  body: JSON.stringify({ ... }),
+  signal: controller.signal,     // ← thêm dòng này
+});
+```
+
+3. Wrap toàn bộ phần fetch + response handling trong `try { ... } finally { clearTimeout(timeoutId); }`
+
+4. Thêm catch cho AbortError trước block `if (!res.ok)`:
+```typescript
+// Nằm trong catch của try-finally, hoặc kiểm tra error type
+```
+Hoặc đơn giản hơn: wrap toàn bộ trong try-catch, check `err.name === 'AbortError'`:
+```typescript
+try {
+  const res = await fetch(url, { ...opts, signal: controller.signal });
+  // ... existing response handling
+} catch (err) {
+  if (err instanceof DOMException && err.name === 'AbortError') {
+    throw new LLMError(LLMErrorCode.TIMEOUT, 'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.');
+  }
+  throw err;
+} finally {
+  clearTimeout(timeoutId);
+}
+```
+
+Import `LLMError, LLMErrorCode` nếu chưa có (dòng 3 đã import `llmErrorFromStatus` nhưng cần thêm `LLMError, LLMErrorCode`).
+
+### File: `lib/llm/claude-adapter.ts`
+Cùng pattern y hệt openai-adapter. Method `chatCompletion` (dòng 33-77):
+
+1. Thêm AbortController + setTimeout trước fetch (dòng 47)
+2. Thêm `signal: controller.signal` vào fetch options
+3. Wrap trong try-catch-finally, convert AbortError thành LLMError(TIMEOUT)
+
+**Lưu ý:** File đã import `LLMError, LLMErrorCode` ở dòng 3 rồi.
+
+---
+
+## Task 4: Tạo Topic Store (shared state)
+
+### File mới: `entrypoints/sidepanel/composables/useTopicStore.ts`
+
+```typescript
+import { ref, readonly } from 'vue';
+import type { CachedTopic, DetectResult } from '@/lib/types';
+
+// Module-level state (singleton, shared across all components)
+const selectedTopic = ref<CachedTopic | null>(null);
+const activeTabDetect = ref<DetectResult | null>(null);
+const activeTabUrl = ref<string | null>(null);
+
+export function useTopicStore() {
+  function selectTopic(topic: CachedTopic) {
+    selectedTopic.value = topic;
+  }
+
+  function clearSelection() {
+    selectedTopic.value = null;
+  }
+
+  function setActiveTab(detect: DetectResult | null, url: string | null) {
+    activeTabDetect.value = detect;
+    activeTabUrl.value = url;
+  }
+
+  function updateSelectedTopic(partial: Partial<CachedTopic>) {
+    if (!selectedTopic.value) return;
+    selectedTopic.value = { ...selectedTopic.value, ...partial };
+  }
+
+  return {
+    // State (readonly để tránh mutation trực tiếp từ bên ngoài)
+    selectedTopic: readonly(selectedTopic),
+    activeTabDetect: readonly(activeTabDetect),
+    activeTabUrl: readonly(activeTabUrl),
+    // Writable refs for internal use
+    _selectedTopic: selectedTopic,
+    // Actions
+    selectTopic,
+    clearSelection,
+    setActiveTab,
+    updateSelectedTopic,
+  };
+}
+```
+
+**Giải thích pattern:**
+- Module-level `ref()` = singleton shared state (giống Pinia store đơn giản)
+- Tất cả views import `useTopicStore()` sẽ nhận cùng instance
+- `readonly()` prevent accidental direct mutation
+- Không cần Pinia/Vuex dependency
+
+---
+
+## Task 5: Thêm message handlers trong background
+
+### File: `entrypoints/background/index.ts`
+
+### 5a. Thêm import
+Dòng 3, thêm `getAllCachedTopics` vào import:
+```typescript
+import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics } from '@/lib/cache-manager';
+```
+
+### 5b. Thêm handler `GET_ALL_CACHED_TOPICS`
+Thêm case mới trước `default:` (trước dòng 149):
+```typescript
+case 'GET_ALL_CACHED_TOPICS':
+  getAllCachedTopics()
+    .then(sendResponse)
+    .catch(() => sendResponse([]));
+  return true;
+```
+
+### 5c. Sửa handler `GET_CACHED_TOPIC` (dòng 91-97)
+Hỗ trợ payload URL thay vì chỉ dùng active tab:
+```typescript
+case 'GET_CACHED_TOPIC': {
+  const payloadUrl = message.payload as string | undefined;
+  const urlPromise = payloadUrl ? Promise.resolve(payloadUrl) : getActiveTabUrl();
+  urlPromise
+    .then((url) => (url ? getCachedTopic(url) : null))
+    .then(sendResponse)
+    .catch(() => sendResponse(null));
+  return true;
+}
+```
+
+### 5d. Sửa handler `SAVE_CACHED_TOPIC` (dòng 99-125)
+Hỗ trợ `url` field trong payload thay vì chỉ dùng active tab:
+```typescript
+case 'SAVE_CACHED_TOPIC': {
+  const partial = message.payload as Partial<CachedTopic> & { url?: string };
+  const urlPromise = partial.url ? Promise.resolve(partial.url) : getActiveTabUrl();
+  urlPromise
+    .then(async (url) => {
+      if (!url) throw new Error('No URL');
+      const config = await getSettings();
+      const existing = await getCachedTopic(url);
+      const topic: CachedTopic = {
+        url,
+        title: partial.title ?? existing?.title ?? '',
+        version: partial.version ?? existing?.version ?? 'unknown',
+        posts: partial.posts ?? existing?.posts ?? [],
+        summary: partial.summary ?? existing?.summary ?? '',
+        opinions: partial.opinions ?? existing?.opinions,
+        researchHistory: partial.researchHistory ?? existing?.researchHistory,
+        llmConfig: { provider: config.provider, model: config.model },
+        cachedAt: Date.now(),
+        lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
+        totalPosts: partial.totalPosts ?? existing?.totalPosts ?? 0,
+      };
+      await saveCachedTopic(topic);
+      sendResponse({ success: true });
+    })
+    .catch((err) => sendResponse({ error: String(err) }));
+  return true;
+}
+```
+
+---
+
+## Task 6: Sửa `getAllCachedTopics` filter
+
+### File: `lib/cache-manager.ts`
+Dòng 52, sửa filter condition:
+
+**Cũ:**
+```typescript
+if (key.startsWith(STORAGE_KEYS.CACHE_PREFIX) && value && typeof value === 'object' && 'summary' in value) {
+```
+
+**Mới:**
+```typescript
+if (key.startsWith(STORAGE_KEYS.CACHE_PREFIX) && value && typeof value === 'object' && 'url' in value && 'title' in value) {
+```
+
+**Lý do:** Để Topic Hub hiển thị cả những chủ đề đã scrape nhưng chưa được tóm tắt.
+
+---
+
+## Task 7: Tạo TopicHubView
+
+### File mới: `entrypoints/sidepanel/views/TopicHubView.vue`
+
+```vue
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { sendMessage } from '@/lib/messaging';
+import type { CachedTopic, DetectResult } from '@/lib/types';
+import { useTopicStore } from '../composables/useTopicStore';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+
+const router = useRouter();
+const store = useTopicStore();
+const allTopics = ref<CachedTopic[]>([]);
+const isLoading = ref(true);
+
+// Group topics by domain
+const groupedTopics = computed(() => {
+  const groups: Record<string, CachedTopic[]> = {};
+  for (const topic of allTopics.value) {
+    try {
+      const hostname = new URL(topic.url).hostname;
+      if (!groups[hostname]) groups[hostname] = [];
+      groups[hostname].push(topic);
+    } catch {
+      if (!groups['Khác']) groups['Khác'] = [];
+      groups['Khác'].push(topic);
+    }
+  }
+  // Sort topics within each group by cachedAt descending
+  for (const key of Object.keys(groups)) {
+    groups[key].sort((a, b) => (b.cachedAt || 0) - (a.cachedAt || 0));
+  }
+  return groups;
+});
+
+const domainNames = computed(() => Object.keys(groupedTopics.value).sort());
+
+// Check if active tab topic is already in cached list
+const activeTabInList = computed(() => {
+  if (!store.activeTabUrl.value) return true;
+  return allTopics.value.some(t => normalizeForCompare(t.url) === normalizeForCompare(store.activeTabUrl.value!));
+});
+
+function normalizeForCompare(url: string): string {
+  try {
+    const u = new URL(url);
+    u.pathname = u.pathname.replace(/\/page-\d+$/, '');
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+  } catch { return url; }
+}
+
+onMounted(async () => {
+  try {
+    const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
+    allTopics.value = topics || [];
+  } catch {
+    allTopics.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+});
+
+function selectTopic(topic: CachedTopic) {
+  store.selectTopic(topic);
+  router.push('/summary');
+}
+
+function handleActiveTabTopic() {
+  // Navigate to summary view — SummaryView will detect the active tab topic
+  if (store.activeTabDetect.value && store.activeTabUrl.value) {
+    // Create a minimal CachedTopic-like object from the detected topic
+    const detect = store.activeTabDetect.value;
+    const minimalTopic: CachedTopic = {
+      url: store.activeTabUrl.value,
+      title: detect.title,
+      version: detect.version,
+      posts: [],
+      summary: '',
+      llmConfig: { provider: '', model: '' },
+      cachedAt: 0,
+      lastPostNumber: 0,
+      totalPosts: detect.postCount,
+    };
+    store.selectTopic(minimalTopic);
+    router.push('/summary');
+  }
+}
+
+function formatRelativeTime(timestamp: number): string {
+  if (!timestamp) return '';
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Vừa xong';
+  if (minutes < 60) return `${minutes} phút trước`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} ngày trước`;
+  return new Date(timestamp).toLocaleDateString('vi-VN');
+}
+</script>
+
+<template>
+  <div class="p-4 space-y-4">
+    <LoadingSpinner v-if="isLoading" text="Đang tải danh sách..." />
+
+    <template v-else>
+      <!-- Active tab topic (if not in cached list) -->
+      <div
+        v-if="store.activeTabDetect.value && !activeTabInList"
+        class="border-2 border-blue-200 bg-blue-50 rounded-lg p-3 space-y-2"
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Tab hiện tại</span>
+        </div>
+        <p class="text-sm font-medium text-gray-900 line-clamp-2">
+          {{ store.activeTabDetect.value.title }}
+        </p>
+        <div class="flex items-center gap-3 text-xs text-gray-500">
+          <span>{{ store.activeTabDetect.value.postCount }} bài viết</span>
+          <span>{{ store.activeTabDetect.value.pageCount }} trang</span>
+        </div>
+        <button
+          class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          @click="handleActiveTabTopic"
+        >
+          Tóm tắt
+        </button>
+      </div>
+
+      <!-- Topic list grouped by domain -->
+      <div v-if="domainNames.length > 0" class="space-y-4">
+        <div v-for="domain in domainNames" :key="domain">
+          <!-- Domain header -->
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            {{ domain }}
+          </h3>
+
+          <!-- Topic cards -->
+          <div class="space-y-2">
+            <button
+              v-for="topic in groupedTopics[domain]"
+              :key="topic.url"
+              class="w-full text-left border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:bg-blue-50/50 transition-colors space-y-1.5"
+              @click="selectTopic(topic)"
+            >
+              <p class="text-sm font-medium text-gray-900 line-clamp-2">{{ topic.title }}</p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Status badge -->
+                <span
+                  v-if="topic.summary"
+                  class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium"
+                >
+                  ✓ Đã tóm tắt
+                </span>
+                <span
+                  v-else
+                  class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
+                >
+                  ○ Chưa tóm tắt
+                </span>
+                <!-- Post count -->
+                <span class="text-xs text-gray-400">{{ topic.totalPosts }} bài</span>
+                <!-- Time -->
+                <span v-if="topic.cachedAt" class="text-xs text-gray-400">
+                  {{ formatRelativeTime(topic.cachedAt) }}
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div
+        v-if="domainNames.length === 0 && !store.activeTabDetect.value"
+        class="text-center py-12 space-y-3"
+      >
+        <div class="text-3xl">📰</div>
+        <p class="text-sm text-gray-500">
+          Chưa có chủ đề nào. Mở một topic XenForo để bắt đầu.
+        </p>
+      </div>
+    </template>
+  </div>
+</template>
+```
+
+---
+
+## Task 8: Sửa router và navigation
+
+### File: `entrypoints/sidepanel/main.ts`
+Thay toàn bộ `routes` array:
+```typescript
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes: [
+    { path: '/', name: 'hub', component: () => import('./views/TopicHubView.vue') },
+    { path: '/summary', name: 'summary', component: () => import('./views/SummaryView.vue') },
+    { path: '/opinions', name: 'opinions', component: () => import('./views/OpinionsView.vue') },
+    { path: '/research', name: 'research', component: () => import('./views/ResearchView.vue') },
+    { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue') },
+  ],
+});
+```
+
+### File: `entrypoints/sidepanel/App.vue`
+Thay toàn bộ nội dung file:
+
+```vue
+<script setup lang="ts">
+import { onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { DetectResult } from '@/lib/types';
+import { useTopicStore } from './composables/useTopicStore';
+
+const route = useRoute();
+const router = useRouter();
+const store = useTopicStore();
+
+// Detect topic on active tab once when sidepanel opens
+onMounted(async () => {
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url) return;
+
+    const result = await browser.tabs.sendMessage(tab.id, {
+      type: 'DETECT_XF',
+    }) as DetectResult | undefined;
+
+    if (result && result.version !== 'unknown') {
+      store.setActiveTab(result, tab.url);
+    }
+  } catch {
+    // Content script not available on this tab — that's fine
+  }
+});
+
+// Topic-specific tabs disabled when no topic selected
+const hasSelectedTopic = computed(() => !!store.selectedTopic.value);
+
+function navigateTo(path: string) {
+  router.push(path);
+}
+</script>
+
+<template>
+  <div class="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3">
+      <h1 class="text-lg font-bold text-blue-600">AI Điểm Báo</h1>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="bg-white border-b border-gray-200 flex">
+      <router-link
+        to="/"
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
+        :class="
+          route.name === 'hub'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+        "
+      >
+        Chủ đề
+      </router-link>
+      <button
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
+        :class="
+          route.name === 'summary'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : hasSelectedTopic
+              ? 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-300 cursor-not-allowed'
+        "
+        :disabled="!hasSelectedTopic"
+        @click="hasSelectedTopic && navigateTo('/summary')"
+      >
+        Tóm tắt
+      </button>
+      <button
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
+        :class="
+          route.name === 'opinions'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : hasSelectedTopic
+              ? 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-300 cursor-not-allowed'
+        "
+        :disabled="!hasSelectedTopic"
+        @click="hasSelectedTopic && navigateTo('/opinions')"
+      >
+        Ý kiến
+      </button>
+      <button
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
+        :class="
+          route.name === 'research'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : hasSelectedTopic
+              ? 'text-gray-500 hover:text-gray-700'
+              : 'text-gray-300 cursor-not-allowed'
+        "
+        :disabled="!hasSelectedTopic"
+        @click="hasSelectedTopic && navigateTo('/research')"
+      >
+        Tra cứu
+      </button>
+      <router-link
+        to="/settings"
+        class="flex-1 text-center py-2.5 text-xs font-medium transition-colors"
+        :class="
+          route.name === 'settings'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+        "
+      >
+        Cài đặt
+      </router-link>
+    </nav>
+
+    <!-- Content -->
+    <main class="flex-1 overflow-y-auto">
+      <router-view />
+    </main>
+  </div>
+</template>
+```
+
+**Thay đổi chính:**
+- Tab "Chủ đề" (`/`) dùng `<router-link>` (luôn enabled)
+- Tab "Tóm tắt", "Ý kiến", "Tra cứu" dùng `<button>` thay vì `<router-link>` → disabled khi không có selectedTopic
+- Tab "Cài đặt" (`/settings`) dùng `<router-link>` (luôn enabled)
+- `onMounted`: detect topic trên active tab 1 lần duy nhất, lưu vào store
+
+---
+
+## Task 9: Refactor SummaryView — xóa tab listener, dùng topic store
+
+### File: `entrypoints/sidepanel/views/SummaryView.vue`
+
+**Thay đổi lớn — nên viết lại phần `<script setup>`:**
+
+1. **Import thêm:** `useTopicStore` từ composables, `useRouter` từ vue-router
+2. **Xóa:**
+   - `onTabActivated()` function (dòng 55-61)
+   - `resetState()` function (dòng 63-71)
+   - `browser.tabs.onActivated.addListener(onTabActivated)` (dòng 74)
+   - `browser.tabs.onActivated.removeListener(onTabActivated)` (dòng 82)
+   - `detectTopic()` function (dòng 86-117) — thay bằng logic mới
+   - `checkCache()` function (dòng 119-132) — thay bằng logic mới
+   - Biến `isDetecting` (không cần detect nữa)
+   - Biến `topicInfo` (thay bằng store.selectedTopic)
+
+3. **Thêm:**
+```typescript
+import { useRouter } from 'vue-router';
+import { useTopicStore } from '../composables/useTopicStore';
+
+const router = useRouter();
+const store = useTopicStore();
+```
+
+4. **Thay logic `onMounted`:**
+```typescript
+onMounted(async () => {
+  browser.runtime.onMessage.addListener(onRuntimeMessage);
+
+  // Load config for token estimation
+  sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => { currentConfig.value = cfg; }).catch(() => {});
+
+  // Load from store's selected topic
+  const topic = store.selectedTopic.value;
+  if (topic) {
+    if (topic.summary) {
+      summary.value = topic.summary;
+      summarizedPostCount.value = topic.totalPosts;
+      cachedTopic.value = topic;
+      cacheFreshness.value = 'fresh'; // Will be re-evaluated if needed
+    }
+    // Try to reload fresh cache data
+    try {
+      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+      if (fresh) {
+        cachedTopic.value = fresh;
+        if (fresh.summary) {
+          summary.value = fresh.summary;
+          summarizedPostCount.value = fresh.totalPosts;
+        }
+        // Evaluate freshness if we have current post count from store
+        if (store.activeTabDetect.value && store.activeTabUrl.value === topic.url) {
+          cacheFreshness.value = evaluateFreshness(fresh, store.activeTabDetect.value.postCount);
+        } else {
+          cacheFreshness.value = evaluateFreshness(fresh, fresh.totalPosts);
+        }
+      }
+    } catch { /* cache miss is fine */ }
+  }
+});
+```
+
+5. **Thay logic `handleSummarize`:**
+- Thay vì `browser.tabs.query` + `browser.tabs.sendMessage` trực tiếp
+- Check: nếu `store.selectedTopic.value?.posts?.length` (đã có posts trong cache) → dùng trực tiếp, không cần scrape
+- Nếu cần scrape: check `store.activeTabUrl.value` có match với topic URL không
+  - Nếu match → scrape từ active tab (giữ logic cũ)
+  - Nếu không match → hiển thị message "Hãy mở topic này trên trình duyệt để scrape"
+
+6. **Thay logic `confirmSummarize`:**
+- Sau khi save cache, gọi `store.updateSelectedTopic({ summary: summary.value, ... })` để sync store
+- Khi gọi `SAVE_CACHED_TOPIC`, truyền `url: store.selectedTopic.value.url` trong payload
+
+7. **Xóa `topicInfo` ref, thay bằng computed:**
+```typescript
+const topicInfo = computed(() => {
+  const topic = store.selectedTopic.value;
+  if (!topic) return null;
+  return {
+    version: topic.version,
+    title: topic.title,
+    postCount: topic.totalPosts,
+    pageCount: 1, // We don't store pageCount in cache, default to 1
+  } satisfies DetectResult;
+});
+```
+
+**Lưu ý quan trọng:** Cần lưu `pageCount` trong `CachedTopic` hoặc detect lại từ active tab nếu URL match. Giải pháp đơn giản: nếu topic có posts đã cache thì scrape không cần thiết (summarize trực tiếp từ posts). `pageCount` chỉ cần khi scraping multi-page.
+
+8. **Thêm nút "← Quay lại" ở template:**
+```html
+<button
+  class="text-xs text-blue-600 hover:text-blue-700 mb-2"
+  @click="router.push('/')"
+>
+  ← Quay lại danh sách
+</button>
+```
+
+9. **Xóa khỏi onUnmounted:** `browser.tabs.onActivated.removeListener(onTabActivated)`
+
+---
+
+## Task 10: Refactor OpinionsView — dùng topic store
+
+### File: `entrypoints/sidepanel/views/OpinionsView.vue`
+
+**Thay đổi:**
+
+1. Thêm import:
+```typescript
+import { useTopicStore } from '../composables/useTopicStore';
+const store = useTopicStore();
+```
+
+2. Sửa `onMounted` (dòng 39-50):
+```typescript
+onMounted(async () => {
+  // Load from store first
+  const topic = store.selectedTopic.value;
+  if (topic) {
+    cachedTopic.value = topic;
+    if (topic.opinions) opinions.value = topic.opinions;
+  }
+  // Then try to reload from cache for freshest data
+  if (topic?.url) {
+    try {
+      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+      if (fresh) {
+        cachedTopic.value = fresh;
+        if (fresh.opinions) opinions.value = fresh.opinions;
+      }
+    } catch { /* no cache */ }
+  }
+});
+```
+
+3. Sửa `handleAnalyze` save call (dòng 59):
+```typescript
+await sendMessage('SAVE_CACHED_TOPIC', {
+  url: cachedTopic.value!.url,  // ← truyền URL cụ thể
+  opinions: result,
+}).catch(() => {});
+// Update store
+store.updateSelectedTopic({ opinions: result });
+```
+
+---
+
+## Task 11: Refactor ResearchView — dùng topic store
+
+### File: `entrypoints/sidepanel/views/ResearchView.vue`
+
+**Thay đổi tương tự OpinionsView:**
+
+1. Thêm import:
+```typescript
+import { useTopicStore } from '../composables/useTopicStore';
+const store = useTopicStore();
+```
+
+2. Sửa `onMounted` (dòng 27-37):
+```typescript
+onMounted(async () => {
+  const topic = store.selectedTopic.value;
+  if (topic) {
+    cachedTopic.value = topic;
+    history.value = topic.researchHistory ?? [];
+  }
+  if (topic?.url) {
+    try {
+      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+      if (fresh) {
+        cachedTopic.value = fresh;
+        history.value = fresh.researchHistory ?? [];
+      }
+    } catch { /* no cache */ }
+  }
+});
+```
+
+3. Sửa save calls trong `handleResearch` (dòng 67-69):
+```typescript
+await sendMessage('SAVE_CACHED_TOPIC', {
+  url: cachedTopic.value!.url,  // ← truyền URL cụ thể
+  researchHistory: history.value,
+}).catch(() => {});
+store.updateSelectedTopic({ researchHistory: history.value });
+```
+
+4. Sửa `clearHistory` (dòng 83-85):
+```typescript
+function clearHistory() {
+  history.value = [];
+  sendMessage('SAVE_CACHED_TOPIC', {
+    url: cachedTopic.value!.url,
+    researchHistory: [],
+  }).catch(() => {});
+  store.updateSelectedTopic({ researchHistory: [] });
+}
+```
+
+---
+
+## Task 12: Thêm timeout setting trong SettingsView
+
+### File: `entrypoints/sidepanel/views/SettingsView.vue`
+
+Thêm block UI cho timeout **sau block Temperature** (sau dòng 187, trước `<!-- Actions -->`):
+
+```html
+<!-- Timeout -->
+<div>
+  <label class="block text-xs font-medium text-gray-600 mb-1">
+    Timeout: {{ Math.round((config.timeoutMs ?? 120000) / 1000) }}s
+  </label>
+  <input
+    v-model.number="config.timeoutMs"
+    type="range"
+    :min="30000"
+    :max="600000"
+    :step="30000"
+    class="w-full"
+  />
+  <div class="flex justify-between text-xs text-gray-400 mt-0.5">
+    <span>30s</span>
+    <span>600s</span>
+  </div>
+</div>
+```
+
+**Lưu ý:** Nếu `config.timeoutMs` chưa có giá trị (config cũ chưa có field này), cần ensure default trong `onMounted`:
+```typescript
+onMounted(async () => {
+  const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
+  if (loaded?.apiKey !== undefined) {
+    config.value = { ...loaded, timeoutMs: loaded.timeoutMs ?? 120000 };
+  }
+  // ... rest unchanged
+});
+```
+
+---
+
+## Thứ tự triển khai (dependency order)
+
+```
+Task 1  (types + constants)           — foundation, no deps
+Task 2  (error codes)                 — depends on Task 1 concepts
+Task 3  (adapter timeout)             — depends on Task 1, 2
+Task 4  (topic store)                 — depends on Task 1 types
+Task 5  (background handlers)         — depends on Task 1, 6
+Task 6  (cache filter fix)            — no deps
+Task 7  (TopicHubView)                — depends on Task 4, 5
+Task 8  (router + App.vue)            — depends on Task 4, 7
+Task 9  (SummaryView refactor)        — depends on Task 4, 5
+Task 10 (OpinionsView refactor)       — depends on Task 4, 5
+Task 11 (ResearchView refactor)       — depends on Task 4, 5
+Task 12 (SettingsView timeout UI)     — depends on Task 1
+```
+
+**Recommended batch order:**
+1. Tasks 1, 2, 6 (types, errors, cache filter — nhỏ, independent)
+2. Tasks 3, 4, 12 (adapter timeout, topic store, settings UI)
+3. Task 5 (background handlers)
+4. Tasks 7, 8 (TopicHubView, router + App.vue)
+5. Tasks 9, 10, 11 (refactor 3 views — có thể song song)
+
+---
+
+## Verification
+
+1. `npx vue-tsc --noEmit` → pass (type check)
+2. `npm run build` → pass (build)
+3. Load extension → mở topic XenForo → sidepanel hiển thị Topic Hub với "Tab hiện tại"
+4. Click "Tóm tắt" trên topic → quá trình summarize hoạt động bình thường
+5. Quay lại Hub → topic hiển thị badge "Đã tóm tắt" và thời gian
+6. Chuyển browser tab trong lúc đang tóm tắt → task KHÔNG bị gián đoạn
+7. Hub hiển thị topics nhóm theo domain đúng
+8. Settings → thay đổi timeout → save → LLM call timeout đúng giá trị mới
+9. Tab Tóm tắt/Ý kiến/Tra cứu disabled khi chưa chọn topic
+10. Ý kiến/Tra cứu views load đúng data từ topic đã chọn

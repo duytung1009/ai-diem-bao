@@ -5,12 +5,14 @@ import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
+import { useTopicStore } from '../composables/useTopicStore';
 
 const cachedTopic = ref<CachedTopic | null>(null);
 const question = ref('');
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const history = ref<ResearchEntry[]>([]);
+const store = useTopicStore();
 
 // Suggested questions derived from the topic title
 const suggestedQuestions = computed(() => {
@@ -25,14 +27,21 @@ const suggestedQuestions = computed(() => {
 });
 
 onMounted(async () => {
-  try {
-    const result = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC');
-    if (result) {
-      cachedTopic.value = result;
-      history.value = result.researchHistory ?? [];
-    }
-  } catch {
-    // No cache
+  // Load from store first
+  const topic = store.selectedTopic.value;
+  if (topic) {
+    cachedTopic.value = topic as CachedTopic;
+    history.value = [...(topic.researchHistory ?? [])];
+  }
+  // Then try to reload from cache for freshest data
+  if (topic?.url) {
+    try {
+      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+      if (fresh) {
+        cachedTopic.value = fresh;
+        history.value = fresh.researchHistory ?? [];
+      }
+    } catch { /* no cache */ }
   }
 });
 
@@ -65,8 +74,10 @@ async function handleResearch() {
 
       // Persist to cache
       await sendMessage('SAVE_CACHED_TOPIC', {
+        url: cachedTopic.value!.url,
         researchHistory: history.value,
       }).catch(() => {});
+      store.updateSelectedTopic({ researchHistory: history.value });
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
@@ -81,7 +92,11 @@ function useSuggestion(q: string) {
 
 function clearHistory() {
   history.value = [];
-  sendMessage('SAVE_CACHED_TOPIC', { researchHistory: [] }).catch(() => {});
+  sendMessage('SAVE_CACHED_TOPIC', {
+    url: cachedTopic.value!.url,
+    researchHistory: [],
+  }).catch(() => {});
+  store.updateSelectedTopic({ researchHistory: [] });
 }
 
 function formatDate(ts: number): string {

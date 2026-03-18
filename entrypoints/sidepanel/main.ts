@@ -6,7 +6,8 @@ import App from './App.vue';
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', name: 'summary', component: () => import('./views/SummaryView.vue') },
+    { path: '/', name: 'hub', component: () => import('./views/TopicHubView.vue') },
+    { path: '/summary', name: 'summary', component: () => import('./views/SummaryView.vue') },
     { path: '/opinions', name: 'opinions', component: () => import('./views/OpinionsView.vue') },
     { path: '/research', name: 'research', component: () => import('./views/ResearchView.vue') },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue') },

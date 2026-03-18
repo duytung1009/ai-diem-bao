@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress } from '@/lib/types';
 import type { MultiPageResult } from '@/lib/scrapers/page-loader';
+import { useTopicStore } from '../composables/useTopicStore';
 import TopicMeta from '../components/TopicMeta.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryContent from '../components/SummaryContent.vue';
@@ -11,16 +13,17 @@ import CacheIndicator from '../components/CacheIndicator.vue';
 import ExportButton from '../components/ExportButton.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 
-const topicInfo = ref<DetectResult | null>(null);
+const router = useRouter();
+const store = useTopicStore();
+
 const summary = ref('');
 const error = ref('');
 const loadingText = ref('');
-const isDetecting = ref(true);
 const summarizedPostCount = ref(0);
 const isScraping = ref(false);
 const scrapingWarnings = ref<string[]>([]);
 
-// Token estimation state (Phase 3)
+// Token estimation state
 const pendingPosts = ref<ScrapedPost[] | null>(null);
 const pendingIncremental = ref(false);
 const currentConfig = ref<LLMConfig | null>(null);
@@ -29,8 +32,17 @@ const currentConfig = ref<LLMConfig | null>(null);
 const cachedTopic = ref<CachedTopic | null>(null);
 const cacheFreshness = ref<CacheFreshness | null>(null);
 
-let currentTabId: number | undefined;
-let currentWindowId: number | undefined;
+// Derived from store — replaces topicInfo ref
+const topicInfo = computed<DetectResult | null>(() => {
+  const topic = store.selectedTopic.value;
+  if (!topic) return null;
+  return {
+    version: topic.version,
+    title: topic.title,
+    postCount: topic.totalPosts,
+    pageCount: 1, // Actual pageCount comes from store.activeTabDetect if needed
+  } satisfies DetectResult;
+});
 
 const tokenEstimation = computed(() => {
   if (!pendingPosts.value || !currentConfig.value) return null;
@@ -52,83 +64,54 @@ function onRuntimeMessage(message: Message) {
   }
 }
 
-function onTabActivated(activeInfo: { tabId: number; windowId: number }) {
-  if (activeInfo.windowId !== currentWindowId) return;
-  if (activeInfo.tabId === currentTabId) return;
-  currentTabId = activeInfo.tabId;
-  resetState();
-  detectTopic();
-}
-
-function resetState() {
-  summary.value = '';
-  summarizedPostCount.value = 0;
-  cachedTopic.value = null;
-  cacheFreshness.value = null;
-  error.value = '';
-  scrapingWarnings.value = [];
-  pendingPosts.value = null;
-}
-
 onMounted(async () => {
-  browser.tabs.onActivated.addListener(onTabActivated);
   browser.runtime.onMessage.addListener(onRuntimeMessage);
+
   // Load config for token estimation
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => { currentConfig.value = cfg; }).catch(() => {});
-  await detectTopic();
+
+  // Load from store's selected topic
+  const topic = store.selectedTopic.value;
+  if (topic) {
+    if (topic.summary) {
+      summary.value = topic.summary;
+      summarizedPostCount.value = topic.totalPosts;
+    }
+    // Try to reload fresh cache data
+    try {
+      const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+      if (fresh) {
+        cachedTopic.value = fresh;
+        if (fresh.summary) {
+          summary.value = fresh.summary;
+          summarizedPostCount.value = fresh.totalPosts;
+        }
+        // Evaluate freshness
+        if (store.activeTabDetect.value && isSameTopicUrl(store.activeTabUrl.value ?? '', topic.url)) {
+          cacheFreshness.value = evaluateFreshness(fresh, store.activeTabDetect.value.postCount);
+        } else {
+          cacheFreshness.value = evaluateFreshness(fresh, fresh.totalPosts);
+        }
+      }
+    } catch { /* cache miss is fine */ }
+  }
 });
 
 onUnmounted(() => {
-  browser.tabs.onActivated.removeListener(onTabActivated);
-  browser.runtime.onMessage.removeListener(onRuntimeMessage); // Fix 1
+  browser.runtime.onMessage.removeListener(onRuntimeMessage);
 });
 
-async function detectTopic() {
-  isDetecting.value = true;
-  error.value = '';
-  topicInfo.value = null;
-
+function isSameTopicUrl(url1: string, url2: string): boolean {
   try {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) {
-      error.value = 'Không tìm thấy tab đang mở.';
-      return;
-    }
-    currentTabId = tab.id;
-    currentWindowId = tab.windowId;
-    const result = await browser.tabs.sendMessage(tab.id, {
-      type: 'DETECT_XF',
-    }) as DetectResult | undefined;
-
-    if (!result || result.version === 'unknown') {
-      error.value = 'Trang này không phải forum XenForo.';
-      return;
-    }
-    topicInfo.value = result;
-
-    // Check cache
-    await checkCache();
-  } catch (e) {
-    console.error('Error detecting topic:', e);
-    error.value = 'Không thể kết nối với trang. Hãy thử tải lại trang.';
-  } finally {
-    isDetecting.value = false;
-  }
-}
-
-async function checkCache() {
-  if (!topicInfo.value) return;
-  try {
-    const cached = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC');
-    if (cached?.summary) {
-      cachedTopic.value = cached;
-      summary.value = cached.summary;
-      summarizedPostCount.value = cached.totalPosts;
-      cacheFreshness.value = evaluateFreshness(cached, topicInfo.value.postCount);
-    }
-  } catch {
-    // No cache available, that's fine
-  }
+    const normalize = (u: string) => {
+      const parsed = new URL(u);
+      parsed.pathname = parsed.pathname.replace(/\/page-\d+$/, '');
+      parsed.search = '';
+      parsed.hash = '';
+      return parsed.toString();
+    };
+    return normalize(url1) === normalize(url2);
+  } catch { return url1 === url2; }
 }
 
 function evaluateFreshness(cached: CachedTopic, currentPostCount: number): CacheFreshness {
@@ -141,7 +124,6 @@ function evaluateFreshness(cached: CachedTopic, currentPostCount: number): Cache
   return 'fresh';
 }
 
-// Fix 2: cancel multi-page scraping
 async function handleCancel() {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (tab?.id) {
@@ -153,23 +135,40 @@ async function handleCancel() {
 
 async function handleSummarize(incremental = false) {
   if (!topicInfo.value) return;
+  const topic = store.selectedTopic.value!;
   error.value = '';
   scrapingWarnings.value = [];
   if (!incremental) summary.value = '';
   pendingPosts.value = null;
 
   try {
+    // If topic already has cached posts and this is a fresh summarize, use them directly
+    if (topic.posts?.length > 0 && !incremental) {
+      pendingPosts.value = [...topic.posts];
+      pendingIncremental.value = false;
+      return;
+    }
+
+    // Need to scrape — check if active tab matches topic URL
+    const isActiveTab = store.activeTabUrl.value && isSameTopicUrl(store.activeTabUrl.value, topic.url);
+
+    if (!isActiveTab) {
+      error.value = 'Hãy mở topic này trên trình duyệt để đọc bài viết.';
+      return;
+    }
+
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('Không tìm thấy tab');
 
+    const pageCount = store.activeTabDetect.value?.pageCount ?? 1;
     let posts: ScrapedPost[];
 
-    if (topicInfo.value.pageCount > 1) {
+    if (pageCount > 1) {
       isScraping.value = true;
-      loadingText.value = `Đang đọc trang 1/${topicInfo.value.pageCount}...`;
+      loadingText.value = `Đang đọc trang 1/${pageCount}...`;
       const result = await browser.tabs.sendMessage(tab.id, {
         type: 'SCRAPE_ALL_PAGES',
-        payload: { totalPages: topicInfo.value.pageCount },
+        payload: { totalPages: pageCount },
       }) as MultiPageResult & { error?: string };
 
       isScraping.value = false;
@@ -177,10 +176,7 @@ async function handleSummarize(incremental = false) {
       if (!result.posts?.length) throw new Error('Không tìm thấy bài viết nào.');
 
       posts = result.posts;
-
-      if (result.errors.length > 0) {
-        scrapingWarnings.value = result.errors;
-      }
+      if (result.errors.length > 0) scrapingWarnings.value = result.errors;
     } else {
       loadingText.value = 'Đang đọc bài viết...';
       const scraped = await browser.tabs.sendMessage(tab.id, {
@@ -193,7 +189,6 @@ async function handleSummarize(incremental = false) {
     }
 
     loadingText.value = '';
-    // Phase 3: show token estimation, wait for confirm
     pendingPosts.value = posts;
     pendingIncremental.value = incremental;
   } catch (err) {
@@ -206,7 +201,8 @@ async function handleSummarize(incremental = false) {
 async function confirmSummarize() {
   const posts = pendingPosts.value;
   const incremental = pendingIncremental.value;
-  if (!posts || !topicInfo.value) return;
+  const topic = store.selectedTopic.value;
+  if (!posts || !topicInfo.value || !topic) return;
 
   pendingPosts.value = null;
   summarizedPostCount.value = posts.length;
@@ -238,19 +234,23 @@ async function confirmSummarize() {
       summary.value = result.summary || 'Không có kết quả.';
     }
 
-    // Save to cache
+    // Save to cache with explicit URL
     const lastPost = posts[posts.length - 1];
     await sendMessage('SAVE_CACHED_TOPIC', {
+      url: topic.url,
       title: topicInfo.value.title,
       version: topicInfo.value.version,
       posts,
       summary: summary.value,
       lastPostNumber: lastPost?.postNumber ?? 0,
       totalPosts: posts.length,
-    } satisfies Partial<CachedTopic>);
+    });
+
+    // Update store
+    store.updateSelectedTopic({ summary: summary.value, posts, totalPosts: posts.length });
 
     // Reload from background to get the authoritative stored record
-    const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC');
+    const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (saved) {
       cachedTopic.value = saved;
     }
@@ -270,22 +270,27 @@ function cancelPendingSummarize() {
 
 <template>
   <div class="p-4 space-y-4">
-    <!-- Detecting -->
-    <LoadingSpinner v-if="isDetecting" text="Đang kiểm tra trang..." />
-
-    <!-- Not XenForo -->
-    <div v-else-if="error && !topicInfo" class="text-center py-8">
-      <p class="text-sm text-gray-500">{{ error }}</p>
+    <!-- No topic selected -->
+    <div v-if="!topicInfo" class="text-center py-8">
+      <p class="text-sm text-gray-500">Chưa chọn chủ đề.</p>
       <button
         class="mt-3 text-sm text-blue-600 hover:text-blue-700"
-        @click="detectTopic"
+        @click="router.push('/')"
       >
-        Thử lại
+        ← Quay lại danh sách
       </button>
     </div>
 
-    <!-- Topic detected -->
-    <template v-else-if="topicInfo">
+    <!-- Topic loaded -->
+    <template v-else>
+      <!-- Back button -->
+      <button
+        class="text-xs text-blue-600 hover:text-blue-700"
+        @click="router.push('/')"
+      >
+        ← Quay lại danh sách
+      </button>
+
       <TopicMeta :info="topicInfo" />
 
       <!-- Summarize button -->
@@ -300,7 +305,6 @@ function cancelPendingSummarize() {
       <!-- Loading + Cancel -->
       <div v-if="loadingText" class="space-y-2">
         <LoadingSpinner :text="loadingText" />
-        <!-- Fix 2: Cancel button for multi-page -->
         <button
           v-if="isScraping"
           class="w-full py-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -310,7 +314,7 @@ function cancelPendingSummarize() {
         </button>
       </div>
 
-      <!-- Phase 3: Token estimation confirmation -->
+      <!-- Token estimation confirmation -->
       <div
         v-if="pendingPosts && tokenEstimation"
         class="border border-blue-200 bg-blue-50 rounded-lg p-3 space-y-3"
@@ -346,7 +350,7 @@ function cancelPendingSummarize() {
         @retry="handleSummarize(false)"
       />
 
-      <!-- Fix 3: Page scraping warnings -->
+      <!-- Page scraping warnings -->
       <div
         v-if="scrapingWarnings.length > 0"
         class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 space-y-1"
@@ -375,7 +379,6 @@ function cancelPendingSummarize() {
             </svg>
             <span>Đã tóm tắt {{ summarizedPostCount }} bài viết</span>
           </div>
-          <!-- Fix 6: CacheIndicator now persists after summarize with 'fresh' state -->
           <CacheIndicator
             v-if="cacheFreshness && cachedTopic"
             :freshness="cacheFreshness"

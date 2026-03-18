@@ -1,6 +1,6 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
 import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, testLLMConnection } from '@/lib/llm/summarizer';
-import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize } from '@/lib/cache-manager';
+import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics } from '@/lib/cache-manager';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts } from '@/lib/types';
 
 export default defineBackground(() => {
@@ -89,7 +89,9 @@ export default defineBackground(() => {
           return true;
 
         case 'GET_CACHED_TOPIC': {
-          getActiveTabUrl()
+          const payloadUrl = message.payload as string | undefined;
+          const urlPromise = payloadUrl ? Promise.resolve(payloadUrl) : getActiveTabUrl();
+          urlPromise
             .then((url) => (url ? getCachedTopic(url) : null))
             .then(sendResponse)
             .catch(() => sendResponse(null));
@@ -97,10 +99,11 @@ export default defineBackground(() => {
         }
 
         case 'SAVE_CACHED_TOPIC': {
-          const partial = message.payload as Partial<CachedTopic>;
-          getActiveTabUrl()
+          const partial = message.payload as Partial<CachedTopic> & { url?: string };
+          const urlPromise = partial.url ? Promise.resolve(partial.url) : getActiveTabUrl();
+          urlPromise
             .then(async (url) => {
-              if (!url) throw new Error('No active tab');
+              if (!url) throw new Error('No URL');
               const config = await getSettings();
               // Load existing so a partial update (e.g. opinions only) doesn't wipe other fields
               const existing = await getCachedTopic(url);
@@ -136,6 +139,12 @@ export default defineBackground(() => {
           getCacheSize()
             .then((bytes) => sendResponse({ bytes }))
             .catch(() => sendResponse({ bytes: 0 }));
+          return true;
+
+        case 'GET_ALL_CACHED_TOPICS':
+          getAllCachedTopics()
+            .then(sendResponse)
+            .catch(() => sendResponse([]));
           return true;
 
         // Forward progress from content script to sidepanel

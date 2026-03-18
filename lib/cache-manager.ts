@@ -49,7 +49,7 @@ export async function getAllCachedTopics(): Promise<CachedTopic[]> {
   const all = await browser.storage.local.get(null);
   const topics: CachedTopic[] = [];
   for (const [key, value] of Object.entries(all)) {
-    if (key.startsWith(STORAGE_KEYS.CACHE_PREFIX) && value && typeof value === 'object' && 'summary' in value) {
+    if (key.startsWith(STORAGE_KEYS.CACHE_PREFIX) && value && typeof value === 'object' && 'url' in value && 'title' in value) {
       topics.push(value as CachedTopic);
     }
   }

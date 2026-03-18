@@ -27,6 +27,8 @@ export function useTopicStore() {
 
   return {
     // State (readonly để tránh mutation trực tiếp từ bên ngoài)
+    // Note: plan đề xuất expose `_selectedTopic` writable ref làm escape hatch,
+    // nhưng bỏ qua vì không có consumer nào cần — dùng updateSelectedTopic() thay thế.
     selectedTopic: readonly(selectedTopic),
     activeTabDetect: readonly(activeTabDetect),
     activeTabUrl: readonly(activeTabUrl),

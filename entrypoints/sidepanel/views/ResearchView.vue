@@ -91,6 +91,7 @@ function useSuggestion(q: string) {
 }
 
 function clearHistory() {
+  if (!cachedTopic.value) return;
   history.value = [];
   sendMessage('SAVE_CACHED_TOPIC', {
     url: cachedTopic.value!.url,

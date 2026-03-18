@@ -51,8 +51,7 @@ export type MessageType =
   | 'SAVE_CACHED_TOPIC'
   | 'DELETE_CACHED_TOPIC'
   | 'GET_CACHE_SIZE'
-  | 'GET_ALL_CACHED_TOPICS'
-  | 'DETECT_ACTIVE_TAB';
+  | 'GET_ALL_CACHED_TOPICS';
 
 export interface Message<T = unknown> {
   type: MessageType;

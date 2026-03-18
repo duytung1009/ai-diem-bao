@@ -73,6 +73,9 @@ onMounted(async () => {
   // Load from store's selected topic
   const topic = store.selectedTopic.value;
   if (topic) {
+    // Populate cachedTopic immediately from store so ExportButton/CacheIndicator won't be hidden
+    // if the GET_CACHED_TOPIC round-trip below fails
+    cachedTopic.value = topic as CachedTopic;
     if (topic.summary) {
       summary.value = topic.summary;
       summarizedPostCount.value = topic.totalPosts;
@@ -153,7 +156,9 @@ async function handleSummarize(incremental = false) {
     const isActiveTab = store.activeTabUrl.value && isSameTopicUrl(store.activeTabUrl.value, topic.url);
 
     if (!isActiveTab) {
-      error.value = 'Hãy mở topic này trên trình duyệt để đọc bài viết.';
+      error.value = incremental
+        ? 'Hãy mở topic này trên trình duyệt để tải bài viết mới.'
+        : 'Hãy mở topic này trên trình duyệt để đọc bài viết.';
       return;
     }
 

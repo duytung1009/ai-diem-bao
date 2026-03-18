@@ -42,7 +42,8 @@ const activeTabInList = computed(() => {
 function normalizeForCompare(url: string): string {
   try {
     const u = new URL(url);
-    u.pathname = u.pathname.replace(/\/page-\d+$/, '');
+    u.pathname = u.pathname.replace(/\/page-\d+\/?$/, '');
+    if (!u.pathname.endsWith('/')) u.pathname += '/';
     u.search = '';
     u.hash = '';
     return u.toString();
@@ -106,9 +107,10 @@ function formatRelativeTime(timestamp: number): string {
 
     <template v-else>
       <!-- Active tab topic (if not in cached list) -->
-      <div
+      <button
         v-if="store.activeTabDetect.value && !activeTabInList"
-        class="border-2 border-blue-200 bg-blue-50 rounded-lg p-3 space-y-2"
+        class="w-full text-left border-2 border-blue-200 bg-blue-50 rounded-lg p-3 hover:border-blue-400 transition-colors space-y-1.5"
+        @click="handleActiveTabTopic"
       >
         <div class="flex items-center gap-2">
           <span class="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Tab hiện tại</span>
@@ -119,14 +121,9 @@ function formatRelativeTime(timestamp: number): string {
         <div class="flex items-center gap-3 text-xs text-gray-500">
           <span>{{ store.activeTabDetect.value.postCount }} bài viết</span>
           <span>{{ store.activeTabDetect.value.pageCount }} trang</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">○ Chưa tóm tắt</span>
         </div>
-        <button
-          class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          @click="handleActiveTabTopic"
-        >
-          Tóm tắt
-        </button>
-      </div>
+      </button>
 
       <!-- Topic list grouped by domain -->
       <div v-if="domainNames.length > 0" class="space-y-4">

@@ -164,9 +164,9 @@ function getSentimentColor(sentiment: string): string {
     <!-- Empty state -->
     <div
       v-if="!isLoading && !opinions && cachedTopic?.posts?.length"
-      class="border border-gray-200 rounded-lg p-4 text-center"
+      class="text-center py-6"
     >
-      <p class="text-sm text-gray-500">Bấm "Phân tích Ý kiến" để bắt đầu</p>
+      <p class="text-xs text-gray-400">Bấm nút phía trên để phân tích ý kiến trong topic.</p>
     </div>
   </div>
 </template>

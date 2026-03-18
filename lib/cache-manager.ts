@@ -5,10 +5,11 @@ function cacheKey(url: string): string {
   return `${STORAGE_KEYS.CACHE_PREFIX}${normalizeUrl(url)}`;
 }
 
-function normalizeUrl(url: string): string {
+export function normalizeUrl(url: string): string {
   try {
     const u = new URL(url);
-    u.pathname = u.pathname.replace(/\/page-\d+$/, '');
+    u.pathname = u.pathname.replace(/\/page-\d+\/?$/, '');
+    if (!u.pathname.endsWith('/')) u.pathname += '/';
     u.search = '';
     u.hash = '';
     return u.toString();

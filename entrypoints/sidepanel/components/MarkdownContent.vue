@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 const props = defineProps<{
   content: string;
@@ -11,7 +12,7 @@ marked.setOptions({
   gfm: true,
 });
 
-const html = computed(() => marked.parse(props.content) as string);
+const html = computed(() => DOMPurify.sanitize(marked.parse(props.content) as string));
 </script>
 
 <template>

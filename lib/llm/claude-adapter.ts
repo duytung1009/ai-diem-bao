@@ -1,25 +1,7 @@
 import type { ScrapedPost, LLMConfig } from '../types';
 import type { LLMProvider, LLMResponse } from './types';
-import { llmErrorFromStatus, isRetryableStatus } from '../errors';
-
-const MAX_RETRIES = 3;
-
-async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastError = err;
-      const status = err instanceof Error && 'status' in err ? (err as { status?: number }).status : undefined;
-      if (!status || !isRetryableStatus(status)) throw err;
-      if (attempt < MAX_RETRIES - 1) {
-        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
-      }
-    }
-  }
-  throw lastError;
-}
+import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
+import { withRetry } from './retry';
 
 export class ClaudeAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
@@ -52,12 +34,9 @@ export class ClaudeAdapter implements LLMProvider {
     messages: Array<{ role: string; content: string }>,
     systemPrompt: string,
   ): Promise<LLMResponse> {
-    // Get API key - for testing, use mock key if not configured
-    const apiKey = this.config.apiKey || 'mock-claude-key-for-testing';
-
-    if (apiKey === 'mock-claude-key-for-testing') {
-      // Mock response for testing
-      return this.generateMockResponse();
+    const apiKey = this.config.apiKey;
+    if (!apiKey) {
+      throw new LLMError(LLMErrorCode.AUTH_FAILED, 'API key chưa được cấu hình. Vui lòng nhập Anthropic API key trong cài đặt.');
     }
 
     return withRetry(async () => {
@@ -74,7 +53,7 @@ export class ClaudeAdapter implements LLMProvider {
         },
         body: JSON.stringify({
           model,
-          max_tokens: 2000,
+          max_tokens: this.config.maxTokens ?? 4096,
           system: systemPrompt,
           messages,
         }),
@@ -95,22 +74,5 @@ export class ClaudeAdapter implements LLMProvider {
           : undefined,
       };
     });
-  }
-
-  private generateMockResponse(): LLMResponse {
-    return {
-      content: `## Tóm tắt
-Đây là một bản tóm tắt mẫu từ Claude adapter (chế độ mock/test).
-
-## Quan điểm nổi bật
-### Quan điểm A
-Nó được đại diện bởi nhiều người.
-### Quan điểm B
-Đây là một góc nhìn khác về vấn đề.
-
-## Kết luận
-Cuộc thảo luận cho thấy hai quan điểm chính đối chọi.`,
-      tokensUsed: { prompt: 250, completion: 180 },
-    };
   }
 }

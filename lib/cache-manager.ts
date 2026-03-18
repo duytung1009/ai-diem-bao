@@ -26,11 +26,15 @@ export async function getCachedTopic(url: string): Promise<CachedTopic | null> {
 export async function saveCachedTopic(topic: CachedTopic): Promise<void> {
   const key = cacheKey(topic.url);
 
-  // Check storage quota before saving
-  const usage = await getCacheSize();
-  const MAX_CACHE_BYTES = 8 * 1024 * 1024; // 8MB soft limit (of 10MB total)
-  if (usage > MAX_CACHE_BYTES) {
-    await evictOldest();
+  // Evict oldest entries until usage is below 8MB soft limit
+  const MAX_CACHE_BYTES = 8 * 1024 * 1024;
+  let usage = await getCacheSize();
+  while (usage > MAX_CACHE_BYTES) {
+    const topics = await getAllCachedTopics();
+    if (topics.length === 0) break;
+    topics.sort((a, b) => a.cachedAt - b.cachedAt);
+    await deleteCachedTopic(topics[0].url);
+    usage = await getCacheSize();
   }
 
   await browser.storage.local.set({ [key]: topic });
@@ -61,15 +65,4 @@ export async function getCacheSize(): Promise<number> {
     }
   }
   return size;
-}
-
-async function evictOldest(): Promise<void> {
-  const topics = await getAllCachedTopics();
-  if (topics.length === 0) return;
-
-  // Sort by cachedAt ascending (oldest first)
-  topics.sort((a, b) => a.cachedAt - b.cachedAt);
-
-  // Remove the oldest
-  await deleteCachedTopic(topics[0].url);
 }

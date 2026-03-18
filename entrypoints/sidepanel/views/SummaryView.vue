@@ -30,6 +30,7 @@ const cachedTopic = ref<CachedTopic | null>(null);
 const cacheFreshness = ref<CacheFreshness | null>(null);
 
 let currentTabId: number | undefined;
+let currentWindowId: number | undefined;
 
 const tokenEstimation = computed(() => {
   if (!pendingPosts.value || !currentConfig.value) return null;
@@ -51,7 +52,8 @@ function onRuntimeMessage(message: Message) {
   }
 }
 
-function onTabActivated(activeInfo: { tabId: number }) {
+function onTabActivated(activeInfo: { tabId: number; windowId: number }) {
+  if (activeInfo.windowId !== currentWindowId) return;
   if (activeInfo.tabId === currentTabId) return;
   currentTabId = activeInfo.tabId;
   resetState();
@@ -93,6 +95,7 @@ async function detectTopic() {
       return;
     }
     currentTabId = tab.id;
+    currentWindowId = tab.windowId;
     const result = await browser.tabs.sendMessage(tab.id, {
       type: 'DETECT_XF',
     }) as DetectResult | undefined;

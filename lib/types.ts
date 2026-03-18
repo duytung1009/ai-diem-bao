@@ -28,6 +28,7 @@ export interface LLMConfig {
   apiKey: string;
   baseUrl: string;
   temperature: number;
+  maxTokens?: number;
 }
 
 export type MessageType =

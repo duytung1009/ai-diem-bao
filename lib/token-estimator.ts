@@ -97,7 +97,7 @@ export function willExceedContext(
   const contentTokens = estimateTokens(postsText) + systemPromptLength;
   const estimatedTokens = contentTokens + responseBuffer;
 
-  const usableTokensPerChunk = contextLimit - responseBuffer;
+  const usableTokensPerChunk = contextLimit - responseBuffer - systemPromptLength;
   const chunksNeeded = Math.ceil(contentTokens / usableTokensPerChunk);
 
   return {

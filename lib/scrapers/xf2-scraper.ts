@@ -34,7 +34,7 @@ export class XF2Scraper implements TopicScraper {
   }
 
   private getCurrentPage(doc: Document, url: string): number {
-    const currentPageEl = doc.querySelector('.pageNav-page--current .pageNav-page');
+    const currentPageEl = doc.querySelector('.pageNav-page--current');
     if (currentPageEl) {
       const num = parseInt(currentPageEl.textContent?.trim() || '1', 10);
       return isNaN(num) ? 1 : num;

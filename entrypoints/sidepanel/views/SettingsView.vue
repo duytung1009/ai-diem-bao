@@ -102,6 +102,7 @@ async function savePrompts() {
 
 function resetPrompt() {
   customPrompts.value = { ...customPrompts.value, [activePromptTab.value]: undefined };
+  savePrompts();
 }
 </script>
 

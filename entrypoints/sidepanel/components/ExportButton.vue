@@ -87,7 +87,7 @@ function downloadMd() {
 </script>
 
 <template>
-  <div class="relative">
+  <div class="relative" @keydown.escape.window="showDropdown = false">
     <!-- Trigger button -->
     <button
       class="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"

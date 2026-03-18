@@ -140,10 +140,11 @@ export async function testLLMConnection(config: LLMConfig): Promise<boolean> {
 function chunkPosts(
   posts: ScrapedPost[],
   model: string,
+  mapPrompt: string,
   suggestedChunks?: number,
 ): ScrapedPost[][] {
   const contextLimit = getContextLimit(model);
-  const bufferTokens = estimateTokens(CHUNK_SUMMARY_PROMPT) + 2000;
+  const bufferTokens = estimateTokens(mapPrompt) + 2000;
 
   // If suggestedChunks is provided, size chunks to fill ~N buckets rather than
   // greedily filling and then merging (which can produce oversized chunks).
@@ -197,7 +198,7 @@ async function summaryChunks(
   reducePrompt: string = REDUCE_SUMMARY_PROMPT,
 ): Promise<string> {
   const provider = createProvider(config);
-  const chunks = chunkPosts(posts, config.model, suggestedChunks);
+  const chunks = chunkPosts(posts, config.model, mapPrompt, suggestedChunks);
 
   if (chunks.length === 1) {
     // No chunking needed
@@ -236,7 +237,7 @@ async function summaryChunks(
       postNumber: i + 1,
     } as ScrapedPost));
     onProgress?.(`Gộp đệ quy (${partialSummaries.length} phần)...`);
-    return summaryChunks(partialAsPosts, config, onProgress, undefined, REDUCE_SUMMARY_PROMPT, reducePrompt);
+    return summaryChunks(partialAsPosts, config, onProgress, undefined, reducePrompt, reducePrompt);
   }
 
   const reduceChunks: ScrapedPost[] = [

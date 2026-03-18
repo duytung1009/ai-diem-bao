@@ -138,8 +138,11 @@ export default defineBackground(() => {
             .catch(() => sendResponse({ bytes: 0 }));
           return true;
 
-        // Fire-and-forget from content script — sidepanel listens directly
+        // Forward progress from content script to sidepanel
         case 'SCRAPE_PROGRESS':
+          browser.runtime.sendMessage(message).catch(() => {});
+          return false;
+
         case 'CANCEL_SCRAPE':
           return false;
 

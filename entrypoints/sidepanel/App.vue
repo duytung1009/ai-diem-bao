@@ -3,16 +3,19 @@ import { onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { DetectResult } from '@/lib/types';
 import { useTopicStore } from './composables/useTopicStore';
+import { useTheme } from './composables/useTheme';
 
 const route = useRoute();
 const router = useRouter();
 const store = useTopicStore();
+const { loadTheme } = useTheme();
 
 let tabActivatedListener: ((activeInfo: { tabId: number }) => void) | null = null;
 let tabUpdatedListener: ((tabId: number, changeInfo: { status?: string }) => void) | null = null;
 
 // Detect topic on active tab when sidepanel opens, re-detect on tab switch/navigate
 onMounted(async () => {
+  await loadTheme();
   await detectActiveTabTopic();
 
   tabActivatedListener = async (_activeInfo) => {
@@ -66,47 +69,47 @@ function navigateTo(path: string) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+  <div class="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] flex flex-col">
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200 px-4 py-3">
+    <header class="bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] px-4 py-3">
       <h1 class="text-lg font-bold text-blue-600">AI Điểm Báo</h1>
     </header>
 
     <!-- Tab Navigation -->
-    <nav class="bg-white border-b border-gray-200 flex">
+    <nav class="bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex">
       <router-link to="/" class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'hub'
           ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-gray-500 hover:text-gray-700'
+          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
         ">
         Chủ đề
       </router-link>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'summary'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
-            ? 'text-gray-500 hover:text-gray-700'
-            : 'text-gray-300 cursor-not-allowed'
+            ? 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+            : 'text-[var(--color-text-muted)] cursor-not-allowed'
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/summary')">
         Tóm tắt
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'opinions'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
-            ? 'text-gray-500 hover:text-gray-700'
-            : 'text-gray-300 cursor-not-allowed'
+            ? 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+            : 'text-[var(--color-text-muted)] cursor-not-allowed'
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/opinions')">
         Ý kiến
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'research'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
-            ? 'text-gray-500 hover:text-gray-700'
-            : 'text-gray-300 cursor-not-allowed'
+            ? 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+            : 'text-[var(--color-text-muted)] cursor-not-allowed'
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/research')">
         Tra cứu
       </button>
       <router-link to="/settings" class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
           ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-gray-500 hover:text-gray-700'
+          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
         ">
         Cài đặt
       </router-link>

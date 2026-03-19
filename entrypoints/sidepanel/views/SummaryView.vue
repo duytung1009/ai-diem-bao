@@ -293,7 +293,7 @@ function cancelPendingSummarize() {
   <div class="p-4 space-y-4">
     <!-- No topic selected -->
     <div v-if="!topicInfo" class="text-center py-8">
-      <p class="text-sm text-gray-500">Chưa chọn chủ đề.</p>
+      <p class="text-sm text-[var(--color-text-secondary)]">Chưa chọn chủ đề.</p>
       <button
         class="mt-3 text-sm text-blue-600 hover:text-blue-700"
         @click="router.push('/')"
@@ -314,10 +314,9 @@ function cancelPendingSummarize() {
 
       <TopicMeta :info="topicInfo" />
 
-      <!-- Summarize button -->
       <button
         v-if="!loadingText && !summary && !pendingPosts"
-        class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+        class="w-full btn btn-primary"
         @click="handleSummarize(false)"
       >
         Tóm tắt
@@ -328,7 +327,7 @@ function cancelPendingSummarize() {
         <LoadingSpinner :text="loadingText" />
         <button
           v-if="isScraping"
-          class="w-full py-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          class="w-full btn btn-sm btn-secondary"
           @click="handleCancel"
         >
           Huỷ
@@ -338,10 +337,10 @@ function cancelPendingSummarize() {
       <!-- Token estimation confirmation -->
       <div
         v-if="pendingPosts && tokenEstimation"
-        class="border border-blue-200 bg-blue-50 rounded-lg p-3 space-y-3"
+        class="alert alert-info space-y-3"
       >
-        <p class="text-sm font-medium text-blue-900">Xác nhận trước khi gọi API</p>
-        <div class="text-xs text-blue-800 space-y-1">
+        <p class="text-sm font-medium">Xác nhận trước khi gọi API</p>
+        <div class="text-xs space-y-1">
           <p>Ước tính: <strong>{{ tokenEstimation.tokensFormatted }}</strong> (~{{ tokenEstimation.cost }})</p>
           <p v-if="tokenEstimation.exceeds" class="text-orange-700">
             Topic dài, sẽ tự động chia thành <strong>{{ tokenEstimation.chunksNeeded }} phần</strong> để tóm tắt.
@@ -349,13 +348,13 @@ function cancelPendingSummarize() {
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+            class="flex-1 btn btn-sm btn-primary"
             @click="confirmSummarize"
           >
             Xác nhận tóm tắt
           </button>
           <button
-            class="flex-1 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-xs hover:bg-gray-50 transition-colors"
+            class="flex-1 btn btn-sm btn-secondary"
             @click="cancelPendingSummarize"
           >
             Huỷ
@@ -374,14 +373,14 @@ function cancelPendingSummarize() {
       <!-- Page scraping warnings -->
       <div
         v-if="scrapingWarnings.length > 0"
-        class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 space-y-1"
+        class="alert alert-warning text-xs space-y-1"
       >
         <p class="font-medium">Một số trang bị bỏ qua:</p>
         <ul class="list-disc list-inside space-y-0.5">
           <li v-for="(w, i) in scrapingWarnings" :key="i">{{ w }}</li>
         </ul>
         <button
-          class="text-yellow-700 underline mt-1"
+          class="underline mt-1 opacity-80 hover:opacity-100"
           @click="scrapingWarnings = []"
         >
           Ẩn
@@ -393,7 +392,7 @@ function cancelPendingSummarize() {
         <div class="flex items-center justify-between">
           <div
             v-if="summarizedPostCount > 0"
-            class="flex items-center gap-1.5 text-xs text-gray-500"
+            class="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -409,12 +408,12 @@ function cancelPendingSummarize() {
             @update="handleSummarize(true)"
           />
         </div>
-        <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="card p-4">
           <SummaryContent :content="summary" />
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+            class="flex-1 btn btn-secondary"
             @click="handleSummarize(false)"
           >
             Tóm tắt lại

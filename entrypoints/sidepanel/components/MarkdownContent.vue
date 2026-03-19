@@ -16,5 +16,5 @@ const html = computed(() => DOMPurify.sanitize(marked.parse(props.content) as st
 </script>
 
 <template>
-  <div class="prose prose-sm max-w-none" v-html="html" />
+  <div class="prose prose-sm max-w-none dark:prose-invert" v-html="html" />
 </template>

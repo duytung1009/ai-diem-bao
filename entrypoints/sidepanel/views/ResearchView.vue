@@ -110,12 +110,12 @@ function formatDate(ts: number): string {
 
 <template>
   <div class="p-4 space-y-4">
-    <h2 class="font-semibold text-sm text-gray-900">Tra cứu Topic</h2>
+    <h2 class="font-semibold text-sm text-[var(--color-text-primary)]">Tra cứu Topic</h2>
 
     <!-- No cache warning -->
     <div
       v-if="!cachedTopic?.posts?.length"
-      class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800"
+      class="alert alert-warning"
     >
       Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
     </div>
@@ -126,13 +126,13 @@ function formatDate(ts: number): string {
         <textarea
           v-model="question"
           rows="2"
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+          class="input resize-none"
           placeholder="Đặt câu hỏi về nội dung topic..."
           :disabled="isLoading"
           @keydown.ctrl.enter="handleResearch"
         />
         <button
-          class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="w-full btn btn-primary"
           :disabled="isLoading || !question.trim()"
           @click="handleResearch"
         >
@@ -142,12 +142,12 @@ function formatDate(ts: number): string {
 
       <!-- Suggested questions -->
       <div v-if="!isLoading && history.length === 0" class="space-y-2">
-        <p class="text-xs text-gray-500 font-medium">Gợi ý câu hỏi:</p>
+        <p class="text-xs text-[var(--color-text-secondary)] font-medium">Gợi ý câu hỏi:</p>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="q in suggestedQuestions"
             :key="q"
-            class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
+            class="text-xs px-2 py-1 rounded-full bg-[var(--color-bg-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-text)] transition-colors text-left"
             @click="useSuggestion(q)"
           >
             {{ q }}
@@ -164,9 +164,9 @@ function formatDate(ts: number): string {
       <!-- Q&A History -->
       <div v-if="history.length" class="space-y-3">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-medium text-gray-600">Lịch sử tra cứu</h3>
+          <h3 class="text-xs font-medium text-[var(--color-text-secondary)]">Lịch sử tra cứu</h3>
           <button
-            class="text-xs text-gray-400 hover:text-red-500 transition-colors"
+            class="text-xs text-[var(--color-text-muted)] hover:text-red-500 transition-colors"
             @click="clearHistory"
           >
             Xóa tất cả
@@ -176,13 +176,13 @@ function formatDate(ts: number): string {
         <div
           v-for="entry in history"
           :key="entry.askedAt"
-          class="border border-gray-200 rounded-lg overflow-hidden"
+          class="border border-[var(--color-border)] rounded-lg overflow-hidden"
         >
           <!-- Question -->
-          <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
+          <div class="bg-[var(--color-bg-muted)] px-3 py-2 border-b border-[var(--color-border)]">
             <div class="flex items-start justify-between gap-2">
-              <p class="text-sm font-medium text-gray-800">{{ entry.question }}</p>
-              <span class="text-xs text-gray-400 shrink-0">{{ formatDate(entry.askedAt) }}</span>
+              <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ entry.question }}</p>
+              <span class="text-xs text-[var(--color-text-muted)] shrink-0">{{ formatDate(entry.askedAt) }}</span>
             </div>
           </div>
           <!-- Answer -->

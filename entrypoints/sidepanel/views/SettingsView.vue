@@ -5,6 +5,7 @@ import { DEFAULT_LLM_CONFIG } from '@/lib/constants';
 import type { LLMConfig, CustomPrompts, CachedTopic } from '@/lib/types';
 import { SUMMARY_PROMPT, OPINION_ANALYSIS_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import { useTheme } from '../composables/useTheme';
 
 const config = ref<LLMConfig>({ ...DEFAULT_LLM_CONFIG });
 const saving = ref(false);
@@ -14,6 +15,13 @@ const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
 const MAX_CACHE_BYTES = 8 * 1024 * 1024; // 8MB soft limit
 const showClearConfirm = ref(false);
+
+const { themeMode: currentTheme, setTheme } = useTheme();
+const themeOptions = [
+  { value: 'light' as const, label: 'Sáng' },
+  { value: 'dark' as const, label: 'Tối' },
+  { value: 'system' as const, label: 'Hệ thống' },
+];
 
 // Custom prompts
 const customPrompts = ref<CustomPrompts>({});
@@ -47,10 +55,18 @@ const claudeModels = [
   'claude-haiku-4-5-20251001',
 ];
 
+const geminiModels = [
+  'gemini-2.5-flash-preview-05-20',
+  'gemini-2.5-pro-preview-05-06',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+];
+
 const cacheSizeMB = computed(() => (cacheSizeBytes.value / (1024 * 1024)).toFixed(1));
 const cacheUsagePercent = computed(() => Math.round((cacheSizeBytes.value / MAX_CACHE_BYTES) * 100));
 const cacheNearFull = computed(() => cacheUsagePercent.value >= 80);
 const isClaude = computed(() => config.value.provider === 'claude');
+const isGemini = computed(() => config.value.provider === 'gemini');
 
 onMounted(async () => {
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
@@ -136,51 +152,70 @@ function cancelClearAll() {
 
 <template>
   <div class="p-4 space-y-4">
-    <h2 class="font-semibold text-sm text-gray-900">Cấu hình LLM</h2>
+    <!-- Theme -->
+    <div>
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Giao diện</label>
+      <div class="flex gap-2">
+        <button
+          v-for="option in themeOptions"
+          :key="option.value"
+          class="flex-1 py-1.5 text-xs rounded-lg border transition-colors"
+          :class="currentTheme === option.value
+            ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
+            : 'border-[var(--color-border-strong)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-muted)]'"
+          @click="setTheme(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+    </div>
+
+    <h2 class="font-semibold text-sm text-[var(--color-text-primary)]">Cấu hình LLM</h2>
 
     <!-- Provider -->
     <div>
-      <label class="block text-xs font-medium text-gray-600 mb-1">Provider</label>
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Provider</label>
       <select
         v-model="config.provider"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+        class="input"
       >
         <option value="openai">OpenAI</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
         <option value="claude">Anthropic Claude</option>
+        <option value="gemini">Google Gemini</option>
       </select>
     </div>
 
     <!-- API Key -->
     <div>
-      <label class="block text-xs font-medium text-gray-600 mb-1">
-        {{ isClaude ? 'Anthropic API Key' : 'API Key' }}
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+        {{ isClaude ? 'Anthropic API Key' : isGemini ? 'Google AI API Key' : 'API Key' }}
       </label>
       <input
         v-model="config.apiKey"
         type="password"
-        :placeholder="isClaude ? 'sk-ant-...' : 'sk-...'"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        :placeholder="isClaude ? 'sk-ant-...' : isGemini ? 'AIza...' : 'sk-...'"
+        class="input"
       />
     </div>
 
     <!-- Base URL (only for OpenAI/Custom) -->
-    <div v-if="!isClaude">
-      <label class="block text-xs font-medium text-gray-600 mb-1">Base URL</label>
+    <div v-if="!isClaude && !isGemini">
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Base URL</label>
       <input
         v-model="config.baseUrl"
         type="text"
         placeholder="https://api.openai.com/v1"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        class="input"
       />
     </div>
 
     <!-- Model selector for Claude -->
     <div v-if="isClaude">
-      <label class="block text-xs font-medium text-gray-600 mb-1">Model</label>
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Model</label>
       <select
         v-model="config.model"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+        class="input"
       >
         <option v-for="model in claudeModels" :key="model" :value="model">
           {{ model }}
@@ -188,20 +223,33 @@ function cancelClearAll() {
       </select>
     </div>
 
+    <!-- Model selector for Gemini -->
+    <div v-if="isGemini">
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Model</label>
+      <select
+        v-model="config.model"
+        class="input"
+      >
+        <option v-for="model in geminiModels" :key="model" :value="model">
+          {{ model }}
+        </option>
+      </select>
+    </div>
+
     <!-- Model input for OpenAI/Custom -->
-    <div v-if="!isClaude">
-      <label class="block text-xs font-medium text-gray-600 mb-1">Model</label>
+    <div v-if="!isClaude && !isGemini">
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Model</label>
       <input
         v-model="config.model"
         type="text"
         placeholder="gpt-4o-mini"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        class="input"
       />
     </div>
 
     <!-- Temperature -->
     <div>
-      <label class="block text-xs font-medium text-gray-600 mb-1">
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
         Temperature: {{ config.temperature.toFixed(1) }}
       </label>
       <input
@@ -216,7 +264,7 @@ function cancelClearAll() {
 
     <!-- Timeout -->
     <div>
-      <label class="block text-xs font-medium text-gray-600 mb-1">
+      <label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
         Timeout: {{ Math.round((config.timeoutMs ?? 120000) / 1000) }}s
       </label>
       <input
@@ -227,7 +275,7 @@ function cancelClearAll() {
         :step="30000"
         class="w-full"
       />
-      <div class="flex justify-between text-xs text-gray-400 mt-0.5">
+      <div class="flex justify-between text-xs text-[var(--color-text-muted)] mt-0.5">
         <span>30s</span>
         <span>600s</span>
       </div>
@@ -236,14 +284,14 @@ function cancelClearAll() {
     <!-- Actions -->
     <div class="flex gap-2">
       <button
-        class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+        class="flex-1 btn btn-primary"
         :disabled="saving"
         @click="save"
       >
         {{ saving ? 'Đang lưu...' : 'Lưu' }}
       </button>
       <button
-        class="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+        class="flex-1 btn btn-secondary"
         :disabled="testing || !config.apiKey"
         @click="testConnection"
       >
@@ -252,46 +300,46 @@ function cancelClearAll() {
     </div>
 
     <!-- Save message -->
-    <p v-if="saveMessage" class="text-xs text-green-600 text-center">
+    <p v-if="saveMessage" class="text-xs text-[var(--color-success-text)] text-center">
       {{ saveMessage }}
     </p>
 
     <!-- Cache storage info -->
-    <div class="border border-gray-200 rounded-lg p-3 space-y-2">
+    <div class="card space-y-2">
       <div class="flex items-center justify-between text-xs">
-        <span class="font-medium text-gray-700">Cache local</span>
-        <span :class="cacheNearFull ? 'text-orange-600 font-medium' : 'text-gray-500'">
+        <span class="font-medium text-[var(--color-text-primary)]">Cache local</span>
+        <span :class="cacheNearFull ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-[var(--color-text-secondary)]'">
           {{ cacheSizeMB }} MB / 8 MB ({{ cacheUsagePercent }}%)
         </span>
       </div>
-      <div class="w-full bg-gray-200 rounded-full h-1.5">
+      <div class="w-full bg-[var(--color-bg-muted)] rounded-full h-1.5">
         <div
           class="h-1.5 rounded-full transition-all"
-          :class="cacheNearFull ? 'bg-orange-500' : 'bg-blue-500'"
+          :class="cacheNearFull ? 'bg-orange-500' : 'bg-[var(--color-accent)]'"
           :style="{ width: `${Math.min(cacheUsagePercent, 100)}%` }"
         />
       </div>
-      <p v-if="cacheNearFull" class="text-xs text-orange-600">
+      <p v-if="cacheNearFull" class="text-xs text-orange-600 dark:text-orange-400">
         ⚠ Cache gần đầy. Các cache cũ sẽ tự động bị xoá khi lưu mới.
       </p>
       <button
         v-if="!showClearConfirm"
-        class="w-full text-xs py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+        class="w-full btn btn-sm btn-danger"
         @click="confirmClearAll"
       >
         Xóa tất cả cache
       </button>
-      <div v-if="showClearConfirm" class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-2">
-        <p class="text-xs text-red-700 font-medium">Xóa tất cả cache?</p>
+      <div v-if="showClearConfirm" class="alert alert-error space-y-2">
+        <p class="text-xs font-medium">Xóa tất cả cache?</p>
         <div class="flex gap-2">
           <button
-            class="flex-1 text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            class="flex-1 btn btn-danger"
             @click="executeClearAll"
           >
             Xóa
           </button>
           <button
-            class="flex-1 text-xs px-2 py-1 border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition-colors"
+            class="flex-1 btn btn-sm btn-secondary"
             @click="cancelClearAll"
           >
             Hủy
@@ -304,33 +352,33 @@ function cancelClearAll() {
     <LoadingSpinner v-if="testing" text="Đang kiểm tra kết nối..." />
     <div
       v-if="testResult === 'success'"
-      class="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 text-center"
+      class="alert alert-success text-center"
     >
       Kết nối thành công!
     </div>
     <div
       v-if="testResult === 'fail'"
-      class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 text-center"
+      class="alert alert-error text-center"
     >
       Kết nối thất bại. Kiểm tra lại API Key và Base URL.
     </div>
 
     <!-- ─── Custom Prompt Templates ──────────────────────────────── -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-        <h3 class="text-xs font-semibold text-gray-700">Prompt Templates</h3>
-        <p class="text-xs text-gray-500 mt-0.5">Để trống để dùng prompt mặc định.</p>
+    <div class="border border-[var(--color-border)] rounded-lg overflow-hidden">
+      <div class="bg-[var(--color-bg-muted)] px-3 py-2 border-b border-[var(--color-border)]">
+        <h3 class="text-xs font-semibold text-[var(--color-text-primary)]">Prompt Templates</h3>
+        <p class="text-xs text-[var(--color-text-secondary)] mt-0.5">Để trống để dùng prompt mặc định.</p>
       </div>
 
       <!-- Tabs -->
-      <div class="flex border-b border-gray-200">
+      <div class="flex border-b border-[var(--color-border)]">
         <button
           v-for="tab in (['summary', 'opinions', 'research'] as const)"
           :key="tab"
           class="flex-1 py-1.5 text-xs font-medium transition-colors"
           :class="activePromptTab === tab
-            ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-            : 'text-gray-500 hover:text-gray-700'"
+            ? 'text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] bg-[var(--color-bg-surface)]'
+            : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'"
           @click="activePromptTab = tab"
         >
           {{ promptTabLabels[tab] }}
@@ -346,40 +394,40 @@ function cancelClearAll() {
         <textarea
           v-model="activePromptValue"
           rows="6"
-          class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+          class="w-full border border-[var(--color-border-strong)] rounded-lg px-2 py-1.5 text-xs font-mono focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] resize-y bg-[var(--color-bg-surface)] text-[var(--color-text-primary)]"
           placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)"
         />
         <!-- Default prompt viewer -->
         <button
           type="button"
-          class="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+          class="text-xs text-[var(--color-accent-text)] hover:text-[var(--color-accent-hover)] transition-colors"
           @click="showDefaultPrompt = !showDefaultPrompt"
         >
           {{ showDefaultPrompt ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
         </button>
         <div
           v-if="showDefaultPrompt"
-          class="border border-gray-200 rounded-lg p-2 bg-gray-50 max-h-48 overflow-y-auto"
+          class="border border-[var(--color-border)] rounded-lg p-2 bg-[var(--color-bg-muted)] max-h-48 overflow-y-auto"
         >
-          <pre class="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">{{ defaultPrompts[activePromptTab] }}</pre>
+          <pre class="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap font-mono leading-relaxed">{{ defaultPrompts[activePromptTab] }}</pre>
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 text-xs py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            class="flex-1 btn btn-sm btn-primary"
             @click="savePrompts"
           >
             Lưu Prompts
           </button>
           <button
-            class="text-xs py-1.5 px-3 border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition-colors"
+            class="btn btn-sm btn-secondary"
             :disabled="!customPrompts[activePromptTab]"
             @click="resetPrompt"
           >
             Reset mặc định
           </button>
         </div>
-        <p v-if="promptSaveMessage" class="text-xs text-green-600">{{ promptSaveMessage }}</p>
-        <p v-if="promptError" class="text-xs text-red-600">{{ promptError }}</p>
+        <p v-if="promptSaveMessage" class="text-xs text-[var(--color-success-text)]">{{ promptSaveMessage }}</p>
+        <p v-if="promptError" class="text-xs text-[var(--color-error-text)]">{{ promptError }}</p>
       </div>
     </div>
   </div>

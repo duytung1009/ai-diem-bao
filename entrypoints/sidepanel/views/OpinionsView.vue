@@ -76,28 +76,28 @@ async function handleAnalyze() {
 
 function getSentimentColor(sentiment: string): string {
   switch (sentiment) {
-    case 'Tích cực': return 'text-green-700 bg-green-50 border-green-200';
-    case 'Tiêu cực': return 'text-red-700 bg-red-50 border-red-200';
-    default: return 'text-gray-700 bg-gray-50 border-gray-200';
+    case 'Tích cực': return 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800';
+    case 'Tiêu cực': return 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800';
+    default: return 'text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
   }
 }
 </script>
 
 <template>
   <div class="p-4 space-y-4">
-    <h2 class="font-semibold text-sm text-gray-900">Phân tích Ý kiến</h2>
+    <h2 class="font-semibold text-sm text-[var(--color-text-primary)]">Phân tích Ý kiến</h2>
 
     <!-- No cache warning -->
     <div
       v-if="!cachedTopic?.posts?.length"
-      class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800"
+      class="alert alert-warning"
     >
       Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
     </div>
 
     <button
       v-if="cachedTopic?.posts?.length"
-      class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+      class="w-full btn btn-primary"
       :disabled="isLoading"
       @click="handleAnalyze"
     >
@@ -115,9 +115,9 @@ function getSentimentColor(sentiment: string): string {
       <!-- JSON format -->
       <div v-if="parsedOpinions" class="space-y-4">
         <!-- Main topic -->
-        <div class="border border-gray-200 rounded-lg p-3">
-          <p class="text-xs font-medium text-gray-600 mb-1">Đề tài chính</p>
-          <p class="text-sm text-gray-900">{{ parsedOpinions.mainTopic }}</p>
+        <div class="card">
+          <p class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Đề tài chính</p>
+          <p class="text-sm text-[var(--color-text-primary)]">{{ parsedOpinions.mainTopic }}</p>
         </div>
 
         <!-- Sentiment -->
@@ -128,37 +128,37 @@ function getSentimentColor(sentiment: string): string {
 
         <!-- Opinions list -->
         <div class="space-y-3">
-          <h3 class="font-semibold text-sm text-gray-900">Các quan điểm chính</h3>
+          <h3 class="font-semibold text-sm text-[var(--color-text-primary)]">Các quan điểm chính</h3>
           <div
             v-for="(opinion, idx) in parsedOpinions.opinions"
             :key="idx"
-            class="border border-gray-200 rounded-lg p-3 space-y-2"
+            class="card space-y-2"
           >
             <div class="flex items-center justify-between">
-              <h4 class="font-medium text-sm text-gray-900">{{ opinion.name }}</h4>
-              <span class="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-1 rounded">
+              <h4 class="font-medium text-sm text-[var(--color-text-primary)]">{{ opinion.name }}</h4>
+              <span class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400">
                 {{ opinion.supporterCount }} người
               </span>
             </div>
-            <p class="text-xs text-gray-600">
+            <p class="text-xs text-[var(--color-text-secondary)]">
               <strong>Ủng hộ bởi:</strong> {{ opinion.supporters.join(', ') }}
             </p>
-            <p class="text-sm text-gray-700">{{ opinion.description }}</p>
-            <div class="bg-gray-50 border border-gray-200 rounded p-2">
-              <p class="text-xs text-gray-600 italic">"{{ opinion.quote }}"</p>
+            <p class="text-sm">{{ opinion.description }}</p>
+            <div class="bg-[var(--color-bg-muted)] border border-[var(--color-border)] rounded-lg p-2">
+              <p class="text-xs text-[var(--color-text-secondary)] italic">"{{ opinion.quote }}"</p>
             </div>
           </div>
         </div>
 
         <!-- Summary -->
-        <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-          <p class="text-xs font-medium text-gray-600 mb-2">Tổng kết</p>
-          <p class="text-sm text-gray-700">{{ parsedOpinions.summary }}</p>
+        <div class="card">
+          <p class="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Tổng kết</p>
+          <p class="text-sm">{{ parsedOpinions.summary }}</p>
         </div>
       </div>
 
       <!-- Markdown format fallback -->
-      <div v-else class="bg-white rounded-lg border border-gray-200 p-4">
+      <div v-else class="card p-4">
         <MarkdownContent :content="opinions" />
       </div>
     </div>
@@ -168,7 +168,7 @@ function getSentimentColor(sentiment: string): string {
       v-if="!isLoading && !opinions && cachedTopic?.posts?.length"
       class="text-center py-6"
     >
-      <p class="text-xs text-gray-400">Bấm nút phía trên để phân tích ý kiến trong topic.</p>
+      <p class="text-xs text-[var(--color-text-muted)]">Bấm nút phía trên để phân tích ý kiến trong topic.</p>
     </div>
   </div>
 </template>

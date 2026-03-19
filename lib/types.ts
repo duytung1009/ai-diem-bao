@@ -23,7 +23,7 @@ export interface SummaryResult {
 }
 
 export interface LLMConfig {
-  provider: 'openai' | 'claude' | 'custom';
+  provider: 'openai' | 'claude' | 'gemini' | 'custom';
   model: string;
   apiKey: string;
   baseUrl: string;
@@ -99,3 +99,5 @@ export interface CustomPrompts {
   opinions?: string;
   research?: string;
 }
+
+export type ThemeMode = 'light' | 'dark' | 'system';

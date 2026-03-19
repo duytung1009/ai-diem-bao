@@ -26,11 +26,11 @@ const timeAgo = computed(() => {
 const badgeClass = computed(() => {
   switch (props.freshness) {
     case 'fresh':
-      return 'bg-green-100 text-green-700';
+      return 'bg-[var(--color-success-bg)] text-[var(--color-success-text)]';
     case 'stale':
-      return 'bg-yellow-100 text-yellow-700';
+      return 'bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]';
     case 'outdated':
-      return 'bg-red-100 text-red-700';
+      return 'bg-[var(--color-error-bg)] text-[var(--color-error-text)]';
   }
 });
 
@@ -58,10 +58,10 @@ const newPostCount = computed(() => props.currentPosts - props.cachedPosts);
       }" />
       {{ label }}
     </span>
-    <span class="text-[11px] text-gray-400">{{ timeAgo }}</span>
+    <span class="text-[11px] text-[var(--color-text-muted)]">{{ timeAgo }}</span>
     <button
       v-if="freshness !== 'fresh'"
-      class="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
+      class="text-[11px] text-[var(--color-accent-text)] hover:text-[var(--color-accent-hover)] font-medium"
       @click="emit('update')"
     >
       Cập nhật

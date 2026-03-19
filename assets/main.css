@@ -1,2 +1,200 @@
 @import 'tailwindcss';
+@source not "../**/*.md";
 @plugin '@tailwindcss/typography';
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Design Tokens ─────────────────────────────── */
+:root {
+  /* Surface colors */
+  --color-bg-base: theme(colors.gray.50);
+  --color-bg-surface: theme(colors.white);
+  --color-bg-muted: theme(colors.gray.100);
+
+  /* Text colors */
+  --color-text-primary: theme(colors.gray.900);
+  --color-text-secondary: theme(colors.gray.600);
+  --color-text-muted: theme(colors.gray.400);
+
+  /* Border */
+  --color-border: theme(colors.gray.200);
+  --color-border-strong: theme(colors.gray.300);
+
+  /* Interactive / Accent */
+  --color-accent: theme(colors.blue.600);
+  --color-accent-hover: theme(colors.blue.700);
+  --color-accent-soft: theme(colors.blue.50);
+  --color-accent-text: theme(colors.blue.600);
+
+  /* Semantic */
+  --color-success-bg: theme(colors.green.50);
+  --color-success-text: theme(colors.green.700);
+  --color-success-border: theme(colors.green.200);
+  --color-warning-bg: theme(colors.yellow.50);
+  --color-warning-text: theme(colors.yellow.800);
+  --color-warning-border: theme(colors.yellow.200);
+  --color-error-bg: theme(colors.red.50);
+  --color-error-text: theme(colors.red.700);
+  --color-error-border: theme(colors.red.200);
+  --color-info-border: theme(colors.blue.200);
+}
+
+.dark {
+  --color-bg-base: theme(colors.gray.900);
+  --color-bg-surface: theme(colors.gray.800);
+  --color-bg-muted: theme(colors.gray.700);
+
+  --color-text-primary: theme(colors.gray.100);
+  --color-text-secondary: theme(colors.gray.400);
+  --color-text-muted: theme(colors.gray.500);
+
+  --color-border: theme(colors.gray.700);
+  --color-border-strong: theme(colors.gray.600);
+
+  --color-accent: theme(colors.blue.500);
+  --color-accent-hover: theme(colors.blue.400);
+  --color-accent-soft: color-mix(in srgb, theme(colors.blue.900) 30%, transparent);
+  --color-accent-text: theme(colors.blue.400);
+
+  --color-success-bg: color-mix(in srgb, theme(colors.green.900) 30%, transparent);
+  --color-success-text: theme(colors.green.400);
+  --color-success-border: theme(colors.green.800);
+  --color-warning-bg: color-mix(in srgb, theme(colors.yellow.900) 30%, transparent);
+  --color-warning-text: theme(colors.yellow.300);
+  --color-warning-border: theme(colors.yellow.800);
+  --color-error-bg: color-mix(in srgb, theme(colors.red.900) 30%, transparent);
+  --color-error-text: theme(colors.red.400);
+  --color-error-border: theme(colors.red.800);
+  --color-info-border: theme(colors.blue.800);
+}
+
+/* ─── Component Utilities ───────────────────────── */
+
+/* Buttons */
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: theme(fontSize.sm);
+  font-weight: 500;
+  border-radius: theme(borderRadius.lg);
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+@utility btn-primary {
+  background-color: var(--color-accent);
+  color: white;
+  padding: theme(spacing.2) theme(spacing.4);
+  &:hover:not(:disabled) { background-color: var(--color-accent-hover); }
+}
+
+@utility btn-secondary {
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  padding: theme(spacing.2) theme(spacing.4);
+  &:hover:not(:disabled) { background-color: var(--color-bg-muted); }
+}
+
+@utility btn-sm {
+  font-size: theme(fontSize.xs);
+  padding: theme(spacing[1.5]) theme(spacing.3);
+}
+
+@utility btn-danger {
+  background-color: theme(colors.red.600);
+  color: white;
+  padding: theme(spacing[1.5]) theme(spacing.3);
+  font-size: theme(fontSize.xs);
+  border-radius: theme(borderRadius.DEFAULT);
+  &:hover:not(:disabled) { background-color: theme(colors.red.700); }
+}
+
+/* Cards */
+@utility card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: theme(borderRadius.lg);
+  padding: theme(spacing.3);
+}
+
+@utility card-interactive {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: theme(borderRadius.lg);
+  padding: theme(spacing.3);
+  transition-property: border-color, background-color;
+  transition-duration: 150ms;
+  &:hover {
+    border-color: var(--color-accent-text);
+    background-color: var(--color-accent-soft);
+  }
+}
+
+/* Badges */
+@utility badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: theme(fontSize.xs);
+  padding: theme(spacing[0.5]) theme(spacing.2);
+  border-radius: theme(borderRadius.full);
+  font-weight: 500;
+}
+
+@utility badge-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+@utility badge-neutral {
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-muted);
+}
+
+/* Alert boxes */
+@utility alert {
+  border-radius: theme(borderRadius.lg);
+  padding: theme(spacing.3);
+  font-size: theme(fontSize.sm);
+  border-width: 1px;
+}
+
+@utility alert-warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border-color: var(--color-warning-border);
+}
+
+@utility alert-error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  border-color: var(--color-error-border);
+}
+
+@utility alert-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  border-color: var(--color-success-border);
+}
+
+@utility alert-info {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  border-color: var(--color-info-border);
+}
+
+/* Form inputs */
+@utility input {
+  width: 100%;
+  border: 1px solid var(--color-border-strong);
+  border-radius: theme(borderRadius.lg);
+  padding: theme(spacing.2) theme(spacing.3);
+  font-size: theme(fontSize.sm);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  &:focus {
+    border-color: var(--color-accent);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--color-accent);
+  }
+}

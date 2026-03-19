@@ -188,25 +188,25 @@ function formatRelativeTime(timestamp: number): string {
       <!-- Active tab topic (if not in cached list) -->
       <button
         v-if="store.activeTabDetect.value && !activeTabInList"
-        class="w-full text-left border-2 border-blue-200 bg-blue-50 rounded-lg p-3 hover:border-blue-400 transition-colors space-y-1.5"
+        class="w-full text-left border-2 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30 rounded-lg p-3 hover:border-blue-400 dark:hover:border-blue-600 transition-colors space-y-1.5"
         @click="handleActiveTabTopic"
       >
         <div class="flex items-center gap-2">
-          <span class="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Tab hiện tại</span>
+          <span class="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">Tab hiện tại</span>
         </div>
-        <p class="text-sm font-medium text-gray-900 line-clamp-2">
+        <p class="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2">
           {{ store.activeTabDetect.value.title }}
         </p>
-        <div class="flex items-center gap-3 text-xs text-gray-500">
+        <div class="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
           <span>{{ store.activeTabDetect.value.postCount }} bài viết</span>
           <span>{{ store.activeTabDetect.value.pageCount }} trang</span>
           <span
             v-if="store.summarizingUrl.value && store.activeTabUrl.value && store.summarizingUrl.value === store.activeTabUrl.value"
-            class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium animate-pulse"
+            class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
           >
             ⟳ Đang tóm tắt...
           </span>
-          <span v-else class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+          <span v-else class="badge badge-neutral">
             ○ Chưa tóm tắt
           </span>
         </div>
@@ -216,7 +216,7 @@ function formatRelativeTime(timestamp: number): string {
       <div v-if="domainNames.length > 0" class="space-y-4">
         <div v-for="domain in domainNames" :key="domain">
           <!-- Domain header -->
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          <h3 class="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
             {{ domain }}
           </h3>
 
@@ -229,45 +229,45 @@ function formatRelativeTime(timestamp: number): string {
               <div
                 class="relative border rounded-lg transition-colors"
                 :class="store.summarizingUrl.value === topic.url
-                  ? 'border-blue-300 bg-blue-50/60 animate-pulse'
-                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
+                  ? 'border-blue-300 dark:border-blue-700 bg-blue-50/60 dark:bg-blue-900/20 animate-pulse'
+                  : 'border-[var(--color-border)] hover:border-blue-300 dark:hover:border-blue-600 hover:bg-[var(--color-accent-soft)]'"
               >
                 <button
                   class="w-full text-left p-3 space-y-1.5"
                   @click="selectTopic(topic)"
                 >
-                  <p class="text-sm font-medium text-gray-900 line-clamp-2 pr-6">{{ topic.title }}</p>
+                  <p class="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2 pr-6">{{ topic.title }}</p>
                   <div class="flex items-center gap-2 flex-wrap">
                     <!-- Status badge -->
                     <span
                       v-if="store.summarizingUrl.value === topic.url"
-                      class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium animate-pulse"
+                      class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
                     >
                       ⟳ Đang tóm tắt...
                     </span>
                     <span
                       v-else-if="topic.summary"
-                      class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium"
+                      class="badge badge-success"
                     >
                       ✓ Đã tóm tắt
                     </span>
                     <span
                       v-else
-                      class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
+                      class="badge badge-neutral"
                     >
                       ○ Chưa tóm tắt
                     </span>
                     <!-- Post count -->
-                    <span class="text-xs text-gray-400">{{ topic.totalPosts }} bài</span>
+                    <span class="text-xs text-[var(--color-text-muted)]">{{ topic.totalPosts }} bài</span>
                     <!-- Time -->
-                    <span v-if="topic.cachedAt" class="text-xs text-gray-400">
+                    <span v-if="topic.cachedAt" class="text-xs text-[var(--color-text-muted)]">
                       {{ formatRelativeTime(topic.cachedAt) }}
                     </span>
                   </div>
                 </button>
                 <button
                   v-if="store.summarizingUrl.value !== topic.url"
-                  class="absolute top-2 right-2 p-1 text-gray-300 hover:text-red-500 transition-colors rounded"
+                  class="absolute top-2 right-2 p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
                   title="Xóa topic"
                   @click.stop="confirmDelete(topic)"
                 >
@@ -280,18 +280,18 @@ function formatRelativeTime(timestamp: number): string {
               <!-- Inline confirmation -->
               <div
                 v-if="pendingDeleteUrl === topic.url"
-                class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center justify-between"
+                class="alert alert-error flex items-center justify-between mt-1"
               >
-                <span class="text-xs text-red-700">Xóa topic này?</span>
+                <span class="text-xs">Xóa topic này?</span>
                 <div class="flex gap-2">
                   <button
-                    class="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    class="btn btn-danger"
                     @click.stop="executeDelete"
                   >
                     Xóa
                   </button>
                   <button
-                    class="text-xs px-2 py-1 border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition-colors"
+                    class="btn btn-sm btn-secondary"
                     @click.stop="cancelDelete"
                   >
                     Hủy
@@ -309,7 +309,7 @@ function formatRelativeTime(timestamp: number): string {
         class="text-center py-12 space-y-3"
       >
         <div class="text-3xl">📰</div>
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-[var(--color-text-secondary)]">
           Chưa có chủ đề nào. Mở một topic XenForo để bắt đầu.
         </p>
       </div>

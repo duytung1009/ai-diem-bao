@@ -9,14 +9,14 @@ const isOpen = ref(false);
 </script>
 
 <template>
-  <div class="border border-gray-200 rounded-lg overflow-hidden">
+  <div class="border border-[var(--color-border)] rounded-lg overflow-hidden">
     <button
-      class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-800 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-[var(--color-text-primary)] bg-[var(--color-bg-base)] hover:bg-[var(--color-bg-muted)] transition-colors text-left"
       @click="isOpen = !isOpen"
     >
       <span>{{ title }}</span>
       <svg
-        class="w-4 h-4 text-gray-500 transition-transform duration-200 shrink-0 ml-2"
+        class="w-4 h-4 text-[var(--color-text-secondary)] transition-transform duration-200 shrink-0 ml-2"
         :class="{ 'rotate-180': isOpen }"
         fill="none"
         stroke="currentColor"

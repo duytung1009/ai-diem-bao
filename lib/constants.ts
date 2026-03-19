@@ -2,7 +2,7 @@ import type { LLMConfig, ThemeMode } from './types';
 
 export const STORAGE_KEYS = {
   SETTINGS: 'llm-settings',
-  CACHE_PREFIX: 'cache:',
+  CACHE_PREFIX: 'cache:',  // Legacy — chỉ dùng bởi one-time migration từ storage.local sang IndexedDB
   CUSTOM_PROMPTS: 'custom-prompts',
   THEME: 'theme-mode',
 } as const;

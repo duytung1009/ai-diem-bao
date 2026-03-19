@@ -13,7 +13,7 @@ const testing = ref(false);
 const testResult = ref<'success' | 'fail' | ''>('');
 const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
-const MAX_CACHE_BYTES = 8 * 1024 * 1024; // 8MB soft limit
+const MAX_CACHE_BYTES = 50 * 1024 * 1024; // 50MB — IndexedDB cho phép nhiều hơn
 const showClearConfirm = ref(false);
 
 const { themeMode: currentTheme, setTheme } = useTheme();
@@ -315,7 +315,7 @@ function cancelClearAll() {
       <div class="flex items-center justify-between text-xs">
         <span class="font-medium text-[var(--color-text-primary)]">Cache local</span>
         <span :class="cacheNearFull ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-[var(--color-text-secondary)]'">
-          {{ cacheSizeMB }} MB / 8 MB ({{ cacheUsagePercent }}%)
+          {{ cacheSizeMB }} MB / 50 MB ({{ cacheUsagePercent }}%)
         </span>
       </div>
       <div class="w-full bg-[var(--color-bg-muted)] rounded-full h-1.5">

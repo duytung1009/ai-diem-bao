@@ -1,14 +1,17 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
 import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
+import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
   browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
-  // One-time migration: normalize all existing cache keys and url fields
-  migrateNormalizedUrls().catch(console.error);
+  // One-time migration: storage.local → IndexedDB, then normalize URLs
+  migrateStorageLocalToIDB()
+    .then(() => migrateNormalizedUrls())
+    .catch(console.error);
 
   browser.runtime?.onMessage.addListener(
     (message: Message, _sender, sendResponse) => {
@@ -189,31 +192,46 @@ async function getActiveTabUrl(): Promise<string | null> {
   return tab?.url || null;
 }
 
-async function migrateNormalizedUrls(): Promise<void> {
+async function migrateStorageLocalToIDB(): Promise<void> {
+  const flag = await browser.storage.local.get('idb-migration-done');
+  if (flag['idb-migration-done']) return;
+
   const all = await browser.storage.local.get(null);
-  const toDelete: string[] = [];
-  const toSave: Record<string, CachedTopic> = {};
+  const cacheKeys: string[] = [];
 
   for (const [key, value] of Object.entries(all)) {
     if (!key.startsWith(STORAGE_KEYS.CACHE_PREFIX)) continue;
     if (!value || typeof value !== 'object' || !('url' in value)) continue;
 
     const topic = value as CachedTopic;
-    const normalizedKey = `${STORAGE_KEYS.CACHE_PREFIX}${normalizeUrl(topic.url)}`;
+    const normalizedUrl = normalizeUrl(topic.url);
 
-    if (normalizedKey !== key) {
-      toDelete.push(key);
-      const existing = toSave[normalizedKey] || (all[normalizedKey] as CachedTopic | undefined);
-      if (existing && existing.cachedAt > topic.cachedAt) {
-        // Keep newer entry, just delete old key
-      } else {
-        toSave[normalizedKey] = { ...topic, url: normalizeUrl(topic.url) };
-      }
-    } else if (topic.url !== normalizeUrl(topic.url)) {
-      toSave[key] = { ...topic, url: normalizeUrl(topic.url) };
+    const existing = await dbGet(normalizedUrl);
+    if (existing && existing.cachedAt > topic.cachedAt) {
+      cacheKeys.push(key);
+      continue;
     }
+
+    await dbPut({ ...topic, url: normalizedUrl });
+    cacheKeys.push(key);
   }
 
-  if (toDelete.length > 0) await browser.storage.local.remove(toDelete);
-  if (Object.keys(toSave).length > 0) await browser.storage.local.set(toSave);
+  if (cacheKeys.length > 0) await browser.storage.local.remove(cacheKeys);
+  await browser.storage.local.set({ 'idb-migration-done': true });
+}
+
+async function migrateNormalizedUrls(): Promise<void> {
+  const topics = await dbGetAll();
+
+  for (const topic of topics) {
+    const normalizedUrl = normalizeUrl(topic.url);
+    if (normalizedUrl === topic.url) continue;
+
+    await dbDelete(topic.url);
+
+    const existing = await dbGet(normalizedUrl);
+    if (existing && existing.cachedAt > topic.cachedAt) continue;
+
+    await dbPut({ ...topic, url: normalizedUrl });
+  }
 }

@@ -69,6 +69,20 @@ const loadedTopicUrl = ref<string | null>(null);
 async function loadTopicData() {
   const topic = store.selectedTopic.value;
   if (!topic) return;
+
+  // === RESET all view state for new topic ===
+  summary.value = '';
+  error.value = '';
+  loadingText.value = '';
+  summarizedPostCount.value = 0;
+  isScraping.value = false;
+  scrapingWarnings.value = [];
+  pendingPosts.value = null;
+  pendingIncremental.value = false;
+  cachedTopic.value = null;
+  cacheFreshness.value = null;
+  // === END RESET ===
+
   loadedTopicUrl.value = topic.url;
   cachedTopic.value = topic as CachedTopic;
   if (topic.summary) {
@@ -101,7 +115,20 @@ onMounted(() => {
 onActivated(async () => {
   browser.runtime?.onMessage.addListener(onRuntimeMessage);
   const url = store.selectedTopic.value?.url;
-  if (url && url !== loadedTopicUrl.value) await loadTopicData();
+  if (!url) return;
+
+  // If summarization is in progress for this topic (matched by either URL format),
+  // preserve all view state — don't reset, just sync the URL tracker.
+  const isSummarizingCurrentTopic =
+    store.summarizingUrl.value !== null &&
+    (store.summarizingUrl.value === url || store.summarizingUrl.value === loadedTopicUrl.value);
+
+  if (isSummarizingCurrentTopic) {
+    loadedTopicUrl.value = url;
+    return;
+  }
+
+  if (url !== loadedTopicUrl.value) await loadTopicData();
 });
 
 onDeactivated(() => {

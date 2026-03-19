@@ -6,7 +6,7 @@ export default defineConfig({
   manifest: {
     name: 'AI Điểm Báo',
     description: 'Tóm tắt topic XenForo bằng AI',
-    permissions: ['storage', 'sidePanel', 'activeTab'],
+    permissions: ['storage', 'sidePanel', 'activeTab', 'tabs', 'scripting'],
     action: {},
   },
   vite: () => ({

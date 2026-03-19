@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG } from '@/lib/constants';
-import type { LLMConfig, CustomPrompts } from '@/lib/types';
+import type { LLMConfig, CustomPrompts, CachedTopic } from '@/lib/types';
 import { SUMMARY_PROMPT, OPINION_ANALYSIS_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -13,12 +13,14 @@ const testResult = ref<'success' | 'fail' | ''>('');
 const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
 const MAX_CACHE_BYTES = 8 * 1024 * 1024; // 8MB soft limit
+const showClearConfirm = ref(false);
 
 // Custom prompts
 const customPrompts = ref<CustomPrompts>({});
 const activePromptTab = ref<'summary' | 'opinions' | 'research'>('summary');
 const promptSaveMessage = ref('');
 const promptError = ref('');
+const showDefaultPrompt = ref(false);
 
 const defaultPrompts = {
   summary: SUMMARY_PROMPT,
@@ -59,6 +61,10 @@ onMounted(async () => {
   if (sizeResult) cacheSizeBytes.value = sizeResult.bytes;
   const loadedPrompts = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => ({}));
   if (loadedPrompts) customPrompts.value = loadedPrompts;
+});
+
+watch(activePromptTab, () => {
+  showDefaultPrompt.value = false;
 });
 
 async function save() {
@@ -103,6 +109,28 @@ async function savePrompts() {
 function resetPrompt() {
   customPrompts.value = { ...customPrompts.value, [activePromptTab.value]: undefined };
   savePrompts();
+}
+
+function confirmClearAll() {
+  showClearConfirm.value = true;
+}
+
+async function executeClearAll() {
+  try {
+    const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
+    for (const topic of topics || []) {
+      await sendMessage('DELETE_CACHED_TOPIC', topic.url);
+    }
+    cacheSizeBytes.value = 0;
+  } catch {
+    // Silently fail
+  } finally {
+    showClearConfirm.value = false;
+  }
+}
+
+function cancelClearAll() {
+  showClearConfirm.value = false;
 }
 </script>
 
@@ -246,6 +274,30 @@ function resetPrompt() {
       <p v-if="cacheNearFull" class="text-xs text-orange-600">
         ⚠ Cache gần đầy. Các cache cũ sẽ tự động bị xoá khi lưu mới.
       </p>
+      <button
+        v-if="!showClearConfirm"
+        class="w-full text-xs py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+        @click="confirmClearAll"
+      >
+        Xóa tất cả cache
+      </button>
+      <div v-if="showClearConfirm" class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-2">
+        <p class="text-xs text-red-700 font-medium">Xóa tất cả cache?</p>
+        <div class="flex gap-2">
+          <button
+            class="flex-1 text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            @click="executeClearAll"
+          >
+            Xóa
+          </button>
+          <button
+            class="flex-1 text-xs px-2 py-1 border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition-colors"
+            @click="cancelClearAll"
+          >
+            Hủy
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Test result -->
@@ -295,8 +347,22 @@ function resetPrompt() {
           v-model="activePromptValue"
           rows="6"
           class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
-          :placeholder="defaultPrompts[activePromptTab].slice(0, 120) + '...'"
+          placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)"
         />
+        <!-- Default prompt viewer -->
+        <button
+          type="button"
+          class="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+          @click="showDefaultPrompt = !showDefaultPrompt"
+        >
+          {{ showDefaultPrompt ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
+        </button>
+        <div
+          v-if="showDefaultPrompt"
+          class="border border-gray-200 rounded-lg p-2 bg-gray-50 max-h-48 overflow-y-auto"
+        >
+          <pre class="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">{{ defaultPrompts[activePromptTab] }}</pre>
+        </div>
         <div class="flex gap-2">
           <button
             class="flex-1 text-xs py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"

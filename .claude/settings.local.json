@@ -10,7 +10,31 @@
       "Bash(rm -rf C:/Users/Tung/source/repos/ai-diem-bao-tmp)",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(npx vue-tsc:*)"
+      "Bash(npx vue-tsc:*)",
+      "Bash(mv fix-hub-loading-stuck.md 01-fix-hub-loading-stuck.md)",
+      "Bash(mv fix-detect-race-condition.md 02-fix-detect-race-condition.md)",
+      "Bash(mv fix-duplicate-topic-url.md 03-fix-duplicate-topic-url.md)",
+      "Bash(mv fix-hub-remove-summarize-button.md 04-fix-hub-remove-summarize-button.md)",
+      "Bash(mv fix-opinions-empty-state-style.md 05-fix-opinions-empty-state-style.md)",
+      "Bash(mv fix-cache-display.md 06-fix-cache-display.md)",
+      "Bash(mv feature-delete-topic.md 07-feature-delete-topic.md)",
+      "Bash(mv feature-default-prompt-display.md 08-feature-default-prompt-display.md)",
+      "Bash(mv feature-realtime-summary-status.md 09-feature-realtime-summary-status.md)",
+      "Bash(mv feature-styling-rules.md 10-feature-styling-rules.md)",
+      "Bash(mv feature-dark-mode.md 11-feature-dark-mode.md)",
+      "Bash(mv feature-gemini-provider.md 12-feature-gemini-provider.md)",
+      "Bash(mv 01-fix-hub-loading-stuck.md fix-hub-loading-stuck.md)",
+      "Bash(mv 02-fix-detect-race-condition.md fix-detect-race-condition.md)",
+      "Bash(mv 03-fix-duplicate-topic-url.md fix-duplicate-topic-url.md)",
+      "Bash(mv 04-fix-hub-remove-summarize-button.md fix-hub-remove-summarize-button.md)",
+      "Bash(mv 05-fix-opinions-empty-state-style.md fix-opinions-empty-state-style.md)",
+      "Bash(mv 06-fix-cache-display.md fix-cache-display.md)",
+      "Bash(mv 07-feature-delete-topic.md 01-feature-delete-topic.md)",
+      "Bash(mv 08-feature-default-prompt-display.md 02-feature-default-prompt-display.md)",
+      "Bash(mv 09-feature-realtime-summary-status.md 03-feature-realtime-summary-status.md)",
+      "Bash(mv 10-feature-styling-rules.md 04-feature-styling-rules.md)",
+      "Bash(mv 11-feature-dark-mode.md 05-feature-dark-mode.md)",
+      "Bash(mv 12-feature-gemini-provider.md 06-feature-gemini-provider.md)"
     ]
   }
 }

@@ -220,6 +220,9 @@ async function confirmSummarize() {
   pendingPosts.value = null;
   summarizedPostCount.value = posts.length;
 
+  // Mark as summarizing
+  store.setSummarizing(topic.url);
+
   try {
     if (incremental && cachedTopic.value?.summary) {
       loadingText.value = `Đang cập nhật tóm tắt với bài viết mới...`;
@@ -263,6 +266,9 @@ async function confirmSummarize() {
     // Update store
     store.updateSelectedTopic({ summary: summary.value, posts, totalPosts: posts.length, totalPages: topicInfo.value.pageCount });
 
+    // Clear summarizing state
+    store.setSummarizing(null);
+
     // Reload from background to get the authoritative stored record
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (saved) {
@@ -271,6 +277,7 @@ async function confirmSummarize() {
     cacheFreshness.value = 'fresh';
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    store.setSummarizing(null);
   } finally {
     loadingText.value = '';
   }

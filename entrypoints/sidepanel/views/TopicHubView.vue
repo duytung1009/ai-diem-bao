@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated } from 'vue';
+import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import type { CachedTopic } from '@/lib/types';
@@ -10,11 +10,25 @@ const router = useRouter();
 const store = useTopicStore();
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
+const pendingDeleteUrl = ref<string | null>(null);
 
-// Group topics by domain
+// Temp topic: injected into domain groups while summarizing a topic not yet in cache
+const summarizingTempTopic = computed(() => {
+  const url = store.summarizingUrl.value;
+  if (!url) return null;
+  const alreadyInList = allTopics.value.some(t => t.url === url);
+  if (alreadyInList) return null;
+  const selected = store.selectedTopic.value;
+  return selected?.url === url ? selected : null;
+});
+
+// Group topics by domain (includes temp topic if summarizing a new topic)
 const groupedTopics = computed(() => {
   const groups: Record<string, CachedTopic[]> = {};
-  for (const topic of allTopics.value) {
+  const topics = summarizingTempTopic.value
+    ? [...allTopics.value, summarizingTempTopic.value as CachedTopic]
+    : allTopics.value;
+  for (const topic of topics) {
     try {
       const hostname = new URL(topic.url).hostname;
       if (!groups[hostname]) groups[hostname] = [];
@@ -24,7 +38,7 @@ const groupedTopics = computed(() => {
       groups['Khác'].push(topic);
     }
   }
-  // Sort topics within each group by cachedAt descending
+  // Sort: temp topic (cachedAt=0) floats to bottom; sort rest by cachedAt descending
   for (const key of Object.keys(groups)) {
     groups[key].sort((a, b) => (b.cachedAt || 0) - (a.cachedAt || 0));
   }
@@ -71,9 +85,63 @@ onActivated(async () => {
   }
 });
 
+// Watch store.selectedTopic for updates (sync when summary is completed)
+watch(
+  () => store.selectedTopic.value,
+  (updated) => {
+    if (!updated?.url) return;
+    const idx = allTopics.value.findIndex(t => t.url === updated.url);
+    if (idx >= 0) {
+      // Update topic in list without reloading from background
+      const topic: CachedTopic = {
+        ...allTopics.value[idx],
+        ...updated,
+        posts: updated.posts ? [...updated.posts] : allTopics.value[idx].posts,
+        researchHistory: updated.researchHistory ? [...updated.researchHistory] : allTopics.value[idx].researchHistory,
+      };
+      allTopics.value[idx] = topic;
+    } else if (updated.summary || updated.posts?.length) {
+      // New topic is cached — add to list
+      const topic: CachedTopic = {
+        ...updated,
+        posts: updated.posts ? [...updated.posts] : [],
+        researchHistory: updated.researchHistory ? [...updated.researchHistory] : [],
+      } as CachedTopic;
+      allTopics.value = [...allTopics.value, topic];
+    }
+  },
+  { deep: true }
+);
+
 function selectTopic(topic: CachedTopic) {
   store.selectTopic(topic);
   router.push('/summary');
+}
+
+function confirmDelete(topic: CachedTopic) {
+  pendingDeleteUrl.value = topic.url;
+}
+
+function cancelDelete() {
+  pendingDeleteUrl.value = null;
+}
+
+async function executeDelete() {
+  if (!pendingDeleteUrl.value) return;
+  try {
+    await sendMessage('DELETE_CACHED_TOPIC', pendingDeleteUrl.value);
+    allTopics.value = allTopics.value.filter(
+      t => t.url !== pendingDeleteUrl.value
+    );
+    // Nếu topic đang selected trong store, clear selection
+    if (store.selectedTopic.value?.url === pendingDeleteUrl.value) {
+      store.clearSelection();
+    }
+  } catch {
+    // Silently fail — topic list sẽ refresh khi onActivated
+  } finally {
+    pendingDeleteUrl.value = null;
+  }
 }
 
 function handleActiveTabTopic() {
@@ -132,7 +200,15 @@ function formatRelativeTime(timestamp: number): string {
         <div class="flex items-center gap-3 text-xs text-gray-500">
           <span>{{ store.activeTabDetect.value.postCount }} bài viết</span>
           <span>{{ store.activeTabDetect.value.pageCount }} trang</span>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">○ Chưa tóm tắt</span>
+          <span
+            v-if="store.summarizingUrl.value && store.activeTabUrl.value && store.summarizingUrl.value === store.activeTabUrl.value"
+            class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium animate-pulse"
+          >
+            ⟳ Đang tóm tắt...
+          </span>
+          <span v-else class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+            ○ Chưa tóm tắt
+          </span>
         </div>
       </button>
 
@@ -146,35 +222,83 @@ function formatRelativeTime(timestamp: number): string {
 
           <!-- Topic cards -->
           <div class="space-y-2">
-            <button
+            <div
               v-for="topic in groupedTopics[domain]"
               :key="topic.url"
-              class="w-full text-left border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:bg-blue-50/50 transition-colors space-y-1.5"
-              @click="selectTopic(topic)"
             >
-              <p class="text-sm font-medium text-gray-900 line-clamp-2">{{ topic.title }}</p>
-              <div class="flex items-center gap-2 flex-wrap">
-                <!-- Status badge -->
-                <span
-                  v-if="topic.summary"
-                  class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium"
+              <div
+                class="relative border rounded-lg transition-colors"
+                :class="store.summarizingUrl.value === topic.url
+                  ? 'border-blue-300 bg-blue-50/60 animate-pulse'
+                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
+              >
+                <button
+                  class="w-full text-left p-3 space-y-1.5"
+                  @click="selectTopic(topic)"
                 >
-                  ✓ Đã tóm tắt
-                </span>
-                <span
-                  v-else
-                  class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
+                  <p class="text-sm font-medium text-gray-900 line-clamp-2 pr-6">{{ topic.title }}</p>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <!-- Status badge -->
+                    <span
+                      v-if="store.summarizingUrl.value === topic.url"
+                      class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium animate-pulse"
+                    >
+                      ⟳ Đang tóm tắt...
+                    </span>
+                    <span
+                      v-else-if="topic.summary"
+                      class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium"
+                    >
+                      ✓ Đã tóm tắt
+                    </span>
+                    <span
+                      v-else
+                      class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
+                    >
+                      ○ Chưa tóm tắt
+                    </span>
+                    <!-- Post count -->
+                    <span class="text-xs text-gray-400">{{ topic.totalPosts }} bài</span>
+                    <!-- Time -->
+                    <span v-if="topic.cachedAt" class="text-xs text-gray-400">
+                      {{ formatRelativeTime(topic.cachedAt) }}
+                    </span>
+                  </div>
+                </button>
+                <button
+                  v-if="store.summarizingUrl.value !== topic.url"
+                  class="absolute top-2 right-2 p-1 text-gray-300 hover:text-red-500 transition-colors rounded"
+                  title="Xóa topic"
+                  @click.stop="confirmDelete(topic)"
                 >
-                  ○ Chưa tóm tắt
-                </span>
-                <!-- Post count -->
-                <span class="text-xs text-gray-400">{{ topic.totalPosts }} bài</span>
-                <!-- Time -->
-                <span v-if="topic.cachedAt" class="text-xs text-gray-400">
-                  {{ formatRelativeTime(topic.cachedAt) }}
-                </span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-            </button>
+
+              <!-- Inline confirmation -->
+              <div
+                v-if="pendingDeleteUrl === topic.url"
+                class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center justify-between"
+              >
+                <span class="text-xs text-red-700">Xóa topic này?</span>
+                <div class="flex gap-2">
+                  <button
+                    class="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    @click.stop="executeDelete"
+                  >
+                    Xóa
+                  </button>
+                  <button
+                    class="text-xs px-2 py-1 border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition-colors"
+                    @click.stop="cancelDelete"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

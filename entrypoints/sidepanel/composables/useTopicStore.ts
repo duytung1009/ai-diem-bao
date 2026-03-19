@@ -5,6 +5,7 @@ import type { CachedTopic, DetectResult } from '@/lib/types';
 const selectedTopic = ref<CachedTopic | null>(null);
 const activeTabDetect = ref<DetectResult | null>(null);
 const activeTabUrl = ref<string | null>(null);
+const summarizingUrl = ref<string | null>(null);
 
 export function useTopicStore() {
   function selectTopic(topic: CachedTopic) {
@@ -25,6 +26,10 @@ export function useTopicStore() {
     selectedTopic.value = { ...selectedTopic.value, ...partial };
   }
 
+  function setSummarizing(url: string | null) {
+    summarizingUrl.value = url;
+  }
+
   return {
     // State (readonly để tránh mutation trực tiếp từ bên ngoài)
     // Note: plan đề xuất expose `_selectedTopic` writable ref làm escape hatch,
@@ -32,10 +37,12 @@ export function useTopicStore() {
     selectedTopic: readonly(selectedTopic),
     activeTabDetect: readonly(activeTabDetect),
     activeTabUrl: readonly(activeTabUrl),
+    summarizingUrl: readonly(summarizingUrl),
     // Actions
     selectTopic,
     clearSelection,
     setActiveTab,
     updateSelectedTopic,
+    setSummarizing,
   };
 }

@@ -42,10 +42,12 @@ async function detectActiveTabTopic() {
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !tab.url) return;
+    console.log('detectActiveTabTopic: Active tab URL:', tab.url);
 
     const result = await browser.tabs.sendMessage(tab.id, {
       type: 'DETECT_XF',
     }) as DetectResult | undefined;
+    console.log('Detect result for active tab:', result);
 
     if (result && result.version !== 'unknown') {
       store.setActiveTab(result, tab.url);

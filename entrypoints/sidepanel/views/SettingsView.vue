@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG } from '@/lib/constants';
 import type { LLMConfig, CustomPrompts, CachedTopic } from '@/lib/types';
@@ -56,8 +56,8 @@ const claudeModels = [
 ];
 
 const geminiModels = [
-  'gemini-2.5-flash-preview-05-20',
-  'gemini-2.5-pro-preview-05-06',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
 ];
@@ -68,15 +68,23 @@ const cacheNearFull = computed(() => cacheUsagePercent.value >= 80);
 const isClaude = computed(() => config.value.provider === 'claude');
 const isGemini = computed(() => config.value.provider === 'gemini');
 
+async function refreshCacheSize() {
+  const sizeResult = await sendMessage<{ bytes: number }>('GET_CACHE_SIZE').catch(() => null);
+  if (sizeResult) cacheSizeBytes.value = sizeResult.bytes;
+}
+
 onMounted(async () => {
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
     config.value = { ...loaded, timeoutMs: loaded.timeoutMs ?? 120000 };
   }
-  const sizeResult = await sendMessage<{ bytes: number }>('GET_CACHE_SIZE').catch(() => null);
-  if (sizeResult) cacheSizeBytes.value = sizeResult.bytes;
+  await refreshCacheSize();
   const loadedPrompts = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => ({}));
   if (loadedPrompts) customPrompts.value = loadedPrompts;
+});
+
+onActivated(async () => {
+  await refreshCacheSize();
 });
 
 watch(activePromptTab, () => {
@@ -134,9 +142,7 @@ function confirmClearAll() {
 async function executeClearAll() {
   try {
     const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
-    for (const topic of topics || []) {
-      await sendMessage('DELETE_CACHED_TOPIC', topic.url);
-    }
+    await Promise.allSettled((topics || []).map((topic) => sendMessage('DELETE_CACHED_TOPIC', topic.url)));
     cacheSizeBytes.value = 0;
   } catch {
     // Silently fail

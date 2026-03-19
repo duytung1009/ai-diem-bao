@@ -1,8 +1,9 @@
-import { ref } from 'vue';
+import { ref, readonly } from 'vue';
 import type { ThemeMode } from '@/lib/types';
 import { STORAGE_KEYS } from '@/lib/constants';
 
 const themeMode = ref<ThemeMode>('system');
+let mediaListenerRegistered = false;
 
 export function useTheme() {
   async function loadTheme() {
@@ -30,11 +31,14 @@ export function useTheme() {
     }
   }
 
-  // Listen for OS theme changes when mode = 'system'
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  mediaQuery.addEventListener('change', () => {
-    if (themeMode.value === 'system') applyTheme();
-  });
+  // Listen for OS theme changes when mode = 'system' — register only once
+  if (!mediaListenerRegistered) {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', () => {
+      if (themeMode.value === 'system') applyTheme();
+    });
+    mediaListenerRegistered = true;
+  }
 
-  return { themeMode, loadTheme, setTheme };
+  return { themeMode: readonly(themeMode), loadTheme, setTheme };
 }

@@ -232,6 +232,7 @@ async function confirmSummarize() {
       if (newPosts.length === 0) {
         summary.value = cachedTopic.value.summary;
         loadingText.value = '';
+        store.setSummarizing(null);
         return;
       }
       const result = await sendMessage<{ summary?: string; error?: string }>(

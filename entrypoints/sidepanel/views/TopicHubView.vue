@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
-import type { CachedTopic } from '@/lib/types';
+import type { CachedTopic, DetectResult } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -11,6 +11,7 @@ const store = useTopicStore();
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
 const pendingDeleteUrl = ref<string | null>(null);
+const refreshingUrl = ref<string | null>(null);
 
 // Temp topic: injected into domain groups while summarizing a topic not yet in cache
 const summarizingTempTopic = computed(() => {
@@ -166,6 +167,44 @@ function handleActiveTabTopic() {
   }
 }
 
+async function refreshTopic(topic: CachedTopic) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !tab.url || normalizeForCompare(tab.url) !== normalizeForCompare(topic.url)) {
+    // Active tab doesn't match — silently skip
+    return;
+  }
+
+  refreshingUrl.value = topic.url;
+  try {
+    const result = await browser.tabs.sendMessage(tab.id, {
+      type: 'DETECT_XF',
+    }) as DetectResult | undefined;
+
+    if (result && result.version !== 'unknown') {
+      const idx = allTopics.value.findIndex(t => t.url === topic.url);
+      if (idx >= 0) {
+        allTopics.value[idx] = {
+          ...allTopics.value[idx],
+          totalPosts: result.postCount,
+          totalPages: result.pageCount,
+          title: result.title,
+        };
+      }
+      if (store.selectedTopic.value?.url === topic.url) {
+        store.updateSelectedTopic({
+          totalPosts: result.postCount,
+          totalPages: result.pageCount,
+          title: result.title,
+        });
+      }
+    }
+  } catch {
+    // Silently fail — content script not available
+  } finally {
+    refreshingUrl.value = null;
+  }
+}
+
 function formatRelativeTime(timestamp: number): string {
   if (!timestamp) return '';
   const diff = Date.now() - timestamp;
@@ -236,7 +275,7 @@ function formatRelativeTime(timestamp: number): string {
                   class="w-full text-left p-3 space-y-1.5"
                   @click="selectTopic(topic)"
                 >
-                  <p class="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2 pr-6">{{ topic.title }}</p>
+                  <p class="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2 pr-12">{{ topic.title }}</p>
                   <div class="flex items-center gap-2 flex-wrap">
                     <!-- Status badge -->
                     <span
@@ -265,16 +304,30 @@ function formatRelativeTime(timestamp: number): string {
                     </span>
                   </div>
                 </button>
-                <button
+                <!-- Action buttons — top-right corner -->
+                <div
                   v-if="store.summarizingUrl.value !== topic.url"
-                  class="absolute top-2 right-2 p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
-                  title="Xóa topic"
-                  @click.stop="confirmDelete(topic)"
+                  class="absolute top-2 right-2 flex items-center gap-0.5"
                 >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                  <button
+                    class="p-1 text-gray-300 dark:text-gray-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors rounded"
+                    title="Cập nhật thông tin"
+                    @click.stop="refreshTopic(topic)"
+                  >
+                    <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshingUrl === topic.url }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                  <button
+                    class="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
+                    title="Xóa topic"
+                    @click.stop="confirmDelete(topic)"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <!-- Inline confirmation -->

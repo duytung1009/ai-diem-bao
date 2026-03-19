@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed } from 'vue';
+import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
@@ -10,7 +10,6 @@ import TopicMeta from '../components/TopicMeta.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import CacheIndicator from '../components/CacheIndicator.vue';
-import ExportButton from '../components/ExportButton.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const router = useRouter();
@@ -31,6 +30,7 @@ const currentConfig = ref<LLMConfig | null>(null);
 // Cache state
 const cachedTopic = ref<CachedTopic | null>(null);
 const cacheFreshness = ref<CacheFreshness | null>(null);
+const isRefreshing = ref(false);
 
 // Derived from store — replaces topicInfo ref
 const topicInfo = computed<DetectResult | null>(() => {
@@ -55,6 +55,22 @@ const tokenEstimation = computed(() => {
     exceeds: check.exceeds,
     chunksNeeded: check.chunksNeeded,
   };
+});
+
+const livePostCount = computed(() => {
+  const topic = store.selectedTopic.value;
+  if (!topic) return 0;
+  if (store.activeTabDetect.value && store.activeTabUrl.value &&
+      isSameTopicUrl(store.activeTabUrl.value, topic.url)) {
+    return store.activeTabDetect.value.postCount;
+  }
+  return topic.totalPosts;
+});
+
+watch(livePostCount, (newCount) => {
+  if (cachedTopic.value && newCount > 0) {
+    cacheFreshness.value = evaluateFreshness(cachedTopic.value, newCount);
+  }
 });
 
 function onRuntimeMessage(message: Message) {
@@ -97,11 +113,7 @@ async function loadTopicData() {
         summary.value = fresh.summary;
         summarizedPostCount.value = fresh.totalPosts;
       }
-      if (store.activeTabDetect.value && isSameTopicUrl(store.activeTabUrl.value ?? '', topic.url)) {
-        cacheFreshness.value = evaluateFreshness(fresh, store.activeTabDetect.value.postCount);
-      } else {
-        cacheFreshness.value = evaluateFreshness(fresh, fresh.totalPosts);
-      }
+      cacheFreshness.value = evaluateFreshness(fresh, livePostCount.value);
     }
   } catch { /* cache miss is fine */ }
 }
@@ -315,6 +327,55 @@ function cancelPendingSummarize() {
   pendingPosts.value = null;
   pendingIncremental.value = false;
 }
+
+async function navigateToTopic() {
+  const url = store.selectedTopic.value?.url;
+  if (!url) return;
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await browser.tabs.update(tab.id, { url });
+    }
+  } catch {
+    await browser.tabs.create({ url });
+  }
+}
+
+async function refreshTopicInfo() {
+  const topic = store.selectedTopic.value;
+  if (!topic) return;
+
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !tab.url || !isSameTopicUrl(tab.url, topic.url)) {
+    error.value = 'Hãy mở topic này trên trình duyệt để cập nhật thông tin.';
+    return;
+  }
+
+  isRefreshing.value = true;
+  error.value = '';
+  try {
+    const result = await browser.tabs.sendMessage(tab.id, {
+      type: 'DETECT_XF',
+    }) as DetectResult | undefined;
+
+    if (result && result.version !== 'unknown') {
+      store.updateSelectedTopic({
+        totalPosts: result.postCount,
+        totalPages: result.pageCount,
+        title: result.title,
+      });
+      if (cachedTopic.value) {
+        cacheFreshness.value = evaluateFreshness(cachedTopic.value, result.postCount);
+      }
+    } else {
+      error.value = 'Không thể detect topic trên tab hiện tại.';
+    }
+  } catch {
+    error.value = 'Lỗi khi kết nối đến tab. Thử reload trang.';
+  } finally {
+    isRefreshing.value = false;
+  }
+}
 </script>
 
 <template>
@@ -332,15 +393,39 @@ function cancelPendingSummarize() {
 
     <!-- Topic loaded -->
     <template v-else>
-      <!-- Back button -->
-      <button
-        class="text-xs text-blue-600 hover:text-blue-700"
-        @click="router.push('/')"
-      >
-        ← Quay lại danh sách
-      </button>
+      <!-- Back button + Refresh -->
+      <div class="flex items-center justify-between">
+        <button
+          class="text-xs text-blue-600 hover:text-blue-700"
+          @click="router.push('/')"
+        >
+          ← Quay lại danh sách
+        </button>
+        <button
+          class="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] flex items-center gap-1"
+          :disabled="isRefreshing"
+          title="Cập nhật thông tin topic từ tab hiện tại"
+          @click="refreshTopicInfo"
+        >
+          <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {{ isRefreshing ? 'Đang cập nhật...' : 'Cập nhật' }}
+        </button>
+      </div>
 
       <TopicMeta :info="topicInfo" />
+
+      <!-- Topic URL — click to navigate active tab -->
+      <div class="flex items-center gap-1.5 text-xs">
+        <button
+          class="text-[var(--color-accent-text)] hover:text-[var(--color-accent-hover)] truncate max-w-full text-left"
+          :title="store.selectedTopic.value?.url"
+          @click="navigateToTopic"
+        >
+          {{ store.selectedTopic.value?.url }}
+        </button>
+      </div>
 
       <button
         v-if="!loadingText && !summary && !pendingPosts"
@@ -432,22 +517,19 @@ function cancelPendingSummarize() {
             :freshness="cacheFreshness"
             :cached-at="cachedTopic.cachedAt"
             :cached-posts="cachedTopic.totalPosts"
-            :current-posts="topicInfo?.postCount ?? 0"
+            :current-posts="livePostCount"
             @update="handleSummarize(true)"
           />
         </div>
         <div class="card p-4">
           <SummaryContent :content="summary" />
         </div>
-        <div class="flex gap-2">
-          <button
-            class="flex-1 btn btn-secondary"
-            @click="handleSummarize(false)"
-          >
-            Tóm tắt lại
-          </button>
-          <ExportButton v-if="cachedTopic" :topic="cachedTopic" />
-        </div>
+        <button
+          class="w-full btn btn-secondary"
+          @click="handleSummarize(false)"
+        >
+          Tóm tắt lại
+        </button>
       </div>
     </template>
   </div>

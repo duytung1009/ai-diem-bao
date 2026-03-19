@@ -4,6 +4,20 @@ import { XF1Scraper } from '@/lib/scrapers/xf1-scraper';
 import { scrapeAllPages } from '@/lib/scrapers/page-loader';
 import type { DetectResult, Message, TopicData } from '@/lib/types';
 
+function isThreadPage(v: 'xf1' | 'xf2'): boolean {
+  if (v === 'xf2') {
+    return !!(
+      document.querySelector('article.message') &&
+      (document.querySelector('dl.count--replies') || document.querySelector('.p-title-value'))
+    );
+  }
+  // XF1
+  return !!(
+    document.querySelector('li.message .messageText') ||
+    document.querySelector('#messageList .message')
+  );
+}
+
 export default defineContentScript({
   matches: ['*://*/*'],
   main() {
@@ -17,6 +31,11 @@ export default defineContentScript({
         }
 
         if (message.type === 'DETECT_XF') {
+          // Only respond for individual thread pages, not forum/list pages
+          if (!isThreadPage(version)) {
+            sendResponse(undefined);
+            return false;
+          }
           const scraper = createScraper();
           const result: DetectResult = {
             version,

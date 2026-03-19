@@ -11,6 +11,8 @@ const store = useTopicStore();
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
 const pendingDeleteUrl = ref<string | null>(null);
+const searchQuery = ref('');
+const sortBy = ref<'recent' | 'posts' | 'title'>('recent');
 
 // Temp topic: injected into domain groups while summarizing a topic not yet in cache
 const summarizingTempTopic = computed(() => {
@@ -22,12 +24,36 @@ const summarizingTempTopic = computed(() => {
   return selected?.url === url ? selected : null;
 });
 
+// Filter + sort topics (excludes temp topic — added separately in groupedTopics)
+const filteredTopics = computed(() => {
+  let topics = [...allTopics.value];
+  const query = searchQuery.value.trim().toLowerCase();
+  if (query) {
+    topics = topics.filter(t =>
+      t.title.toLowerCase().includes(query) ||
+      t.url.toLowerCase().includes(query)
+    );
+  }
+  switch (sortBy.value) {
+    case 'recent':
+      topics.sort((a, b) => (b.cachedAt || 0) - (a.cachedAt || 0));
+      break;
+    case 'posts':
+      topics.sort((a, b) => b.totalPosts - a.totalPosts);
+      break;
+    case 'title':
+      topics.sort((a, b) => a.title.localeCompare(b.title, 'vi'));
+      break;
+  }
+  return topics;
+});
+
 // Group topics by domain (includes temp topic if summarizing a new topic)
 const groupedTopics = computed(() => {
   const groups: Record<string, CachedTopic[]> = {};
   const topics = summarizingTempTopic.value
-    ? [...allTopics.value, summarizingTempTopic.value as CachedTopic]
-    : allTopics.value;
+    ? [...filteredTopics.value, summarizingTempTopic.value as CachedTopic]
+    : filteredTopics.value;
   for (const topic of topics) {
     try {
       const hostname = new URL(topic.url).hostname;
@@ -37,10 +63,6 @@ const groupedTopics = computed(() => {
       if (!groups['Khác']) groups['Khác'] = [];
       groups['Khác'].push(topic);
     }
-  }
-  // Sort: temp topic (cachedAt=0) floats to bottom; sort rest by cachedAt descending
-  for (const key of Object.keys(groups)) {
-    groups[key].sort((a, b) => (b.cachedAt || 0) - (a.cachedAt || 0));
   }
   return groups;
 });
@@ -185,6 +207,41 @@ function formatRelativeTime(timestamp: number): string {
     <LoadingSpinner v-if="isLoading" text="Đang tải danh sách..." />
 
     <template v-else>
+      <!-- Search + Sort controls (only show when there are topics) -->
+      <div v-if="allTopics.length > 0" class="space-y-2">
+        <!-- Search input -->
+        <div class="relative">
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Tìm kiếm topic..."
+            class="input pl-8 text-xs w-full"
+          />
+        </div>
+        <!-- Sort selector -->
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-(--color-text-secondary)">Sắp xếp:</span>
+          <button
+            v-for="option in [
+              { value: 'recent', label: 'Mới nhất' },
+              { value: 'posts', label: 'Nhiều bài' },
+              { value: 'title', label: 'Tên A-Z' },
+            ]"
+            :key="option.value"
+            class="px-2 py-0.5 rounded-full transition-colors"
+            :class="sortBy === option.value
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
+              : 'text-(--color-text-secondary) hover:text-(--color-text-primary) hover:bg-(--color-bg-muted)'"
+            @click="sortBy = option.value as typeof sortBy"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
       <!-- Active tab topic (if not in cached list) -->
       <button
         v-if="store.activeTabDetect.value && !activeTabInList"
@@ -308,9 +365,19 @@ function formatRelativeTime(timestamp: number): string {
         </div>
       </div>
 
+      <!-- No search results -->
+      <div
+        v-if="searchQuery && filteredTopics.length === 0"
+        class="text-center py-6"
+      >
+        <p class="text-xs text-(--color-text-muted)">
+          Không tìm thấy topic nào khớp "{{ searchQuery }}"
+        </p>
+      </div>
+
       <!-- Empty state -->
       <div
-        v-if="domainNames.length === 0 && !store.activeTabDetect.value"
+        v-if="allTopics.length === 0 && !store.activeTabDetect.value"
         class="text-center py-12 space-y-3"
       >
         <div class="text-3xl">📰</div>

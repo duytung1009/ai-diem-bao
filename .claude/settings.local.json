@@ -34,7 +34,13 @@
       "Bash(mv 09-feature-realtime-summary-status.md 03-feature-realtime-summary-status.md)",
       "Bash(mv 10-feature-styling-rules.md 04-feature-styling-rules.md)",
       "Bash(mv 11-feature-dark-mode.md 05-feature-dark-mode.md)",
-      "Bash(mv 12-feature-gemini-provider.md 06-feature-gemini-provider.md)"
+      "Bash(mv 12-feature-gemini-provider.md 06-feature-gemini-provider.md)",
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Tung/source/repos/ai-diem-bao/**)",
+      "Bash(done)",
+      "Bash(mv \"planning/10-feature-smart-scraping.md\" \"planning/20260319_1710_10-feature-smart-scraping.md\")",
+      "Bash(mv \"tasks/09-feature-detect-search-opinions.md\" \"tasks/20260319_1722_09-feature-detect-search-opinions.md\")"
     ]
   }
 }

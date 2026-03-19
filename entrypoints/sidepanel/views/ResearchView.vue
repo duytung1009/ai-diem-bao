@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, onActivated, computed } from 'vue';
-import type { CachedTopic, ResearchEntry } from '@/lib/types';
+import type { CachedTopic, ResearchEntry, DetectResult } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useTopicStore } from '../composables/useTopicStore';
+import TopicMeta from '../components/TopicMeta.vue';
 
 const cachedTopic = ref<CachedTopic | null>(null);
 const question = ref('');
@@ -24,6 +25,18 @@ const suggestedQuestions = computed(() => {
     `Các giải pháp nào được đề xuất?`,
     `Ai có quan điểm ủng hộ và ai phản đối?`,
   ];
+});
+
+// Derived from store — replaces topicInfo ref
+const topicInfo = computed<DetectResult | null>(() => {
+  const topic = store.selectedTopic.value;
+  if (!topic) return null;
+  return {
+    version: topic.version,
+    title: topic.title,
+    postCount: topic.totalPosts,
+    pageCount: topic.totalPages,
+  } satisfies DetectResult;
 });
 
 const loadedTopicUrl = ref<string | null>(null);
@@ -79,7 +92,7 @@ async function handleResearch() {
       await sendMessage('SAVE_CACHED_TOPIC', {
         url: cachedTopic.value!.url,
         researchHistory: history.value,
-      }).catch(() => {});
+      }).catch(() => { });
       store.updateSelectedTopic({ researchHistory: history.value });
     }
   } catch (err) {
@@ -99,7 +112,7 @@ function clearHistory() {
   sendMessage('SAVE_CACHED_TOPIC', {
     url: cachedTopic.value!.url,
     researchHistory: [],
-  }).catch(() => {});
+  }).catch(() => { });
   store.updateSelectedTopic({ researchHistory: [] });
 }
 
@@ -110,87 +123,84 @@ function formatDate(ts: number): string {
 
 <template>
   <div class="p-4 space-y-4">
-    <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu Topic</h2>
-
-    <!-- No cache warning -->
-    <div
-      v-if="!cachedTopic?.posts?.length"
-      class="alert alert-warning"
-    >
-      Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
+    <!-- No topic selected -->
+    <div v-if="!cachedTopic" class="text-center py-8">
+      <p class="text-sm text-(--color-text-secondary)">Chưa chọn chủ đề.</p>
+      <button class="mt-3 text-sm text-blue-600 hover:text-blue-700" @click="$router.push('/')">
+        ← Quay lại danh sách
+      </button>
     </div>
 
-    <template v-if="cachedTopic?.posts?.length">
-      <!-- Question input -->
-      <div class="space-y-2">
-        <textarea
-          v-model="question"
-          rows="2"
-          class="input resize-none"
-          placeholder="Đặt câu hỏi về nội dung topic..."
-          :disabled="isLoading"
-          @keydown.ctrl.enter="handleResearch"
-        />
-        <button
-          class="w-full btn btn-primary"
-          :disabled="isLoading || !question.trim()"
-          @click="handleResearch"
-        >
-          {{ isLoading ? 'Đang tra cứu...' : 'Tra cứu (Ctrl+Enter)' }}
+    <!-- Topic loaded -->
+    <template v-else>
+      <!-- Back button + Refresh -->
+      <div class="flex items-center justify-between">
+        <button class="text-xs text-blue-600 hover:text-blue-700" @click="$router.push('/')">
+          ← Quay lại danh sách
         </button>
       </div>
 
-      <!-- Suggested questions -->
-      <div v-if="!isLoading && history.length === 0" class="space-y-2">
-        <p class="text-xs text-(--color-text-secondary) font-medium">Gợi ý câu hỏi:</p>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="q in suggestedQuestions"
-            :key="q"
-            class="text-xs px-2 py-1 rounded-full bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft) hover:text-(--color-accent-text) transition-colors text-left"
-            @click="useSuggestion(q)"
-          >
-            {{ q }}
-          </button>
-        </div>
+      <TopicMeta v-if="topicInfo" :info="topicInfo" :url="store.selectedTopic.value?.url" />
+
+      <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu Topic</h2>
+
+      <!-- No cache warning -->
+      <div v-if="!cachedTopic?.posts?.length" class="alert alert-warning">
+        Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
       </div>
 
-      <!-- Loading -->
-      <LoadingSpinner v-if="isLoading" text="Đang tra cứu câu trả lời..." />
-
-      <!-- Error -->
-      <ErrorDisplay v-if="error && !isLoading" :message="error" action="retry" @retry="handleResearch" />
-
-      <!-- Q&A History -->
-      <div v-if="history.length" class="space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs font-medium text-(--color-text-secondary)">Lịch sử tra cứu</h3>
-          <button
-            class="text-xs text-(--color-text-muted) hover:text-red-500 transition-colors"
-            @click="clearHistory"
-          >
-            Xóa tất cả
+      <template v-if="cachedTopic?.posts?.length">
+        <!-- Question input -->
+        <div class="space-y-2">
+          <textarea v-model="question" rows="2" class="input resize-none" placeholder="Đặt câu hỏi về nội dung topic..." :disabled="isLoading"
+            @keydown.ctrl.enter="handleResearch" />
+          <button class="w-full btn btn-primary" :disabled="isLoading || !question.trim()" @click="handleResearch">
+            {{ isLoading ? 'Đang tra cứu...' : 'Tra cứu (Ctrl+Enter)' }}
           </button>
         </div>
 
-        <div
-          v-for="entry in history"
-          :key="entry.askedAt"
-          class="border border-(--color-border) rounded-lg overflow-hidden"
-        >
-          <!-- Question -->
-          <div class="bg-(--color-bg-muted) px-3 py-2 border-b border-(--color-border)">
-            <div class="flex items-start justify-between gap-2">
-              <p class="text-sm font-medium text-(--color-text-primary)">{{ entry.question }}</p>
-              <span class="text-xs text-(--color-text-muted) shrink-0">{{ formatDate(entry.askedAt) }}</span>
+        <!-- Suggested questions -->
+        <div v-if="!isLoading && history.length === 0" class="space-y-2">
+          <p class="text-xs text-(--color-text-secondary) font-medium">Gợi ý câu hỏi:</p>
+          <div class="flex flex-wrap gap-2">
+            <button v-for="q in suggestedQuestions" :key="q"
+              class="text-xs px-2 py-1 rounded-full bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft) hover:text-(--color-accent-text) transition-colors text-left"
+              @click="useSuggestion(q)">
+              {{ q }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <LoadingSpinner v-if="isLoading" text="Đang tra cứu câu trả lời..." />
+
+        <!-- Error -->
+        <ErrorDisplay v-if="error && !isLoading" :message="error" action="retry" @retry="handleResearch" />
+
+        <!-- Q&A History -->
+        <div v-if="history.length" class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-medium text-(--color-text-secondary)">Lịch sử tra cứu</h3>
+            <button class="text-xs text-(--color-text-muted) hover:text-red-500 transition-colors" @click="clearHistory">
+              Xóa tất cả
+            </button>
+          </div>
+
+          <div v-for="entry in history" :key="entry.askedAt" class="border border-(--color-border) rounded-lg overflow-hidden">
+            <!-- Question -->
+            <div class="bg-(--color-bg-muted) px-3 py-2 border-b border-(--color-border)">
+              <div class="flex items-start justify-between gap-2">
+                <p class="text-sm font-medium text-(--color-text-primary)">{{ entry.question }}</p>
+                <span class="text-xs text-(--color-text-muted) shrink-0">{{ formatDate(entry.askedAt) }}</span>
+              </div>
+            </div>
+            <!-- Answer -->
+            <div class="px-3 py-2">
+              <MarkdownContent :content="entry.answer" />
             </div>
           </div>
-          <!-- Answer -->
-          <div class="px-3 py-2">
-            <MarkdownContent :content="entry.answer" />
-          </div>
         </div>
-      </div>
+      </template>
     </template>
   </div>
 </template>

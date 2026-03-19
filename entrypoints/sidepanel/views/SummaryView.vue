@@ -351,7 +351,7 @@ async function navigateToTopic() {
       <p class="text-sm text-(--color-text-secondary)">Chưa chọn chủ đề.</p>
       <button
         class="mt-3 text-sm text-blue-600 hover:text-blue-700"
-        @click="router.push('/')"
+        @click="$router.push('/')"
       >
         ← Quay lại danh sách
       </button>
@@ -363,7 +363,7 @@ async function navigateToTopic() {
       <div class="flex items-center justify-between">
         <button
           class="text-xs text-blue-600 hover:text-blue-700"
-          @click="router.push('/')"
+          @click="$router.push('/')"
         >
           ← Quay lại danh sách
         </button>

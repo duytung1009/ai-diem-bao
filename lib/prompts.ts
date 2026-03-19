@@ -12,10 +12,12 @@ Yêu cầu:
 Tóm tắt nội dung chính của cuộc thảo luận trong 2-3 đoạn ngắn.
 
 ## Quan điểm nổi bật
-### Tên/mô tả quan điểm 1
+### Tên/mô tả quan điểm 1 (N người ủng hộ)
 Nội dung chi tiết, ghi rõ tác giả nếu có.
-### Tên/mô tả quan điểm 2
+### Tên/mô tả quan điểm 2 (M người ủng hộ)
 Nội dung chi tiết, ghi rõ tác giả nếu có.
+
+Trong đó N, M là số lượng tác giả ủng hộ quan điểm đó dựa trên bài viết.
 
 ## Kết luận
 Kết luận hoặc đồng thuận chung (nếu có).`;
@@ -34,10 +36,12 @@ Yêu cầu:
 Tóm tắt nội dung chính của cuộc thảo luận trong 2-3 đoạn ngắn.
 
 ## Quan điểm nổi bật
-### Tên/mô tả quan điểm 1
+### Tên/mô tả quan điểm 1 (N người ủng hộ)
 Nội dung chi tiết, ghi rõ tác giả nếu có.
-### Tên/mô tả quan điểm 2
+### Tên/mô tả quan điểm 2 (M người ủng hộ)
 Nội dung chi tiết, ghi rõ tác giả nếu có.
+
+Trong đó N, M là số lượng tác giả ủng hộ quan điểm đó dựa trên bài viết.
 
 ## Kết luận
 Kết luận hoặc đồng thuận chung (nếu có).`;
@@ -55,7 +59,8 @@ Yêu cầu:
   * Tên tác giả đại diện
   * Trích dẫn tiêu biểu (1-2 câu)
 - Đánh giá sentiment tổng quan: "Tích cực", "Tiêu cực", "Trung lập"
-- PHẢI tuân theo format JSON sau:
+- PHẢI tuân theo format JSON sau
+- QUAN TRỌNG: Trong nội dung các trường text (description, quote, name, summary, mainTopic), TUYỆT ĐỐI không dùng dấu ngoặc kép ("). Thay vào đó dùng dấu nháy đơn (') cho tất cả trích dẫn hoặc nhấn mạnh. Vi phạm điều này sẽ làm hỏng JSON.
 
 {
   "mainTopic": "Đề tài chung của thảo luận",
@@ -117,10 +122,12 @@ Yêu cầu:
 Tóm tắt nội dung chính của cuộc thảo luận trong 2-3 đoạn ngắn.
 
 ## Quan điểm nổi bật
-### Tên/mô tả quan điểm 1
+### Tên/mô tả quan điểm 1 (N người ủng hộ)
 Nội dung chi tiết, ghi rõ tác giả nếu có.
-### Tên/mô tả quan điểm 2
+### Tên/mô tả quan điểm 2 (M người ủng hộ)
 Nội dung chi tiết, ghi rõ tác giả nếu có.
+
+Trong đó N, M là số lượng tác giả ủng hộ quan điểm đó dựa trên bài viết.
 
 ## Kết luận
 Kết luận hoặc đồng thuận chung (nếu có).`;

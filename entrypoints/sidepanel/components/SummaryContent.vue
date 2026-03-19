@@ -10,7 +10,8 @@ const props = defineProps<{
 interface Section {
   title: string;
   body: string;
-  opinions?: { title: string; body: string }[];
+  opinions?: { title: string; body: string; supporterCount: number | null }[];
+  totalSupporters?: number;
 }
 
 const sections = computed<Section[]>(() => {
@@ -35,12 +36,21 @@ const sections = computed<Section[]>(() => {
       if (opinionParts.length > 0) {
         const opinions = opinionParts.map((op) => {
           const [opTitle, ...opRest] = op.split('\n');
+          const rawTitle = opTitle.trim();
+          // Parse "(N người)" or "(N người ủng hộ)" from title
+          const countMatch = rawTitle.match(/\((\d+)\s*người[^)]*\)\s*$/);
+          const supporterCount = countMatch ? parseInt(countMatch[1], 10) : null;
+          const cleanTitle = countMatch
+            ? rawTitle.replace(/\s*\(\d+\s*người[^)]*\)\s*$/, '').trim()
+            : rawTitle;
           return {
-            title: opTitle.trim(),
+            title: cleanTitle,
             body: opRest.join('\n').trim(),
+            supporterCount,
           };
         });
-        return { title, body: '', opinions };
+        const totalSupporters = opinions.reduce((sum, op) => sum + (op.supporterCount ?? 0), 0);
+        return { title, body: '', opinions, totalSupporters };
       }
     }
 
@@ -78,8 +88,29 @@ const isStructured = computed(() =>
         <AccordionItem
           v-for="(opinion, j) in section.opinions"
           :key="j"
-          :title="opinion.title"
         >
+          <template #title>
+            <div class="w-full min-w-0">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-medium text-sm">{{ opinion.title }}</span>
+                <span
+                  v-if="opinion.supporterCount !== null"
+                  class="text-xs text-(--color-text-secondary) ml-2 shrink-0"
+                >
+                  {{ opinion.supporterCount }} người
+                </span>
+              </div>
+              <div
+                v-if="opinion.supporterCount !== null && section.totalSupporters"
+                class="w-full h-1.5 bg-(--color-bg-muted) rounded-full overflow-hidden"
+              >
+                <div
+                  class="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-300"
+                  :style="{ width: Math.round((opinion.supporterCount / section.totalSupporters!) * 100) + '%' }"
+                />
+              </div>
+            </div>
+          </template>
           <MarkdownContent :content="opinion.body" />
         </AccordionItem>
       </div>

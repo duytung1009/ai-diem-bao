@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 
 defineProps<{
-  title: string;
+  title?: string;
 }>();
 
 const isOpen = ref(false);
@@ -14,7 +14,9 @@ const isOpen = ref(false);
       class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-(--color-text-primary) bg-(--color-bg-base) hover:bg-(--color-bg-muted) transition-colors text-left"
       @click="isOpen = !isOpen"
     >
-      <span>{{ title }}</span>
+      <slot name="title">
+        <span>{{ title }}</span>
+      </slot>
       <svg
         class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0 ml-2"
         :class="{ 'rotate-180': isOpen }"

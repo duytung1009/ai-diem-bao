@@ -384,8 +384,8 @@ Thay các patterns lặp lại bằng utility classes đã định nghĩa. Ví d
 ```
 **Mới:**
 ```html
-<div class="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] flex flex-col">
-  <header class="bg-[var(--color-bg-surface)] border-b border-[var(--color-border)]">
+<div class="min-h-screen bg-(--color-bg-base) text-(--color-text-primary) flex flex-col">
+  <header class="bg-(--color-bg-surface) border-b border-(--color-border)">
 ```
 
 ### Files cần migrate (theo thứ tự):

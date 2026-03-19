@@ -30,7 +30,6 @@ const currentConfig = ref<LLMConfig | null>(null);
 // Cache state
 const cachedTopic = ref<CachedTopic | null>(null);
 const cacheFreshness = ref<CacheFreshness | null>(null);
-const isRefreshing = ref(false);
 
 // Derived from store — replaces topicInfo ref
 const topicInfo = computed<DetectResult | null>(() => {
@@ -74,7 +73,7 @@ watch(livePostCount, (newCount) => {
 });
 
 function onRuntimeMessage(message: Message) {
-  if (message.type === 'SCRAPE_PROGRESS') {
+  if (message.type === 'SCRAPE_PROGRESS' && isScraping.value) {
     const { currentPage, totalPages, postsScraped } = message.payload as PageProgress;
     loadingText.value = `Đang đọc trang ${currentPage}/${totalPages} (${postsScraped} bài)...`;
   }
@@ -129,10 +128,13 @@ onActivated(async () => {
   const url = store.selectedTopic.value?.url;
   if (!url) return;
 
-  // If summarization is in progress for this topic (matched by either URL format),
+  // If summarization is in progress for THIS topic (the one already loaded in view),
   // preserve all view state — don't reset, just sync the URL tracker.
+  // Guard: url === loadedTopicUrl ensures we only skip reset when RETURNING to the same
+  // topic, not when navigating FROM another topic TO the summarizing topic.
   const isSummarizingCurrentTopic =
     store.summarizingUrl.value !== null &&
+    url === loadedTopicUrl.value &&
     (store.summarizingUrl.value === url || store.summarizingUrl.value === loadedTopicUrl.value);
 
   if (isSummarizingCurrentTopic) {
@@ -340,49 +342,13 @@ async function navigateToTopic() {
     await browser.tabs.create({ url });
   }
 }
-
-async function refreshTopicInfo() {
-  const topic = store.selectedTopic.value;
-  if (!topic) return;
-
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url || !isSameTopicUrl(tab.url, topic.url)) {
-    error.value = 'Hãy mở topic này trên trình duyệt để cập nhật thông tin.';
-    return;
-  }
-
-  isRefreshing.value = true;
-  error.value = '';
-  try {
-    const result = await browser.tabs.sendMessage(tab.id, {
-      type: 'DETECT_XF',
-    }) as DetectResult | undefined;
-
-    if (result && result.version !== 'unknown') {
-      store.updateSelectedTopic({
-        totalPosts: result.postCount,
-        totalPages: result.pageCount,
-        title: result.title,
-      });
-      if (cachedTopic.value) {
-        cacheFreshness.value = evaluateFreshness(cachedTopic.value, result.postCount);
-      }
-    } else {
-      error.value = 'Không thể detect topic trên tab hiện tại.';
-    }
-  } catch {
-    error.value = 'Lỗi khi kết nối đến tab. Thử reload trang.';
-  } finally {
-    isRefreshing.value = false;
-  }
-}
 </script>
 
 <template>
   <div class="p-4 space-y-4">
     <!-- No topic selected -->
     <div v-if="!topicInfo" class="text-center py-8">
-      <p class="text-sm text-[var(--color-text-secondary)]">Chưa chọn chủ đề.</p>
+      <p class="text-sm text-(--color-text-secondary)">Chưa chọn chủ đề.</p>
       <button
         class="mt-3 text-sm text-blue-600 hover:text-blue-700"
         @click="router.push('/')"
@@ -401,31 +367,9 @@ async function refreshTopicInfo() {
         >
           ← Quay lại danh sách
         </button>
-        <button
-          class="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] flex items-center gap-1"
-          :disabled="isRefreshing"
-          title="Cập nhật thông tin topic từ tab hiện tại"
-          @click="refreshTopicInfo"
-        >
-          <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          {{ isRefreshing ? 'Đang cập nhật...' : 'Cập nhật' }}
-        </button>
       </div>
 
-      <TopicMeta :info="topicInfo" />
-
-      <!-- Topic URL — click to navigate active tab -->
-      <div class="flex items-center gap-1.5 text-xs">
-        <button
-          class="text-[var(--color-accent-text)] hover:text-[var(--color-accent-hover)] truncate max-w-full text-left"
-          :title="store.selectedTopic.value?.url"
-          @click="navigateToTopic"
-        >
-          {{ store.selectedTopic.value?.url }}
-        </button>
-      </div>
+      <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" />
 
       <button
         v-if="!loadingText && !summary && !pendingPosts"
@@ -505,7 +449,7 @@ async function refreshTopicInfo() {
         <div class="flex items-center justify-between">
           <div
             v-if="summarizedPostCount > 0"
-            class="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]"
+            class="flex items-center gap-1.5 text-xs text-(--color-text-secondary)"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

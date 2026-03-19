@@ -104,31 +104,31 @@ function downloadMd() {
     <!-- Dropdown -->
     <div
       v-if="showDropdown"
-      class="absolute right-0 top-full mt-1 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg shadow-lg z-10 min-w-max"
+      class="absolute right-0 top-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-lg shadow-lg z-10 min-w-max"
     >
       <button
-        class="w-full text-left px-4 py-2.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-muted)] flex items-center gap-2"
+        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
         @click="copyMarkdown"
       >
-        <svg class="w-4 h-4 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
         Sao chép Markdown
       </button>
       <button
-        class="w-full text-left px-4 py-2.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-muted)] flex items-center gap-2"
+        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
         @click="copyText"
       >
-        <svg class="w-4 h-4 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         Sao chép văn bản
       </button>
       <button
-        class="w-full text-left px-4 py-2.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-muted)] flex items-center gap-2"
+        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
         @click="downloadMd"
       >
-        <svg class="w-4 h-4 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
         Tải file .md

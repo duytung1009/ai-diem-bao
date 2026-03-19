@@ -110,7 +110,7 @@ function formatDate(ts: number): string {
 
 <template>
   <div class="p-4 space-y-4">
-    <h2 class="font-semibold text-sm text-[var(--color-text-primary)]">Tra cứu Topic</h2>
+    <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu Topic</h2>
 
     <!-- No cache warning -->
     <div
@@ -142,12 +142,12 @@ function formatDate(ts: number): string {
 
       <!-- Suggested questions -->
       <div v-if="!isLoading && history.length === 0" class="space-y-2">
-        <p class="text-xs text-[var(--color-text-secondary)] font-medium">Gợi ý câu hỏi:</p>
+        <p class="text-xs text-(--color-text-secondary) font-medium">Gợi ý câu hỏi:</p>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="q in suggestedQuestions"
             :key="q"
-            class="text-xs px-2 py-1 rounded-full bg-[var(--color-bg-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-text)] transition-colors text-left"
+            class="text-xs px-2 py-1 rounded-full bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft) hover:text-(--color-accent-text) transition-colors text-left"
             @click="useSuggestion(q)"
           >
             {{ q }}
@@ -164,9 +164,9 @@ function formatDate(ts: number): string {
       <!-- Q&A History -->
       <div v-if="history.length" class="space-y-3">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-medium text-[var(--color-text-secondary)]">Lịch sử tra cứu</h3>
+          <h3 class="text-xs font-medium text-(--color-text-secondary)">Lịch sử tra cứu</h3>
           <button
-            class="text-xs text-[var(--color-text-muted)] hover:text-red-500 transition-colors"
+            class="text-xs text-(--color-text-muted) hover:text-red-500 transition-colors"
             @click="clearHistory"
           >
             Xóa tất cả
@@ -176,13 +176,13 @@ function formatDate(ts: number): string {
         <div
           v-for="entry in history"
           :key="entry.askedAt"
-          class="border border-[var(--color-border)] rounded-lg overflow-hidden"
+          class="border border-(--color-border) rounded-lg overflow-hidden"
         >
           <!-- Question -->
-          <div class="bg-[var(--color-bg-muted)] px-3 py-2 border-b border-[var(--color-border)]">
+          <div class="bg-(--color-bg-muted) px-3 py-2 border-b border-(--color-border)">
             <div class="flex items-start justify-between gap-2">
-              <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ entry.question }}</p>
-              <span class="text-xs text-[var(--color-text-muted)] shrink-0">{{ formatDate(entry.askedAt) }}</span>
+              <p class="text-sm font-medium text-(--color-text-primary)">{{ entry.question }}</p>
+              <span class="text-xs text-(--color-text-muted) shrink-0">{{ formatDate(entry.askedAt) }}</span>
             </div>
           </div>
           <!-- Answer -->

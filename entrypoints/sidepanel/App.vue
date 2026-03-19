@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { DetectResult } from '@/lib/types';
+import { normalizeUrl, getCachedTopic, saveCachedTopic } from '@/lib/cache-manager';
 import { useTopicStore } from './composables/useTopicStore';
 import { useTheme } from './composables/useTheme';
 
@@ -45,15 +46,14 @@ async function detectActiveTabTopic() {
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !tab.url) return;
-    console.log('detectActiveTabTopic: Active tab URL:', tab.url);
 
     const result = await browser.tabs.sendMessage(tab.id, {
       type: 'DETECT_XF',
     }) as DetectResult | undefined;
-    console.log('Detect result for active tab:', result);
 
     if (result && result.version !== 'unknown') {
       store.setActiveTab(result, tab.url);
+      await autoUpdateCachedTopic(tab.url, result);
     } else {
       store.setActiveTab(null, null);
     }
@@ -63,53 +63,86 @@ async function detectActiveTabTopic() {
   }
 }
 
+async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
+  try {
+    const cached = await getCachedTopic(tabUrl);
+    if (!cached) return;
+
+    const hasChanges =
+      cached.totalPosts !== detect.postCount ||
+      cached.totalPages !== detect.pageCount ||
+      cached.title !== detect.title;
+
+    if (!hasChanges) return;
+
+    await saveCachedTopic({
+      ...cached,
+      totalPosts: detect.postCount,
+      totalPages: detect.pageCount,
+      title: detect.title,
+    });
+
+    const normalizedTabUrl = normalizeUrl(tabUrl);
+    const selectedUrl = store.selectedTopic.value?.url;
+    if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
+      store.updateSelectedTopic({
+        totalPosts: detect.postCount,
+        totalPages: detect.pageCount,
+        title: detect.title,
+      });
+    }
+  } catch {
+    // IndexedDB error — silent fail
+  }
+}
+
 function navigateTo(path: string) {
   router.push(path);
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] flex flex-col">
+  <div class="min-h-screen bg-(--color-bg-base) text-(--color-text-primary) flex flex-col">
     <!-- Header -->
-    <header class="bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] px-4 py-3">
+    <header class="bg-(--color-bg-surface) border-b border-(--color-border) px-4 py-3">
       <h1 class="text-lg font-bold text-blue-600">AI Điểm Báo</h1>
     </header>
 
     <!-- Tab Navigation -->
-    <nav class="bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex">
+    <nav class="bg-(--color-bg-surface) border-b border-(--color-border) flex">
       <router-link to="/" class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'hub'
           ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+          : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         ">
         Chủ đề
       </router-link>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'summary'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
-            ? 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            : 'text-[var(--color-text-muted)] cursor-not-allowed'
+            ? 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
+            : 'text-(--color-text-muted) cursor-not-allowed'
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/summary')">
         Tóm tắt
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'opinions'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
-            ? 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            : 'text-[var(--color-text-muted)] cursor-not-allowed'
+            ? 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
+            : 'text-(--color-text-muted) cursor-not-allowed'
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/opinions')">
         Ý kiến
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'research'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
-            ? 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            : 'text-[var(--color-text-muted)] cursor-not-allowed'
+            ? 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
+            : 'text-(--color-text-muted) cursor-not-allowed'
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/research')">
         Tra cứu
       </button>
       <router-link to="/settings" class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
           ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+          : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         ">
         Cài đặt
       </router-link>

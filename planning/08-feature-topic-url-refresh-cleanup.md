@@ -1,4 +1,4 @@
-# Feature 08: Topic URL navigation, Refresh topic info, Xóa ExportButton, Fix CacheIndicator
+# Feature 08: Topic URL navigation, Auto-update cached topics, Xóa ExportButton, Fix CacheIndicator
 
 ## Tổng quan
 4 yêu cầu nhỏ gộp chung, liên quan đến UX của màn hình Chủ đề và Tóm tắt.
@@ -20,7 +20,7 @@ Sau dòng `<TopicMeta :info="topicInfo" />` (dòng 316), thêm:
 <!-- Topic URL — click to navigate active tab -->
 <div class="flex items-center gap-1.5 text-xs">
   <button
-    class="text-[var(--color-accent-text)] hover:text-[var(--color-accent-hover)] truncate max-w-full text-left"
+    class="text-(--color-accent-text) hover:text-(--color-accent-hover) truncate max-w-full text-left"
     :title="store.selectedTopic.value?.url"
     @click="navigateToTopic"
   >
@@ -55,181 +55,101 @@ Topic cards hiện chỉ hiện title + badges. Thêm domain dưới title giúp
 
 ---
 
-## Task 2: Nút refresh thông tin topic (fetch lại postCount/pageCount)
+## Task 2: Tự động cập nhật thông tin topic khi tab trình duyệt khớp URL đã cache
 
 ### Mục tiêu
-Khi topic đã cached, thông tin `totalPosts`/`totalPages` trong store là dữ liệu cũ từ lúc cache. User cần 1 nút để fetch lại thông tin mới nhất từ trang gốc (gửi `DETECT_XF` đến active tab nếu URL khớp).
+Khi user đang mở 1 tab forum XenForo mà URL của nó đã có trong IndexedDB cache → tự động cập nhật `totalPosts`/`totalPages` mới nhất vào cache. Không cần nút refresh thủ công.
+
+### Tại sao không dùng nút refresh?
+Nút refresh chỉ hoạt động khi active tab trùng URL topic đang xem — UX kém, user phải mở đúng tab trước. Thay vào đó, logic auto-update chạy ngầm trong `App.vue detectActiveTabTopic()` — nơi đã detect mỗi khi tab switch/navigate.
 
 ### Cơ chế
-1. Kiểm tra activeTab URL có khớp topic URL không
-2. Nếu khớp → gửi `DETECT_XF` đến tab → nhận `DetectResult` mới (`postCount`, `pageCount`)
-3. Cập nhật `store.updateSelectedTopic({ totalPosts, totalPages })`
-4. Nếu không khớp → hiện error "Hãy mở topic này trên trình duyệt để cập nhật thông tin"
+1. `detectActiveTabTopic()` đã gọi `DETECT_XF` mỗi khi tab switch hoặc page load xong → có `DetectResult` + `tab.url`
+2. **Thêm:** Sau khi detect thành công, dùng `normalizeUrl(tab.url)` check IndexedDB
+3. Nếu topic đã cached → so sánh `result.postCount` vs `cached.totalPosts`
+4. Nếu khác → update `totalPosts`, `totalPages`, `title` vào IndexedDB
+5. Nếu topic đang được select trong store → cũng update store
 
-### File: `entrypoints/sidepanel/views/SummaryView.vue`
+### File: `entrypoints/sidepanel/App.vue`
 
-**2a. Thêm state:**
+**2a. Thêm import:**
 ```typescript
-const isRefreshing = ref(false);
+import { normalizeUrl, getCachedTopic, saveCachedTopic } from '@/lib/cache-manager';
 ```
 
-**2b. Thêm function `refreshTopicInfo()`:**
+**2b. Sửa function `detectActiveTabTopic()`:**
+
+Sau dòng `store.setActiveTab(result, tab.url);` (dòng 56), thêm logic auto-update:
+
 ```typescript
-async function refreshTopicInfo() {
-  const topic = store.selectedTopic.value;
-  if (!topic) return;
-
-  // Check active tab matches topic URL
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url || !isSameTopicUrl(tab.url, topic.url)) {
-    error.value = 'Hãy mở topic này trên trình duyệt để cập nhật thông tin.';
-    return;
-  }
-
-  isRefreshing.value = true;
-  error.value = '';
+async function detectActiveTabTopic() {
   try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url) return;
+
     const result = await browser.tabs.sendMessage(tab.id, {
       type: 'DETECT_XF',
     }) as DetectResult | undefined;
 
     if (result && result.version !== 'unknown') {
-      store.updateSelectedTopic({
-        totalPosts: result.postCount,
-        totalPages: result.pageCount,
-        title: result.title,
-      });
-      // Re-evaluate cache freshness with new live post count
-      if (cachedTopic.value) {
-        cacheFreshness.value = evaluateFreshness(cachedTopic.value, result.postCount);
-      }
+      store.setActiveTab(result, tab.url);
+
+      // --- AUTO-UPDATE cached topic if URL matches ---
+      await autoUpdateCachedTopic(tab.url, result);
     } else {
-      error.value = 'Không thể detect topic trên tab hiện tại.';
+      store.setActiveTab(null, null);
     }
   } catch {
-    error.value = 'Lỗi khi kết nối đến tab. Thử reload trang.';
-  } finally {
-    isRefreshing.value = false;
+    store.setActiveTab(null, null);
   }
 }
-```
 
-**2c. Thêm nút refresh trong template:**
-
-Đặt bên cạnh nút "← Quay lại danh sách" (dòng 309-313), tạo thành 1 hàng flex:
-
-```html
-<div class="flex items-center justify-between">
-  <button
-    class="text-xs text-blue-600 hover:text-blue-700"
-    @click="router.push('/')"
-  >
-    ← Quay lại danh sách
-  </button>
-  <button
-    class="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] flex items-center gap-1"
-    :disabled="isRefreshing"
-    title="Cập nhật thông tin topic từ tab hiện tại"
-    @click="refreshTopicInfo"
-  >
-    <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-    {{ isRefreshing ? 'Đang cập nhật...' : 'Cập nhật' }}
-  </button>
-</div>
-```
-
-### File: `entrypoints/sidepanel/views/TopicHubView.vue`
-
-**2d. Thêm nút refresh trên mỗi topic card (cạnh nút xóa):**
-
-Hiện tại nút xóa (X) nằm ở `absolute top-2 right-2`. Thêm nút refresh bên trái nút xóa:
-
-```html
-<!-- Action buttons — top-right corner -->
-<div
-  v-if="store.summarizingUrl.value !== topic.url"
-  class="absolute top-2 right-2 flex items-center gap-0.5"
->
-  <button
-    class="p-1 text-gray-300 dark:text-gray-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors rounded"
-    title="Cập nhật thông tin"
-    @click.stop="refreshTopic(topic)"
-  >
-    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-  </button>
-  <button
-    class="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
-    title="Xóa topic"
-    @click.stop="confirmDelete(topic)"
-  >
-    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  </button>
-</div>
-```
-
-**Lưu ý:** Cần thay nút xóa hiện tại (dòng 268-277) thành block trên — gộp 2 nút vào 1 container `<div>`.
-
-Và thay title padding từ `pr-6` thành `pr-12` (dòng 239) để tránh overlap với 2 nút.
-
-**2e. Thêm function `refreshTopic(topic)` trong TopicHubView:**
-
-```typescript
-const refreshingUrl = ref<string | null>(null);
-
-async function refreshTopic(topic: CachedTopic) {
-  // Check active tab matches
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url || !normalizeForCompare(tab.url).startsWith(normalizeForCompare(topic.url).slice(0, -1))) {
-    // Active tab doesn't match — can't refresh
-    return;
-  }
-
-  refreshingUrl.value = topic.url;
+async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
   try {
-    const result = await browser.tabs.sendMessage(tab.id, {
-      type: 'DETECT_XF',
-    }) as DetectResult | undefined;
+    const cached = await getCachedTopic(tabUrl);
+    if (!cached) return; // URL chưa cache → skip
 
-    if (result && result.version !== 'unknown') {
-      // Update local allTopics list
-      const idx = allTopics.value.findIndex(t => t.url === topic.url);
-      if (idx >= 0) {
-        allTopics.value[idx] = {
-          ...allTopics.value[idx],
-          totalPosts: result.postCount,
-          totalPages: result.pageCount,
-          title: result.title,
-        };
-      }
-      // Also update store if this topic is selected
-      if (store.selectedTopic.value?.url === topic.url) {
-        store.updateSelectedTopic({
-          totalPosts: result.postCount,
-          totalPages: result.pageCount,
-          title: result.title,
-        });
-      }
+    // So sánh — chỉ update nếu có thay đổi thực sự
+    const hasChanges =
+      cached.totalPosts !== detect.postCount ||
+      cached.totalPages !== detect.pageCount ||
+      cached.title !== detect.title;
+
+    if (!hasChanges) return;
+
+    // Update IndexedDB
+    const updated = {
+      ...cached,
+      totalPosts: detect.postCount,
+      totalPages: detect.pageCount,
+      title: detect.title,
+    };
+    await saveCachedTopic(updated);
+
+    // Update store nếu topic đang được select
+    const normalizedTabUrl = normalizeUrl(tabUrl);
+    const selectedUrl = store.selectedTopic.value?.url;
+    if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
+      store.updateSelectedTopic({
+        totalPosts: detect.postCount,
+        totalPages: detect.pageCount,
+        title: detect.title,
+      });
     }
   } catch {
-    // Silently fail — content script not available
-  } finally {
-    refreshingUrl.value = null;
+    // IndexedDB error — silent fail, không ảnh hưởng UX
   }
 }
 ```
 
-**2f. Hiển thị spinning state trên nút refresh:**
+**Lưu ý quan trọng:**
+- `autoUpdateCachedTopic()` dùng `getCachedTopic()` (đã normalize URL bên trong) nên khớp chính xác với cache key
+- Chỉ gọi `saveCachedTopic()` khi `hasChanges === true` → tránh write thừa vào IndexedDB
+- Không thay đổi `summary`, `cachedAt`, hay bất kỳ field nào khác — chỉ update metadata (postCount, pageCount, title)
+- `console.log` hiện có ở `detectActiveTabTopic()` có thể xóa hoặc giữ tùy ý
 
-Trên icon SVG của nút refresh trong topic card:
-```html
-<svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshingUrl === topic.url }" ...>
-```
+### Tác động đến Task 4 (CacheIndicator)
+Task 4 đã dùng `store.activeTabDetect.value.postCount` làm `livePostCount`. Với Task 2 mới, data trong IndexedDB cũng được cập nhật, nên khi `loadTopicData()` fetch từ cache, `cachedTopic.totalPosts` đã là giá trị mới → `evaluateFreshness()` chính xác hơn. Hai task bổ trợ lẫn nhau.
 
 ---
 
@@ -353,8 +273,8 @@ Hiện tại `@update="handleSummarize(true)"` — trigger incremental summarize
 ```
 Task 3 (xóa ExportButton) — đơn giản nhất, làm trước
 Task 1 (URL navigation) — độc lập
-Task 4 (fix CacheIndicator) — cần làm trước Task 2
-Task 2 (refresh button) — phụ thuộc Task 4 (refresh cập nhật livePostCount → CacheIndicator tự update)
+Task 2 (auto-update cached topic) — sửa App.vue, không phụ thuộc task khác
+Task 4 (fix CacheIndicator) — bổ trợ Task 2, dùng livePostCount computed
 ```
 
 ---
@@ -363,8 +283,7 @@ Task 2 (refresh button) — phụ thuộc Task 4 (refresh cập nhật livePostC
 
 1. `npx vue-tsc --noEmit` + `npm run build` → pass
 2. **URL navigation:** Mở SummaryView → thấy URL topic → bấm → activeTab chuyển đến trang topic
-3. **Refresh (SummaryView):** Bấm "Cập nhật" → postCount/pageCount cập nhật → CacheIndicator re-evaluate freshness
-4. **Refresh (TopicHubView):** Bấm icon refresh trên card → thông tin topic cập nhật
-5. **Refresh khi tab không khớp:** Hiện error rõ ràng
-6. **ExportButton đã xóa:** Không còn nút "Xuất" trong SummaryView
-7. **CacheIndicator:** Khi có bài mới → hiện "Có bài mới" + "(+N)" → bấm "Cập nhật" → trigger incremental summarize
+3. **Auto-update:** Mở tab forum có topic đã cache (300 bài) → topic gốc giờ có 310 bài → switch sang tab đó → quay lại extension → TopicMeta hiện 310 bài (không cần bấm gì)
+4. **Auto-update không ghi thừa:** Mở tab forum topic đã cache, postCount giống nhau → không có IndexedDB write (kiểm tra qua DevTools > Application > IndexedDB)
+5. **ExportButton đã xóa:** Không còn nút "Xuất" trong SummaryView
+6. **CacheIndicator:** Khi tab hiện tại có bài mới hơn cache → hiện "Có bài mới" + "(+N)" → bấm "Cập nhật" → trigger incremental summarize

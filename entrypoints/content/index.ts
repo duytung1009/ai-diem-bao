@@ -17,9 +17,7 @@ export default defineContentScript({
         }
 
         if (message.type === 'DETECT_XF') {
-          console.log('Content script received DETECT_XF message, version detected:', version);
           const scraper = createScraper();
-          console.log('Scraper instance created:', scraper);
           const result: DetectResult = {
             version,
             title: document.title,

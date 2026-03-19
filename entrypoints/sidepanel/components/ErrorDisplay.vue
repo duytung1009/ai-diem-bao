@@ -21,14 +21,14 @@ const emit = defineEmits<{
     <div v-if="action !== 'none'" class="flex gap-2">
       <button
         v-if="!action || action === 'retry'"
-        class="flex-1 text-sm py-1.5 px-3 rounded-lg border border-[var(--color-error-border)] hover:bg-[var(--color-error-bg)] transition-colors"
+        class="flex-1 text-sm py-1.5 px-3 rounded-lg border border-(--color-error-border) hover:bg-(--color-error-bg) transition-colors"
         @click="emit('retry')"
       >
         Thử lại
       </button>
       <button
         v-if="!action || action === 'settings'"
-        class="flex-1 text-sm py-1.5 px-3 rounded-lg border border-[var(--color-error-border)] hover:bg-[var(--color-error-bg)] transition-colors"
+        class="flex-1 text-sm py-1.5 px-3 rounded-lg border border-(--color-error-border) hover:bg-(--color-error-bg) transition-colors"
         @click="emit('settings')"
       >
         Kiểm tra cài đặt

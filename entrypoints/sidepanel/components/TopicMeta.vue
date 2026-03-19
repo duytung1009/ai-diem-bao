@@ -1,15 +1,28 @@
 <script setup lang="ts">
 import type { DetectResult } from '@/lib/types';
 
-defineProps<{
+const props = defineProps<{
   info: DetectResult;
+  url?: string;
 }>();
+
+async function navigateToTopic() {
+  if (!props.url) return;
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await browser.tabs.update(tab.id, { url: props.url });
+    }
+  } catch {
+    await browser.tabs.create({ url: props.url });
+  }
+}
 </script>
 
 <template>
   <div class="card">
-    <h2 class="font-semibold text-sm text-[var(--color-text-primary)] leading-snug">{{ info.title }}</h2>
-    <div class="flex gap-3 mt-2 text-xs text-[var(--color-text-secondary)]">
+    <h2 class="font-semibold text-sm text-(--color-text-primary) leading-snug">{{ info.title }}</h2>
+    <div class="flex gap-3 mt-2 text-xs text-(--color-text-secondary)">
       <span>{{ info.postCount }} bài viết</span>
       <span>{{ info.pageCount }} trang</span>
       <span
@@ -23,5 +36,13 @@ defineProps<{
         {{ info.version }}
       </span>
     </div>
+    <button
+      v-if="url"
+      class="mt-1.5 text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) truncate max-w-full text-left"
+      :title="url"
+      @click="navigateToTopic"
+    >
+      {{ url }}
+    </button>
   </div>
 </template>

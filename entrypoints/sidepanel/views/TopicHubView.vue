@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
-import type { CachedTopic, DetectResult } from '@/lib/types';
+import type { CachedTopic } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -11,7 +11,6 @@ const store = useTopicStore();
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
 const pendingDeleteUrl = ref<string | null>(null);
-const refreshingUrl = ref<string | null>(null);
 
 // Temp topic: injected into domain groups while summarizing a topic not yet in cache
 const summarizingTempTopic = computed(() => {
@@ -167,44 +166,6 @@ function handleActiveTabTopic() {
   }
 }
 
-async function refreshTopic(topic: CachedTopic) {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url || normalizeForCompare(tab.url) !== normalizeForCompare(topic.url)) {
-    // Active tab doesn't match — silently skip
-    return;
-  }
-
-  refreshingUrl.value = topic.url;
-  try {
-    const result = await browser.tabs.sendMessage(tab.id, {
-      type: 'DETECT_XF',
-    }) as DetectResult | undefined;
-
-    if (result && result.version !== 'unknown') {
-      const idx = allTopics.value.findIndex(t => t.url === topic.url);
-      if (idx >= 0) {
-        allTopics.value[idx] = {
-          ...allTopics.value[idx],
-          totalPosts: result.postCount,
-          totalPages: result.pageCount,
-          title: result.title,
-        };
-      }
-      if (store.selectedTopic.value?.url === topic.url) {
-        store.updateSelectedTopic({
-          totalPosts: result.postCount,
-          totalPages: result.pageCount,
-          title: result.title,
-        });
-      }
-    }
-  } catch {
-    // Silently fail — content script not available
-  } finally {
-    refreshingUrl.value = null;
-  }
-}
-
 function formatRelativeTime(timestamp: number): string {
   if (!timestamp) return '';
   const diff = Date.now() - timestamp;
@@ -233,12 +194,10 @@ function formatRelativeTime(timestamp: number): string {
         <div class="flex items-center gap-2">
           <span class="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">Tab hiện tại</span>
         </div>
-        <p class="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2">
+        <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2">
           {{ store.activeTabDetect.value.title }}
         </p>
-        <div class="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
-          <span>{{ store.activeTabDetect.value.postCount }} bài viết</span>
-          <span>{{ store.activeTabDetect.value.pageCount }} trang</span>
+        <div class="flex items-center gap-3 text-xs text-(--color-text-secondary)">
           <span
             v-if="store.summarizingUrl.value && store.activeTabUrl.value && store.summarizingUrl.value === store.activeTabUrl.value"
             class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
@@ -248,6 +207,8 @@ function formatRelativeTime(timestamp: number): string {
           <span v-else class="badge badge-neutral">
             ○ Chưa tóm tắt
           </span>
+          <span>{{ store.activeTabDetect.value.postCount }} bài viết</span>
+          <span>{{ store.activeTabDetect.value.pageCount }} trang</span>
         </div>
       </button>
 
@@ -255,7 +216,7 @@ function formatRelativeTime(timestamp: number): string {
       <div v-if="domainNames.length > 0" class="space-y-4">
         <div v-for="domain in domainNames" :key="domain">
           <!-- Domain header -->
-          <h3 class="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
+          <h3 class="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide mb-2">
             {{ domain }}
           </h3>
 
@@ -269,13 +230,13 @@ function formatRelativeTime(timestamp: number): string {
                 class="relative border rounded-lg transition-colors"
                 :class="store.summarizingUrl.value === topic.url
                   ? 'border-blue-300 dark:border-blue-700 bg-blue-50/60 dark:bg-blue-900/20 animate-pulse'
-                  : 'border-[var(--color-border)] hover:border-blue-300 dark:hover:border-blue-600 hover:bg-[var(--color-accent-soft)]'"
+                  : 'border-(--color-border) hover:border-blue-300 dark:hover:border-blue-600 hover:bg-(--color-accent-soft)'"
               >
                 <button
                   class="w-full text-left p-3 space-y-1.5"
                   @click="selectTopic(topic)"
                 >
-                  <p class="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2 pr-12">{{ topic.title }}</p>
+                  <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-12">{{ topic.title }}</p>
                   <div class="flex items-center gap-2 flex-wrap">
                     <!-- Status badge -->
                     <span
@@ -297,9 +258,9 @@ function formatRelativeTime(timestamp: number): string {
                       ○ Chưa tóm tắt
                     </span>
                     <!-- Post count -->
-                    <span class="text-xs text-[var(--color-text-muted)]">{{ topic.totalPosts }} bài</span>
+                    <span class="text-xs text-(--color-text-muted)">{{ topic.totalPosts }} bài</span>
                     <!-- Time -->
-                    <span v-if="topic.cachedAt" class="text-xs text-[var(--color-text-muted)]">
+                    <span v-if="topic.cachedAt" class="text-xs text-(--color-text-muted)">
                       {{ formatRelativeTime(topic.cachedAt) }}
                     </span>
                   </div>
@@ -309,15 +270,6 @@ function formatRelativeTime(timestamp: number): string {
                   v-if="store.summarizingUrl.value !== topic.url"
                   class="absolute top-2 right-2 flex items-center gap-0.5"
                 >
-                  <button
-                    class="p-1 text-gray-300 dark:text-gray-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors rounded"
-                    title="Cập nhật thông tin"
-                    @click.stop="refreshTopic(topic)"
-                  >
-                    <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshingUrl === topic.url }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  </button>
                   <button
                     class="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
                     title="Xóa topic"
@@ -362,7 +314,7 @@ function formatRelativeTime(timestamp: number): string {
         class="text-center py-12 space-y-3"
       >
         <div class="text-3xl">📰</div>
-        <p class="text-sm text-[var(--color-text-secondary)]">
+        <p class="text-sm text-(--color-text-secondary)">
           Chưa có chủ đề nào. Mở một topic XenForo để bắt đầu.
         </p>
       </div>

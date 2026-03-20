@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
+import { isSameTopicUrl } from '@/lib/cache-manager';
 import type { CachedTopic, TopicSegment } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -258,7 +259,7 @@ function formatRelativeTime(timestamp: number): string {
         </p>
         <div class="flex items-center gap-3 text-xs text-(--color-text-secondary)">
           <span
-            v-if="store.summarizingUrl.value && store.activeTabUrl.value && store.summarizingUrl.value === store.activeTabUrl.value"
+            v-if="store.summarizingUrl.value && store.activeTabUrl.value && isSameTopicUrl(store.summarizingUrl.value, store.activeTabUrl.value)"
             class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
           >
             ⟳ Đang tóm tắt...
@@ -299,7 +300,7 @@ function formatRelativeTime(timestamp: number): string {
                   <div class="flex items-center gap-2 flex-wrap">
                     <!-- Status badge -->
                     <span
-                      v-if="store.summarizingUrl.value === topic.url"
+                      v-if="isSameTopicUrl(store.summarizingUrl.value, topic.url)"
                       class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
                     >
                       ⟳ Đang tóm tắt...
@@ -326,7 +327,7 @@ function formatRelativeTime(timestamp: number): string {
                 </button>
                 <!-- Action buttons — top-right corner -->
                 <div
-                  v-if="store.summarizingUrl.value !== topic.url"
+                  v-if="!isSameTopicUrl(store.summarizingUrl.value, topic.url)"
                   class="absolute top-2 right-2 flex items-center gap-0.5"
                 >
                   <button

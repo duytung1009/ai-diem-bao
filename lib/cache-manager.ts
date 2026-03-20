@@ -14,6 +14,13 @@ export function normalizeUrl(url: string): string {
   }
 }
 
+export function isSameTopicUrl(url1: string | null, url2: string | null): boolean {
+  if (!url1 || !url2) return false;
+  try {
+    return normalizeUrl(url1) === normalizeUrl(url2);
+  } catch { return url1 === url2; }
+}
+
 export async function getCachedTopic(url: string): Promise<CachedTopic | null> {
   return dbGet(normalizeUrl(url));
 }

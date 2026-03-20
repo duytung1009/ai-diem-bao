@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watc
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
+import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress, TopicSegment } from '@/lib/types';
@@ -209,20 +210,6 @@ onDeactivated(() => {
 onUnmounted(() => {
   browser.runtime?.onMessage.removeListener(onRuntimeMessage);
 });
-
-function isSameTopicUrl(url1: string, url2: string): boolean {
-  try {
-    const normalize = (u: string) => {
-      const parsed = new URL(u);
-      parsed.pathname = parsed.pathname.replace(/\/page-\d+\/?$/, '');
-      if (!parsed.pathname.endsWith('/')) parsed.pathname += '/';
-      parsed.search = '';
-      parsed.hash = '';
-      return parsed.toString();
-    };
-    return normalize(url1) === normalize(url2);
-  } catch { return url1 === url2; }
-}
 
 function evaluateFreshness(cached: CachedTopic, currentPostCount: number | null): CacheFreshness {
   const ageMs = Date.now() - cached.cachedAt;

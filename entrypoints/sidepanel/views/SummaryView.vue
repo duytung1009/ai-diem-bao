@@ -39,6 +39,7 @@ const segmentSize = ref(20);
 const SCRAPE_CHUNK_SIZE = 10; // pages per message — keeps channel alive
 const segmentSummaries = ref<TopicSegment[]>([]);
 const activeSegmentIndex = ref<number | null>(null);
+const currentScrapeTabId = ref<number | null>(null); // tracks which tab is currently scraping
 
 // Derived from store — replaces topicInfo ref
 const topicInfo = computed<DetectResult | null>(() => {
@@ -229,12 +230,38 @@ function evaluateFreshness(cached: CachedTopic, currentPostCount: number | null)
 }
 
 async function handleCancel() {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) {
-    await browser.tabs.sendMessage(tab.id, { type: 'CANCEL_SCRAPE' }).catch(() => {});
+  const tabId = currentScrapeTabId.value;
+  if (tabId) {
+    await browser.tabs.sendMessage(tabId, { type: 'CANCEL_SCRAPE' }).catch(() => {});
+    currentScrapeTabId.value = null;
   }
   isScraping.value = false;
   loadingText.value = '';
+}
+
+/**
+ * Tìm tab đang mở trên cùng domain với topicUrl.
+ * Ưu tiên: (1) active tab nếu cùng domain, (2) bất kỳ tab cùng domain.
+ */
+async function findForumTab(topicUrl: string): Promise<number | null> {
+  const domain = new URL(topicUrl).hostname;
+
+  const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (activeTab?.id && activeTab.url) {
+    try {
+      if (new URL(activeTab.url).hostname === domain) return activeTab.id;
+    } catch { /* invalid URL */ }
+  }
+
+  const allTabs = await browser.tabs.query({ currentWindow: true });
+  for (const tab of allTabs) {
+    if (tab.id && tab.url) {
+      try {
+        if (new URL(tab.url).hostname === domain) return tab.id;
+      } catch { /* skip */ }
+    }
+  }
+  return null;
 }
 
 /**
@@ -244,6 +271,7 @@ async function handleCancel() {
  */
 async function scrapeInChunks(
   tabId: number,
+  baseUrl: string,
   startPage: number,
   endPage: number,
   delayMs: number = 2000,
@@ -259,7 +287,7 @@ async function scrapeInChunks(
 
     const result = await browser.tabs.sendMessage(tabId, {
       type: 'SCRAPE_PAGE_RANGE',
-      payload: { startPage: chunkStart, endPage: chunkEnd, delayMs },
+      payload: { startPage: chunkStart, endPage: chunkEnd, delayMs, baseUrl },
     }) as MultiPageResult & { error?: string };
 
     if (result.error) throw new Error(result.error);
@@ -297,24 +325,19 @@ async function handleSummarize(incremental = false) {
       return;
     }
 
-    // Need to scrape — check if active tab matches topic URL
-    const isActiveTab = store.activeTabUrl.value && isSameTopicUrl(store.activeTabUrl.value, topic.url);
-
-    if (!isActiveTab) {
-      error.value = incremental
-        ? 'Hãy mở topic này trên trình duyệt để tải bài viết mới.'
-        : 'Hãy mở topic này trên trình duyệt để đọc bài viết.';
+    // Need to scrape — find a tab on the same forum domain
+    const tabId = await findForumTab(topic.url);
+    if (!tabId) {
+      error.value = 'Không tìm thấy tab nào đang mở diễn đàn này. Hãy mở ít nhất một trang của diễn đàn.';
       return;
     }
 
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error('Không tìm thấy tab');
-
-    const pageCount = store.activeTabDetect.value?.pageCount ?? 1;
+    const pageCount = store.activeTabDetect.value?.pageCount ?? topic.totalPages ?? 1;
     let posts: ScrapedPost[];
 
     if (pageCount > 1) {
       isScraping.value = true;
+      currentScrapeTabId.value = tabId;
 
       if (incremental && cachedTopic.value) {
         // INCREMENTAL: only scrape from last known page onward
@@ -322,8 +345,9 @@ async function handleSummarize(incremental = false) {
         const startPage = Math.max(1, cachedPages + 1); // +1: page cachedPages already scraped
         const endPage = pageCount;
 
-        const { posts: newPosts, errors } = await scrapeInChunks(tab.id, startPage, endPage, currentConfig.value?.scrapeDelayMs ?? 2000);
+        const { posts: newPosts, errors } = await scrapeInChunks(tabId, topic.url, startPage, endPage, currentConfig.value?.scrapeDelayMs ?? 2000);
         isScraping.value = false;
+        currentScrapeTabId.value = null;
 
         // Merge with existing cached posts, deduplicate
         const cachedPosts = cachedTopic.value.posts || [];
@@ -339,15 +363,16 @@ async function handleSummarize(incremental = false) {
         if (errors.length > 0) scrapingWarnings.value = errors;
       } else {
         // FULL SCRAPE via chunks
-        const { posts: scraped, errors } = await scrapeInChunks(tab.id, 1, pageCount, currentConfig.value?.scrapeDelayMs ?? 2000);
+        const { posts: scraped, errors } = await scrapeInChunks(tabId, topic.url, 1, pageCount, currentConfig.value?.scrapeDelayMs ?? 2000);
         isScraping.value = false;
+        currentScrapeTabId.value = null;
         if (!scraped.length) throw new Error('Không tìm thấy bài viết nào.');
         posts = scraped;
         if (errors.length > 0) scrapingWarnings.value = errors;
       }
     } else {
       loadingText.value = 'Đang đọc bài viết...';
-      const scraped = await browser.tabs.sendMessage(tab.id, {
+      const scraped = await browser.tabs.sendMessage(tabId, {
         type: 'SCRAPE_TOPIC',
       }) as { posts?: ScrapedPost[]; error?: string };
 
@@ -393,6 +418,7 @@ async function handleSummarize(incremental = false) {
     pendingIncremental.value = incremental;
   } catch (err) {
     isScraping.value = false;
+    currentScrapeTabId.value = null;
     error.value = err instanceof Error ? err.message : String(err);
     loadingText.value = '';
   }
@@ -475,21 +501,20 @@ async function handleSummarizeSegment(segmentIndex: number) {
   store.setSummarizing(topic.url);
 
   try {
-    const isActiveTab = store.activeTabUrl.value && isSameTopicUrl(store.activeTabUrl.value, topic.url);
-    if (!isActiveTab) {
-      error.value = 'Hãy mở topic này trên trình duyệt để đọc bài viết.';
+    const tabId = await findForumTab(topic.url);
+    if (!tabId) {
+      error.value = 'Không tìm thấy tab nào đang mở diễn đàn này. Hãy mở ít nhất một trang của diễn đàn.';
       store.setSummarizing(null);
       return;
     }
 
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error('Không tìm thấy tab');
-
     isScraping.value = true;
+    currentScrapeTabId.value = tabId;
     loadingText.value = `Đang đọc ${seg.label}...`;
 
-    const { posts: segPosts, errors } = await scrapeInChunks(tab.id, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
+    const { posts: segPosts, errors } = await scrapeInChunks(tabId, topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
     isScraping.value = false;
+    currentScrapeTabId.value = null;
 
     if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
     if (errors.length > 0) scrapingWarnings.value = errors;
@@ -530,6 +555,7 @@ async function handleSummarizeSegment(segmentIndex: number) {
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
     isScraping.value = false;
+    currentScrapeTabId.value = null;
   } finally {
     store.setSummarizing(null);
     loadingText.value = '';

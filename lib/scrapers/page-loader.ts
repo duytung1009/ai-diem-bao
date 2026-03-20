@@ -39,18 +39,8 @@ export async function scrapeAllPages(
   const errors: string[] = [];
   let pagesScraped = 0;
 
-  // Page 1: use the live document (already loaded)
-  try {
-    const page1Data = scraper.scrape(document, window.location.href);
-    allPosts.push(...page1Data.posts);
-    pagesScraped = 1;
-    onProgress?.(1, totalPages, allPosts.length);
-  } catch (err) {
-    errors.push(`Page 1: ${String(err)}`);
-  }
-
-  // Pages 2..N: fetch and parse
-  for (let page = 2; page <= totalPages; page++) {
+  // ALL pages: fetch and parse (no live document dependency)
+  for (let page = 1; page <= totalPages; page++) {
     if (signal?.aborted) break;
 
     const pageUrl = buildPageUrl(baseUrl, page);
@@ -131,20 +121,6 @@ export async function scrapePageRange(
 
   for (let page = startPage; page <= endPage; page++) {
     if (signal?.aborted) break;
-
-    // If startPage is 1 and this is the first iteration, use the live document
-    if (page === 1 && startPage === 1) {
-      try {
-        const page1Data = scraper.scrape(document, window.location.href);
-        allPosts.push(...page1Data.posts);
-        pagesScraped++;
-        onProgress?.(pagesScraped, totalPagesInRange, allPosts.length);
-        continue;
-      } catch (err) {
-        errors.push(`Page 1: ${String(err)}`);
-        continue;
-      }
-    }
 
     const pageUrl = buildPageUrl(baseUrl, page);
     try {

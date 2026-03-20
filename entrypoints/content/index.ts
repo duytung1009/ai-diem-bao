@@ -65,13 +65,7 @@ export default defineContentScript({
         }
 
         if (message.type === 'SCRAPE_ALL_PAGES') {
-          const { totalPages, delayMs } = message.payload as { totalPages: number; delayMs?: number };
-          const scraper = createScraper();
-          if (!scraper) {
-            sendResponse({ error: 'No scraper available for this page' });
-            return true;
-          }
-          const baseUrl = scraper.scrape().url;
+          const { totalPages, delayMs, baseUrl } = message.payload as { totalPages: number; delayMs?: number; baseUrl: string };
 
           scrapeAbortController = new AbortController();
           const signal = scrapeAbortController.signal;
@@ -96,13 +90,7 @@ export default defineContentScript({
         }
 
         if (message.type === 'SCRAPE_PAGE_RANGE') {
-          const { startPage, endPage, delayMs } = message.payload as { startPage: number; endPage: number; delayMs?: number };
-          const scraper = createScraper();
-          if (!scraper) {
-            sendResponse({ error: 'No scraper available for this page' });
-            return true;
-          }
-          const baseUrl = scraper.scrape().url;
+          const { startPage, endPage, delayMs, baseUrl } = message.payload as { startPage: number; endPage: number; delayMs?: number; baseUrl: string };
 
           scrapeAbortController = new AbortController();
           const signal = scrapeAbortController.signal;

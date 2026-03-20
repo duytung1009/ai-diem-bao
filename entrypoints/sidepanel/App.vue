@@ -104,9 +104,9 @@ function navigateTo(path: string) {
 <template>
   <div class="min-h-screen bg-(--color-bg-base) text-(--color-text-primary) flex flex-col">
     <!-- Header -->
-    <header class="bg-(--color-bg-surface) border-b border-(--color-border) px-4 py-3">
+    <!-- <header class="bg-(--color-bg-surface) border-b border-(--color-border) px-4 py-3">
       <h1 class="text-lg font-bold text-blue-600">AI Điểm Báo</h1>
-    </header>
+    </header> -->
 
     <!-- Tab Navigation -->
     <nav class="bg-(--color-bg-surface) border-b border-(--color-border) flex">

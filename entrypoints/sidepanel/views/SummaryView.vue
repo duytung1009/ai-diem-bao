@@ -641,7 +641,14 @@ async function generateOverallSummary() {
     activeSegmentIndex.value = null;
 
     const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-    await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary, summarizedPostCount: totalSummarized });
+    await sendMessage('SAVE_CACHED_TOPIC', {
+      url: topic.url,
+      title: topic.title,
+      version: topic.version,
+      totalPages: topic.totalPages,
+      summary: result.summary,
+      summarizedPostCount: totalSummarized,
+    });
     store.updateSelectedTopic({ summary: result.summary });
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (saved) cachedTopic.value = saved;

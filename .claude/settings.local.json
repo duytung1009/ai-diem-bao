@@ -1,5 +1,4 @@
 {
-  "model": "sonnet",
   "permissions": {
     "allow": [
       "WebSearch",
@@ -42,7 +41,10 @@
       "Bash(done)",
       "Bash(mv \"planning/10-feature-smart-scraping.md\" \"planning/20260319_1710_10-feature-smart-scraping.md\")",
       "Bash(mv \"tasks/09-feature-detect-search-opinions.md\" \"tasks/20260319_1722_09-feature-detect-search-opinions.md\")",
-      "Bash(grep -r \"START_SUMMARIZE\\\\|SUMMARIZE_RESULT\" C:UsersTungsourcereposai-diem-bao --include=*.ts --include=*.vue --include=*.js)"
+      "Bash(grep -r \"START_SUMMARIZE\\\\|SUMMARIZE_RESULT\" C:UsersTungsourcereposai-diem-bao --include=*.ts --include=*.vue --include=*.js)",
+      "Skill(code-review:code-review)",
+      "Skill(code-review:code-review:*)"
     ]
-  }
+  },
+  "model": "sonnet"
 }

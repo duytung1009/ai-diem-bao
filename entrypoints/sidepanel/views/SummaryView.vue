@@ -20,7 +20,10 @@ const store = useTopicStore();
 const summary = ref('');
 const error = ref('');
 const loadingText = ref('');
-const summarizedPostCount = ref(0);
+const summarizedPostCount = computed(() => {
+  if (!cachedTopic.value) return 0;
+  return cachedTopic.value.summarizedPostCount ?? cachedTopic.value.totalPosts ?? 0;
+});
 const isScraping = ref(false);
 const scrapingWarnings = ref<string[]>([]);
 const scrapingInfo = ref<string[]>([]); // informational messages (not warnings)
@@ -123,7 +126,6 @@ async function loadTopicData() {
   summary.value = '';
   error.value = '';
   loadingText.value = '';
-  summarizedPostCount.value = 0;
   isScraping.value = false;
   scrapingWarnings.value = [];
   scrapingInfo.value = [];
@@ -139,7 +141,6 @@ async function loadTopicData() {
   cachedTopic.value = topic as CachedTopic;
   if (topic.summary) {
     summary.value = topic.summary;
-    summarizedPostCount.value = topic.totalPosts;
   }
   try {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
@@ -147,7 +148,6 @@ async function loadTopicData() {
       cachedTopic.value = fresh;
       if (fresh.summary) {
         summary.value = fresh.summary;
-        summarizedPostCount.value = fresh.totalPosts;
       }
       if (fresh.segments) {
         segmentSummaries.value = fresh.segments;
@@ -472,6 +472,7 @@ async function confirmSummarize() {
     // Stale guard: user navigated to another topic while LLM was running
     if (thisId !== activeSummarizeId) {
       const lastPost = posts[posts.length - 1];
+      const realPostCount = posts.filter(p => p.postNumber > 0).length;
       await sendMessage('SAVE_CACHED_TOPIC', {
         url: topic.url,
         title: topicInfo.value!.title,
@@ -479,16 +480,17 @@ async function confirmSummarize() {
         posts,
         summary: summaryText,
         lastPostNumber: lastPost?.postNumber ?? 0,
-        totalPosts: posts.length,
+        totalPosts: realPostCount,
+        summarizedPostCount: realPostCount,
         totalPages: topicInfo.value!.pageCount,
       }).catch(() => {});
       return;
     }
 
     summary.value = summaryText;
-    summarizedPostCount.value = posts.length;
 
     const lastPost = posts[posts.length - 1];
+    const realPostCount = posts.filter(p => p.postNumber > 0).length;
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topicInfo.value.title,
@@ -496,10 +498,11 @@ async function confirmSummarize() {
       posts,
       summary: summaryText,
       lastPostNumber: lastPost?.postNumber ?? 0,
-      totalPosts: posts.length,
+      totalPosts: realPostCount,
+      summarizedPostCount: realPostCount,
       totalPages: topicInfo.value.pageCount,
     });
-    store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: posts.length, totalPages: topicInfo.value.pageCount });
+    store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: realPostCount, totalPages: topicInfo.value.pageCount });
 
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (saved) cachedTopic.value = saved;
@@ -579,6 +582,7 @@ async function handleSummarizeSegment(segmentIndex: number) {
       version: topicInfo.value!.version,
       totalPages: topicInfo.value!.pageCount,
       totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
+      summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
       segments: updated,
     });
     store.updateSelectedTopic({
@@ -625,16 +629,20 @@ async function generateOverallSummary() {
 
     // Stale guard: user navigated away while LLM was running
     if (thisId !== activeSummarizeId) {
-      await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary }).catch(() => {});
+      const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+      await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary, summarizedPostCount: totalSummarized }).catch(() => {});
       return;
     }
 
     summary.value = result.summary ?? '';
-    summarizedPostCount.value = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
     activeSegmentIndex.value = null;
 
-    await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary });
+    const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary, summarizedPostCount: totalSummarized });
     store.updateSelectedTopic({ summary: result.summary });
+    const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+    if (saved) cachedTopic.value = saved;
+    cacheFreshness.value = 'fresh';
   } catch (err) {
     if (thisId !== activeSummarizeId) return;
     error.value = err instanceof Error ? err.message : String(err);

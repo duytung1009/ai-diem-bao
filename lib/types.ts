@@ -89,6 +89,7 @@ export interface CachedTopic {
   cachedAt: number;
   lastPostNumber: number;
   totalPosts: number;
+  summarizedPostCount?: number;
   totalPages: number;
   topicType?: 'discussion' | 'news';
   segments?: TopicSegment[];

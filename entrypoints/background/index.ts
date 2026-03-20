@@ -132,6 +132,7 @@ export default defineBackground(() => {
                 cachedAt: Date.now(),
                 lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
                 totalPosts: partial.totalPosts ?? existing?.totalPosts ?? 0,
+                summarizedPostCount: partial.summarizedPostCount ?? existing?.summarizedPostCount ?? partial.totalPosts ?? existing?.totalPosts ?? 0,
                 totalPages: partial.totalPages ?? existing?.totalPages ?? 1,
                 topicType: partial.topicType ?? existing?.topicType,
                 segments: partial.segments ?? existing?.segments,

@@ -72,7 +72,7 @@ const isStructured = computed(() =>
     <div v-for="(section, i) in sections" :key="i">
       <h3
         v-if="section.title"
-        class="text-sm font-semibold text-gray-900 mb-2"
+        class="text-sm font-semibold text-(--color-text-primary) mb-2"
       >
         {{ section.title }}
       </h3>

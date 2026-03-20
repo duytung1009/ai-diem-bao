@@ -18,7 +18,7 @@ const sortBy = ref<'recent' | 'posts' | 'title'>('recent');
 const summarizingTempTopic = computed(() => {
   const url = store.summarizingUrl.value;
   if (!url) return null;
-  const alreadyInList = allTopics.value.some(t => t.url === url);
+  const alreadyInList = allTopics.value.some(t => normalizeForCompare(t.url) === normalizeForCompare(url));
   if (alreadyInList) return null;
   const selected = store.selectedTopic.value;
   return selected?.url === url ? selected : null;

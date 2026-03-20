@@ -513,8 +513,20 @@ async function handleSummarizeSegment(segmentIndex: number) {
     segmentSummaries.value = updated;
     activeSegmentIndex.value = segmentIndex;
 
-    await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, segments: updated });
-    store.updateSelectedTopic({ segments: updated } as any);
+    await sendMessage('SAVE_CACHED_TOPIC', {
+      url: topic.url,
+      title: topicInfo.value!.title,
+      version: topicInfo.value!.version,
+      totalPages: topicInfo.value!.pageCount,
+      totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
+      segments: updated,
+    });
+    store.updateSelectedTopic({
+      title: topicInfo.value!.title,
+      version: topicInfo.value!.version,
+      totalPages: topicInfo.value!.pageCount,
+      segments: updated,
+    } as any);
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
     isScraping.value = false;
@@ -559,6 +571,48 @@ async function generateOverallSummary() {
   } finally {
     store.setSummarizing(null);
     loadingText.value = '';
+  }
+}
+
+async function handleSegmentUpdate() {
+  if (!topicInfo.value || !store.selectedTopic.value) return;
+
+  const currentSegments = segmentSummaries.value;
+  const lastSeg = currentSegments[currentSegments.length - 1];
+  const coveredEndPage = lastSeg?.endPage ?? 0;
+  const newTotalPages = topicInfo.value.pageCount;
+
+  if (newTotalPages <= coveredEndPage) {
+    // Không có trang mới — chỉ re-generate overall
+    await generateOverallSummary();
+    return;
+  }
+
+  const segmentsToProcess: number[] = [];
+  const newSegments = segments.value;
+
+  for (let i = 0; i < newSegments.length; i++) {
+    const seg = newSegments[i];
+    const existing = currentSegments[i];
+    // Segment chưa tóm tắt, hoặc segment cuối cũ bị mở rộng
+    if (!existing?.summary || existing.endPage < seg.end) {
+      segmentsToProcess.push(i);
+    }
+  }
+
+  if (segmentsToProcess.length === 0) {
+    await generateOverallSummary();
+    return;
+  }
+
+  for (const idx of segmentsToProcess) {
+    await handleSummarizeSegment(idx);
+    if (error.value) return; // dừng nếu có lỗi
+  }
+
+  const completedCount = segmentSummaries.value.filter(s => s?.summary).length;
+  if (completedCount >= 2) {
+    await generateOverallSummary();
   }
 }
 </script>
@@ -713,7 +767,7 @@ async function generateOverallSummary() {
         <!-- Overall summary view -->
         <template v-if="activeSegmentIndex === null">
           <div v-if="summary" class="space-y-3">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-start gap-2">
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -727,7 +781,7 @@ async function generateOverallSummary() {
               :cached-at="cachedTopic.cachedAt"
               :cached-posts="cachedTopic.totalPosts"
               :current-posts="livePostCount"
-              @update="handleSummarize(true)"
+              @update="handleSegmentUpdate"
             />
             <div class="card p-4">
               <SummaryContent :content="summary" />
@@ -759,8 +813,11 @@ async function generateOverallSummary() {
         <!-- Individual segment view -->
         <template v-if="activeSegmentIndex !== null">
           <div v-if="segmentSummaries[activeSegmentIndex]?.summary" class="space-y-3">
-            <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
-              <span>{{ segmentSummaries[activeSegmentIndex].postCount }} bài viết</span>
+            <div class="flex items-center justify-start gap-2">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span class="text-xs text-(--color-text-secondary)">{{ segmentSummaries[activeSegmentIndex].postCount }} bài viết</span>
             </div>
             <div class="card p-4">
               <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" />
@@ -790,7 +847,7 @@ async function generateOverallSummary() {
         <div class="flex flex-wrap items-center justify-between gap-y-1.5 gap-x-3">
           <div
             v-if="summarizedPostCount > 0"
-            class="flex items-center justify-between"
+            class="flex items-center justify-start gap-2"
           >
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

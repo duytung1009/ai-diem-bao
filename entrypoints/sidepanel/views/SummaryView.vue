@@ -40,6 +40,7 @@ const SCRAPE_CHUNK_SIZE = 10; // pages per message — keeps channel alive
 const segmentSummaries = ref<TopicSegment[]>([]);
 const activeSegmentIndex = ref<number | null>(null);
 const currentScrapeTabId = ref<number | null>(null); // tracks which tab is currently scraping
+let activeSummarizeId = 0; // incremented on each new summarize or topic load; guards stale async callbacks
 
 // Derived from store — replaces topicInfo ref
 const topicInfo = computed<DetectResult | null>(() => {
@@ -118,6 +119,7 @@ async function loadTopicData() {
   if (!topic) return;
 
   // === RESET all view state for new topic ===
+  activeSummarizeId++; // invalidate any in-flight LLM callbacks
   summary.value = '';
   error.value = '';
   loadingText.value = '';
@@ -181,16 +183,18 @@ onActivated(async () => {
   const url = store.selectedTopic.value?.url;
   if (!url) return;
 
-  // If summarization is in progress for THIS topic (the one already loaded in view),
-  // preserve all view state — don't reset, just sync the URL tracker.
-  // Guard: isSameTopicUrl(url, loadedTopicUrl) ensures we only skip reset when RETURNING to the same
-  // topic (incl. different page-N variants), not when navigating FROM another topic TO the summarizing topic.
-  const isSummarizingCurrentTopic =
+  // Check if the currently selected topic is being summarized by the LLM.
+  const isSummarizingThisTopic =
     store.summarizingUrl.value !== null &&
-    isSameTopicUrl(url, loadedTopicUrl.value ?? '') &&
-    (isSameTopicUrl(store.summarizingUrl.value, url) || isSameTopicUrl(store.summarizingUrl.value, loadedTopicUrl.value ?? ''));
+    isSameTopicUrl(store.summarizingUrl.value, url);
 
-  if (isSummarizingCurrentTopic) {
+  if (isSummarizingThisTopic) {
+    if (!isSameTopicUrl(url, loadedTopicUrl.value ?? '')) {
+      // We viewed a different topic in between — reload cached data for this topic
+      // but re-apply the loading indicator since LLM is still running.
+      await loadTopicData();
+      loadingText.value = 'Đang tóm tắt...';
+    }
     loadedTopicUrl.value = url;
     return;
   }
@@ -210,7 +214,8 @@ function isSameTopicUrl(url1: string, url2: string): boolean {
   try {
     const normalize = (u: string) => {
       const parsed = new URL(u);
-      parsed.pathname = parsed.pathname.replace(/\/page-\d+$/, '/');
+      parsed.pathname = parsed.pathname.replace(/\/page-\d+\/?$/, '');
+      if (!parsed.pathname.endsWith('/')) parsed.pathname += '/';
       parsed.search = '';
       parsed.hash = '';
       return parsed.toString();
@@ -332,7 +337,10 @@ async function handleSummarize(incremental = false) {
       return;
     }
 
-    const pageCount = store.activeTabDetect.value?.pageCount ?? topic.totalPages ?? 1;
+    const detectMatchesTopic = store.activeTabUrl.value
+      && isSameTopicUrl(store.activeTabUrl.value, topic.url);
+    const pageCount = (detectMatchesTopic ? store.activeTabDetect.value?.pageCount : null)
+      ?? topic.totalPages ?? 1;
     let posts: ScrapedPost[];
 
     if (pageCount > 1) {
@@ -372,13 +380,14 @@ async function handleSummarize(incremental = false) {
       }
     } else {
       loadingText.value = 'Đang đọc bài viết...';
-      const scraped = await browser.tabs.sendMessage(tabId, {
-        type: 'SCRAPE_TOPIC',
-      }) as { posts?: ScrapedPost[]; error?: string };
-
-      if (scraped.error) throw new Error(scraped.error);
-      if (!scraped.posts?.length) throw new Error('Không tìm thấy bài viết nào.');
-      posts = scraped.posts;
+      isScraping.value = true;
+      currentScrapeTabId.value = tabId;
+      const { posts: scraped, errors } = await scrapeInChunks(tabId, topic.url, 1, 1, 0);
+      isScraping.value = false;
+      currentScrapeTabId.value = null;
+      if (!scraped.length) throw new Error('Không tìm thấy bài viết nào.');
+      posts = scraped;
+      if (errors.length > 0) scrapingWarnings.value = errors;
     }
 
     // --- NEWS DETECTION (skip if article posts already present in cache) ---
@@ -431,6 +440,7 @@ async function confirmSummarize() {
   if (!posts || !topicInfo.value || !topic) return;
 
   pendingPosts.value = null;
+  const thisId = ++activeSummarizeId;
   store.setSummarizing(topic.url);
 
   try {
@@ -459,6 +469,22 @@ async function confirmSummarize() {
       summaryText = result.summary ?? '';
     }
 
+    // Stale guard: user navigated to another topic while LLM was running
+    if (thisId !== activeSummarizeId) {
+      const lastPost = posts[posts.length - 1];
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        url: topic.url,
+        title: topicInfo.value!.title,
+        version: topicInfo.value!.version,
+        posts,
+        summary: summaryText,
+        lastPostNumber: lastPost?.postNumber ?? 0,
+        totalPosts: posts.length,
+        totalPages: topicInfo.value!.pageCount,
+      }).catch(() => {});
+      return;
+    }
+
     summary.value = summaryText;
     summarizedPostCount.value = posts.length;
 
@@ -479,10 +505,11 @@ async function confirmSummarize() {
     if (saved) cachedTopic.value = saved;
     cacheFreshness.value = 'fresh';
   } catch (err) {
+    if (thisId !== activeSummarizeId) return;
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     store.setSummarizing(null);
-    loadingText.value = '';
+    if (thisId === activeSummarizeId) loadingText.value = '';
   }
 }
 
@@ -498,6 +525,7 @@ async function handleSummarizeSegment(segmentIndex: number) {
 
   error.value = '';
   scrapingWarnings.value = [];
+  const thisId = ++activeSummarizeId;
   store.setSummarizing(topic.url);
 
   try {
@@ -535,6 +563,13 @@ async function handleSummarizeSegment(segmentIndex: number) {
     const count = Math.max(segmentSummaries.value.length, segmentIndex + 1);
     const updated = Array.from({ length: count }, (_, i) => segmentSummaries.value[i] ?? null) as TopicSegment[];
     updated[segmentIndex] = newSeg;
+
+    // Stale guard: user navigated away while LLM was running
+    if (thisId !== activeSummarizeId) {
+      await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, segments: updated }).catch(() => {});
+      return;
+    }
+
     segmentSummaries.value = updated;
     activeSegmentIndex.value = segmentIndex;
 
@@ -553,12 +588,13 @@ async function handleSummarizeSegment(segmentIndex: number) {
       segments: updated,
     } as any);
   } catch (err) {
+    if (thisId !== activeSummarizeId) return;
     error.value = err instanceof Error ? err.message : String(err);
     isScraping.value = false;
     currentScrapeTabId.value = null;
   } finally {
     store.setSummarizing(null);
-    loadingText.value = '';
+    if (thisId === activeSummarizeId) loadingText.value = '';
   }
 }
 
@@ -572,6 +608,7 @@ async function generateOverallSummary() {
     return;
   }
 
+  const thisId = ++activeSummarizeId;
   store.setSummarizing(topic.url);
   loadingText.value = 'Đang tạo tóm tắt tổng quan...';
 
@@ -586,6 +623,12 @@ async function generateOverallSummary() {
     const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE', segmentPosts);
     if (result.error) throw new Error(result.error);
 
+    // Stale guard: user navigated away while LLM was running
+    if (thisId !== activeSummarizeId) {
+      await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary }).catch(() => {});
+      return;
+    }
+
     summary.value = result.summary ?? '';
     summarizedPostCount.value = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
     activeSegmentIndex.value = null;
@@ -593,10 +636,11 @@ async function generateOverallSummary() {
     await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary });
     store.updateSelectedTopic({ summary: result.summary });
   } catch (err) {
+    if (thisId !== activeSummarizeId) return;
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     store.setSummarizing(null);
-    loadingText.value = '';
+    if (thisId === activeSummarizeId) loadingText.value = '';
   }
 }
 

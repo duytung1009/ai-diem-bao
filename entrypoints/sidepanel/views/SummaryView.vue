@@ -3,7 +3,9 @@ import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watc
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress } from '@/lib/types';
+import { detectNewsThread } from '@/lib/scrapers/news-detector';
+import type { ArticleContent } from '@/lib/scrapers/article-extractor';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress, TopicSegment } from '@/lib/types';
 import type { MultiPageResult } from '@/lib/scrapers/page-loader';
 import { useTopicStore } from '../composables/useTopicStore';
 import TopicMeta from '../components/TopicMeta.vue';
@@ -21,6 +23,7 @@ const loadingText = ref('');
 const summarizedPostCount = ref(0);
 const isScraping = ref(false);
 const scrapingWarnings = ref<string[]>([]);
+const scrapingInfo = ref<string[]>([]); // informational messages (not warnings)
 
 // Token estimation state
 const pendingPosts = ref<ScrapedPost[] | null>(null);
@@ -30,6 +33,12 @@ const currentConfig = ref<LLMConfig | null>(null);
 // Cache state
 const cachedTopic = ref<CachedTopic | null>(null);
 const cacheFreshness = ref<CacheFreshness | null>(null);
+
+// Segment mode state
+const segmentSize = ref(20);
+const SCRAPE_CHUNK_SIZE = 10; // pages per message — keeps channel alive
+const segmentSummaries = ref<TopicSegment[]>([]);
+const activeSegmentIndex = ref<number | null>(null);
 
 // Derived from store — replaces topicInfo ref
 const topicInfo = computed<DetectResult | null>(() => {
@@ -66,10 +75,32 @@ const livePostCount = computed(() => {
   return topic.totalPosts;
 });
 
+const hasLivePostCount = computed(() =>
+  !!(store.activeTabDetect.value && store.activeTabUrl.value &&
+    store.selectedTopic.value &&
+    isSameTopicUrl(store.activeTabUrl.value, store.selectedTopic.value.url)),
+);
+
 watch(livePostCount, (newCount) => {
-  if (cachedTopic.value && newCount > 0) {
+  if (cachedTopic.value && hasLivePostCount.value) {
     cacheFreshness.value = evaluateFreshness(cachedTopic.value, newCount);
   }
+});
+
+const isSegmentMode = computed(() =>
+  (topicInfo.value?.pageCount ?? 0) > segmentSize.value,
+);
+
+const segments = computed(() => {
+  if (!isSegmentMode.value || !topicInfo.value) return [];
+  const total = topicInfo.value.pageCount;
+  const size = segmentSize.value;
+  const segs: { start: number; end: number; label: string }[] = [];
+  for (let start = 1; start <= total; start += size) {
+    const end = Math.min(start + size - 1, total);
+    segs.push({ start, end, label: `Trang ${start}–${end}` });
+  }
+  return segs;
 });
 
 function onRuntimeMessage(message: Message) {
@@ -92,10 +123,13 @@ async function loadTopicData() {
   summarizedPostCount.value = 0;
   isScraping.value = false;
   scrapingWarnings.value = [];
+  scrapingInfo.value = [];
   pendingPosts.value = null;
   pendingIncremental.value = false;
   cachedTopic.value = null;
   cacheFreshness.value = null;
+  segmentSummaries.value = [];
+  activeSegmentIndex.value = null;
   // === END RESET ===
 
   loadedTopicUrl.value = topic.url;
@@ -112,37 +146,55 @@ async function loadTopicData() {
         summary.value = fresh.summary;
         summarizedPostCount.value = fresh.totalPosts;
       }
-      cacheFreshness.value = evaluateFreshness(fresh, livePostCount.value);
+      if (fresh.segments) {
+        segmentSummaries.value = fresh.segments;
+      }
+      const liveCount = (store.activeTabDetect.value && store.activeTabUrl.value &&
+        isSameTopicUrl(store.activeTabUrl.value, fresh.url))
+        ? store.activeTabDetect.value.postCount
+        : null;
+      cacheFreshness.value = evaluateFreshness(fresh, liveCount);
     }
   } catch { /* cache miss is fine */ }
 }
 
 onMounted(() => {
-  sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => { currentConfig.value = cfg; }).catch(() => {});
+  sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
+    currentConfig.value = cfg;
+    if (cfg?.segmentSize) segmentSize.value = cfg.segmentSize;
+  }).catch(() => {});
 });
 
 // With <keep-alive>: onActivated fires on initial mount AND each re-activation.
-// Listener is managed here (not onMounted) to avoid duplicate registration.
 onActivated(async () => {
   browser.runtime?.onMessage.addListener(onRuntimeMessage);
+
+  // Reload settings in case user changed them in SettingsView
+  sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
+    if (cfg) {
+      currentConfig.value = cfg;
+      if (cfg.segmentSize) segmentSize.value = cfg.segmentSize;
+    }
+  }).catch(() => {});
+
   const url = store.selectedTopic.value?.url;
   if (!url) return;
 
   // If summarization is in progress for THIS topic (the one already loaded in view),
   // preserve all view state — don't reset, just sync the URL tracker.
-  // Guard: url === loadedTopicUrl ensures we only skip reset when RETURNING to the same
-  // topic, not when navigating FROM another topic TO the summarizing topic.
+  // Guard: isSameTopicUrl(url, loadedTopicUrl) ensures we only skip reset when RETURNING to the same
+  // topic (incl. different page-N variants), not when navigating FROM another topic TO the summarizing topic.
   const isSummarizingCurrentTopic =
     store.summarizingUrl.value !== null &&
-    url === loadedTopicUrl.value &&
-    (store.summarizingUrl.value === url || store.summarizingUrl.value === loadedTopicUrl.value);
+    isSameTopicUrl(url, loadedTopicUrl.value ?? '') &&
+    (isSameTopicUrl(store.summarizingUrl.value, url) || isSameTopicUrl(store.summarizingUrl.value, loadedTopicUrl.value ?? ''));
 
   if (isSummarizingCurrentTopic) {
     loadedTopicUrl.value = url;
     return;
   }
 
-  if (url !== loadedTopicUrl.value) await loadTopicData();
+  if (!isSameTopicUrl(url, loadedTopicUrl.value ?? '')) await loadTopicData();
 });
 
 onDeactivated(() => {
@@ -157,7 +209,7 @@ function isSameTopicUrl(url1: string, url2: string): boolean {
   try {
     const normalize = (u: string) => {
       const parsed = new URL(u);
-      parsed.pathname = parsed.pathname.replace(/\/page-\d+$/, '');
+      parsed.pathname = parsed.pathname.replace(/\/page-\d+$/, '/');
       parsed.search = '';
       parsed.hash = '';
       return parsed.toString();
@@ -166,13 +218,13 @@ function isSameTopicUrl(url1: string, url2: string): boolean {
   } catch { return url1 === url2; }
 }
 
-function evaluateFreshness(cached: CachedTopic, currentPostCount: number): CacheFreshness {
+function evaluateFreshness(cached: CachedTopic, currentPostCount: number | null): CacheFreshness {
   const ageMs = Date.now() - cached.cachedAt;
   const oneDay = 24 * 60 * 60 * 1000;
   const oneWeek = 7 * oneDay;
 
   if (ageMs > oneWeek) return 'outdated';
-  if (ageMs > oneDay || currentPostCount > cached.totalPosts) return 'stale';
+  if (ageMs > oneDay || (currentPostCount !== null && currentPostCount > cached.totalPosts)) return 'stale';
   return 'fresh';
 }
 
@@ -183,6 +235,50 @@ async function handleCancel() {
   }
   isScraping.value = false;
   loadingText.value = '';
+}
+
+/**
+ * Scrape pages in small chunks (SCRAPE_CHUNK_SIZE pages per message).
+ * Avoids "message channel closed" error that occurs when a single scrape
+ * message takes too long (100+ pages can exceed Chrome's channel timeout).
+ */
+async function scrapeInChunks(
+  tabId: number,
+  startPage: number,
+  endPage: number,
+  delayMs: number = 2000,
+): Promise<{ posts: ScrapedPost[]; errors: string[] }> {
+  const allPosts: ScrapedPost[] = [];
+  const allErrors: string[] = [];
+
+  for (let chunkStart = startPage; chunkStart <= endPage; chunkStart += SCRAPE_CHUNK_SIZE) {
+    if (!isScraping.value) break; // cancelled
+
+    const chunkEnd = Math.min(chunkStart + SCRAPE_CHUNK_SIZE - 1, endPage);
+    loadingText.value = `Đang đọc trang ${chunkStart}–${chunkEnd}/${endPage}...`;
+
+    const result = await browser.tabs.sendMessage(tabId, {
+      type: 'SCRAPE_PAGE_RANGE',
+      payload: { startPage: chunkStart, endPage: chunkEnd, delayMs },
+    }) as MultiPageResult & { error?: string };
+
+    if (result.error) throw new Error(result.error);
+    allPosts.push(...result.posts);
+    if (result.errors?.length > 0) allErrors.push(...result.errors);
+  }
+
+  // Deduplicate + sort
+  const seen = new Set<number>();
+  const posts = allPosts
+    .filter(p => {
+      if (p.postNumber === 0) return true;
+      if (seen.has(p.postNumber)) return false;
+      seen.add(p.postNumber);
+      return true;
+    })
+    .sort((a, b) => a.postNumber - b.postNumber);
+
+  return { posts, errors: allErrors };
 }
 
 async function handleSummarize(incremental = false) {
@@ -219,18 +315,36 @@ async function handleSummarize(incremental = false) {
 
     if (pageCount > 1) {
       isScraping.value = true;
-      loadingText.value = `Đang đọc trang 1/${pageCount}...`;
-      const result = await browser.tabs.sendMessage(tab.id, {
-        type: 'SCRAPE_ALL_PAGES',
-        payload: { totalPages: pageCount },
-      }) as MultiPageResult & { error?: string };
 
-      isScraping.value = false;
-      if (result.error) throw new Error(result.error);
-      if (!result.posts?.length) throw new Error('Không tìm thấy bài viết nào.');
+      if (incremental && cachedTopic.value) {
+        // INCREMENTAL: only scrape from last known page onward
+        const cachedPages = cachedTopic.value.totalPages || 1;
+        const startPage = Math.max(1, cachedPages + 1); // +1: page cachedPages already scraped
+        const endPage = pageCount;
 
-      posts = result.posts;
-      if (result.errors.length > 0) scrapingWarnings.value = result.errors;
+        const { posts: newPosts, errors } = await scrapeInChunks(tab.id, startPage, endPage, currentConfig.value?.scrapeDelayMs ?? 2000);
+        isScraping.value = false;
+
+        // Merge with existing cached posts, deduplicate
+        const cachedPosts = cachedTopic.value.posts || [];
+        const merged = [...cachedPosts, ...newPosts];
+        const seen = new Set<number>();
+        posts = merged.filter(p => {
+          if (p.postNumber === 0) return true;
+          if (seen.has(p.postNumber)) return false;
+          seen.add(p.postNumber);
+          return true;
+        }).sort((a, b) => a.postNumber - b.postNumber);
+
+        if (errors.length > 0) scrapingWarnings.value = errors;
+      } else {
+        // FULL SCRAPE via chunks
+        const { posts: scraped, errors } = await scrapeInChunks(tab.id, 1, pageCount, currentConfig.value?.scrapeDelayMs ?? 2000);
+        isScraping.value = false;
+        if (!scraped.length) throw new Error('Không tìm thấy bài viết nào.');
+        posts = scraped;
+        if (errors.length > 0) scrapingWarnings.value = errors;
+      }
     } else {
       loadingText.value = 'Đang đọc bài viết...';
       const scraped = await browser.tabs.sendMessage(tab.id, {
@@ -241,6 +355,38 @@ async function handleSummarize(incremental = false) {
       if (!scraped.posts?.length) throw new Error('Không tìm thấy bài viết nào.');
       posts = scraped.posts;
     }
+
+    // --- NEWS DETECTION (skip if article posts already present in cache) ---
+    const hasArticlePosts = posts.some(p => p.postNumber < 0);
+    if (!hasArticlePosts) {
+      try {
+        const forumDomain = new URL(topic.url).hostname;
+        const newsCheck = detectNewsThread(posts, forumDomain);
+
+        if (newsCheck.isNews && newsCheck.articleUrls.length > 0) {
+          loadingText.value = 'Phát hiện chủ đề tin tức — đang tải bài báo gốc...';
+
+          const articlePromises = newsCheck.articleUrls.map(url =>
+            sendMessage<ArticleContent | null>('SCRAPE_ARTICLE', { url }).catch(() => null),
+          );
+          const articles = (await Promise.all(articlePromises)).filter(Boolean) as ArticleContent[];
+
+          if (articles.length > 0) {
+            const articlePosts: ScrapedPost[] = articles.map((a, i) => ({
+              author: `[BÀI BÁO GỐC — ${a.source}]`,
+              content: `Tiêu đề: ${a.title}\n\nNội dung:\n${a.content}`,
+              timestamp: '',
+              postNumber: -(i + 1),
+            }));
+            posts = [...articlePosts, ...posts];
+            scrapingInfo.value.push(
+              `Đã tải ${articles.length} bài báo gốc: ${articles.map(a => a.source).join(', ')}`,
+            );
+          }
+        }
+      } catch { /* news detection is best-effort */ }
+    }
+    // --- END NEWS DETECTION ---
 
     loadingText.value = '';
     pendingPosts.value = posts;
@@ -259,16 +405,13 @@ async function confirmSummarize() {
   if (!posts || !topicInfo.value || !topic) return;
 
   pendingPosts.value = null;
-  summarizedPostCount.value = posts.length;
-
-  // Mark as summarizing
   store.setSummarizing(topic.url);
 
   try {
+    let summaryText: string;
     if (incremental && cachedTopic.value?.summary) {
-      loadingText.value = `Đang cập nhật tóm tắt với bài viết mới...`;
       const newPosts = posts.filter(
-        (p) => p.postNumber > (cachedTopic.value?.lastPostNumber ?? 0),
+        (p) => p.postNumber < 0 || p.postNumber > (cachedTopic.value?.lastPostNumber ?? 0),
       );
       if (newPosts.length === 0) {
         summary.value = cachedTopic.value.summary;
@@ -276,51 +419,43 @@ async function confirmSummarize() {
         store.setSummarizing(null);
         return;
       }
-      const result = await sendMessage<{ summary?: string; error?: string }>(
-        'SUMMARIZE_INCREMENTAL',
-        { previousSummary: cachedTopic.value.summary, newPosts },
-      );
+      loadingText.value = 'Đang cập nhật tóm tắt với bài viết mới...';
+      const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE_INCREMENTAL', {
+        previousSummary: cachedTopic.value.summary,
+        newPosts,
+      });
       if (result.error) throw new Error(result.error);
-      summary.value = result.summary || 'Không có kết quả.';
+      summaryText = result.summary ?? '';
     } else {
       loadingText.value = `Đang tóm tắt ${posts.length} bài viết...`;
-      const result = await sendMessage<{ summary?: string; error?: string }>(
-        'SUMMARIZE',
-        posts,
-      );
+      const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE', posts);
       if (result.error) throw new Error(result.error);
-      summary.value = result.summary || 'Không có kết quả.';
+      summaryText = result.summary ?? '';
     }
 
-    // Save to cache with explicit URL
+    summary.value = summaryText;
+    summarizedPostCount.value = posts.length;
+
     const lastPost = posts[posts.length - 1];
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topicInfo.value.title,
       version: topicInfo.value.version,
       posts,
-      summary: summary.value,
+      summary: summaryText,
       lastPostNumber: lastPost?.postNumber ?? 0,
       totalPosts: posts.length,
       totalPages: topicInfo.value.pageCount,
     });
+    store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: posts.length, totalPages: topicInfo.value.pageCount });
 
-    // Update store
-    store.updateSelectedTopic({ summary: summary.value, posts, totalPosts: posts.length, totalPages: topicInfo.value.pageCount });
-
-    // Clear summarizing state
-    store.setSummarizing(null);
-
-    // Reload from background to get the authoritative stored record
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-    if (saved) {
-      cachedTopic.value = saved;
-    }
+    if (saved) cachedTopic.value = saved;
     cacheFreshness.value = 'fresh';
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
-    store.setSummarizing(null);
   } finally {
+    store.setSummarizing(null);
     loadingText.value = '';
   }
 }
@@ -330,16 +465,100 @@ function cancelPendingSummarize() {
   pendingIncremental.value = false;
 }
 
-async function navigateToTopic() {
-  const url = store.selectedTopic.value?.url;
-  if (!url) return;
+async function handleSummarizeSegment(segmentIndex: number) {
+  const seg = segments.value[segmentIndex];
+  if (!seg || !topicInfo.value) return;
+  const topic = store.selectedTopic.value!;
+
+  error.value = '';
+  scrapingWarnings.value = [];
+  store.setSummarizing(topic.url);
+
   try {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) {
-      await browser.tabs.update(tab.id, { url });
+    const isActiveTab = store.activeTabUrl.value && isSameTopicUrl(store.activeTabUrl.value, topic.url);
+    if (!isActiveTab) {
+      error.value = 'Hãy mở topic này trên trình duyệt để đọc bài viết.';
+      store.setSummarizing(null);
+      return;
     }
-  } catch {
-    await browser.tabs.create({ url });
+
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error('Không tìm thấy tab');
+
+    isScraping.value = true;
+    loadingText.value = `Đang đọc ${seg.label}...`;
+
+    const { posts: segPosts, errors } = await scrapeInChunks(tab.id, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
+    isScraping.value = false;
+
+    if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
+    if (errors.length > 0) scrapingWarnings.value = errors;
+
+    loadingText.value = `Đang tóm tắt ${seg.label} (${segPosts.length} bài)...`;
+    const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE', segPosts);
+    if (result.error) throw new Error(result.error);
+
+    const newSeg: TopicSegment = {
+      startPage: seg.start,
+      endPage: seg.end,
+      posts: segPosts,
+      summary: result.summary ?? '',
+      postCount: segPosts.length,
+      summarizedAt: Date.now(),
+    };
+
+    const count = Math.max(segmentSummaries.value.length, segmentIndex + 1);
+    const updated = Array.from({ length: count }, (_, i) => segmentSummaries.value[i] ?? null) as TopicSegment[];
+    updated[segmentIndex] = newSeg;
+    segmentSummaries.value = updated;
+    activeSegmentIndex.value = segmentIndex;
+
+    await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, segments: updated });
+    store.updateSelectedTopic({ segments: updated } as any);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+    isScraping.value = false;
+  } finally {
+    store.setSummarizing(null);
+    loadingText.value = '';
+  }
+}
+
+async function generateOverallSummary() {
+  const topic = store.selectedTopic.value;
+  if (!topic) return;
+
+  const completedSegments = segmentSummaries.value.filter(s => s?.summary);
+  if (completedSegments.length < 2) {
+    error.value = 'Cần ít nhất 2 phần đã tóm tắt để tạo tóm tắt tổng quan.';
+    return;
+  }
+
+  store.setSummarizing(topic.url);
+  loadingText.value = 'Đang tạo tóm tắt tổng quan...';
+
+  try {
+    const segmentPosts: ScrapedPost[] = completedSegments.map((seg, i) => ({
+      author: `[PHẦN ${i + 1}: Trang ${seg.startPage}–${seg.endPage}]`,
+      content: seg.summary,
+      timestamp: '',
+      postNumber: i + 1,
+    }));
+
+    const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE', segmentPosts);
+    if (result.error) throw new Error(result.error);
+
+    summary.value = result.summary ?? '';
+    summarizedPostCount.value = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    activeSegmentIndex.value = null;
+
+    await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary });
+    store.updateSelectedTopic({ summary: result.summary });
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    store.setSummarizing(null);
+    loadingText.value = '';
   }
 }
 </script>
@@ -372,7 +591,7 @@ async function navigateToTopic() {
       <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" />
 
       <button
-        v-if="!loadingText && !summary && !pendingPosts"
+        v-if="!loadingText && !summary && !pendingPosts && !isSegmentMode"
         class="w-full btn btn-primary"
         @click="handleSummarize(false)"
       >
@@ -444,27 +663,149 @@ async function navigateToTopic() {
         </button>
       </div>
 
-      <!-- Summary result -->
-      <div v-if="summary" class="space-y-3">
-        <div class="flex items-center justify-between">
+      <!-- Info messages (e.g. articles loaded) -->
+      <div
+        v-if="scrapingInfo.length > 0"
+        class="alert alert-info text-xs"
+      >
+        <ul class="list-disc list-inside space-y-0.5">
+          <li v-for="(m, i) in scrapingInfo" :key="i">{{ m }}</li>
+        </ul>
+      </div>
+
+      <!-- SEGMENT MODE: Topic > 100 pages -->
+      <template v-if="isSegmentMode && !loadingText && !pendingPosts">
+        <!-- Segment info banner -->
+        <div class="alert alert-info text-xs">
+          <p class="font-medium">Chủ đề dài ({{ topicInfo!.pageCount }} trang)</p>
+          <p class="mt-0.5">Chia thành {{ segments.length }} phần, mỗi phần ~{{ segmentSize }} trang. Tóm tắt từng phần rồi tạo tổng quan.</p>
+        </div>
+
+        <!-- Segment tabs -->
+        <div class="flex flex-wrap gap-1.5">
+          <button
+            class="px-2.5 py-1 text-xs rounded-full transition-colors"
+            :class="activeSegmentIndex === null
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
+              : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'"
+            @click="activeSegmentIndex = null"
+          >
+            Tổng quan
+          </button>
+          <button
+            v-for="(seg, i) in segments"
+            :key="i"
+            class="px-2.5 py-1 text-xs rounded-full transition-colors flex items-center gap-1"
+            :class="activeSegmentIndex === i
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
+              : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'"
+            @click="activeSegmentIndex = i"
+          >
+            {{ seg.label }}
+            <span
+              v-if="segmentSummaries[i]?.summary"
+              class="w-1.5 h-1.5 rounded-full bg-green-500"
+              title="Đã tóm tắt"
+            />
+          </button>
+        </div>
+
+        <!-- Overall summary view -->
+        <template v-if="activeSegmentIndex === null">
+          <div v-if="summary" class="space-y-3">
+            <div class="flex items-center justify-between">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span class="text-xs text-(--color-text-secondary)">
+                Tóm tắt tổng quan {{ segments.length }} phần
+              </span>
+            </div>
+            <CacheIndicator
+              v-if="cacheFreshness && cachedTopic"
+              :freshness="cacheFreshness"
+              :cached-at="cachedTopic.cachedAt"
+              :cached-posts="cachedTopic.totalPosts"
+              :current-posts="livePostCount"
+              @update="handleSummarize(true)"
+            />
+            <div class="card p-4">
+              <SummaryContent :content="summary" />
+            </div>
+            <button
+              class="w-full btn btn-secondary text-sm"
+              :disabled="!!loadingText"
+              @click="generateOverallSummary"
+            >
+              Tạo lại tóm tắt tổng quan
+            </button>
+          </div>
+          <div v-else class="text-center py-4 space-y-2">
+            <p class="text-xs text-(--color-text-muted)">
+              Tóm tắt từng phần trước, sau đó tạo tóm tắt tổng quan.
+            </p>
+            <button
+              v-if="segmentSummaries.filter(s => s?.summary).length >= 2"
+              class="btn btn-primary"
+              :disabled="!!loadingText"
+              @click="generateOverallSummary"
+            >
+              Tạo tóm tắt tổng quan
+            </button>
+            <p v-else class="text-xs text-(--color-text-muted)">(Cần ít nhất 2 phần đã tóm tắt)</p>
+          </div>
+        </template>
+
+        <!-- Individual segment view -->
+        <template v-if="activeSegmentIndex !== null">
+          <div v-if="segmentSummaries[activeSegmentIndex]?.summary" class="space-y-3">
+            <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
+              <span>{{ segmentSummaries[activeSegmentIndex].postCount }} bài viết</span>
+            </div>
+            <div class="card p-4">
+              <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" />
+            </div>
+            <button
+              class="w-full btn btn-secondary text-xs"
+              :disabled="!!loadingText"
+              @click="handleSummarizeSegment(activeSegmentIndex)"
+            >
+              Tóm tắt lại phần này
+            </button>
+          </div>
+          <div v-else class="text-center py-4">
+            <button
+              class="btn btn-primary"
+              :disabled="!!loadingText"
+              @click="handleSummarizeSegment(activeSegmentIndex)"
+            >
+              Tóm tắt {{ segments[activeSegmentIndex].label }}
+            </button>
+          </div>
+        </template>
+      </template>
+
+      <!-- NORMAL MODE: Topic ≤ 100 pages -->
+      <div v-if="!isSegmentMode && summary" class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-y-1.5 gap-x-3">
           <div
             v-if="summarizedPostCount > 0"
-            class="flex items-center gap-1.5 text-xs text-(--color-text-secondary)"
+            class="flex items-center justify-between"
           >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span>Đã tóm tắt {{ summarizedPostCount }} bài viết</span>
+            <span class="text-xs text-(--color-text-secondary)">Đã tóm tắt {{ summarizedPostCount }} bài viết</span>
           </div>
-          <CacheIndicator
-            v-if="cacheFreshness && cachedTopic"
-            :freshness="cacheFreshness"
-            :cached-at="cachedTopic.cachedAt"
-            :cached-posts="cachedTopic.totalPosts"
-            :current-posts="livePostCount"
-            @update="handleSummarize(true)"
-          />
         </div>
+        <CacheIndicator
+          v-if="cacheFreshness && cachedTopic"
+          :freshness="cacheFreshness"
+          :cached-at="cachedTopic.cachedAt"
+          :cached-posts="cachedTopic.totalPosts"
+          :current-posts="livePostCount"
+          @update="handleSummarize(true)"
+        />
         <div class="card p-4">
           <SummaryContent :content="summary" />
         </div>

@@ -1,7 +1,7 @@
 import { detectXenForoVersion } from '@/lib/detector';
 import { XF2Scraper } from '@/lib/scrapers/xf2-scraper';
 import { XF1Scraper } from '@/lib/scrapers/xf1-scraper';
-import { scrapeAllPages } from '@/lib/scrapers/page-loader';
+import { scrapeAllPages, scrapePageRange } from '@/lib/scrapers/page-loader';
 import type { DetectResult, Message, TopicData } from '@/lib/types';
 
 function isThreadPage(v: 'xf1' | 'xf2'): boolean {
@@ -11,11 +11,8 @@ function isThreadPage(v: 'xf1' | 'xf2'): boolean {
       (document.querySelector('dl.count--replies') || document.querySelector('.p-title-value'))
     );
   }
-  // XF1
-  return !!(
-    document.querySelector('li.message .messageText') ||
-    document.querySelector('#messageList .message')
-  );
+  // XF1: only li.message .messageText is specific enough to thread pages
+  return !!document.querySelector('li.message .messageText');
 }
 
 export default defineContentScript({
@@ -68,7 +65,7 @@ export default defineContentScript({
         }
 
         if (message.type === 'SCRAPE_ALL_PAGES') {
-          const { totalPages } = message.payload as { totalPages: number };
+          const { totalPages, delayMs } = message.payload as { totalPages: number; delayMs?: number };
           const scraper = createScraper();
           if (!scraper) {
             sendResponse({ error: 'No scraper available for this page' });
@@ -76,19 +73,17 @@ export default defineContentScript({
           }
           const baseUrl = scraper.scrape().url;
 
-          // Create new abort controller for this scrape session
           scrapeAbortController = new AbortController();
           const signal = scrapeAbortController.signal;
 
           const onProgress = (currentPage: number, tp: number, postsScraped: number) => {
-            // Fire-and-forget: send progress to sidepanel via runtime messaging
             browser.runtime.sendMessage({
               type: 'SCRAPE_PROGRESS',
               payload: { currentPage, totalPages: tp, postsScraped },
             }).catch(() => { /* no listener yet or already done */ });
           };
 
-          scrapeAllPages(version, baseUrl, totalPages, onProgress, signal)
+          scrapeAllPages(version, baseUrl, totalPages, onProgress, signal, delayMs ?? 2000)
             .then((result) => {
               scrapeAbortController = null;
               sendResponse(result);
@@ -97,7 +92,42 @@ export default defineContentScript({
               scrapeAbortController = null;
               sendResponse({ error: String(err) });
             });
-          return true; // async response
+          return true;
+        }
+
+        if (message.type === 'SCRAPE_PAGE_RANGE') {
+          const { startPage, endPage, delayMs } = message.payload as { startPage: number; endPage: number; delayMs?: number };
+          const scraper = createScraper();
+          if (!scraper) {
+            sendResponse({ error: 'No scraper available for this page' });
+            return true;
+          }
+          const baseUrl = scraper.scrape().url;
+
+          scrapeAbortController = new AbortController();
+          const signal = scrapeAbortController.signal;
+
+          const onProgress = (current: number, total: number, postsScraped: number) => {
+            browser.runtime.sendMessage({
+              type: 'SCRAPE_PROGRESS',
+              payload: {
+                currentPage: startPage + current - 1,
+                totalPages: endPage,
+                postsScraped,
+              },
+            }).catch(() => {});
+          };
+
+          scrapePageRange(version, baseUrl, startPage, endPage, onProgress, signal, delayMs ?? 2000)
+            .then((result) => {
+              scrapeAbortController = null;
+              sendResponse(result);
+            })
+            .catch((err) => {
+              scrapeAbortController = null;
+              sendResponse({ error: String(err) });
+            });
+          return true;
         }
 
         if (message.type === 'CANCEL_SCRAPE') {

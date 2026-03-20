@@ -5,10 +5,12 @@ const DB_VERSION = 1;
 const STORE_NAME = 'topics';
 
 let db: IDBDatabase | null = null;
+let openingPromise: Promise<IDBDatabase> | null = null;
 
 function getDB(): Promise<IDBDatabase> {
   if (db) return Promise.resolve(db);
-  return new Promise((resolve, reject) => {
+  if (openingPromise) return openingPromise;
+  openingPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
@@ -19,11 +21,17 @@ function getDB(): Promise<IDBDatabase> {
     };
     request.onsuccess = () => {
       db = request.result;
+      openingPromise = null;
       db.onclose = () => { db = null; };
+      db.onversionchange = () => { db!.close(); db = null; };
       resolve(db);
     };
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      openingPromise = null;
+      reject(request.error);
+    };
   });
+  return openingPromise;
 }
 
 export async function dbGet(url: string): Promise<CachedTopic | null> {

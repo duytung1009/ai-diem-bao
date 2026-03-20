@@ -68,27 +68,27 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     const cached = await getCachedTopic(tabUrl);
     if (!cached) return;
 
+    // Chỉ update title và totalPages — KHÔNG update totalPosts
+    // totalPosts trong cache giữ nguyên giá trị lúc tóm tắt
+    // để evaluateFreshness() so sánh đúng với live count
     const hasChanges =
-      cached.totalPosts !== detect.postCount ||
       cached.totalPages !== detect.pageCount ||
-      cached.title !== detect.title;
+      (!!detect.title && cached.title !== detect.title);
 
     if (!hasChanges) return;
 
     await saveCachedTopic({
       ...cached,
-      totalPosts: detect.postCount,
       totalPages: detect.pageCount,
-      title: detect.title,
+      title: detect.title || cached.title, // never overwrite with empty string
     });
 
     const normalizedTabUrl = normalizeUrl(tabUrl);
     const selectedUrl = store.selectedTopic.value?.url;
     if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
       store.updateSelectedTopic({
-        totalPosts: detect.postCount,
         totalPages: detect.pageCount,
-        title: detect.title,
+        title: detect.title || cached.title,
       });
     }
   } catch {

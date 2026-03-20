@@ -2,6 +2,7 @@ import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
 import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
+import { extractArticle } from '@/lib/scrapers/article-extractor';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts } from '@/lib/types';
 
 export default defineBackground(() => {
@@ -94,6 +95,12 @@ export default defineBackground(() => {
             .catch((err) => sendResponse({ error: String(err) }));
           return true;
 
+        case 'SCRAPE_ARTICLE': {
+          const { url: articleUrl } = message.payload as { url: string };
+          extractArticle(articleUrl).then(sendResponse).catch(() => sendResponse(null));
+          return true;
+        }
+
         case 'GET_CACHED_TOPIC': {
           const payloadUrl = message.payload as string | undefined;
           const urlPromise = payloadUrl ? Promise.resolve(payloadUrl) : getActiveTabUrl();
@@ -126,6 +133,9 @@ export default defineBackground(() => {
                 lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
                 totalPosts: partial.totalPosts ?? existing?.totalPosts ?? 0,
                 totalPages: partial.totalPages ?? existing?.totalPages ?? 1,
+                topicType: partial.topicType ?? existing?.topicType,
+                segments: partial.segments ?? existing?.segments,
+                overallSummary: partial.overallSummary ?? existing?.overallSummary,
               };
               await saveCachedTopic(topic);
               sendResponse({ success: true });

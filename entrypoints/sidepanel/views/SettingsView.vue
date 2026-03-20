@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import { DEFAULT_LLM_CONFIG } from '@/lib/constants';
+import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE } from '@/lib/constants';
 import type { LLMConfig, CustomPrompts, CachedTopic } from '@/lib/types';
 import { SUMMARY_PROMPT, OPINION_ANALYSIS_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -76,7 +76,12 @@ async function refreshCacheSize() {
 onMounted(async () => {
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
-    config.value = { ...loaded, timeoutMs: loaded.timeoutMs ?? 120000 };
+    config.value = {
+      ...loaded,
+      timeoutMs: loaded.timeoutMs ?? 120000,
+      scrapeDelayMs: loaded.scrapeDelayMs ?? DEFAULT_SCRAPE_DELAY_MS,
+      segmentSize: loaded.segmentSize ?? DEFAULT_SEGMENT_SIZE,
+    };
   }
   await refreshCacheSize();
   const loadedPrompts = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => ({}));
@@ -284,6 +289,53 @@ function cancelClearAll() {
       <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
         <span>30s</span>
         <span>600s</span>
+      </div>
+    </div>
+
+    <!-- Scraping settings -->
+    <h2 class="font-semibold text-sm text-(--color-text-primary)">Cấu hình Scraping</h2>
+
+    <!-- Scrape delay -->
+    <div class="space-y-1">
+      <label class="block text-xs font-medium text-(--color-text-secondary)">
+        Delay giữa các lần tải trang: {{ config.scrapeDelayMs ?? DEFAULT_SCRAPE_DELAY_MS }}ms
+      </label>
+      <p class="text-[11px] text-(--color-text-muted)">
+        Khoảng cách giữa mỗi request khi đọc topic nhiều trang. Tăng lên nếu bị chặn bởi forum.
+      </p>
+      <input
+        v-model.number="config.scrapeDelayMs"
+        type="range"
+        min="500"
+        max="10000"
+        step="500"
+        class="w-full"
+      />
+      <div class="flex justify-between text-xs text-(--color-text-muted)">
+        <span>500ms</span>
+        <span>10000ms</span>
+      </div>
+    </div>
+
+    <!-- Segment size -->
+    <div class="space-y-1">
+      <label class="block text-xs font-medium text-(--color-text-secondary)">
+        Số trang mỗi phần (Segment): {{ config.segmentSize ?? DEFAULT_SEGMENT_SIZE }}
+      </label>
+      <p class="text-[11px] text-(--color-text-muted)">
+        Topic dài hơn giá trị này sẽ được chia thành nhiều phần để tóm tắt riêng.
+      </p>
+      <input
+        v-model.number="config.segmentSize"
+        type="range"
+        min="10"
+        max="200"
+        step="10"
+        class="w-full"
+      />
+      <div class="flex justify-between text-xs text-(--color-text-muted)">
+        <span>10</span>
+        <span>200</span>
       </div>
     </div>
 

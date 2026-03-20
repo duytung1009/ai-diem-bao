@@ -49,7 +49,7 @@ const newPostCount = computed(() => props.currentPosts - props.cachedPosts);
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
+  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium" :class="badgeClass">
       <span class="w-1.5 h-1.5 rounded-full" :class="{
         'bg-green-500': freshness === 'fresh',

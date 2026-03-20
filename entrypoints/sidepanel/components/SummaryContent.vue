@@ -38,10 +38,10 @@ const sections = computed<Section[]>(() => {
           const [opTitle, ...opRest] = op.split('\n');
           const rawTitle = opTitle.trim();
           // Parse "(N người)" or "(N người ủng hộ)" from title
-          const countMatch = rawTitle.match(/\((\d+)\s*người[^)]*\)\s*$/);
+          const countMatch = rawTitle.match(/\((\d+)\s*người[^)]*\)[.,:]?\s*$/);
           const supporterCount = countMatch ? parseInt(countMatch[1], 10) : null;
           const cleanTitle = countMatch
-            ? rawTitle.replace(/\s*\(\d+\s*người[^)]*\)\s*$/, '').trim()
+            ? rawTitle.replace(/\s*\(\d+\s*người[^)]*\)[.,:]?\s*$/, '').trim()
             : rawTitle;
           return {
             title: cleanTitle,

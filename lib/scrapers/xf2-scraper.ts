@@ -86,7 +86,15 @@ export class XF2Scraper implements TopicScraper {
     // Remove embedded media placeholders
     clone.querySelectorAll('.bbMediaWrapper').forEach((el) => el.remove());
 
-    return clone.textContent?.trim() || '';
+    // Extract URLs from unfurl/embed blocks (stored in data-url, not visible as text)
+    const unfurlUrls: string[] = [];
+    clone.querySelectorAll('[data-url]').forEach((el) => {
+      const url = el.getAttribute('data-url');
+      if (url) unfurlUrls.push(url);
+    });
+
+    const text = clone.textContent?.trim() || '';
+    return unfurlUrls.length > 0 ? `${text}\n${unfurlUrls.join('\n')}` : text;
   }
 
   private extractTimestamp(article: Element): string {

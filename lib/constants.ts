@@ -17,3 +17,6 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
 };
 
 export const DEFAULT_THEME: ThemeMode = 'system';
+
+export const DEFAULT_SCRAPE_DELAY_MS = 2000;
+export const DEFAULT_SEGMENT_SIZE = 20;

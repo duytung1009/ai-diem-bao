@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
-import type { CachedTopic } from '@/lib/types';
+import type { CachedTopic, TopicSegment } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -120,6 +120,7 @@ watch(
         ...updated,
         posts: updated.posts ? [...updated.posts] : allTopics.value[idx].posts,
         researchHistory: updated.researchHistory ? [...updated.researchHistory] : allTopics.value[idx].researchHistory,
+        segments: updated.segments ? [...updated.segments] as TopicSegment[] : allTopics.value[idx].segments,
       };
       allTopics.value[idx] = topic;
     } else if (updated.summary || updated.posts?.length) {
@@ -128,6 +129,7 @@ watch(
         ...updated,
         posts: updated.posts ? [...updated.posts] : [],
         researchHistory: updated.researchHistory ? [...updated.researchHistory] : [],
+        segments: updated.segments ? [...updated.segments] as TopicSegment[] : undefined,
       } as CachedTopic;
       allTopics.value = [...allTopics.value, topic];
     }

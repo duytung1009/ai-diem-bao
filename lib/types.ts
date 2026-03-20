@@ -30,13 +30,17 @@ export interface LLMConfig {
   temperature: number;
   maxTokens?: number;
   timeoutMs?: number;
+  scrapeDelayMs?: number;
+  segmentSize?: number;
 }
 
 export type MessageType =
   | 'DETECT_XF'
   | 'SCRAPE_TOPIC'
   | 'SCRAPE_ALL_PAGES'
+  | 'SCRAPE_PAGE_RANGE'
   | 'SCRAPE_PROGRESS'
+  | 'SCRAPE_ARTICLE'
   | 'CANCEL_SCRAPE'
   | 'SUMMARIZE'
   | 'SUMMARIZE_INCREMENTAL'
@@ -86,6 +90,18 @@ export interface CachedTopic {
   lastPostNumber: number;
   totalPosts: number;
   totalPages: number;
+  topicType?: 'discussion' | 'news';
+  segments?: TopicSegment[];
+  overallSummary?: string;
+}
+
+export interface TopicSegment {
+  startPage: number;
+  endPage: number;
+  posts: ScrapedPost[];
+  summary: string;
+  postCount: number;
+  summarizedAt: number;
 }
 
 export interface ResearchEntry {

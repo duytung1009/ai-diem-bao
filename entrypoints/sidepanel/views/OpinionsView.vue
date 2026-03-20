@@ -110,16 +110,18 @@ const totalOpinionSupporters = computed(() =>
 async function loadTopicData() {
   const topic = store.selectedTopic.value;
   if (!topic) return;
+  const url = topic.url; // capture before async boundary
 
   // Reset all view state for new topic
   opinions.value = null;
   cachedTopic.value = null;
 
-  loadedTopicUrl.value = topic.url;
+  loadedTopicUrl.value = url;
   cachedTopic.value = topic as CachedTopic;
   if (topic.opinions) opinions.value = topic.opinions;
   try {
-    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
+    if (loadedTopicUrl.value !== url) return; // topic switched during await — discard stale result
     if (fresh) {
       cachedTopic.value = fresh;
       if (fresh.opinions) opinions.value = fresh.opinions;

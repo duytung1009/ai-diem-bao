@@ -462,14 +462,14 @@ async function confirmSummarize() {
       const realPostCount = posts.filter(p => p.postNumber > 0).length;
       await sendMessage('SAVE_CACHED_TOPIC', {
         url: topic.url,
-        title: topicInfo.value!.title,
-        version: topicInfo.value!.version,
+        title: topic.title,
+        version: topic.version,
         posts,
         summary: summaryText,
         lastPostNumber: lastPost?.postNumber ?? 0,
         totalPosts: realPostCount,
         summarizedPostCount: realPostCount,
-        totalPages: topicInfo.value!.pageCount,
+        totalPages: topic.totalPages,
       }).catch(() => {});
       return;
     }
@@ -480,16 +480,16 @@ async function confirmSummarize() {
     const realPostCount = posts.filter(p => p.postNumber > 0).length;
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
-      title: topicInfo.value.title,
-      version: topicInfo.value.version,
+      title: topic.title,
+      version: topic.version,
       posts,
       summary: summaryText,
       lastPostNumber: lastPost?.postNumber ?? 0,
       totalPosts: realPostCount,
       summarizedPostCount: realPostCount,
-      totalPages: topicInfo.value.pageCount,
+      totalPages: topic.totalPages,
     });
-    store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: realPostCount, totalPages: topicInfo.value.pageCount });
+    store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: realPostCount, totalPages: topic.totalPages });
 
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (saved) cachedTopic.value = saved;
@@ -556,26 +556,35 @@ async function handleSummarizeSegment(segmentIndex: number) {
 
     // Stale guard: user navigated away while LLM was running
     if (thisId !== activeSummarizeId) {
-      await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, segments: updated }).catch(() => {});
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        url: topic.url,
+        title: topic.title,
+        version: topic.version,
+        totalPages: topic.totalPages,
+        totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
+        summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
+        segments: updated,
+      }).catch(() => {});
       return;
     }
 
     segmentSummaries.value = updated;
     activeSegmentIndex.value = segmentIndex;
 
+    const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
-      title: topicInfo.value!.title,
-      version: topicInfo.value!.version,
-      totalPages: topicInfo.value!.pageCount,
-      totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
-      summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
+      title: topic.title,
+      version: topic.version,
+      totalPages: topic.totalPages,
+      totalPosts: segTotalPosts,
+      summarizedPostCount: segTotalPosts,
       segments: updated,
     });
     store.updateSelectedTopic({
-      title: topicInfo.value!.title,
-      version: topicInfo.value!.version,
-      totalPages: topicInfo.value!.pageCount,
+      title: topic.title,
+      version: topic.version,
+      totalPages: topic.totalPages,
       segments: updated,
     } as any);
   } catch (err) {
@@ -617,7 +626,14 @@ async function generateOverallSummary() {
     // Stale guard: user navigated away while LLM was running
     if (thisId !== activeSummarizeId) {
       const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-      await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, summary: result.summary, summarizedPostCount: totalSummarized }).catch(() => {});
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        url: topic.url,
+        title: topic.title,
+        version: topic.version,
+        totalPages: topic.totalPages,
+        summary: result.summary,
+        summarizedPostCount: totalSummarized,
+      }).catch(() => {});
       return;
     }
 

@@ -1,5 +1,23 @@
 # AI Diểm Báo — Agent Rules
 
+## Model Policy
+- Planning phức tạp, architecture decision: dùng Opus
+- Implementation, bug logging, review routine: dùng Sonnet
+- Formatting, rename, simple refactor: dùng Haiku
+
+## Planning Template
+- [ ] Objective & scope
+- [ ] Affected modules
+- [ ] Implementation steps (ordered)
+- [ ] Edge cases
+- [ ] Test plan
+- [ ] Rollback plan
+
+## Degraded Mode (khi Opus bị rate limit)
+- Dùng Sonnet với template đầy đủ
+- Tag file với `[DRAFT_PENDING_OPUS]`
+- Ghi vào MEMORY.md section `Pending Opus Review`
+
 ## File Naming Convention (BẮT BUỘC)
 
 Tất cả file trong `planning/`, `tasks/`, `review/` PHẢI đặt tên theo format có timestamp:
@@ -34,7 +52,8 @@ Timestamp lấy từ thời điểm tạo file.
 
 1. Lưu nội dung review vào `review/`
 2. Tên file: `yyyyMMdd_HHmm_tên_file.md`
-3. Cập nhật `MEMORY.md` — thêm entry vào section "Review Files"
+3. Thêm 1 field vào format file review: review_tier: sonnet | opus để track lại
+4. Cập nhật `MEMORY.md` — thêm entry vào section "Review Files"
 
 ## Cập nhật MEMORY.md
 

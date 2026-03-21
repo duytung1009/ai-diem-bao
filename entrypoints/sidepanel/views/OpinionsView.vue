@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import type { CachedTopic, DetectResult } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import LLMProgress from '../components/LLMProgress.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import AccordionItem from '../components/AccordionItem.vue';
@@ -11,13 +12,16 @@ import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 import TopicMeta from '../components/TopicMeta.vue';
 
-const { analyzeOpinions: runAnalysis, isLoading, error, progress } = useLLM();
+const { analyzeOpinions: runAnalysis } = useLLM();
 const store = useTopicStore();
 const router = useRouter();
 
 const opinions = ref<string | null>(null);
 const cachedTopic = ref<CachedTopic | null>(null);
 const loadedTopicUrl = ref<string | null>(null);
+const isLoading = ref(false);
+const error = ref('');
+const llmTaskId = ref<string | null>(null);
 
 interface OpinionAnalysis {
   mainTopic: string;
@@ -148,16 +152,25 @@ onActivated(async () => {
 
 async function handleAnalyze() {
   if (!cachedTopic.value?.posts?.length) return;
+  isLoading.value = true;
+  error.value = '';
 
-  const result = await runAnalysis(cachedTopic.value.posts);
-  if (result) {
-    opinions.value = result;
-    // Persist opinions to cache so it survives a reload
+  try {
+    const { taskId, result } = runAnalysis(cachedTopic.value.posts);
+    llmTaskId.value = taskId;
+    const llmResult = await result;
+    const opinionsText = (llmResult.data as { opinions: string }).opinions;
+    opinions.value = opinionsText;
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: cachedTopic.value.url,
-      opinions: result,
+      opinions: opinionsText,
     }).catch(() => { });
-    store.updateSelectedTopic({ opinions: result });
+    store.updateSelectedTopic({ opinions: opinionsText });
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    isLoading.value = false;
+    llmTaskId.value = null;
   }
 }
 
@@ -203,7 +216,8 @@ function getSentimentColor(sentiment: string): string {
       </button>
 
       <!-- Progress -->
-      <LoadingSpinner v-if="isLoading" :text="progress || 'Đang phân tích ý kiến...'" />
+      <LLMProgress v-if="isLoading && llmTaskId" :task-id="llmTaskId" :fallback-message="'Đang phân tích ý kiến...'" />
+      <LoadingSpinner v-else-if="isLoading" text="Đang phân tích ý kiến..." />
 
       <!-- Error -->
       <ErrorDisplay v-if="error" :message="error" action="retry" @retry="handleAnalyze" />

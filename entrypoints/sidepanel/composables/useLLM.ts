@@ -1,77 +1,191 @@
-import { ref } from 'vue';
+import { ref, readonly } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import type { ScrapedPost } from '@/lib/types';
+import { estimateTokens } from '@/lib/token-estimator';
+import { STORAGE_KEYS } from '@/lib/constants';
+import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats } from '@/lib/types';
+
+interface LLMTaskState {
+  taskId: string;
+  taskType: string;
+  status: 'running' | 'done' | 'error';
+  progress: { step: number; totalSteps: number; message: string } | null;
+  elapsedMs: number;
+  estimatedTotalMs: number;
+  result: unknown;
+  error: string | null;
+  stats: LLMResultMessage['stats'] | null;
+  onComplete?: (result: LLMResultMessage) => void;
+}
+
+// Module-level singleton state
+const activeTasks = ref<Map<string, LLMTaskState>>(new Map());
+const modelSpeedStats = ref<Record<string, ModelSpeedStats>>({});
+const currentModel = ref<string>('');
+let listenerRegistered = false;
+
+function handleProgress(payload: LLMProgressMessage) {
+  const task = activeTasks.value.get(payload.taskId);
+  if (!task) return;
+  task.status = 'running';
+  task.elapsedMs = payload.elapsedMs;
+  task.progress = {
+    step: payload.step,
+    totalSteps: payload.totalSteps,
+    message: payload.message,
+  };
+}
+
+function handleResult(payload: LLMResultMessage) {
+  const task = activeTasks.value.get(payload.taskId);
+  if (!task) return;
+  task.status = payload.success ? 'done' : 'error';
+  task.result = payload.data;
+  task.error = payload.error ?? null;
+  task.stats = payload.stats;
+  task.elapsedMs = payload.stats.elapsedMs;
+  task.onComplete?.(payload);
+  // Cleanup after 5s so progress display fades naturally
+  setTimeout(() => activeTasks.value.delete(payload.taskId), 5000);
+}
+
+async function loadSpeedStats() {
+  try {
+    const key = STORAGE_KEYS.MODEL_SPEED_STATS;
+    const stored = await browser.storage.sync.get([key, STORAGE_KEYS.SETTINGS]);
+    if (stored[key]) modelSpeedStats.value = stored[key] as Record<string, ModelSpeedStats>;
+    const settings = stored[STORAGE_KEYS.SETTINGS] as { model?: string } | undefined;
+    if (settings?.model) currentModel.value = settings.model;
+  } catch { /* non-critical */ }
+}
+
+function getETA(inputTokens: number, model: string): number | null {
+  const stats = modelSpeedStats.value[model];
+  if (!stats || stats.samples < 1) return null;
+  return Math.ceil((inputTokens / stats.tokensPerSecond) * 1000);
+}
+
+function estimateETA(taskType: string, payload: unknown): number {
+  let text = '';
+  if (Array.isArray(payload)) {
+    text = (payload as ScrapedPost[]).map(p => p.content).join('');
+  } else if (typeof payload === 'object' && payload !== null) {
+    const p = payload as Record<string, unknown>;
+    if (Array.isArray(p.posts)) text = (p.posts as ScrapedPost[]).map((x: ScrapedPost) => x.content).join('');
+    if (typeof p.previousSummary === 'string') text += p.previousSummary;
+    if (typeof p.question === 'string') text += p.question;
+    if (Array.isArray(p.newPosts)) text += (p.newPosts as ScrapedPost[]).map((x: ScrapedPost) => x.content).join('');
+  }
+  const tokens = estimateTokens(text);
+  return getETA(tokens, currentModel.value) ?? tokens * 20; // fallback 20ms/token
+}
+
+/**
+ * Start a fire-and-forget LLM task.
+ * Returns the taskId synchronously; fires the message in background.
+ */
+function startTask(
+  taskType: LLMTaskRequest['taskType'],
+  payload: unknown,
+  onComplete?: (result: LLMResultMessage) => void,
+): string {
+  const taskId = crypto.randomUUID();
+  const eta = estimateETA(taskType, payload);
+
+  activeTasks.value.set(taskId, {
+    taskId, taskType, status: 'running',
+    progress: null, elapsedMs: 0,
+    estimatedTotalMs: eta,
+    result: null, error: null, stats: null,
+    onComplete,
+  });
+
+  // Fire-and-forget — sendMessage returns quickly because background responds with {started: true}
+  sendMessage('START_LLM_TASK', { taskId, taskType, payload } as LLMTaskRequest)
+    .catch((err) => {
+      const task = activeTasks.value.get(taskId);
+      if (task) {
+        task.status = 'error';
+        task.error = String(err);
+        task.onComplete?.({
+          taskId, taskType, success: false, error: String(err),
+          stats: { elapsedMs: 0, inputTokens: 0, outputTokens: 0, mapReduceSteps: 0 },
+        });
+      }
+    });
+
+  return taskId;
+}
+
+function getTaskState(taskId: string): LLMTaskState | undefined {
+  return activeTasks.value.get(taskId);
+}
+
+/** Typed wrapper that returns {taskId, result} — taskId available immediately, result resolves when LLM finishes */
+function summarize(posts: ScrapedPost[]): { taskId: string; result: Promise<LLMResultMessage> } {
+  let resolve!: (r: LLMResultMessage) => void;
+  let reject!: (e: Error) => void;
+  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
+  const taskId = startTask('summarize', posts, (r) => {
+    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
+  });
+  return { taskId, result };
+}
+
+function summarizeIncremental(
+  previousSummary: string,
+  newPosts: ScrapedPost[],
+): { taskId: string; result: Promise<LLMResultMessage> } {
+  let resolve!: (r: LLMResultMessage) => void;
+  let reject!: (e: Error) => void;
+  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
+  const taskId = startTask('summarize_incremental', { previousSummary, newPosts }, (r) => {
+    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
+  });
+  return { taskId, result };
+}
+
+function analyzeOpinions(posts: ScrapedPost[]): { taskId: string; result: Promise<LLMResultMessage> } {
+  let resolve!: (r: LLMResultMessage) => void;
+  let reject!: (e: Error) => void;
+  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
+  const taskId = startTask('analyze_opinions', posts, (r) => {
+    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
+  });
+  return { taskId, result };
+}
+
+function researchTopic(
+  posts: ScrapedPost[],
+  question: string,
+): { taskId: string; result: Promise<LLMResultMessage> } {
+  let resolve!: (r: LLMResultMessage) => void;
+  let reject!: (e: Error) => void;
+  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
+  const taskId = startTask('research', { posts, question }, (r) => {
+    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
+  });
+  return { taskId, result };
+}
 
 export function useLLM() {
-  const isLoading = ref(false);
-  const error = ref('');
-  const progress = ref('');
-
-  async function summarize(posts: ScrapedPost[]): Promise<string | null> {
-    isLoading.value = true;
-    error.value = '';
-    progress.value = 'Đang tóm tắt...';
-
-    try {
-      const result = await sendMessage<{ summary?: string; error?: string }>(
-        'SUMMARIZE',
-        posts,
-      );
-      if (result.error) throw new Error(result.error);
-      return result.summary ?? null;
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : String(err);
-      return null;
-    } finally {
-      isLoading.value = false;
-      progress.value = '';
-    }
+  if (!listenerRegistered) {
+    browser.runtime.onMessage.addListener((message: { type: string; payload: unknown }) => {
+      if (message.type === 'LLM_PROGRESS') handleProgress(message.payload as LLMProgressMessage);
+      if (message.type === 'LLM_RESULT') handleResult(message.payload as LLMResultMessage);
+    });
+    listenerRegistered = true;
+    loadSpeedStats();
   }
 
-  async function summarizeIncremental(
-    previousSummary: string,
-    newPosts: ScrapedPost[],
-  ): Promise<string | null> {
-    isLoading.value = true;
-    error.value = '';
-    progress.value = 'Đang cập nhật tóm tắt...';
-
-    try {
-      const result = await sendMessage<{ summary?: string; error?: string }>(
-        'SUMMARIZE_INCREMENTAL',
-        { previousSummary, newPosts },
-      );
-      if (result.error) throw new Error(result.error);
-      return result.summary ?? null;
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : String(err);
-      return null;
-    } finally {
-      isLoading.value = false;
-      progress.value = '';
-    }
-  }
-
-  async function analyzeOpinions(posts: ScrapedPost[]): Promise<string | null> {
-    isLoading.value = true;
-    error.value = '';
-    progress.value = 'Đang phân tích ý kiến...';
-
-    try {
-      const result = await sendMessage<{ opinions?: string; error?: string }>(
-        'ANALYZE_OPINIONS',
-        posts,
-      );
-      if (result.error) throw new Error(result.error);
-      return result.opinions ?? null;
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : String(err);
-      return null;
-    } finally {
-      isLoading.value = false;
-      progress.value = '';
-    }
-  }
-
-  return { summarize, summarizeIncremental, analyzeOpinions, isLoading, error, progress };
+  return {
+    startTask,
+    summarize,
+    summarizeIncremental,
+    analyzeOpinions,
+    researchTopic,
+    getTaskState,
+    getETA,
+    activeTasks: readonly(activeTasks),
+    modelSpeedStats: readonly(modelSpeedStats),
+  };
 }

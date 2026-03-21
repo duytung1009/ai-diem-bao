@@ -9,18 +9,22 @@ import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress, TopicSegment } from '@/lib/types';
 import type { MultiPageResult } from '@/lib/scrapers/page-loader';
 import { useTopicStore } from '../composables/useTopicStore';
+import { useLLM } from '../composables/useLLM';
 import TopicMeta from '../components/TopicMeta.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import LLMProgress from '../components/LLMProgress.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import CacheIndicator from '../components/CacheIndicator.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const router = useRouter();
 const store = useTopicStore();
+const { summarize, summarizeIncremental } = useLLM();
 
 const summary = ref('');
 const error = ref('');
 const loadingText = ref('');
+const llmTaskId = ref<string | null>(null);
 const summarizedPostCount = computed(() => {
   if (!cachedTopic.value) return 0;
   return cachedTopic.value.summarizedPostCount ?? cachedTopic.value.totalPosts ?? 0;
@@ -127,6 +131,7 @@ async function loadTopicData() {
   summary.value = '';
   error.value = '';
   loadingText.value = '';
+  llmTaskId.value = null;
   isScraping.value = false;
   scrapingWarnings.value = [];
   scrapingInfo.value = [];
@@ -449,18 +454,17 @@ async function confirmSummarize() {
         store.setSummarizing(null);
         return;
       }
-      loadingText.value = 'Đang cập nhật tóm tắt với bài viết mới...';
-      const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE_INCREMENTAL', {
-        previousSummary: cachedTopic.value.summary,
-        newPosts,
-      });
-      if (result.error) throw new Error(result.error);
-      summaryText = result.summary ?? '';
+      loadingText.value = '';
+      const incr = summarizeIncremental(cachedTopic.value.summary, newPosts);
+      llmTaskId.value = incr.taskId;
+      const llmResult = await incr.result;
+      summaryText = (llmResult.data as { summary: string }).summary;
     } else {
-      loadingText.value = `Đang tóm tắt ${posts.length} bài viết...`;
-      const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE', posts);
-      if (result.error) throw new Error(result.error);
-      summaryText = result.summary ?? '';
+      loadingText.value = '';
+      const sum = summarize(posts);
+      llmTaskId.value = sum.taskId;
+      const llmResult = await sum.result;
+      summaryText = (llmResult.data as { summary: string }).summary;
     }
 
     // Stale guard: user navigated to another topic while LLM was running
@@ -506,7 +510,10 @@ async function confirmSummarize() {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     store.setSummarizing(null);
-    if (thisId === activeSummarizeId) loadingText.value = '';
+    if (thisId === activeSummarizeId) {
+      loadingText.value = '';
+      llmTaskId.value = null;
+    }
   }
 }
 
@@ -544,15 +551,15 @@ async function handleSummarizeSegment(segmentIndex: number) {
     if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
     if (errors.length > 0) scrapingWarnings.value = errors;
 
-    loadingText.value = `Đang tóm tắt ${seg.label} (${segPosts.length} bài)...`;
-    const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE', segPosts);
-    if (result.error) throw new Error(result.error);
+    const segTask = summarize(segPosts);
+    llmTaskId.value = segTask.taskId;
+    const segResult = await segTask.result;
 
     const newSeg: TopicSegment = {
       startPage: seg.start,
       endPage: seg.end,
       posts: segPosts,
-      summary: result.summary ?? '',
+      summary: (segResult.data as { summary: string }).summary,
       postCount: segPosts.length,
       summarizedAt: Date.now(),
     };
@@ -601,7 +608,10 @@ async function handleSummarizeSegment(segmentIndex: number) {
     currentScrapeTabId.value = null;
   } finally {
     store.setSummarizing(null);
-    if (thisId === activeSummarizeId) loadingText.value = '';
+    if (thisId === activeSummarizeId) {
+      loadingText.value = '';
+      llmTaskId.value = null;
+    }
   }
 }
 
@@ -617,7 +627,7 @@ async function generateOverallSummary() {
 
   const thisId = ++activeSummarizeId;
   store.setSummarizing(topic.url);
-  loadingText.value = 'Đang tạo tóm tắt tổng quan...';
+  loadingText.value = '';
 
   try {
     const segmentPosts: ScrapedPost[] = completedSegments.map((seg, i) => ({
@@ -627,8 +637,10 @@ async function generateOverallSummary() {
       postNumber: i + 1,
     }));
 
-    const result = await sendMessage<{ summary?: string; error?: string }>('SUMMARIZE', segmentPosts);
-    if (result.error) throw new Error(result.error);
+    const overallTask = summarize(segmentPosts);
+    llmTaskId.value = overallTask.taskId;
+    const overallResult = await overallTask.result;
+    const overallSummaryText = (overallResult.data as { summary: string }).summary;
 
     // Stale guard: user navigated away while LLM was running
     if (thisId !== activeSummarizeId) {
@@ -638,13 +650,13 @@ async function generateOverallSummary() {
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
-        summary: result.summary,
+        summary: overallSummaryText,
         summarizedPostCount: totalSummarized,
       }).catch(() => {});
       return;
     }
 
-    summary.value = result.summary ?? '';
+    summary.value = overallSummaryText;
     activeSegmentIndex.value = null;
 
     const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
@@ -653,10 +665,10 @@ async function generateOverallSummary() {
       title: topic.title,
       version: topic.version,
       totalPages: topic.totalPages,
-      summary: result.summary,
+      summary: overallSummaryText,
       summarizedPostCount: totalSummarized,
     });
-    store.updateSelectedTopic({ summary: result.summary });
+    store.updateSelectedTopic({ summary: overallSummaryText });
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (saved) cachedTopic.value = saved;
     cacheFreshness.value = 'fresh';
@@ -665,7 +677,10 @@ async function generateOverallSummary() {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     store.setSummarizing(null);
-    if (thisId === activeSummarizeId) loadingText.value = '';
+    if (thisId === activeSummarizeId) {
+      loadingText.value = '';
+      llmTaskId.value = null;
+    }
   }
 }
 
@@ -740,7 +755,7 @@ async function handleSegmentUpdate() {
       <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" />
 
       <button
-        v-if="!loadingText && !summary && !pendingPosts && !isSegmentMode"
+        v-if="!loadingText && !llmTaskId && !summary && !pendingPosts && !isSegmentMode"
         class="w-full btn btn-primary"
         @click="handleSummarize(false)"
       >
@@ -748,8 +763,9 @@ async function handleSegmentUpdate() {
       </button>
 
       <!-- Loading + Cancel -->
-      <div v-if="loadingText" class="space-y-2">
-        <LoadingSpinner :text="loadingText" />
+      <div v-if="loadingText || llmTaskId" class="space-y-2">
+        <LoadingSpinner v-if="loadingText" :text="loadingText" />
+        <LLMProgress v-else-if="llmTaskId" :task-id="llmTaskId" :fallback-message="'Đang tóm tắt...'" />
         <button
           v-if="isScraping"
           class="w-full btn btn-sm btn-secondary"
@@ -823,7 +839,7 @@ async function handleSegmentUpdate() {
       </div>
 
       <!-- SEGMENT MODE: Topic > 100 pages -->
-      <template v-if="isSegmentMode && !loadingText && !pendingPosts">
+      <template v-if="isSegmentMode && !loadingText && !llmTaskId && !pendingPosts">
         <!-- Segment info banner -->
         <div class="alert alert-info text-xs">
           <p class="font-medium">Chủ đề dài ({{ topicInfo!.pageCount }} trang)</p>

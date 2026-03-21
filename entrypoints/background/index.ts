@@ -3,7 +3,8 @@ import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, testLLMC
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts } from '@/lib/types';
+import { estimateTokens } from '@/lib/token-estimator';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
@@ -27,54 +28,20 @@ export default defineBackground(() => {
           );
           return true;
 
-        case 'SUMMARIZE': {
-          const posts = message.payload as ScrapedPost[];
-          getSettings()
-            .then(async (config) => {
-              const prompts = await getCustomPrompts();
-              return summarizeTopic(posts, config, undefined, prompts);
-            })
-            .then((summary) => sendResponse({ summary }))
-            .catch((err) => sendResponse({ error: String(err) }));
-          return true;
-        }
+        case 'START_LLM_TASK': {
+          const { taskId, taskType, payload } = message.payload as LLMTaskRequest;
 
-        case 'SUMMARIZE_INCREMENTAL': {
-          const { previousSummary, newPosts } = message.payload as {
-            previousSummary: string;
-            newPosts: ScrapedPost[];
-          };
-          getSettings()
-            .then(async (config) => {
-              const prompts = await getCustomPrompts();
-              return updateSummary(previousSummary, newPosts, config, undefined, prompts);
-            })
-            .then((summary) => sendResponse({ summary }))
-            .catch((err) => sendResponse({ error: String(err) }));
-          return true;
-        }
+          // Respond immediately — giải phóng message channel
+          sendResponse({ started: true, taskId });
 
-        case 'ANALYZE_OPINIONS': {
-          const posts = message.payload as ScrapedPost[];
-          getSettings()
-            .then(async (config) => {
-              const prompts = await getCustomPrompts();
-              return analyzeOpinions(posts, config, undefined, prompts);
-            })
-            .then((opinions) => sendResponse({ opinions }))
-            .catch((err) => sendResponse({ error: String(err) }));
-          return true;
-        }
+          // Keepalive — prevent service worker termination during long LLM call
+          const keepalive = setInterval(() => {
+            void browser.storage.sync.get(''); // no-op ping to keep service worker alive
+          }, 20_000);
 
-        case 'RESEARCH_QUERY': {
-          const { posts, question } = message.payload as { posts: ScrapedPost[]; question: string };
-          getSettings()
-            .then(async (config) => {
-              const prompts = await getCustomPrompts();
-              return researchTopic(posts, question, config, undefined, prompts);
-            })
-            .then((answer) => sendResponse({ answer }))
-            .catch((err) => sendResponse({ error: String(err) }));
+          processLLMTask(taskId, taskType, payload)
+            .finally(() => clearInterval(keepalive));
+
           return true;
         }
 
@@ -245,4 +212,96 @@ async function migrateNormalizedUrls(): Promise<void> {
 
     await dbPut({ ...topic, url: normalizedUrl });
   }
+}
+
+async function processLLMTask(taskId: string, taskType: string, payload: unknown): Promise<void> {
+  const startTime = Date.now();
+  const config = await getSettings();
+  const prompts = await getCustomPrompts();
+  let inputTokens = 0;
+  let stepCount = 0;
+  let totalSteps = 1;
+
+  const onProgress = (msg: string, step?: number, total?: number) => {
+    if (total !== undefined) totalSteps = total;
+    stepCount++;
+    browser.runtime.sendMessage({
+      type: 'LLM_PROGRESS',
+      payload: { taskId, step: step ?? stepCount, totalSteps, message: msg, elapsedMs: Date.now() - startTime },
+    }).catch(() => {}); // sidepanel có thể đã đóng
+  };
+
+  try {
+    let result: unknown;
+
+    switch (taskType) {
+      case 'summarize': {
+        const posts = payload as ScrapedPost[];
+        inputTokens = estimateTokens(posts.map(p => p.content).join(''));
+        result = { summary: await summarizeTopic(posts, config, onProgress, prompts) };
+        break;
+      }
+      case 'summarize_incremental': {
+        const { previousSummary, newPosts } = payload as { previousSummary: string; newPosts: ScrapedPost[] };
+        inputTokens = estimateTokens(previousSummary + newPosts.map(p => p.content).join(''));
+        result = { summary: await updateSummary(previousSummary, newPosts, config, onProgress, prompts) };
+        break;
+      }
+      case 'analyze_opinions': {
+        const posts = payload as ScrapedPost[];
+        inputTokens = estimateTokens(posts.map(p => p.content).join(''));
+        result = { opinions: await analyzeOpinions(posts, config, onProgress, prompts) };
+        break;
+      }
+      case 'research': {
+        const { posts, question } = payload as { posts: ScrapedPost[]; question: string };
+        inputTokens = estimateTokens(posts.map(p => p.content).join('') + question);
+        result = { answer: await researchTopic(posts, question, config, onProgress, prompts) };
+        break;
+      }
+      default:
+        throw new Error(`Unknown taskType: ${taskType}`);
+    }
+
+    const elapsedMs = Date.now() - startTime;
+    const outputTokens = estimateTokens(JSON.stringify(result));
+
+    browser.runtime.sendMessage({
+      type: 'LLM_RESULT',
+      payload: {
+        taskId, taskType, success: true, data: result,
+        stats: { elapsedMs, inputTokens, outputTokens, mapReduceSteps: stepCount || 1 },
+      },
+    }).catch(() => {});
+
+    await updateModelSpeedStats(config.model, inputTokens + outputTokens, elapsedMs);
+  } catch (err) {
+    browser.runtime.sendMessage({
+      type: 'LLM_RESULT',
+      payload: {
+        taskId, taskType, success: false, error: String(err),
+        stats: { elapsedMs: Date.now() - startTime, inputTokens, outputTokens: 0, mapReduceSteps: stepCount || 1 },
+      },
+    }).catch(() => {});
+  }
+}
+
+async function updateModelSpeedStats(model: string, totalTokens: number, elapsedMs: number): Promise<void> {
+  try {
+    const key = STORAGE_KEYS.MODEL_SPEED_STATS;
+    const stored = await browser.storage.sync.get(key);
+    const allStats: Record<string, ModelSpeedStats> = (stored[key] as Record<string, ModelSpeedStats>) || {};
+
+    const current = allStats[model] || { model, tokensPerSecond: 0, samples: 0, lastUpdated: 0 };
+    const newTps = totalTokens / (elapsedMs / 1000);
+
+    current.tokensPerSecond = current.samples > 0
+      ? (current.tokensPerSecond * 0.7 + newTps * 0.3)
+      : newTps;
+    current.samples++;
+    current.lastUpdated = Date.now();
+
+    allStats[model] = current;
+    await browser.storage.sync.set({ [key]: allStats });
+  } catch { /* non-critical */ }
 }

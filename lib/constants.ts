@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   CACHE_PREFIX: 'cache:',  // Legacy — chỉ dùng bởi one-time migration từ storage.local sang IndexedDB
   CUSTOM_PROMPTS: 'custom-prompts',
   THEME: 'theme-mode',
+  MODEL_SPEED_STATS: 'model-speed-stats',
 } as const;
 
 export const DEFAULT_LLM_CONFIG: LLMConfig = {

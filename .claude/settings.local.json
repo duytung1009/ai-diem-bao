@@ -44,7 +44,8 @@
       "Bash(grep -r \"START_SUMMARIZE\\\\|SUMMARIZE_RESULT\" C:UsersTungsourcereposai-diem-bao --include=*.ts --include=*.vue --include=*.js)",
       "Skill(code-review:code-review)",
       "Skill(code-review:code-review:*)",
-      "Bash(dir /b C:UsersTungsourcereposai-diem-baoplanning)"
+      "Bash(dir /b C:UsersTungsourcereposai-diem-baoplanning)",
+      "Bash(powershell -command \"Get-Date -Format ''yyyyMMdd_HHmm''\")"
     ]
   },
   "model": "sonnet"

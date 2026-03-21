@@ -42,10 +42,9 @@ export type MessageType =
   | 'SCRAPE_PROGRESS'
   | 'SCRAPE_ARTICLE'
   | 'CANCEL_SCRAPE'
-  | 'SUMMARIZE'
-  | 'SUMMARIZE_INCREMENTAL'
-  | 'ANALYZE_OPINIONS'
-  | 'RESEARCH_QUERY'
+  | 'START_LLM_TASK'
+  | 'LLM_PROGRESS'
+  | 'LLM_RESULT'
   | 'GET_SETTINGS'
   | 'SAVE_SETTINGS'
   | 'TEST_CONNECTION'
@@ -56,6 +55,41 @@ export type MessageType =
   | 'DELETE_CACHED_TOPIC'
   | 'GET_CACHE_SIZE'
   | 'GET_ALL_CACHED_TOPICS';
+
+export interface LLMTaskRequest {
+  taskId: string;
+  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research';
+  payload: unknown;
+}
+
+export interface LLMProgressMessage {
+  taskId: string;
+  step: number;
+  totalSteps: number;
+  message: string;
+  elapsedMs: number;
+}
+
+export interface LLMResultMessage {
+  taskId: string;
+  taskType: string;
+  success: boolean;
+  data?: unknown;
+  error?: string;
+  stats: {
+    elapsedMs: number;
+    inputTokens: number;
+    outputTokens: number;
+    mapReduceSteps: number;
+  };
+}
+
+export interface ModelSpeedStats {
+  model: string;
+  tokensPerSecond: number;
+  samples: number;
+  lastUpdated: number;
+}
 
 export interface Message<T = unknown> {
   type: MessageType;

@@ -14,7 +14,7 @@ import { estimateTokens, getContextLimit, willExceedContext } from '../token-est
 export async function summarizeTopic(
   posts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -24,7 +24,8 @@ export async function summarizeTopic(
   const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt));
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     // Use map-reduce for large topics
-    onProgress?.(`Đang tóm tắt phần 1/${contextCheck.chunksNeeded}...`);
+    const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
+    onProgress?.(`Đang tóm tắt phần 1/${contextCheck.chunksNeeded}...`, 1, total);
     return summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
   }
 
@@ -37,7 +38,7 @@ export async function updateSummary(
   previousSummary: string,
   newPosts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -67,7 +68,7 @@ export async function updateSummary(
 export async function analyzeOpinions(
   posts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -95,7 +96,7 @@ export async function researchTopic(
   posts: ScrapedPost[],
   question: string,
   config: LLMConfig,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -192,7 +193,7 @@ function chunkPosts(
 async function summaryChunks(
   posts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   suggestedChunks?: number,
   mapPrompt: string = CHUNK_SUMMARY_PROMPT,
   reducePrompt: string = REDUCE_SUMMARY_PROMPT,
@@ -206,10 +207,12 @@ async function summaryChunks(
     return response.content;
   }
 
+  const total = chunks.length + 1; // +1 for reduce step
+
   // Map phase: summarize each chunk sequentially (to avoid rate limits)
   const partialSummaries: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
-    onProgress?.(`Đang tóm tắt phần ${i + 1}/${chunks.length}...`);
+    onProgress?.(`Đang tóm tắt phần ${i + 1}/${chunks.length}...`, i + 1, total);
     const response = await provider.summarize(chunks[i], mapPrompt);
     partialSummaries.push(response.content);
 
@@ -220,7 +223,7 @@ async function summaryChunks(
   }
 
   // Reduce phase: combine partial summaries
-  onProgress?.(`Đang gộp các tóm tắt...`);
+  onProgress?.(`Đang gộp các tóm tắt...`, chunks.length + 1, total);
   const combinedText = partialSummaries
     .map((summary, i) => `--- Phần ${i + 1} ---\n${summary}`)
     .join('\n\n');
@@ -259,7 +262,7 @@ async function summaryChunks(
 async function summarizeWithMapReduce(
   posts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   suggestedChunks?: number,
   finalPrompt?: string,
 ): Promise<string> {

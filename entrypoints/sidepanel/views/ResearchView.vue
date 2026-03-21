@@ -3,8 +3,10 @@ import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic, ResearchEntry, DetectResult } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import LLMProgress from '../components/LLMProgress.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
+import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 import TopicMeta from '../components/TopicMeta.vue';
 
@@ -13,6 +15,8 @@ const question = ref('');
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const history = ref<ResearchEntry[]>([]);
+const llmTaskId = ref<string | null>(null);
+const { researchTopic: runResearch } = useLLM();
 const store = useTopicStore();
 
 // Suggested questions derived from the topic title
@@ -69,36 +73,30 @@ async function handleResearch() {
   error.value = null;
 
   try {
-    const result = await sendMessage<{ answer?: string; error?: string }>(
-      'RESEARCH_QUERY',
-      { posts: cachedTopic.value.posts, question: q },
-    );
+    const { taskId, result } = runResearch(cachedTopic.value.posts, q);
+    llmTaskId.value = taskId;
+    const llmResult = await result;
+    const answer = (llmResult.data as { answer: string }).answer;
 
-    if (result?.error) {
-      error.value = result.error;
-      return;
-    }
+    const entry: ResearchEntry = {
+      question: q,
+      answer,
+      askedAt: Date.now(),
+    };
+    history.value = [entry, ...history.value];
+    question.value = '';
 
-    if (result?.answer) {
-      const entry: ResearchEntry = {
-        question: q,
-        answer: result.answer,
-        askedAt: Date.now(),
-      };
-      history.value = [entry, ...history.value];
-      question.value = '';
-
-      // Persist to cache
-      await sendMessage('SAVE_CACHED_TOPIC', {
-        url: cachedTopic.value!.url,
-        researchHistory: history.value,
-      }).catch(() => { });
-      store.updateSelectedTopic({ researchHistory: history.value });
-    }
+    // Persist to cache
+    await sendMessage('SAVE_CACHED_TOPIC', {
+      url: cachedTopic.value!.url,
+      researchHistory: history.value,
+    }).catch(() => { });
+    store.updateSelectedTopic({ researchHistory: history.value });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     isLoading.value = false;
+    llmTaskId.value = null;
   }
 }
 
@@ -172,7 +170,8 @@ function formatDate(ts: number): string {
         </div>
 
         <!-- Loading -->
-        <LoadingSpinner v-if="isLoading" text="Đang tra cứu câu trả lời..." />
+        <LLMProgress v-if="isLoading && llmTaskId" :task-id="llmTaskId" :fallback-message="'Đang tra cứu câu trả lời...'" />
+        <LoadingSpinner v-else-if="isLoading" text="Đang tra cứu câu trả lời..." />
 
         <!-- Error -->
         <ErrorDisplay v-if="error && !isLoading" :message="error" action="retry" @retry="handleResearch" />

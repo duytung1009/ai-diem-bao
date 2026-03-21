@@ -6,6 +6,7 @@ Yêu cầu:
 - Viết bằng tiếng Việt
 - Giữ bản tóm tắt dưới 500 từ
 - Không thêm thông tin ngoài nội dung các bài viết
+- BẮT BUỘC giữ tên tác giả khi đề cập quan điểm
 - PHẢI tuân theo format Markdown sau:
 
 ## Tóm tắt
@@ -79,13 +80,28 @@ Yêu cầu:
 
 export const CHUNK_SUMMARY_PROMPT = `Bạn là trợ lý AI tóm tắt một phần của cuộc thảo luận trên diễn đàn.
 
-Nhiệm vụ: Tóm tắt ngắn gọn đoạn thảo luận này, giữ lại ý chính và quan điểm nổi bật.
+Nhiệm vụ: Đọc các bài viết trong topic và tạo bản tóm tắt ngắn gọn, dễ hiểu theo format Markdown. Đây là một phần của topic lớn hơn — giữ đủ chi tiết để gộp sau.
 
 Yêu cầu:
 - Viết bằng tiếng Việt
-- Giữ tóm tắt dưới 200 từ
-- Liệt kê quan điểm chính (nếu có)
-- Format: Markdown tự do, không cần cấu trúc cố định`;
+- Giữ bản tóm tắt dưới 300 từ
+- Không thêm thông tin ngoài nội dung các bài viết
+- BẮT BUỘC giữ tên tác giả khi đề cập quan điểm
+- PHẢI tuân theo format Markdown sau:
+
+## Tóm tắt
+Tóm tắt nội dung chính của cuộc thảo luận trong 2-3 đoạn ngắn.
+
+## Quan điểm nổi bật
+### Tên/mô tả quan điểm 1 (N người ủng hộ)
+Nội dung chi tiết, ghi rõ tác giả nếu có.
+### Tên/mô tả quan điểm 2 (M người ủng hộ)
+Nội dung chi tiết, ghi rõ tác giả nếu có.
+
+Trong đó N, M là số lượng tác giả ủng hộ quan điểm đó dựa trên bài viết.
+
+## Kết luận
+Kết luận hoặc đồng thuận chung (nếu có).`;
 
 export const OPINION_CHUNK_PROMPT = `Bạn là chuyên gia trích xuất ý kiến từ một đoạn thảo luận trên diễn đàn.
 
@@ -110,11 +126,12 @@ Yêu cầu:
 
 export const REDUCE_SUMMARY_PROMPT = `Bạn là trợ lý AI gộp nhiều bản tóm tắt thành một tóm tắt cuối cùng.
 
-Nhiệm vụ: Bạn nhận nhiều bản tóm tắt từ các đoạn khác nhau của cùng một topic. Hãy gộp chúng lại thành một tóm tắt hoàn chỉnh.
+Nhiệm vụ: Bạn nhận nhiều bản tóm tắt từng phần (mỗi phần có mục "Tóm tắt", "Quan điểm nổi bật", "Kết luận"). Hãy gộp chúng thành một tóm tắt hoàn chỉnh.
 
 Yêu cầu:
 - Viết bằng tiếng Việt
-- Loại bỏ thông tin trùng lặp
+- Loại bỏ thông tin trùng lặp giữa các phần
+- Gộp các tác giả cùng quan điểm vào một nhóm, đếm tổng số người ủng hộ
 - Giữ bản tóm tắt cuối dưới 500 từ
 - PHẢI tuân theo format Markdown sau:
 
@@ -127,7 +144,7 @@ Nội dung chi tiết, ghi rõ tác giả nếu có.
 ### Tên/mô tả quan điểm 2 (M người ủng hộ)
 Nội dung chi tiết, ghi rõ tác giả nếu có.
 
-Trong đó N, M là số lượng tác giả ủng hộ quan điểm đó dựa trên bài viết.
+Trong đó N, M là số lượng tác giả ủng hộ quan điểm đó — đếm từ danh sách tác giả trong các bản tóm tắt từng phần.
 
 ## Kết luận
-Kết luận hoặc đồng thuận chung (nếu có).`;
+Kết luận hoặc đồng thuận chung (nếu có). Nếu các ý kiến đối lập nhau, tóm tắt điểm bất đồng chính.`;

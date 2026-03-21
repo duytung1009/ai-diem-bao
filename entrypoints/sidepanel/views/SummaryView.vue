@@ -147,6 +147,13 @@ async function loadTopicData() {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (fresh) {
       cachedTopic.value = fresh;
+      // Sync metadata từ cache về store để topicInfo computed đúng (totalPages → isSegmentMode)
+      store.updateSelectedTopic({
+        totalPages: fresh.totalPages,
+        totalPosts: fresh.totalPosts,
+        version: fresh.version,
+        title: fresh.title,
+      });
       if (fresh.summary) {
         summary.value = fresh.summary;
       }

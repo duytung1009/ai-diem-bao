@@ -113,7 +113,7 @@ watch(
   () => store.selectedTopic.value,
   (updated) => {
     if (!updated?.url) return;
-    const idx = allTopics.value.findIndex(t => t.url === updated.url);
+    const idx = allTopics.value.findIndex(t => isSameTopicUrl(t.url, updated.url));
     if (idx >= 0) {
       // Update topic in list without reloading from background
       const topic: CachedTopic = {

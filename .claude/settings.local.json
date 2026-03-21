@@ -43,7 +43,8 @@
       "Bash(mv \"tasks/09-feature-detect-search-opinions.md\" \"tasks/20260319_1722_09-feature-detect-search-opinions.md\")",
       "Bash(grep -r \"START_SUMMARIZE\\\\|SUMMARIZE_RESULT\" C:UsersTungsourcereposai-diem-bao --include=*.ts --include=*.vue --include=*.js)",
       "Skill(code-review:code-review)",
-      "Skill(code-review:code-review:*)"
+      "Skill(code-review:code-review:*)",
+      "Bash(dir /b C:UsersTungsourcereposai-diem-baoplanning)"
     ]
   },
   "model": "sonnet"

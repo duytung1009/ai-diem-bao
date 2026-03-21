@@ -564,8 +564,7 @@ async function handleSummarizeSegment(segmentIndex: number) {
       summarizedAt: Date.now(),
     };
 
-    const count = Math.max(segmentSummaries.value.length, segmentIndex + 1);
-    const updated = Array.from({ length: count }, (_, i) => segmentSummaries.value[i] ?? null) as TopicSegment[];
+    const updated = [...segmentSummaries.value];
     updated[segmentIndex] = newSeg;
 
     // Stale guard: user navigated away while LLM was running
@@ -600,7 +599,7 @@ async function handleSummarizeSegment(segmentIndex: number) {
       version: topic.version,
       totalPages: topic.totalPages,
       segments: updated,
-    } as any);
+    } as Partial<CachedTopic>);
   } catch (err) {
     if (thisId !== activeSummarizeId) return;
     error.value = err instanceof Error ? err.message : String(err);

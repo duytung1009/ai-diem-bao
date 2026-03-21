@@ -175,6 +175,12 @@ export function useLLM() {
     });
     listenerRegistered = true;
     loadSpeedStats();
+  } else {
+    // Refresh current model on each call — stays accurate after user changes Settings
+    browser.storage.sync.get(STORAGE_KEYS.SETTINGS).then((r) => {
+      const s = r[STORAGE_KEYS.SETTINGS] as { model?: string } | undefined;
+      if (s?.model) currentModel.value = s.model;
+    }).catch(() => {});
   }
 
   return {

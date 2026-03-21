@@ -31,7 +31,7 @@ const progressPercent = computed(() => {
 const etaDisplay = computed(() => {
   const t = task.value;
   if (!t || !t.estimatedTotalMs) return null;
-  const elapsed = t.elapsedMs > 0 ? t.elapsedMs : (now.value - (now.value - (t.estimatedTotalMs * 0)));
+  const elapsed = t.elapsedMs > 0 ? t.elapsedMs : 0;
   const remaining = Math.max(0, t.estimatedTotalMs - elapsed);
   if (remaining < 5000) return 'Sắp xong...';
   const mins = Math.floor(remaining / 60000);

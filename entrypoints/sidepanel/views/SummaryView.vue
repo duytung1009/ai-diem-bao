@@ -485,10 +485,19 @@ async function confirmSummarize() {
       return;
     }
 
-    summary.value = summaryText;
-
     const lastPost = posts[posts.length - 1];
     const realPostCount = posts.filter(p => p.postNumber > 0).length;
+
+    // Update store + cachedTopic TRƯỚC khi set summary.value
+    // để khi Vue render summary section, counts đã đúng (không flash 20)
+    store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: realPostCount, totalPages: topic.totalPages });
+    if (cachedTopic.value) {
+      cachedTopic.value = { ...cachedTopic.value, totalPosts: realPostCount, summarizedPostCount: realPostCount };
+    }
+
+    summary.value = summaryText;
+
+    // Async save + refresh (eventual consistency — counts đã đúng trên UI)
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topic.title,
@@ -500,7 +509,6 @@ async function confirmSummarize() {
       summarizedPostCount: realPostCount,
       totalPages: topic.totalPages,
     });
-    store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: realPostCount, totalPages: topic.totalPages });
 
     const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (saved) cachedTopic.value = saved;

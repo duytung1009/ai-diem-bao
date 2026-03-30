@@ -13,14 +13,20 @@ import { estimateTokens, getContextLimit, willExceedContext } from '../token-est
 
 /**
  * Try to parse LLM output as SummaryJSON.
- * Handles optional markdown code fences (```json...```).
+ * Handles: plain JSON, triple-backtick fences (```json...```), single-backtick wrapping (`...`).
  * Returns null if output is not valid JSON or missing required fields.
  */
 export function parseSummaryJSON(raw: string): SummaryJSON | null {
   let text = raw.trim();
-  // Strip markdown code fences if present
+  // Strip triple-backtick code fences: ```json\n{...}\n```
   const fenceMatch = text.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/s);
-  if (fenceMatch) text = fenceMatch[1].trim();
+  if (fenceMatch) {
+    text = fenceMatch[1].trim();
+  } else {
+    // Strip single-backtick wrapping: `{...}`
+    const singleBacktickMatch = text.match(/^`([\s\S]*?)`$/s);
+    if (singleBacktickMatch) text = singleBacktickMatch[1].trim();
+  }
   try {
     const parsed = JSON.parse(text);
     if (

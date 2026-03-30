@@ -2,6 +2,7 @@
 import { computed, ref, watchEffect } from 'vue';
 import { useLLM } from '../composables/useLLM';
 
+const MSG_ALMOST_DONE = "Sắp xong...";
 const props = defineProps<{
   taskId?: string | null;
   scrapeProgress?: { currentPage: number; totalPages: number; postsScraped: number } | null;
@@ -47,7 +48,7 @@ const llmEta = computed(() => {
   const t = task.value;
   if (!t || !t.estimatedTotalMs) return null;
   const remaining = Math.max(0, t.estimatedTotalMs - t.elapsedMs);
-  if (remaining < 5000) return 'Sắp xong...';
+  if (remaining < 5000) return MSG_ALMOST_DONE;
   const mins = Math.floor(remaining / 60000);
   const secs = Math.floor((remaining % 60000) / 1000);
   return mins > 0 ? `~${mins} phút ${secs}s` : `~${secs}s`;
@@ -67,7 +68,7 @@ const scrapeEta = computed(() => {
   if (remainingPages <= 0) return null;
   const msPerPage = (props.scrapeDelayMs ?? 2000) + PAGE_LOAD_MS;
   const remainingMs = remainingPages * msPerPage;
-  if (remainingMs < 5000) return 'Sắp xong...';
+  if (remainingMs < 5000) return MSG_ALMOST_DONE;
   const mins = Math.floor(remainingMs / 60000);
   const secs = Math.floor((remainingMs % 60000) / 1000);
   return mins > 0 ? `~${mins} phút ${secs}s` : `~${secs}s`;
@@ -116,7 +117,7 @@ const displayMessage = computed(() => {
     </div>
 
     <!-- ETA -->
-    <p v-if="etaDisplay" class="text-xs text-(--color-text-muted)">Ước tính còn {{ etaDisplay }}</p>
+    <p v-if="etaDisplay" class="text-xs text-(--color-text-muted)">{{ etaDisplay === MSG_ALMOST_DONE ? etaDisplay : `Ước tính còn ${etaDisplay}` }}</p>
 
     <!-- Cancel button -->
     <button

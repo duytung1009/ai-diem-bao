@@ -17,6 +17,7 @@ export default defineBackground(() => {
 
   browser.runtime?.onMessage.addListener(
     (message: Message, _sender, sendResponse) => {
+      console.log('[BG] onMessage:', message.type, message.payload);
       switch (message.type) {
         case 'GET_SETTINGS':
           getSettings().then(sendResponse);
@@ -104,6 +105,7 @@ export default defineBackground(() => {
                 topicType: partial.topicType ?? existing?.topicType,
                 segments: partial.segments ?? existing?.segments,
                 overallSummary: partial.overallSummary ?? existing?.overallSummary,
+                summaryJson: partial.summaryJson ?? existing?.summaryJson,
               };
               await saveCachedTopic(topic);
               sendResponse({ success: true });

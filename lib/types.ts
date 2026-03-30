@@ -22,6 +22,25 @@ export interface SummaryResult {
   research?: string;
 }
 
+export interface QuoteItem {
+  author: string;
+  postNumber: number;
+  text: string;
+}
+
+export interface OpinionItem {
+  title: string;
+  description: string;
+  supporters: string[];
+  quotes: QuoteItem[];
+}
+
+export interface SummaryJSON {
+  summary: string;
+  opinions: OpinionItem[];
+  conclusion: string;
+}
+
 export interface LLMConfig {
   provider: 'openai' | 'claude' | 'gemini' | 'custom';
   model: string;
@@ -128,6 +147,7 @@ export interface CachedTopic {
   topicType?: 'discussion' | 'news';
   segments?: TopicSegment[];
   overallSummary?: string;
+  summaryJson?: SummaryJSON;
 }
 
 export interface TopicSegment {
@@ -135,6 +155,7 @@ export interface TopicSegment {
   endPage: number;
   posts: ScrapedPost[];
   summary: string;
+  summaryJson?: SummaryJSON;
   postCount: number;
   summarizedAt: number;
 }

@@ -3,10 +3,11 @@ import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watc
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
+import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress, TopicSegment } from '@/lib/types';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress, TopicSegment, SummaryJSON } from '@/lib/types';
 import type { MultiPageResult } from '@/lib/scrapers/page-loader';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useLLM } from '../composables/useLLM';
@@ -22,6 +23,7 @@ const store = useTopicStore();
 const { summarize, summarizeIncremental } = useLLM();
 
 const summary = ref('');
+const summaryJson = ref<SummaryJSON | null>(null); // Feature 15: structured JSON output
 const error = ref('');
 const loadingText = ref('');
 const llmTaskId = ref<string | null>(null);
@@ -122,6 +124,9 @@ function onRuntimeMessage(message: Message) {
 
 const loadedTopicUrl = ref<string | null>(null);
 
+// parseSummaryJSON imported from '@/lib/llm/summarizer'
+const tryParseSummaryJSON = parseSummaryJSON;
+
 async function loadTopicData() {
   const topic = store.selectedTopic.value;
   if (!topic) return;
@@ -129,6 +134,7 @@ async function loadTopicData() {
   // === RESET all view state for new topic ===
   activeSummarizeId++; // invalidate any in-flight LLM callbacks
   summary.value = '';
+  summaryJson.value = null;
   error.value = '';
   loadingText.value = '';
   llmTaskId.value = null;
@@ -156,11 +162,16 @@ async function loadTopicData() {
       store.updateSelectedTopic({
         totalPages: fresh.totalPages,
         totalPosts: fresh.totalPosts,
+        summarizedPostCount: fresh.summarizedPostCount,
         version: fresh.version,
         title: fresh.title,
+        posts: fresh.posts,    // đảm bảo store luôn có posts từ IndexedDB
       });
       if (fresh.summary) {
         summary.value = fresh.summary;
+      }
+      if (fresh.summaryJson) {
+        summaryJson.value = fresh.summaryJson;
       }
       if (fresh.segments) {
         segmentSummaries.value = fresh.segments;
@@ -318,13 +329,20 @@ async function handleSummarize(incremental = false) {
   const topic = store.selectedTopic.value!;
   error.value = '';
   scrapingWarnings.value = [];
-  if (!incremental) summary.value = '';
+  if (!incremental) {
+    summary.value = '';
+    summaryJson.value = null;
+  }
   pendingPosts.value = null;
 
   try {
-    // If topic already has cached posts and this is a fresh summarize, use them directly
-    if (topic.posts?.length > 0 && !incremental) {
-      pendingPosts.value = [...topic.posts];
+    // Ưu tiên cachedTopic.value.posts (từ IndexedDB) vì store.selectedTopic.posts có thể stale
+    // khi user re-select topic qua minimalTopic (posts = [])
+    const cachedPosts = cachedTopic.value?.posts?.length
+      ? cachedTopic.value.posts
+      : topic.posts ?? [];
+    if (cachedPosts.length > 0 && !incremental) {
+      pendingPosts.value = [...cachedPosts];
       pendingIncremental.value = false;
       return;
     }
@@ -338,8 +356,10 @@ async function handleSummarize(incremental = false) {
 
     const detectMatchesTopic = store.activeTabUrl.value
       && isSameTopicUrl(store.activeTabUrl.value, topic.url);
-    const pageCount = (detectMatchesTopic ? store.activeTabDetect.value?.pageCount : null)
-      ?? topic.totalPages ?? 1;
+    const detectedPageCount = detectMatchesTopic ? (store.activeTabDetect.value?.pageCount ?? 1) : 1;
+    const cachedPageCount = topic.totalPages ?? 1;
+    // Dùng max: detect có thể fallback về 1, cache giữ giá trị từ lần scrape trước
+    const pageCount = Math.max(detectedPageCount, cachedPageCount);
     let posts: ScrapedPost[];
 
     if (pageCount > 1) {
@@ -421,6 +441,20 @@ async function handleSummarize(incremental = false) {
     }
     // --- END NEWS DETECTION ---
 
+    // Feature 16: Save posts early to avoid re-scraping on LLM fail/cancel
+    if (posts.length > 0) {
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        url: topic.url,
+        title: topic.title,
+        version: topic.version,
+        posts,
+        totalPages: pageCount,
+        totalPosts: posts.filter(p => p.postNumber > 0).length,
+      }).catch(() => {}); // silent best-effort
+      const refreshed = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url).catch(() => null);
+      if (refreshed) cachedTopic.value = refreshed;
+    }
+
     loadingText.value = '';
     pendingPosts.value = posts;
     pendingIncremental.value = incremental;
@@ -467,6 +501,9 @@ async function confirmSummarize() {
       summaryText = (llmResult.data as { summary: string }).summary;
     }
 
+    // Feature 15: parse JSON output
+    const parsedJson = tryParseSummaryJSON(summaryText);
+
     // Stale guard: user navigated to another topic while LLM was running
     if (thisId !== activeSummarizeId) {
       const lastPost = posts[posts.length - 1];
@@ -477,6 +514,7 @@ async function confirmSummarize() {
         version: topic.version,
         posts,
         summary: summaryText,
+        summaryJson: parsedJson ?? undefined,
         lastPostNumber: lastPost?.postNumber ?? 0,
         totalPosts: realPostCount,
         summarizedPostCount: realPostCount,
@@ -496,6 +534,7 @@ async function confirmSummarize() {
     }
 
     summary.value = summaryText;
+    summaryJson.value = parsedJson; // Feature 15
 
     // Async save + refresh (eventual consistency — counts đã đúng trên UI)
     await sendMessage('SAVE_CACHED_TOPIC', {
@@ -504,6 +543,7 @@ async function confirmSummarize() {
       version: topic.version,
       posts,
       summary: summaryText,
+      summaryJson: parsedJson ?? undefined,
       lastPostNumber: lastPost?.postNumber ?? 0,
       totalPosts: realPostCount,
       summarizedPostCount: realPostCount,
@@ -559,15 +599,36 @@ async function handleSummarizeSegment(segmentIndex: number) {
     if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
     if (errors.length > 0) scrapingWarnings.value = errors;
 
+    // Feature 16: Save segment posts early before LLM (avoids re-scraping on failure)
+    const tempUpdated = [...segmentSummaries.value];
+    tempUpdated[segmentIndex] = {
+      startPage: seg.start,
+      endPage: seg.end,
+      posts: segPosts,
+      summary: segmentSummaries.value[segmentIndex]?.summary ?? '',
+      postCount: segPosts.length,
+      summarizedAt: segmentSummaries.value[segmentIndex]?.summarizedAt ?? 0,
+    };
+    await sendMessage('SAVE_CACHED_TOPIC', {
+      url: topic.url,
+      title: topic.title,
+      version: topic.version,
+      totalPages: topic.totalPages,
+      segments: tempUpdated,
+    }).catch(() => {}); // silent best-effort
+
     const segTask = summarize(segPosts);
     llmTaskId.value = segTask.taskId;
     const segResult = await segTask.result;
+    const segSummaryText = (segResult.data as { summary: string }).summary;
+    const segSummaryJson = tryParseSummaryJSON(segSummaryText); // Feature 15
 
     const newSeg: TopicSegment = {
       startPage: seg.start,
       endPage: seg.end,
       posts: segPosts,
-      summary: (segResult.data as { summary: string }).summary,
+      summary: segSummaryText,
+      summaryJson: segSummaryJson ?? undefined,
       postCount: segPosts.length,
       summarizedAt: Date.now(),
     };
@@ -648,6 +709,7 @@ async function generateOverallSummary() {
     llmTaskId.value = overallTask.taskId;
     const overallResult = await overallTask.result;
     const overallSummaryText = (overallResult.data as { summary: string }).summary;
+    const overallSummaryJson = tryParseSummaryJSON(overallSummaryText); // Feature 15
 
     // Stale guard: user navigated away while LLM was running
     if (thisId !== activeSummarizeId) {
@@ -658,12 +720,14 @@ async function generateOverallSummary() {
         version: topic.version,
         totalPages: topic.totalPages,
         summary: overallSummaryText,
+        summaryJson: overallSummaryJson ?? undefined,
         summarizedPostCount: totalSummarized,
       }).catch(() => {});
       return;
     }
 
     summary.value = overallSummaryText;
+    summaryJson.value = overallSummaryJson; // Feature 15
     activeSegmentIndex.value = null;
 
     const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
@@ -673,6 +737,7 @@ async function generateOverallSummary() {
       version: topic.version,
       totalPages: topic.totalPages,
       summary: overallSummaryText,
+      summaryJson: overallSummaryJson ?? undefined,
       summarizedPostCount: totalSummarized,
     });
     store.updateSelectedTopic({ summary: overallSummaryText });
@@ -902,7 +967,7 @@ async function handleSegmentUpdate() {
               @update="handleSegmentUpdate"
             />
             <div class="card p-4">
-              <SummaryContent :content="summary" />
+              <SummaryContent :content="summary" :json="summaryJson ?? undefined" />
             </div>
             <button
               class="w-full btn btn-secondary text-sm"
@@ -938,7 +1003,10 @@ async function handleSegmentUpdate() {
               <span class="text-xs text-(--color-text-secondary)">{{ segmentSummaries[activeSegmentIndex].postCount }} bài viết</span>
             </div>
             <div class="card p-4">
-              <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" />
+              <SummaryContent
+                :content="segmentSummaries[activeSegmentIndex].summary"
+                :json="segmentSummaries[activeSegmentIndex].summaryJson"
+              />
             </div>
             <button
               class="w-full btn btn-secondary text-xs"
@@ -982,7 +1050,7 @@ async function handleSegmentUpdate() {
           @update="handleSummarize(true)"
         />
         <div class="card p-4">
-          <SummaryContent :content="summary" />
+          <SummaryContent :content="summary" :json="summaryJson ?? undefined" />
         </div>
         <button
           class="w-full btn btn-secondary"

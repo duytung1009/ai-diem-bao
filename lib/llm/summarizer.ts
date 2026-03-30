@@ -1,4 +1,4 @@
-import type { ScrapedPost, LLMConfig, CustomPrompts } from '../types';
+import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON } from '../types';
 import { createProvider } from './factory';
 import {
   SUMMARY_PROMPT,
@@ -10,6 +10,31 @@ import {
   RESEARCH_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext } from '../token-estimator';
+
+/**
+ * Try to parse LLM output as SummaryJSON.
+ * Handles optional markdown code fences (```json...```).
+ * Returns null if output is not valid JSON or missing required fields.
+ */
+export function parseSummaryJSON(raw: string): SummaryJSON | null {
+  let text = raw.trim();
+  // Strip markdown code fences if present
+  const fenceMatch = text.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/s);
+  if (fenceMatch) text = fenceMatch[1].trim();
+  try {
+    const parsed = JSON.parse(text);
+    if (
+      typeof parsed.summary === 'string' &&
+      Array.isArray(parsed.opinions) &&
+      typeof parsed.conclusion === 'string'
+    ) {
+      return parsed as SummaryJSON;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function summarizeTopic(
   posts: ScrapedPost[],
@@ -26,12 +51,15 @@ export async function summarizeTopic(
     // Use map-reduce for large topics
     const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
     onProgress?.(`Đang tóm tắt phần 1/${contextCheck.chunksNeeded}...`, 1, total);
-    return summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
+    const rawResult = await summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
+    const json = parseSummaryJSON(rawResult);
+    return json ? JSON.stringify(json) : rawResult;
   }
 
   // Direct summarization for small topics
   const response = await provider.summarize(posts, systemPrompt);
-  return response.content;
+  const json = parseSummaryJSON(response.content);
+  return json ? JSON.stringify(json) : response.content;
 }
 
 export async function updateSummary(

@@ -2,8 +2,7 @@
 import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic, ResearchEntry, DetectResult } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
-import LLMProgress from '../components/LLMProgress.vue';
+import ProgressIndicator from '../components/ProgressIndicator.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
@@ -170,8 +169,7 @@ function formatDate(ts: number): string {
         </div>
 
         <!-- Loading -->
-        <LLMProgress v-if="isLoading && llmTaskId" :task-id="llmTaskId" :fallback-message="'Đang tra cứu câu trả lời...'" />
-        <LoadingSpinner v-else-if="isLoading" text="Đang tra cứu câu trả lời..." />
+        <ProgressIndicator v-if="isLoading" :task-id="llmTaskId" fallback-message="Đang tra cứu câu trả lời..." />
 
         <!-- Error -->
         <ErrorDisplay v-if="error && !isLoading" :message="error" action="retry" @retry="handleResearch" />

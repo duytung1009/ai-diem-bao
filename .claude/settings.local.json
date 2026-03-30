@@ -45,7 +45,10 @@
       "Skill(code-review:code-review)",
       "Skill(code-review:code-review:*)",
       "Bash(dir /b C:UsersTungsourcereposai-diem-baoplanning)",
-      "Bash(powershell -command \"Get-Date -Format ''yyyyMMdd_HHmm''\")"
+      "Bash(powershell -command \"Get-Date -Format ''yyyyMMdd_HHmm''\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(xargs grep:*)"
     ]
   },
   "model": "sonnet"

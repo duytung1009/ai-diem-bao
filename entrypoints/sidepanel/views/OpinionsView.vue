@@ -3,8 +3,7 @@ import { ref, onActivated, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CachedTopic, DetectResult } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
-import LLMProgress from '../components/LLMProgress.vue';
+import ProgressIndicator from '../components/ProgressIndicator.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import AccordionItem from '../components/AccordionItem.vue';
@@ -216,8 +215,7 @@ function getSentimentColor(sentiment: string): string {
       </button>
 
       <!-- Progress -->
-      <LLMProgress v-if="isLoading && llmTaskId" :task-id="llmTaskId" :fallback-message="'Đang phân tích ý kiến...'" />
-      <LoadingSpinner v-else-if="isLoading" text="Đang phân tích ý kiến..." />
+      <ProgressIndicator v-if="isLoading" :task-id="llmTaskId" fallback-message="Đang phân tích ý kiến..." />
 
       <!-- Error -->
       <ErrorDisplay v-if="error" :message="error" action="retry" @retry="handleAnalyze" />

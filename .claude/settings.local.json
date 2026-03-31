@@ -48,7 +48,9 @@
       "Bash(powershell -command \"Get-Date -Format ''yyyyMMdd_HHmm''\")",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(date /T)",
+      "Bash(time /T)"
     ]
   },
   "model": "sonnet"

@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE } from '@/lib/constants';
 import type { LLMConfig, CustomPrompts, CachedTopic } from '@/lib/types';
-import { SUMMARY_PROMPT, OPINION_ANALYSIS_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
+import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useTheme } from '../composables/useTheme';
 
@@ -25,20 +25,20 @@ const themeOptions = [
 
 // Custom prompts
 const customPrompts = ref<CustomPrompts>({});
-const activePromptTab = ref<'summary' | 'opinions' | 'research'>('summary');
+const activePromptTab = ref<'summary' | 'knowledge' | 'research'>('summary');
 const promptSaveMessage = ref('');
 const promptError = ref('');
 const showDefaultPrompt = ref(false);
 
 const defaultPrompts = {
   summary: SUMMARY_PROMPT,
-  opinions: OPINION_ANALYSIS_PROMPT,
+  knowledge: KNOWLEDGE_EXTRACT_PROMPT,
   research: RESEARCH_PROMPT,
 };
 
 const promptTabLabels = {
   summary: 'Tóm tắt',
-  opinions: 'Ý kiến',
+  knowledge: 'Kiến thức',
   research: 'Tra cứu',
 };
 
@@ -431,7 +431,7 @@ function cancelClearAll() {
       <!-- Tabs -->
       <div class="flex border-b border-(--color-border)">
         <button
-          v-for="tab in (['summary', 'opinions', 'research'] as const)"
+          v-for="tab in (['summary', 'knowledge', 'research'] as const)"
           :key="tab"
           class="flex-1 py-1.5 text-xs font-medium transition-colors"
           :class="activePromptTab === tab

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watch } from 'vue';
+import { ref, onMounted, onActivated, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
@@ -7,8 +7,8 @@ import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, Message, PageProgress, TopicSegment, SummaryJSON } from '@/lib/types';
-import type { MultiPageResult } from '@/lib/scrapers/page-loader';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON } from '@/lib/types';
+import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useLLM } from '../composables/useLLM';
 import TopicMeta from '../components/TopicMeta.vue';
@@ -47,10 +47,9 @@ const cacheFreshness = ref<CacheFreshness | null>(null);
 
 // Segment mode state
 const segmentSize = ref(20);
-const SCRAPE_CHUNK_SIZE = 10; // pages per message — keeps channel alive
 const segmentSummaries = ref<TopicSegment[]>([]);
 const activeSegmentIndex = ref<number | null>(null);
-const currentScrapeTabId = ref<number | null>(null); // tracks which tab is currently scraping
+let scrapeAbortCtrl: AbortController | null = null; // non-reactive, module-level
 let activeSummarizeId = 0; // incremented on each new summarize or topic load; guards stale async callbacks
 
 // Derived from store — replaces topicInfo ref
@@ -115,13 +114,6 @@ const segments = computed(() => {
   }
   return segs;
 });
-
-function onRuntimeMessage(message: Message) {
-  if (message.type === 'SCRAPE_PROGRESS' && isScraping.value) {
-    const p = message.payload as PageProgress;
-    scrapeProgress.value = p;
-  }
-}
 
 const loadedTopicUrl = ref<string | null>(null);
 
@@ -203,8 +195,6 @@ onMounted(() => {
 
 // With <keep-alive>: onActivated fires on initial mount AND each re-activation.
 onActivated(async () => {
-  browser.runtime?.onMessage.addListener(onRuntimeMessage);
-
   // Reload settings in case user changed them in SettingsView
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
     if (cfg) {
@@ -235,14 +225,6 @@ onActivated(async () => {
   if (!isSameTopicUrl(url, loadedTopicUrl.value ?? '')) await loadTopicData();
 });
 
-onDeactivated(() => {
-  browser.runtime?.onMessage.removeListener(onRuntimeMessage);
-});
-
-onUnmounted(() => {
-  browser.runtime?.onMessage.removeListener(onRuntimeMessage);
-});
-
 function evaluateFreshness(cached: CachedTopic, currentPostCount: number | null): CacheFreshness {
   const ageMs = Date.now() - cached.cachedAt;
   const oneDay = 24 * 60 * 60 * 1000;
@@ -254,84 +236,47 @@ function evaluateFreshness(cached: CachedTopic, currentPostCount: number | null)
 }
 
 async function handleCancel() {
-  const tabId = currentScrapeTabId.value;
-  if (tabId) {
-    await browser.tabs.sendMessage(tabId, { type: 'CANCEL_SCRAPE' }).catch(() => {});
-    currentScrapeTabId.value = null;
-  }
+  scrapeAbortCtrl?.abort();
+  scrapeAbortCtrl = null;
   isScraping.value = false;
   scrapeProgress.value = null;
   simpleLoadingText.value = '';
 }
 
-/**
- * Tìm tab đang mở trên cùng domain với topicUrl.
- * Ưu tiên: (1) active tab nếu cùng domain, (2) bất kỳ tab cùng domain.
- */
-async function findForumTab(topicUrl: string): Promise<number | null> {
-  const domain = new URL(topicUrl).hostname;
-
-  const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (activeTab?.id && activeTab.url) {
-    try {
-      if (new URL(activeTab.url).hostname === domain) return activeTab.id;
-    } catch { /* invalid URL */ }
-  }
-
-  const allTabs = await browser.tabs.query({ currentWindow: true });
-  for (const tab of allTabs) {
-    if (tab.id && tab.url) {
-      try {
-        if (new URL(tab.url).hostname === domain) return tab.id;
-      } catch { /* skip */ }
-    }
-  }
-  return null;
-}
-
-/**
- * Scrape pages in small chunks (SCRAPE_CHUNK_SIZE pages per message).
- * Avoids "message channel closed" error that occurs when a single scrape
- * message takes too long (100+ pages can exceed Chrome's channel timeout).
- */
-async function scrapeInChunks(
-  tabId: number,
+async function scrapeRange(
   baseUrl: string,
   startPage: number,
   endPage: number,
   delayMs: number = 2000,
 ): Promise<{ posts: ScrapedPost[]; errors: string[] }> {
-  const allPosts: ScrapedPost[] = [];
-  const allErrors: string[] = [];
-
-  for (let chunkStart = startPage; chunkStart <= endPage; chunkStart += SCRAPE_CHUNK_SIZE) {
-    if (!isScraping.value) break; // cancelled
-
-    const chunkEnd = Math.min(chunkStart + SCRAPE_CHUNK_SIZE - 1, endPage);
-    scrapeProgress.value = { currentPage: chunkStart, totalPages: endPage, postsScraped: allPosts.length };
-
-    const result = await browser.tabs.sendMessage(tabId, {
-      type: 'SCRAPE_PAGE_RANGE',
-      payload: { startPage: chunkStart, endPage: chunkEnd, delayMs, baseUrl },
-    }) as MultiPageResult & { error?: string };
-
-    if (result.error) throw new Error(result.error);
-    allPosts.push(...result.posts);
-    if (result.errors?.length > 0) allErrors.push(...result.errors);
+  const version = topicInfo.value?.version;
+  if (!version || version === 'unknown') {
+    throw new Error('Không xác định được phiên bản diễn đàn.');
   }
-
-  // Deduplicate + sort
-  const seen = new Set<number>();
-  const posts = allPosts
-    .filter(p => {
-      if (p.postNumber === 0) return true;
-      if (seen.has(p.postNumber)) return false;
-      seen.add(p.postNumber);
-      return true;
-    })
-    .sort((a, b) => a.postNumber - b.postNumber);
-
-  return { posts, errors: allErrors };
+  scrapeAbortCtrl = new AbortController();
+  const signal = scrapeAbortCtrl.signal;
+  try {
+    const result = await scrapePageRange(
+      version as XenForoVersion,
+      baseUrl,
+      startPage,
+      endPage,
+      (current, _total, postsScraped) => {
+        scrapeProgress.value = {
+          currentPage: startPage + current - 1,
+          totalPages: endPage,
+          postsScraped,
+        };
+      },
+      signal,
+      delayMs,
+    );
+    // page-loader returns partial results on abort (doesn't throw) — escalate to caller
+    if (signal.aborted) throw new DOMException('Scraping cancelled', 'AbortError');
+    return { posts: result.posts, errors: result.errors };
+  } finally {
+    scrapeAbortCtrl = null;
+  }
 }
 
 async function handleSummarize(incremental = false) {
@@ -357,13 +302,7 @@ async function handleSummarize(incremental = false) {
       return;
     }
 
-    // Need to scrape — find a tab on the same forum domain
-    const tabId = await findForumTab(topic.url);
-    if (!tabId) {
-      error.value = 'Không tìm thấy tab nào đang mở diễn đàn này. Hãy mở ít nhất một trang của diễn đàn.';
-      return;
-    }
-
+    // Need to scrape directly from sidepanel
     const detectMatchesTopic = store.activeTabUrl.value
       && isSameTopicUrl(store.activeTabUrl.value, topic.url);
     const detectedPageCount = detectMatchesTopic ? (store.activeTabDetect.value?.pageCount ?? 1) : 1;
@@ -374,7 +313,6 @@ async function handleSummarize(incremental = false) {
 
     if (pageCount > 1) {
       isScraping.value = true;
-      currentScrapeTabId.value = tabId;
 
       if (incremental && cachedTopic.value) {
         // INCREMENTAL: only scrape from last known page onward
@@ -382,9 +320,8 @@ async function handleSummarize(incremental = false) {
         const startPage = Math.max(1, cachedPages + 1); // +1: page cachedPages already scraped
         const endPage = pageCount;
 
-        const { posts: newPosts, errors } = await scrapeInChunks(tabId, topic.url, startPage, endPage, currentConfig.value?.scrapeDelayMs ?? 2000);
+        const { posts: newPosts, errors } = await scrapeRange(topic.url, startPage, endPage, currentConfig.value?.scrapeDelayMs ?? 2000);
         isScraping.value = false;
-        currentScrapeTabId.value = null;
         scrapeProgress.value = null;
 
         // Merge with existing cached posts, deduplicate
@@ -400,10 +337,9 @@ async function handleSummarize(incremental = false) {
 
         if (errors.length > 0) scrapingWarnings.value = errors;
       } else {
-        // FULL SCRAPE via chunks
-        const { posts: scraped, errors } = await scrapeInChunks(tabId, topic.url, 1, pageCount, currentConfig.value?.scrapeDelayMs ?? 2000);
+        // FULL SCRAPE
+        const { posts: scraped, errors } = await scrapeRange(topic.url, 1, pageCount, currentConfig.value?.scrapeDelayMs ?? 2000);
         isScraping.value = false;
-        currentScrapeTabId.value = null;
         scrapeProgress.value = null;
         if (!scraped.length) throw new Error('Không tìm thấy bài viết nào.');
         posts = scraped;
@@ -412,10 +348,8 @@ async function handleSummarize(incremental = false) {
     } else {
       scrapeProgress.value = { currentPage: 1, totalPages: 1, postsScraped: 0 };
       isScraping.value = true;
-      currentScrapeTabId.value = tabId;
-      const { posts: scraped, errors } = await scrapeInChunks(tabId, topic.url, 1, 1, 0);
+      const { posts: scraped, errors } = await scrapeRange(topic.url, 1, 1, 0);
       isScraping.value = false;
-      currentScrapeTabId.value = null;
       scrapeProgress.value = null;
       if (!scraped.length) throw new Error('Không tìm thấy bài viết nào.');
       posts = scraped;
@@ -473,10 +407,10 @@ async function handleSummarize(incremental = false) {
     pendingIncremental.value = incremental;
   } catch (err) {
     isScraping.value = false;
-    currentScrapeTabId.value = null;
-    error.value = err instanceof Error ? err.message : String(err);
     scrapeProgress.value = null;
     simpleLoadingText.value = '';
+    if (err instanceof DOMException && err.name === 'AbortError') return;
+    error.value = err instanceof Error ? err.message : String(err);
   }
 }
 
@@ -603,23 +537,11 @@ async function handleSummarizeSegment(segmentIndex: number) {
   store.setSummarizing(topic.url);
 
   try {
-    const tabId = await findForumTab(topic.url);
-    if (!tabId) {
-      error.value = 'Không tìm thấy tab nào đang mở diễn đàn này. Hãy mở ít nhất một trang của diễn đàn.';
-      store.setSummarizing(null);
-      return;
-    }
-
     isScraping.value = true;
-    currentScrapeTabId.value = tabId;
-    // Dùng simpleLoadingText thay vì set scrapeProgress với absolute page numbers (seg.start/seg.end)
-    // để tránh progress bar hiển thị ~50% sai ở initial state (vd: segment trang 10-20 → 10/20 = 50%)
-    // SCRAPE_PROGRESS messages từ content script sẽ update scrapeProgress với giá trị chính xác
     simpleLoadingText.value = `Đang đọc ${seg.label}...`;
 
-    const { posts: segPosts, errors } = await scrapeInChunks(tabId, topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
+    const { posts: segPosts, errors } = await scrapeRange(topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
     isScraping.value = false;
-    currentScrapeTabId.value = null;
     scrapeProgress.value = null;
     simpleLoadingText.value = '';
 
@@ -698,10 +620,10 @@ async function handleSummarizeSegment(segmentIndex: number) {
     } as Partial<CachedTopic>);
   } catch (err) {
     if (thisId !== activeSummarizeId) return;
-    error.value = err instanceof Error ? err.message : String(err);
     isScraping.value = false;
-    currentScrapeTabId.value = null;
     scrapeProgress.value = null;
+    if (err instanceof DOMException && err.name === 'AbortError') return;
+    error.value = err instanceof Error ? err.message : String(err);
   } finally {
     store.setSummarizing(null);
     if (thisId === activeSummarizeId) {

@@ -55,12 +55,7 @@ export interface LLMConfig {
 
 export type MessageType =
   | 'DETECT_XF'
-  | 'SCRAPE_TOPIC'
-  | 'SCRAPE_ALL_PAGES'
-  | 'SCRAPE_PAGE_RANGE'
-  | 'SCRAPE_PROGRESS'
   | 'SCRAPE_ARTICLE'
-  | 'CANCEL_SCRAPE'
   | 'START_LLM_TASK'
   | 'LLM_PROGRESS'
   | 'LLM_RESULT'
@@ -120,12 +115,6 @@ export interface DetectResult {
   title: string;
   postCount: number;
   pageCount: number;
-}
-
-export interface PageProgress {
-  currentPage: number;
-  totalPages: number;
-  postsScraped: number;
 }
 
 export type CacheFreshness = 'fresh' | 'stale' | 'outdated';

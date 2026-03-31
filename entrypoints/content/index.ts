@@ -1,8 +1,7 @@
 import { detectXenForoVersion } from '@/lib/detector';
 import { XF2Scraper } from '@/lib/scrapers/xf2-scraper';
 import { XF1Scraper } from '@/lib/scrapers/xf1-scraper';
-import { scrapeAllPages, scrapePageRange } from '@/lib/scrapers/page-loader';
-import type { DetectResult, Message, TopicData } from '@/lib/types';
+import type { DetectResult, Message } from '@/lib/types';
 
 function isThreadPage(v: 'xf1' | 'xf2'): boolean {
   if (v === 'xf2') {
@@ -19,21 +18,6 @@ export default defineContentScript({
   matches: ['*://*/*'],
   main() {
     const version = detectXenForoVersion();
-    let scrapeAbortController: AbortController | null = null;
-    // Holds the sendResponse callback for the currently in-progress scrape message.
-    // Called early on pagehide to close the channel cleanly before bfcache takes over.
-    let pendingSendResponse: ((r: unknown) => void) | null = null;
-
-    window.addEventListener('pagehide', () => {
-      if (scrapeAbortController) {
-        scrapeAbortController.abort();
-        scrapeAbortController = null;
-      }
-      if (pendingSendResponse) {
-        pendingSendResponse({ error: 'Trang đã điều hướng, hãy thử lại.' });
-        pendingSendResponse = null;
-      }
-    });
 
     browser.runtime?.onMessage.addListener(
       (message: Message, _sender, sendResponse) => {
@@ -60,90 +44,6 @@ export default defineContentScript({
             result.title = titleEl.textContent.trim();
           }
           sendResponse(result);
-          return false;
-        }
-
-        if (message.type === 'SCRAPE_TOPIC') {
-          const scraper = createScraper();
-          if (!scraper) {
-            sendResponse({ error: 'No scraper available for this page' });
-            return false;
-          }
-          try {
-            const data: TopicData = scraper.scrape();
-            sendResponse(data);
-          } catch (err) {
-            sendResponse({ error: String(err) });
-          }
-          return false;
-        }
-
-        if (message.type === 'SCRAPE_ALL_PAGES') {
-          const { totalPages, delayMs, baseUrl } = message.payload as { totalPages: number; delayMs?: number; baseUrl: string };
-
-          scrapeAbortController = new AbortController();
-          pendingSendResponse = sendResponse;
-          const signal = scrapeAbortController.signal;
-
-          const onProgress = (currentPage: number, tp: number, postsScraped: number) => {
-            browser.runtime.sendMessage({
-              type: 'SCRAPE_PROGRESS',
-              payload: { currentPage, totalPages: tp, postsScraped },
-            }).catch(() => { /* no listener yet or already done */ });
-          };
-
-          scrapeAllPages(version, baseUrl, totalPages, onProgress, signal, delayMs ?? 2000)
-            .then((result) => {
-              scrapeAbortController = null;
-              pendingSendResponse = null;
-              sendResponse(result);
-            })
-            .catch((err) => {
-              scrapeAbortController = null;
-              pendingSendResponse = null;
-              sendResponse({ error: String(err) });
-            });
-          return true;
-        }
-
-        if (message.type === 'SCRAPE_PAGE_RANGE') {
-          const { startPage, endPage, delayMs, baseUrl } = message.payload as { startPage: number; endPage: number; delayMs?: number; baseUrl: string };
-
-          scrapeAbortController = new AbortController();
-          pendingSendResponse = sendResponse;
-          const signal = scrapeAbortController.signal;
-
-          const onProgress = (current: number, total: number, postsScraped: number) => {
-            browser.runtime.sendMessage({
-              type: 'SCRAPE_PROGRESS',
-              payload: {
-                currentPage: startPage + current - 1,
-                totalPages: endPage,
-                postsScraped,
-              },
-            }).catch(() => {});
-          };
-
-          scrapePageRange(version, baseUrl, startPage, endPage, onProgress, signal, delayMs ?? 2000)
-            .then((result) => {
-              scrapeAbortController = null;
-              pendingSendResponse = null;
-              sendResponse(result);
-            })
-            .catch((err) => {
-              scrapeAbortController = null;
-              pendingSendResponse = null;
-              sendResponse({ error: String(err) });
-            });
-          return true;
-        }
-
-        if (message.type === 'CANCEL_SCRAPE') {
-          if (scrapeAbortController) {
-            scrapeAbortController.abort();
-            scrapeAbortController = null;
-          }
-          sendResponse({ cancelled: true });
           return false;
         }
 

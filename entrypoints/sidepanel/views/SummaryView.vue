@@ -577,6 +577,14 @@ function cancelPendingSummarize() {
   pendingIncremental.value = false;
 }
 
+function handleRetry() {
+  if (isSegmentMode.value && activeSegmentIndex.value !== null) {
+    handleSummarizeSegment(activeSegmentIndex.value);
+  } else {
+    handleSummarize(false);
+  }
+}
+
 async function handleSummarizeSegment(segmentIndex: number) {
   const seg = segments.value[segmentIndex];
   if (!seg || !topicInfo.value) return;
@@ -892,7 +900,7 @@ async function handleSegmentUpdate() {
         v-if="error"
         :message="error"
         action="retry"
-        @retry="handleSummarize(false)"
+        @retry="handleRetry"
       />
 
       <!-- Page scraping warnings -->

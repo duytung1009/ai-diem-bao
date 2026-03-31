@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
-import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, testLLMConnection } from '@/lib/llm/summarizer';
+import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, summarizeSegments, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
@@ -268,6 +268,12 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
         const raw = await extractKnowledge(posts, title, config, onProgress, prompts);
         result = { entries: parseKnowledgeEntries(raw) };
+        break;
+      }
+      case 'summarize_segments': {
+        const summaries = payload as string[];
+        inputTokens = estimateTokens(summaries.join(''));
+        result = { summary: await summarizeSegments(summaries, config, onProgress) };
         break;
       }
       default:

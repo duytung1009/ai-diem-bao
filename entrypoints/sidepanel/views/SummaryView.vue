@@ -19,7 +19,7 @@ import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const router = useRouter();
 const store = useTopicStore();
-const { summarize, summarizeIncremental } = useLLM();
+const { summarize, summarizeIncremental, summarizeSegmentsTask } = useLLM();
 
 const summary = ref('');
 const summaryJson = ref<SummaryJSON | null>(null); // Feature 15: structured JSON output
@@ -176,7 +176,14 @@ async function loadTopicData() {
         summaryJson.value = fresh.summaryJson;
       }
       if (fresh.segments) {
-        segmentSummaries.value = fresh.segments;
+        // Retroactively populate summaryJson for old cached segments (pre-Feature 15)
+        segmentSummaries.value = fresh.segments.map(seg => {
+          if (seg && seg.summary && !seg.summaryJson) {
+            const parsedJson = tryParseSummaryJSON(seg.summary);
+            if (parsedJson) return { ...seg, summaryJson: parsedJson };
+          }
+          return seg;
+        });
       }
       const liveCount = (store.activeTabDetect.value && store.activeTabUrl.value &&
         isSameTopicUrl(store.activeTabUrl.value, fresh.url))
@@ -719,14 +726,10 @@ async function generateOverallSummary() {
   simpleLoadingText.value = '';
 
   try {
-    const segmentPosts: ScrapedPost[] = completedSegments.map((seg, i) => ({
-      author: `[PHẦN ${i + 1}: Trang ${seg.startPage}–${seg.endPage}]`,
-      content: seg.summary,
-      timestamp: '',
-      postNumber: i + 1,
-    }));
-
-    const overallTask = summarize(segmentPosts);
+    // Use summarize_segments task type which applies REDUCE_SUMMARY_PROMPT
+    // designed to merge JSON segment summaries (not raw forum posts)
+    const summaryStrings = completedSegments.map(seg => seg.summary);
+    const overallTask = summarizeSegmentsTask(summaryStrings);
     llmTaskId.value = overallTask.taskId;
     const overallResult = await overallTask.result;
     const overallSummaryText = (overallResult.data as { summary: string }).summary;

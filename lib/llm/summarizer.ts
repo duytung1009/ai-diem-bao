@@ -332,6 +332,34 @@ async function summaryChunks(
 }
 
 /**
+ * Merge multiple segment JSON summaries into one overall summary.
+ * Uses REDUCE_SUMMARY_PROMPT which is designed to merge JSON chunks.
+ */
+export async function summarizeSegments(
+  segmentSummaries: string[],
+  config: LLMConfig,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+): Promise<string> {
+  const provider = createProvider(config);
+  const combinedText = segmentSummaries
+    .map((s, i) => `--- Phần ${i + 1} ---\n${s}`)
+    .join('\n\n');
+
+  onProgress?.('Đang tạo tóm tắt tổng quan...');
+
+  const reducePost: ScrapedPost[] = [{
+    author: 'PARTIAL_SUMMARIES',
+    content: combinedText,
+    timestamp: '',
+    postNumber: 0,
+  }];
+
+  const response = await provider.summarize(reducePost, REDUCE_SUMMARY_PROMPT);
+  const json = parseSummaryJSON(response.content);
+  return json ? JSON.stringify(json) : response.content;
+}
+
+/**
  * Map-reduce summarization for large topics
  */
 async function summarizeWithMapReduce(

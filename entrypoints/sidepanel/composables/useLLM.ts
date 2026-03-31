@@ -167,6 +167,18 @@ function researchTopic(
   return { taskId, result };
 }
 
+function summarizeSegmentsTask(
+  segmentSummaries: string[],
+): { taskId: string; result: Promise<LLMResultMessage> } {
+  let resolve!: (r: LLMResultMessage) => void;
+  let reject!: (e: Error) => void;
+  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
+  const taskId = startTask('summarize_segments', segmentSummaries, (r) => {
+    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
+  });
+  return { taskId, result };
+}
+
 function extractKnowledge(
   posts: ScrapedPost[],
   title: string,
@@ -200,6 +212,7 @@ export function useLLM() {
     startTask,
     summarize,
     summarizeIncremental,
+    summarizeSegmentsTask,
     analyzeOpinions,
     researchTopic,
     extractKnowledge,

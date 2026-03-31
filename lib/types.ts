@@ -77,7 +77,7 @@ export type MessageType =
 
 export interface LLMTaskRequest {
   taskId: string;
-  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research' | 'extract_knowledge';
+  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research' | 'extract_knowledge' | 'summarize_segments';
   payload: unknown;
 }
 

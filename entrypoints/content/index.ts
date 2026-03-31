@@ -20,6 +20,20 @@ export default defineContentScript({
   main() {
     const version = detectXenForoVersion();
     let scrapeAbortController: AbortController | null = null;
+    // Holds the sendResponse callback for the currently in-progress scrape message.
+    // Called early on pagehide to close the channel cleanly before bfcache takes over.
+    let pendingSendResponse: ((r: unknown) => void) | null = null;
+
+    window.addEventListener('pagehide', () => {
+      if (scrapeAbortController) {
+        scrapeAbortController.abort();
+        scrapeAbortController = null;
+      }
+      if (pendingSendResponse) {
+        pendingSendResponse({ error: 'Trang đã điều hướng, hãy thử lại.' });
+        pendingSendResponse = null;
+      }
+    });
 
     browser.runtime?.onMessage.addListener(
       (message: Message, _sender, sendResponse) => {
@@ -68,6 +82,7 @@ export default defineContentScript({
           const { totalPages, delayMs, baseUrl } = message.payload as { totalPages: number; delayMs?: number; baseUrl: string };
 
           scrapeAbortController = new AbortController();
+          pendingSendResponse = sendResponse;
           const signal = scrapeAbortController.signal;
 
           const onProgress = (currentPage: number, tp: number, postsScraped: number) => {
@@ -80,10 +95,12 @@ export default defineContentScript({
           scrapeAllPages(version, baseUrl, totalPages, onProgress, signal, delayMs ?? 2000)
             .then((result) => {
               scrapeAbortController = null;
+              pendingSendResponse = null;
               sendResponse(result);
             })
             .catch((err) => {
               scrapeAbortController = null;
+              pendingSendResponse = null;
               sendResponse({ error: String(err) });
             });
           return true;
@@ -93,6 +110,7 @@ export default defineContentScript({
           const { startPage, endPage, delayMs, baseUrl } = message.payload as { startPage: number; endPage: number; delayMs?: number; baseUrl: string };
 
           scrapeAbortController = new AbortController();
+          pendingSendResponse = sendResponse;
           const signal = scrapeAbortController.signal;
 
           const onProgress = (current: number, total: number, postsScraped: number) => {
@@ -109,10 +127,12 @@ export default defineContentScript({
           scrapePageRange(version, baseUrl, startPage, endPage, onProgress, signal, delayMs ?? 2000)
             .then((result) => {
               scrapeAbortController = null;
+              pendingSendResponse = null;
               sendResponse(result);
             })
             .catch((err) => {
               scrapeAbortController = null;
+              pendingSendResponse = null;
               sendResponse({ error: String(err) });
             });
           return true;

@@ -136,14 +136,6 @@ export default defineBackground(() => {
             .catch(() => sendResponse([]));
           return true;
 
-        // Forward progress from content script to sidepanel
-        case 'SCRAPE_PROGRESS':
-          browser.runtime.sendMessage(message).catch(() => {});
-          return false;
-
-        case 'CANCEL_SCRAPE':
-          return false;
-
         default:
           return false;
       }

@@ -237,7 +237,6 @@ function evaluateFreshness(cached: CachedTopic, currentPostCount: number | null)
 
 async function handleCancel() {
   scrapeAbortCtrl?.abort();
-  scrapeAbortCtrl = null;
   isScraping.value = false;
   scrapeProgress.value = null;
   simpleLoadingText.value = '';
@@ -619,9 +618,9 @@ async function handleSummarizeSegment(segmentIndex: number) {
       segments: updated,
     } as Partial<CachedTopic>);
   } catch (err) {
-    if (thisId !== activeSummarizeId) return;
     isScraping.value = false;
     scrapeProgress.value = null;
+    if (thisId !== activeSummarizeId) return;
     if (err instanceof DOMException && err.name === 'AbortError') return;
     error.value = err instanceof Error ? err.message : String(err);
   } finally {

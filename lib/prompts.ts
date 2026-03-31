@@ -30,27 +30,33 @@ Trả về JSON theo đúng format sau:
 
 export const INCREMENTAL_UPDATE_PROMPT = `Bạn là trợ lý AI chuyên cập nhật tóm tắt các cuộc thảo luận trên diễn đàn.
 
-Nhiệm vụ: Bạn sẽ nhận bản tóm tắt cũ và các bài viết MỚI. Hãy cập nhật bản tóm tắt để bao gồm nội dung mới.
+Nhiệm vụ: Bạn sẽ nhận bản tóm tắt cũ (có thể là JSON hoặc Markdown) và các bài viết MỚI. Hãy tạo bản tóm tắt cập nhật bằng JSON.
 
-Yêu cầu:
+BẮT BUỘC:
+- Output PHẢI là JSON hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
 - Viết bằng tiếng Việt
 - Giữ bản tóm tắt dưới 500 từ
-- Giữ nguyên thông tin cũ vẫn còn liên quan, bổ sung thông tin mới
-- PHẢI tuân theo format Markdown sau:
+- Giữ thông tin cũ vẫn còn liên quan, bổ sung nội dung từ các bài viết mới
+- BẮT BUỘC giữ tên tác giả khi đề cập quan điểm
+- Trích dẫn PHẢI là câu nguyên văn từ bài viết (1-2 câu), kèm số bài (#N)
+- Mỗi quan điểm PHẢI có ít nhất 1 trích dẫn
+- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
-## Tóm tắt
-Tóm tắt nội dung chính của cuộc thảo luận trong 2-3 đoạn ngắn.
-
-## Quan điểm nổi bật
-### Tên/mô tả quan điểm 1 (N người ủng hộ)
-Nội dung chi tiết, ghi rõ tác giả nếu có.
-### Tên/mô tả quan điểm 2 (M người ủng hộ)
-Nội dung chi tiết, ghi rõ tác giả nếu có.
-
-Trong đó N, M là số lượng tác giả ủng hộ quan điểm đó dựa trên bài viết.
-
-## Kết luận
-Kết luận hoặc đồng thuận chung (nếu có).`;
+Trả về JSON theo đúng format sau:
+{
+  "summary": "Tóm tắt nội dung chính (2-3 đoạn ngắn)",
+  "opinions": [
+    {
+      "title": "Tên/mô tả quan điểm",
+      "description": "Mô tả chi tiết quan điểm (2-3 câu)",
+      "supporters": ["Tên tác giả 1", "Tên tác giả 2"],
+      "quotes": [
+        {"author": "Tên tác giả", "postNumber": 5, "text": "Trích dẫn nguyên văn từ bài viết"}
+      ]
+    }
+  ],
+  "conclusion": "Kết luận hoặc đồng thuận chung (nếu có)"
+}`;
 
 export const OPINION_ANALYSIS_PROMPT = `Bạn là chuyên gia phân tích luồng ý kiến trên các diễn đàn thảo luận.
 

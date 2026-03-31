@@ -93,11 +93,14 @@ export async function updateSummary(
   const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt));
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
-    return summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded);
+    const rawResult = await summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
+    const json = parseSummaryJSON(rawResult);
+    return json ? JSON.stringify(json) : rawResult;
   }
 
   const response = await provider.summarize(postsWithContext, systemPrompt);
-  return response.content;
+  const json = parseSummaryJSON(response.content);
+  return json ? JSON.stringify(json) : response.content;
 }
 
 export async function analyzeOpinions(

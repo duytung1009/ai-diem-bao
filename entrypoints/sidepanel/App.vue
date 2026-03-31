@@ -128,13 +128,13 @@ function navigateTo(path: string) {
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/summary')">
         Tóm tắt
       </button>
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'opinions'
+      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'knowledge'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
             ? 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
             : 'text-(--color-text-muted) cursor-not-allowed'
-        " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/opinions')">
-        Ý kiến
+        " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/knowledge')">
+        Kiến thức
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'research'
           ? 'text-blue-600 border-b-2 border-blue-600'

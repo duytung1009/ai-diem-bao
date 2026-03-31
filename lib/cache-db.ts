@@ -1,7 +1,7 @@
 import type { CachedTopic } from './types';
 
 const DB_NAME = 'ai-diem-bao-cache';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'topics';
 
 let db: IDBDatabase | null = null;
@@ -12,11 +12,18 @@ function getDB(): Promise<IDBDatabase> {
   if (openingPromise) return openingPromise;
   openingPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const database = request.result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
+      const oldVersion = event.oldVersion;
+      if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'url' });
         store.createIndex('by-cachedAt', 'cachedAt', { unique: false });
+      }
+      if (oldVersion < 2) {
+        const store = request.transaction!.objectStore(STORE_NAME);
+        if (!store.indexNames.contains('by-bookmarked')) {
+          store.createIndex('by-bookmarked', 'bookmarked', { unique: false });
+        }
       }
     };
     request.onsuccess = () => {

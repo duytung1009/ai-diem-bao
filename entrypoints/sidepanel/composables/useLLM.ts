@@ -167,6 +167,19 @@ function researchTopic(
   return { taskId, result };
 }
 
+function extractKnowledge(
+  posts: ScrapedPost[],
+  title: string,
+): { taskId: string; result: Promise<LLMResultMessage> } {
+  let resolve!: (r: LLMResultMessage) => void;
+  let reject!: (e: Error) => void;
+  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
+  const taskId = startTask('extract_knowledge', { posts, title }, (r) => {
+    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
+  });
+  return { taskId, result };
+}
+
 export function useLLM() {
   if (!listenerRegistered) {
     browser.runtime.onMessage.addListener((message: { type: string; payload: unknown }) => {
@@ -189,6 +202,7 @@ export function useLLM() {
     summarizeIncremental,
     analyzeOpinions,
     researchTopic,
+    extractKnowledge,
     getTaskState,
     getETA,
     activeTasks: readonly(activeTasks),

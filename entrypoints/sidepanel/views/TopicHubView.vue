@@ -14,6 +14,9 @@ const isLoading = ref(true);
 const pendingDeleteUrl = ref<string | null>(null);
 const searchQuery = ref('');
 const sortBy = ref<'recent' | 'posts' | 'title'>('recent');
+const showBookmarkedOnly = ref(false);
+
+const bookmarkCount = computed(() => allTopics.value.filter(t => t.bookmarked).length);
 
 // Temp topic: injected into domain groups while summarizing a topic not yet in cache
 const summarizingTempTopic = computed(() => {
@@ -28,6 +31,12 @@ const summarizingTempTopic = computed(() => {
 // Filter + sort topics (excludes temp topic — added separately in groupedTopics)
 const filteredTopics = computed(() => {
   let topics = [...allTopics.value];
+
+  // Bookmark filter
+  if (showBookmarkedOnly.value) {
+    topics = topics.filter(t => t.bookmarked);
+  }
+
   const query = searchQuery.value.trim().toLowerCase();
   if (query) {
     topics = topics.filter(t =>
@@ -37,7 +46,12 @@ const filteredTopics = computed(() => {
   }
   switch (sortBy.value) {
     case 'recent':
-      topics.sort((a, b) => (b.cachedAt || 0) - (a.cachedAt || 0));
+      topics.sort((a, b) => {
+        // Bookmarked topics float to top within each domain
+        if (a.bookmarked && !b.bookmarked) return -1;
+        if (!a.bookmarked && b.bookmarked) return 1;
+        return (b.cachedAt || 0) - (a.cachedAt || 0);
+      });
       break;
     case 'posts':
       topics.sort((a, b) => b.totalPosts - a.totalPosts);
@@ -192,6 +206,16 @@ function handleActiveTabTopic() {
   }
 }
 
+async function toggleBookmark(topic: CachedTopic) {
+  const updated = { ...topic, bookmarked: !topic.bookmarked };
+  const idx = allTopics.value.findIndex(t => t.url === topic.url);
+  if (idx !== -1) allTopics.value[idx] = updated;
+  if (store.selectedTopic.value?.url === topic.url) {
+    store.updateSelectedTopic({ bookmarked: updated.bookmarked });
+  }
+  await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, bookmarked: updated.bookmarked }).catch(() => {});
+}
+
 function formatRelativeTime(timestamp: number): string {
   if (!timestamp) return '';
   const diff = Date.now() - timestamp;
@@ -222,8 +246,22 @@ function formatRelativeTime(timestamp: number): string {
             v-model="searchQuery"
             type="text"
             placeholder="Tìm kiếm topic..."
-            class="input pl-8 text-xs w-full"
+            class="input pl-8 pr-8 text-xs w-full"
           />
+          <!-- Bookmark filter toggle -->
+          <button
+            class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
+            :class="showBookmarkedOnly ? 'text-yellow-500' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
+            :title="showBookmarkedOnly ? 'Xem tất cả' : `Chỉ hiện đã đánh dấu${bookmarkCount > 0 ? ` (${bookmarkCount})` : ''}`"
+            @click="showBookmarkedOnly = !showBookmarkedOnly"
+          >
+            <svg v-if="showBookmarkedOnly" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+            </svg>
+            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+            </svg>
+          </button>
         </div>
         <!-- Sort selector -->
         <div class="flex items-center gap-2 text-xs">
@@ -297,7 +335,7 @@ function formatRelativeTime(timestamp: number): string {
                   class="w-full text-left p-3 space-y-1.5"
                   @click="selectTopic(topic)"
                 >
-                  <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-12">{{ topic.title }}</p>
+                  <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">{{ topic.title }}</p>
                   <div class="flex items-center gap-2 flex-wrap">
                     <!-- Status badge -->
                     <span
@@ -331,6 +369,21 @@ function formatRelativeTime(timestamp: number): string {
                   v-if="!isSameTopicUrl(store.summarizingUrl.value, topic.url)"
                   class="absolute top-2 right-2 flex items-center gap-0.5"
                 >
+                  <button
+                    class="p-1 transition-colors rounded"
+                    :class="topic.bookmarked
+                      ? 'text-yellow-500 dark:text-yellow-400'
+                      : 'text-gray-300 dark:text-gray-600 hover:text-yellow-500 dark:hover:text-yellow-400'"
+                    title="Đánh dấu"
+                    @click.stop="toggleBookmark(topic)"
+                  >
+                    <svg v-if="topic.bookmarked" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                    </svg>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                    </svg>
+                  </button>
                   <button
                     class="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
                     title="Xóa topic"

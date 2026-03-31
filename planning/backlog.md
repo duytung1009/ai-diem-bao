@@ -11,13 +11,16 @@
 - [ ] Feature 14: Tùy chỉnh CHUNK_SUMMARY_PROMPT và REDUCE_SUMMARY_PROMPT trong Settings
 - [ ] (Thêm feature liên quan vào đây)
 
-### Nhóm B — (Chưa phân nhóm)
-- [ ] (Feature/bug mới thêm vào đây)
+### Nhóm B — UI & Topic Management
+- [ ] Feature 18: Bookmark topic + filter bookmarked ở tab Chủ đề
+- [ ] Feature 19: Tab Kiến thức (thay tab Ý kiến) — trích xuất & lưu kiến thức từ topic
 
 ---
 
 ## Đã batch plan
-(Danh sách các batch đã được plan, link tới file planning)
+
+- `20260330_1220_batch_json-output-and-persist-scraping.md` — Feature 15 (JSON Output) + Feature 16 (Persist Scraping)
+- `20260331_1000_batch_bookmark-and-knowledge-base.md` — Feature 18 (Bookmark) + Feature 19 (Knowledge Base)
 
 ---
 

@@ -8,6 +8,7 @@ import {
   CHUNK_SUMMARY_PROMPT,
   REDUCE_SUMMARY_PROMPT,
   RESEARCH_PROMPT,
+  KNOWLEDGE_EXTRACT_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext } from '../token-estimator';
 
@@ -161,6 +162,46 @@ export async function researchTopic(
   }
 
   const response = await provider.summarize(allPosts, systemPrompt);
+  return response.content;
+}
+
+export async function extractKnowledge(
+  posts: ScrapedPost[],
+  title: string,
+  config: LLMConfig,
+  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  customPrompts?: CustomPrompts,
+): Promise<string> {
+  const provider = createProvider(config);
+  const systemPrompt = customPrompts?.knowledge || KNOWLEDGE_EXTRACT_PROMPT;
+
+  // For V1: truncate posts to fit within context, keeping earlier posts
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt));
+  let postsToUse = posts;
+  if (contextCheck.exceeds) {
+    let tokenCount = 0;
+    const contextLimit = getContextLimit(config.model);
+    const budget = contextLimit - estimateTokens(systemPrompt) - 500;
+    postsToUse = [];
+    for (const post of posts) {
+      const tokens = estimateTokens(`[${post.author}] (#${post.postNumber}):\n${post.content}`);
+      if (tokenCount + tokens > budget) break;
+      postsToUse.push(post);
+      tokenCount += tokens;
+    }
+    onProgress?.(`Trích xuất kiến thức (${postsToUse.length}/${posts.length} bài viết)...`);
+  } else {
+    onProgress?.('Đang trích xuất kiến thức...');
+  }
+
+  const topicContextPost: ScrapedPost = {
+    author: 'CONTEXT',
+    content: `Topic: ${title}`,
+    timestamp: '',
+    postNumber: 0,
+  };
+
+  const response = await provider.summarize([topicContextPost, ...postsToUse], systemPrompt);
   return response.content;
 }
 

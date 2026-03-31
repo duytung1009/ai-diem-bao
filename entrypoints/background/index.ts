@@ -1,10 +1,10 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
-import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, testLLMConnection } from '@/lib/llm/summarizer';
+import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats } from '@/lib/types';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
@@ -106,6 +106,8 @@ export default defineBackground(() => {
                 segments: partial.segments ?? existing?.segments,
                 overallSummary: partial.overallSummary ?? existing?.overallSummary,
                 summaryJson: partial.summaryJson ?? existing?.summaryJson,
+                bookmarked: partial.bookmarked ?? existing?.bookmarked,
+                knowledgeEntries: partial.knowledgeEntries ?? existing?.knowledgeEntries,
               };
               await saveCachedTopic(topic);
               sendResponse({ success: true });
@@ -261,6 +263,13 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         result = { answer: await researchTopic(posts, question, config, onProgress, prompts) };
         break;
       }
+      case 'extract_knowledge': {
+        const { posts, title } = payload as { posts: ScrapedPost[]; title: string };
+        inputTokens = estimateTokens(posts.map(p => p.content).join(''));
+        const raw = await extractKnowledge(posts, title, config, onProgress, prompts);
+        result = { entries: parseKnowledgeEntries(raw) };
+        break;
+      }
       default:
         throw new Error(`Unknown taskType: ${taskType}`);
     }
@@ -306,4 +315,32 @@ async function updateModelSpeedStats(model: string, totalTokens: number, elapsed
     allStats[model] = current;
     await browser.storage.sync.set({ [key]: allStats });
   } catch { /* non-critical */ }
+}
+
+function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const text = (fenceMatch ? fenceMatch[1] : raw).trim();
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now();
+    return parsed
+      .filter((e: unknown): e is Record<string, unknown> =>
+        typeof e === 'object' && e !== null && typeof (e as Record<string, unknown>).title === 'string'
+      )
+      .slice(0, 20)
+      .map((e) => ({
+        id: crypto.randomUUID(),
+        title: String(e.title ?? ''),
+        content: String(e.content ?? ''),
+        tags: Array.isArray(e.tags) ? (e.tags as unknown[]).map(String) : [],
+        source: {
+          author: String((e.source as Record<string, unknown>)?.author ?? ''),
+          postNumber: Number((e.source as Record<string, unknown>)?.postNumber ?? 0),
+        },
+        extractedAt: now,
+      }));
+  } catch {
+    return [];
+  }
 }

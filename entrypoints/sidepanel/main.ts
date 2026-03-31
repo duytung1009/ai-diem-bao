@@ -8,7 +8,8 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'hub', component: () => import('./views/TopicHubView.vue') },
     { path: '/summary', name: 'summary', component: () => import('./views/SummaryView.vue') },
-    { path: '/opinions', name: 'opinions', component: () => import('./views/OpinionsView.vue') },
+    { path: '/knowledge', name: 'knowledge', component: () => import('./views/KnowledgeView.vue') },
+    { path: '/opinions', redirect: '/knowledge' },
     { path: '/research', name: 'research', component: () => import('./views/ResearchView.vue') },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue') },
   ],

@@ -77,7 +77,7 @@ export type MessageType =
 
 export interface LLMTaskRequest {
   taskId: string;
-  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research';
+  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research' | 'extract_knowledge';
   payload: unknown;
 }
 
@@ -148,6 +148,8 @@ export interface CachedTopic {
   segments?: TopicSegment[];
   overallSummary?: string;
   summaryJson?: SummaryJSON;
+  bookmarked?: boolean;
+  knowledgeEntries?: KnowledgeEntry[];
 }
 
 export interface TopicSegment {
@@ -166,10 +168,23 @@ export interface ResearchEntry {
   askedAt: number;
 }
 
+export interface KnowledgeEntry {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  source: {
+    author: string;
+    postNumber: number;
+  };
+  extractedAt: number;
+}
+
 export interface CustomPrompts {
   summary?: string;
   opinions?: string;
   research?: string;
+  knowledge?: string;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';

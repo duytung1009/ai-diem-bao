@@ -1,28 +1,43 @@
 # Cơ chế Scraping
 
-> Cập nhật: 2026-03-20
+> Cập nhật: 2026-04-01
 
 ## 1. Kiến trúc tổng quan
 
 ```
-┌──────────────┐   message    ┌───────────────┐   fetch    ┌──────────────┐
-│  SummaryView │ ──────────→  │ Content Script │ ────────→  │ Forum Pages  │
-│  (sidepanel) │ ←────────── │ (tab context)  │ ←──────── │   (HTML)     │
-└──────────────┘   response   └───────────────┘   HTML     └──────────────┘
+┌──────────────────────────────────┐
+│   useSummarize (sidepanel)       │
+│   scrapeRange()                  │
+│       │                          │
+│       ▼                          │
+│   scrapePageRange()              │  fetch()   ┌───────────────┐
+│   (lib/scrapers/page-loader.ts)  │ ─────────→ │  Forum Pages  │
+│       │                          │ ←───────── │  (HTML)       │
+│   DOMParser → scraper.scrape()   │  response  └───────────────┘
+└──────────────────────────────────┘
+
+Content script (tab) — CHỈ dùng cho DETECT_XF (đọc DOM của tab hiện tại):
+┌──────────────┐  DETECT_XF   ┌────────────────┐
+│  App.vue     │ ───────────→ │ Content Script │
+│  (sidepanel) │ ←─────────── │ (tab context)  │
+└──────────────┘  DetectResult└────────────────┘
 ```
 
-Sidepanel **không trực tiếp** truy cập DOM forum. Thay vào đó gửi message đến **content script** đang chạy trong tab forum → content script thực hiện scrape và trả kết quả.
+Kể từ **Feature 18**, scraping hoàn toàn xảy ra **trong sidepanel**:
+- `page-loader.ts` được import trực tiếp vào `useSummarize` composable
+- Dùng `fetch(url, { credentials: 'include' })` với `host_permissions: ['<all_urls>']`
+- Content script **không còn tham gia** vào quá trình scrape
 
 **Files liên quan:**
 
 | File | Vai trò |
 |------|---------|
-| `entrypoints/content/index.ts` | Content script — nhận message, điều phối scrape |
-| `lib/scrapers/page-loader.ts` | Core scraping logic — fetch pages, parse, dedup |
+| `entrypoints/content/index.ts` | Content script — chỉ xử lý `DETECT_XF` |
+| `lib/scrapers/page-loader.ts` | Core scraping: `scrapePageRange()` (fetch + DOMParser) |
 | `lib/scrapers/xf2-scraper.ts` | Scraper cho XenForo 2 |
 | `lib/scrapers/xf1-scraper.ts` | Scraper cho XenForo 1 |
 | `lib/scrapers/types.ts` | `TopicScraper` interface (Strategy pattern) |
-| `entrypoints/sidepanel/views/SummaryView.vue` | UI — gọi scrape, hiển thị progress |
+| `entrypoints/sidepanel/composables/useSummarize.ts` | Orchestration — gọi `scrapePageRange`, quản lý state |
 
 ---
 
@@ -40,95 +55,102 @@ Khi user mở/chuyển tab, `App.vue` gửi message `DETECT_XF` → content scri
 ```ts
 interface DetectResult {
   version: 'xf1' | 'xf2';
-  title: string;       // document.title hoặc h1 text
-  postCount: number;    // tổng số bài (từ DOM counter)
-  pageCount: number;    // tổng số trang (từ pagination)
+  title: string;       // h1.p-title-value hoặc document.title
+  postCount: number;   // tổng số bài (từ DOM counter)
+  pageCount: number;   // tổng số trang (từ pagination)
 }
 ```
 
 ---
 
-## 3. Các loại message scrape
+## 3. Các loại message liên quan đến scraping
 
-| Message | Mục đích | Trang | Async? |
-|---------|----------|-------|--------|
-| `SCRAPE_TOPIC` | Scrape trang hiện tại duy nhất | 1 trang (live DOM) | Sync |
-| `SCRAPE_ALL_PAGES` | Scrape tất cả trang | 1 → totalPages | Async |
-| `SCRAPE_PAGE_RANGE` | Scrape khoảng trang chỉ định | startPage → endPage | Async |
-| `CANCEL_SCRAPE` | Huỷ scraping đang chạy | — | Sync |
+| Message | Chiều | Mục đích |
+|---------|-------|----------|
+| `DETECT_XF` | Sidepanel → Content Script | Phát hiện forum, đọc metadata topic |
+| `SCRAPE_ARTICLE` | Sidepanel → Background | Fetch bài báo gốc (news detection) |
 
-Async message dùng `return true` trong listener để giữ message channel mở.
+> **Lưu ý:** `SCRAPE_PAGE_RANGE`, `SCRAPE_TOPIC`, `SCRAPE_ALL_PAGES`, `SCRAPE_PROGRESS`, `CANCEL_SCRAPE` đã **bị xóa** kể từ Feature 18. Scraping không còn đi qua background hay content script.
 
 ---
 
 ## 4. Core scraping (`page-loader.ts`)
 
-### `scrapeAllPages()` và `scrapePageRange()`
+### `scrapePageRange()`
 
-Hai function này hoạt động tương tự, chỉ khác phạm vi trang:
+Hàm duy nhất còn lại (sau khi `scrapeAllPages` bị xóa là dead code ở Feature 18).
 
+```typescript
+scrapePageRange(version, baseUrl, startPage, endPage, onProgress?, signal?, delayMs?)
+  → Promise<MultiPageResult>
 ```
-Trang 1 (nếu trong range) → dùng `document` (DOM đang mở, không fetch)
-Trang 2..N                → fetch(url) → DOMParser → scraper.scrape(doc)
-```
 
-### Quy trình mỗi trang (2+)
+### Quy trình mỗi trang
 
-1. **Build URL:** `baseUrl/page-{N}` — bỏ `/page-N` cũ trước khi append mới
+1. **Build URL:** `buildPageUrl(baseUrl, page)` — xóa `/page-N` cũ → append mới
+   - Page 1 → URL gốc (không thêm `/page-1`)
+   - Page 2+ → `baseUrl/page-N`
 2. **Fetch:** `fetch(pageUrl, { credentials: 'include' })` — giữ cookie đăng nhập
 3. **Check lỗi:**
    - HTTP 401/403 → ghi warning "Không có quyền truy cập"
-   - Redirect đến login page (detect qua URL pattern hoặc `<form>` login) → skip
-4. **Parse HTML:** `new DOMParser().parseFromString(html, 'text/html')`
-5. **Scrape:** `scraper.scrape(doc, pageUrl)` → `ScrapedPost[]`
-6. **Rate limiting:** `delayMs + random jitter` giữa mỗi request
+   - Redirect đến login page (check URL pattern + `form[action*="login"]`) → skip
+4. **Strip script tags (CSP safety):**
+   ```typescript
+   const safeHtml = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+   ```
+   Cần thiết vì `DOMParser` trong extension page context sẽ trigger CSP check cho `<script src>`.
+5. **Parse HTML:** `new DOMParser().parseFromString(safeHtml, 'text/html')`
+6. **Scrape:** `scraper.scrape(doc, pageUrl)` → `ScrapedPost[]`
+7. **Rate limiting:** `delayMs + random jitter` giữa mỗi request
    - `jitter = Math.random() * Math.min(delayMs * 0.3, 500)`
    - Default `delayMs = 2000ms`, configurable trong Settings
-7. **Dedup + Sort:** loại bỏ trùng `postNumber`, sắp xếp tăng dần
-8. **Abort support:** kiểm tra `signal.aborted` trước mỗi trang
+8. **Progress callback:** `onProgress(pagesScraped, totalPagesInRange, allPosts.length)` sau mỗi trang thành công
+9. **Abort support:** kiểm tra `signal?.aborted` trước mỗi trang
 
 ### Kết quả trả về
 
 ```ts
 interface MultiPageResult {
-  posts: ScrapedPost[];   // bài viết đã dedup + sort
-  totalPages: number;
+  posts: ScrapedPost[];   // bài viết đã dedup + sort tăng dần theo postNumber
+  totalPages: number;     // = endPage (max page trong range)
   pagesScraped: number;   // số trang scrape thành công
   errors: string[];       // warning mỗi trang lỗi
 }
 ```
 
+### Dedup + Sort
+
+```typescript
+function deduplicateAndSort(posts: ScrapedPost[]): ScrapedPost[] {
+  // postNumber === 0 → giữ lại (bài viết chưa đánh số)
+  // postNumber trùng → loại bỏ bản sau
+  // Sort tăng dần theo postNumber
+}
+```
+
 ---
 
-## 5. Chunked scraping (tránh message channel timeout)
+## 5. `scrapeRange()` wrapper trong `useSummarize`
 
-Chrome message channel có timeout ~5 phút. Topic 100+ trang × 2s delay = 200s+ → vượt timeout.
+`useSummarize` composable wrap `scrapePageRange()` với:
+- **Version detection:** lấy từ `store.selectedTopic.value.version`
+- **Progress callback → state:** cập nhật `scrapeProgress.value` realtime
+- **AbortSignal:** từ `scrapeAbortCtrl` — user cancel → `abort()`
 
-**Giải pháp:** `scrapeInChunks()` trong SummaryView chia thành nhiều message nhỏ:
-
-```
-SCRAPE_CHUNK_SIZE = 10 trang/message
-
-Topic 50 trang → 5 message SCRAPE_PAGE_RANGE:
-  [1-10], [11-20], [21-30], [31-40], [41-50]
-```
-
-Mỗi chunk:
-- Gửi 1 message `SCRAPE_PAGE_RANGE` riêng
-- Nhận response riêng (~10-20s mỗi chunk)
-- Tổng hợp posts + dedup ở cuối
-
-```ts
-async function scrapeInChunks(tabId, startPage, endPage, delayMs) {
-  for (let chunkStart = startPage; chunkStart <= endPage; chunkStart += SCRAPE_CHUNK_SIZE) {
-    const chunkEnd = Math.min(chunkStart + SCRAPE_CHUNK_SIZE - 1, endPage);
-    const result = await browser.tabs.sendMessage(tabId, {
-      type: 'SCRAPE_PAGE_RANGE',
-      payload: { startPage: chunkStart, endPage: chunkEnd, delayMs },
-    });
-    allPosts.push(...result.posts);
-  }
-  // dedup + sort
+```typescript
+async function scrapeRange(
+  url: string, startPage: number, endPage: number, delayMs: number,
+): Promise<{ posts: ScrapedPost[]; errors: string[] }> {
+  scrapeAbortCtrl = new AbortController();
+  const version = store.selectedTopic.value!.version;
+  const result = await scrapePageRange(
+    version, url, startPage, endPage,
+    (cur, total, cnt) => { scrapeProgress.value = { currentPage: cur, totalPages: total, postsScraped: cnt }; },
+    scrapeAbortCtrl.signal,
+    delayMs,
+  );
+  scrapeAbortCtrl = null;
+  return { posts: result.posts, errors: result.errors };
 }
 ```
 
@@ -136,103 +158,133 @@ async function scrapeInChunks(tabId, startPage, endPage, delayMs) {
 
 ## 6. Ba flow tóm tắt sử dụng scraping
 
-### 6a. Normal mode (topic < N trang)
+### 6a. Normal mode (topic ≤ segmentSize trang)
 
 ```
-handleSummarize(false)               handleSummarize(true) [incremental]
-       │                                    │
-       ▼                                    ▼
-  scrapeInChunks(1 → totalPages)       scrapeInChunks(cachedPages+1 → totalPages)
-       │                                    │  merge với cached posts
-       ▼                                    ▼
-  pendingPosts = posts                 pendingPosts = mergedPosts
-       │                                    │
-       ▼                                    ▼
-  confirmSummarize()                   confirmSummarize()
-       │                                    │
-       ▼                                    ▼
-  SUMMARIZE → LLM                      SUMMARIZE_INCREMENTAL → LLM
-       │                                    │
-       ▼                                    ▼
-  SAVE_CACHED_TOPIC                    SAVE_CACHED_TOPIC
+handleSummarize(incremental=false)            handleSummarize(incremental=true)
+       │                                              │
+       ▼                                              ▼
+scrapeRange(1 → totalPages)            scrapeRange(cachedTotalPages+1 → totalPages)
+       │                                     │  merge + dedup với cachedTopic.posts
+       ▼                                     ▼
+[news detection: enrichWithNewsArticles]    [news detection]
+       │                                              │
+       ▼                                              ▼
+saveTopic(posts) ← Feature 16: lưu posts          saveTopic(posts)
+trước LLM để không phải re-scrape khi LLM fail        │
+       │                                              ▼
+       ▼                                  pendingPosts (chờ confirm)
+pendingPosts → confirmSummarize()                     │
+       │                                              ▼
+       ▼                                  confirmSummarize()
+SUMMARIZE via useLLM                      SUMMARIZE_INCREMENTAL via useLLM
+       │                                              │
+       ▼                                              ▼
+SAVE_CACHED_TOPIC                         SAVE_CACHED_TOPIC
 ```
 
-### 6b. Segment mode (topic > N trang, mặc định N=20)
+### 6b. Segment mode (topic > segmentSize trang, mặc định 20)
 
 ```
-segments = chia topic thành khoảng N trang
-  VD: 65 trang, segmentSize=20 → [1-20], [21-40], [41-60], [61-65]
+segments = [(1-20), (21-40), ..., (lastStart-end)]  ← computed từ totalPages + segmentSize
 
-handleSummarizeSegment(index):
-  1. scrapeInChunks(seg.start → seg.end)
-  2. SUMMARIZE → LLM (chỉ posts của segment)
-  3. Lưu TopicSegment vào segmentSummaries[]
-  4. SAVE_CACHED_TOPIC (với segments array)
+handleSummarizeSegment(segmentIndex):
+  1. Check: segmentSummaries[index]?.posts?.length > 0?
+     → Có: dùng cached posts (skip scraping)
+     → Không: scrapeRange(seg.start → seg.end)
+  2. saveTopic({segments: [..., {posts, summary:''}]}) ← pre-LLM save (Feature 16)
+  3. Update segmentSummaries[index] in UI state
+  4. SUMMARIZE via useLLM (chỉ posts của segment)
+  5. Cập nhật segmentSummaries[index].summary
+  6. saveTopic({segments: [...]}) ← post-LLM save
 
 generateOverallSummary():
-  1. Gom segment summaries thành pseudo-posts
-  2. SUMMARIZE → LLM (tóm tắt các tóm tắt)
-  3. Lưu overall summary
+  1. Gom tất cả segment summaries (filter: s?.summary truthy)
+  2. SUMMARIZE_SEGMENTS via useLLM (reduce các segment summaries)
+  3. Lưu overallSummary
 
 handleSegmentUpdate():  [cập nhật khi có bài mới]
-  1. Tính segments chưa tóm tắt hoặc bị mở rộng
+  1. Tính segments chưa tóm tắt hoặc bị mở rộng (totalPages tăng)
   2. handleSummarizeSegment() cho mỗi segment cần update
   3. generateOverallSummary()
 ```
 
 ### 6c. News detection (tự động, trước khi gửi LLM)
 
+```typescript
+enrichWithNewsArticles(posts, topicUrl, onStatus, onInfo):
+  detectNewsThread(posts, forumDomain)
+    → isNews? + articleUrls[]
+    → Promise.all(SCRAPE_ARTICLE messages) → ArticleContent[]
+    → prepend articlePosts (postNumber âm) vào posts trả về
 ```
-detectNewsThread(posts, forumDomain)
-  → isNews? → SCRAPE_ARTICLE messages → fetch bài báo gốc
-  → prepend articlePosts (postNumber âm) vào posts
-  → LLM nhận cả bài báo + bình luận
-```
+
+LLM nhận cả bài báo gốc + bình luận forum.
 
 ---
 
 ## 7. Progress tracking
 
-Content script gửi `SCRAPE_PROGRESS` message về sidepanel sau mỗi trang:
+Progress scraping được track qua **callback** trực tiếp (không qua message):
 
-```ts
-// Content script → sidepanel
-{ type: 'SCRAPE_PROGRESS', payload: { currentPage, totalPages, postsScraped } }
-```
+```typescript
+// Trong scrapePageRange:
+onProgress?.(pagesScraped, totalPagesInRange, allPosts.length);
 
-SummaryView listen qua `browser.runtime.onMessage` và cập nhật `loadingText` realtime:
-*"Đang đọc trang 5/30 (120 bài)..."*
-
----
-
-## 8. Cancel
-
-User bấm "Huỷ" → `CANCEL_SCRAPE` message → content script gọi `abortController.abort()` → vòng lặp scrape kiểm tra `signal.aborted` → dừng.
-
-SummaryView cũng set `isScraping.value = false` → `scrapeInChunks()` kiểm tra flag này trước mỗi chunk.
-
----
-
-## 9. Hạn chế hiện tại
-
-### Phải mở đúng topic trên tab active
-
-```ts
-// SummaryView.vue - handleSummarize()
-const isActiveTab = store.activeTabUrl.value
-  && isSameTopicUrl(store.activeTabUrl.value, topic.url);
-if (!isActiveTab) {
-  error.value = 'Hãy mở topic này trên trình duyệt...';
-  return;
+// Trong scrapeRange wrapper (useSummarize):
+(cur, total, cnt) => {
+  scrapeProgress.value = { currentPage: cur, totalPages: total, postsScraped: cnt };
 }
 ```
 
-**Lý do:**
-- `browser.tabs.sendMessage(tabId, ...)` gửi đến content script trong tab cụ thể
-- Hiện dùng `browser.tabs.query({ active: true, currentWindow: true })` → chỉ lấy tab active
-- Trang 1 scrape từ `document` trực tiếp (không fetch)
-- `fetch({ credentials: 'include' })` cần content script chạy trên cùng origin forum
+`ProgressIndicator` component nhận `scrapeProgress` prop và tính ETA dựa trên `scrapeDelayMs`.
 
-**Vấn đề:** Trang 2+ hoàn toàn dùng fetch, không cần live DOM. Chỉ cần content script trên cùng domain forum — không nhất thiết đúng topic URL.
+---
 
-> **Xem planning cải thiện:** `planning/20260320_1319_12-feature-scrape-any-tab.md`
+## 8. Cancel scraping
+
+User bấm "Huỷ" → `handleCancel()` trong `useSummarize`:
+
+```typescript
+function handleCancel() {
+  scrapeAbortCtrl?.abort(); // → signal.aborted = true → scrapePageRange dừng vòng lặp
+  // Cleanup state: isScraping, scrapeProgress, simpleLoadingText, pendingPosts, etc.
+  ++activeSummarizeId; // invalidate stale LLM callbacks
+  store.setSummarizing(null);
+}
+```
+
+`scrapePageRange` kiểm tra `signal?.aborted` trước mỗi trang → dừng ngay.
+
+---
+
+## 9. Incremental scraping (tránh re-scrape toàn bộ)
+
+Khi topic có bài mới:
+
+```typescript
+const startPage = Math.max(1, existingCachedPages + 1);
+const { posts: newPosts } = await scrapeRange(url, startPage, endPage, delayMs);
+
+// Merge với cached posts + dedup
+const merged = [...existingPosts, ...newPosts];
+```
+
+Scraper chỉ đọc từ trang mới nhất đã cache → hiệu quả với topic nhiều trang.
+
+---
+
+## 10. Lưu posts sớm (Feature 16 — tránh re-scrape khi LLM fail)
+
+Sau khi scrape xong nhưng **trước khi** gọi LLM, posts được lưu vào cache:
+
+```typescript
+// handleSummarize (normal mode):
+await saveTopic(topic, { posts, totalPages, totalPosts });
+
+// handleSummarizeSegment (segment mode):
+await sendMessage('SAVE_CACHED_TOPIC', { ..., segments: tempUpdated }); // summary = ''
+segmentSummaries.value = tempUpdated; // update UI state
+```
+
+Nếu LLM sau đó lỗi, posts không bị mất. Lần retry tiếp theo sẽ dùng cached posts.

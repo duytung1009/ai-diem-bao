@@ -525,6 +525,12 @@ function handleRetry() {
   }
 }
 
+const makeDenseBase = (segIdx: number): (TopicSegment | null)[] =>
+  Array.from(
+    { length: Math.max(segmentSummaries.value.length, segIdx + 1, segments.value.length) },
+    (_, i) => segmentSummaries.value[i] ?? null,
+  );
+
 async function handleSummarizeSegment(segmentIndex: number) {
   const seg = segments.value[segmentIndex];
   if (!seg || !topicInfo.value) return;
@@ -536,19 +542,25 @@ async function handleSummarizeSegment(segmentIndex: number) {
   store.setSummarizing(topic.url);
 
   try {
-    isScraping.value = true;
-    simpleLoadingText.value = `Đang đọc ${seg.label}...`;
-
-    const { posts: segPosts, errors } = await scrapeRange(topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
-    isScraping.value = false;
-    scrapeProgress.value = null;
-    simpleLoadingText.value = '';
-
-    if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
-    if (errors.length > 0) scrapingWarnings.value = errors;
+    // Check if posts are already cached to skip re-scraping
+    const existing = segmentSummaries.value[segmentIndex];
+    let segPosts: ScrapedPost[];
+    if (existing?.posts?.length) {
+      segPosts = existing.posts;
+    } else {
+      isScraping.value = true;
+      simpleLoadingText.value = `Đang đọc ${seg.label}...`;
+      const { posts: scraped, errors } = await scrapeRange(topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
+      isScraping.value = false;
+      scrapeProgress.value = null;
+      simpleLoadingText.value = '';
+      segPosts = scraped;
+      if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
+      if (errors.length > 0) scrapingWarnings.value = errors;
+    }
 
     // Feature 16: Save segment posts early before LLM (avoids re-scraping on failure)
-    const tempUpdated = [...segmentSummaries.value];
+    const tempUpdated = makeDenseBase(segmentIndex);
     tempUpdated[segmentIndex] = {
       startPage: seg.start,
       endPage: seg.end,
@@ -564,6 +576,8 @@ async function handleSummarizeSegment(segmentIndex: number) {
       totalPages: topic.totalPages,
       segments: tempUpdated,
     }).catch(() => {}); // silent best-effort
+    // Update UI state so segment shows "scraped, pending summary" even if LLM fails
+    segmentSummaries.value = tempUpdated as TopicSegment[];
 
     const segTask = summarize(segPosts);
     llmTaskId.value = segTask.taskId;
@@ -581,8 +595,9 @@ async function handleSummarizeSegment(segmentIndex: number) {
       summarizedAt: Date.now(),
     };
 
-    const updated = [...segmentSummaries.value];
+    const updated = makeDenseBase(segmentIndex);
     updated[segmentIndex] = newSeg;
+    const updatedDense = updated as TopicSegment[];
 
     // Stale guard: user navigated away while LLM was running
     if (thisId !== activeSummarizeId) {
@@ -598,10 +613,10 @@ async function handleSummarizeSegment(segmentIndex: number) {
       return;
     }
 
-    segmentSummaries.value = updated;
+    segmentSummaries.value = updatedDense;
     activeSegmentIndex.value = segmentIndex;
 
-    const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    const segTotalPosts = updatedDense.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topic.title,
@@ -609,13 +624,13 @@ async function handleSummarizeSegment(segmentIndex: number) {
       totalPages: topic.totalPages,
       totalPosts: segTotalPosts,
       summarizedPostCount: segTotalPosts,
-      segments: updated,
+      segments: updatedDense,
     });
     store.updateSelectedTopic({
       title: topic.title,
       version: topic.version,
       totalPages: topic.totalPages,
-      segments: updated,
+      segments: updatedDense,
     } as Partial<CachedTopic>);
   } catch (err) {
     isScraping.value = false;
@@ -885,8 +900,13 @@ async function handleSegmentUpdate() {
             {{ seg.label }}
             <span
               v-if="segmentSummaries[i]?.summary"
-              class="w-1.5 h-1.5 rounded-full bg-green-500"
+              class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
               title="Đã tóm tắt"
+            />
+            <span
+              v-else-if="segmentSummaries[i]?.posts?.length"
+              class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"
+              title="Đã scrape, chưa tóm tắt"
             />
           </button>
         </div>

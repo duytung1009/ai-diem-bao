@@ -2,8 +2,8 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
-import { isSameTopicUrl } from '@/lib/cache-manager';
-import type { CachedTopic, TopicSegment, SummaryJSON } from '@/lib/types';
+import { isSameTopicUrl, normalizeUrl } from '@/lib/cache-manager';
+import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -22,7 +22,7 @@ const bookmarkCount = computed(() => allTopics.value.filter(t => t.bookmarked).l
 const summarizingTempTopic = computed(() => {
   const url = store.summarizingUrl.value;
   if (!url) return null;
-  const alreadyInList = allTopics.value.some(t => normalizeForCompare(t.url) === normalizeForCompare(url));
+  const alreadyInList = allTopics.value.some(t => normalizeUrl(t.url) === normalizeUrl(url));
   if (alreadyInList) return null;
   const selected = store.selectedTopic.value;
   return selected?.url === url ? selected : null;
@@ -87,71 +87,54 @@ const domainNames = computed(() => Object.keys(groupedTopics.value).sort());
 // Check if active tab topic is already in cached list
 const activeTabInList = computed(() => {
   if (!store.activeTabUrl.value) return true;
-  return allTopics.value.some(t => normalizeForCompare(t.url) === normalizeForCompare(store.activeTabUrl.value!));
+  return allTopics.value.some(t => normalizeUrl(t.url) === normalizeUrl(store.activeTabUrl.value!));
 });
 
-function normalizeForCompare(url: string): string {
+async function refreshTopicList(showLoading = false) {
+  if (showLoading) isLoading.value = true;
   try {
-    const u = new URL(url);
-    u.pathname = u.pathname.replace(/\/page-\d+\/?$/, '');
-    if (!u.pathname.endsWith('/')) u.pathname += '/';
-    u.search = '';
-    u.hash = '';
-    return u.toString();
-  } catch { return url; }
+    const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
+    allTopics.value = topics || [];
+  } catch { /* keep existing data */ }
+  finally { if (showLoading) isLoading.value = false; }
 }
 
-onMounted(async () => {
-  try {
-    const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
-    allTopics.value = topics || [];
-  } catch {
-    allTopics.value = [];
-  } finally {
-    isLoading.value = false;
-  }
+onMounted(() => { refreshTopicList(true); });
+
+onActivated(() => { refreshTopicList(); });
+
+// Watch only fields TopicHubView paginates on (avoids deep-watching large posts array)
+const selectedTopicKey = computed(() => {
+  const t = store.selectedTopic.value;
+  if (!t) return null;
+  return `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}`;
 });
 
-onActivated(async () => {
-  // Quietly refresh topic list each time user returns to this tab (keep-alive re-activate)
-  try {
-    const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
-    allTopics.value = topics || [];
-  } catch {
-    // Keep existing data on error
+watch(selectedTopicKey, () => {
+  const updated = store.selectedTopic.value;
+  if (!updated?.url) return;
+  const idx = allTopics.value.findIndex(t => isSameTopicUrl(t.url, updated.url));
+  if (idx >= 0) {
+    const topic: CachedTopic = {
+      ...allTopics.value[idx],
+      ...updated,
+      posts: updated.posts ? [...updated.posts] : allTopics.value[idx].posts,
+      researchHistory: updated.researchHistory ? [...updated.researchHistory] : allTopics.value[idx].researchHistory,
+      segments: updated.segments ? [...updated.segments] as TopicSegment[] : allTopics.value[idx].segments,
+      summaryJson: updated.summaryJson as SummaryJSON | undefined ?? allTopics.value[idx].summaryJson,
+      knowledgeEntries: updated.knowledgeEntries ? [...updated.knowledgeEntries] as KnowledgeEntry[] : allTopics.value[idx].knowledgeEntries,
+    };
+    allTopics.value[idx] = topic;
+  } else if (updated.summary || updated.posts?.length) {
+    const topic: CachedTopic = {
+      ...updated,
+      posts: updated.posts ? [...updated.posts] : [],
+      researchHistory: updated.researchHistory ? [...updated.researchHistory] : [],
+      segments: updated.segments ? [...updated.segments] as TopicSegment[] : undefined,
+    } as CachedTopic;
+    allTopics.value = [...allTopics.value, topic];
   }
 });
-
-// Watch store.selectedTopic for updates (sync when summary is completed)
-watch(
-  () => store.selectedTopic.value,
-  (updated) => {
-    if (!updated?.url) return;
-    const idx = allTopics.value.findIndex(t => isSameTopicUrl(t.url, updated.url));
-    if (idx >= 0) {
-      // Update topic in list without reloading from background
-      const topic: CachedTopic = {
-        ...allTopics.value[idx],
-        ...updated,
-        posts: updated.posts ? [...updated.posts] : allTopics.value[idx].posts,
-        researchHistory: updated.researchHistory ? [...updated.researchHistory] : allTopics.value[idx].researchHistory,
-        segments: updated.segments ? [...updated.segments] as TopicSegment[] : allTopics.value[idx].segments,
-        summaryJson: updated.summaryJson as SummaryJSON | undefined ?? allTopics.value[idx].summaryJson,
-      };
-      allTopics.value[idx] = topic;
-    } else if (updated.summary || updated.posts?.length) {
-      // New topic is cached — add to list
-      const topic: CachedTopic = {
-        ...updated,
-        posts: updated.posts ? [...updated.posts] : [],
-        researchHistory: updated.researchHistory ? [...updated.researchHistory] : [],
-        segments: updated.segments ? [...updated.segments] as TopicSegment[] : undefined,
-      } as CachedTopic;
-      allTopics.value = [...allTopics.value, topic];
-    }
-  },
-  { deep: true }
-);
 
 function selectTopic(topic: CachedTopic) {
   store.selectTopic(topic);

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE } from '@/lib/constants';
+import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, MAX_CACHE_DISPLAY_BYTES } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -32,7 +32,7 @@ function syncCurrentProvider() {
 const testResult = ref<'success' | 'fail' | ''>('');
 const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
-const MAX_CACHE_BYTES = 50 * 1024 * 1024; // 50MB — IndexedDB cho phép nhiều hơn
+const MAX_CACHE_BYTES = MAX_CACHE_DISPLAY_BYTES;
 const showClearConfirm = ref(false);
 
 const { themeMode: currentTheme, setTheme } = useTheme();

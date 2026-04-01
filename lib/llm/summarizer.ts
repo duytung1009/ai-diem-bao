@@ -1,4 +1,4 @@
-import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON } from '../types';
+import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback } from '../types';
 import { createProvider } from './factory';
 import {
   SUMMARY_PROMPT,
@@ -11,6 +11,7 @@ import {
   KNOWLEDGE_EXTRACT_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext } from '../token-estimator';
+import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS } from '../constants';
 
 /**
  * Try to parse LLM output as SummaryJSON.
@@ -48,7 +49,7 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
 export async function summarizeTopic(
   posts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -75,7 +76,7 @@ export async function updateSummary(
   previousSummary: string,
   newPosts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -108,7 +109,7 @@ export async function updateSummary(
 export async function analyzeOpinions(
   posts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -136,7 +137,7 @@ export async function researchTopic(
   posts: ScrapedPost[],
   question: string,
   config: LLMConfig,
-  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -174,7 +175,7 @@ export async function extractKnowledge(
   posts: ScrapedPost[],
   title: string,
   config: LLMConfig,
-  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
 ): Promise<string> {
   const provider = createProvider(config);
@@ -225,7 +226,7 @@ function chunkPosts(
   suggestedChunks?: number,
 ): ScrapedPost[][] {
   const contextLimit = getContextLimit(model);
-  const bufferTokens = estimateTokens(mapPrompt) + 2000;
+  const bufferTokens = estimateTokens(mapPrompt) + RESPONSE_BUFFER_TOKENS;
 
   // If suggestedChunks is provided, size chunks to fill ~N buckets rather than
   // greedily filling and then merging (which can produce oversized chunks).
@@ -273,7 +274,7 @@ function chunkPosts(
 async function summaryChunks(
   posts: ScrapedPost[],
   config: LLMConfig,
-  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  onProgress?: LLMProgressCallback,
   suggestedChunks?: number,
   mapPrompt: string = CHUNK_SUMMARY_PROMPT,
   reducePrompt: string = REDUCE_SUMMARY_PROMPT,
@@ -298,7 +299,7 @@ async function summaryChunks(
 
     // Small delay between requests to avoid rate limiting
     if (i < chunks.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, MAP_REDUCE_CHUNK_DELAY_MS));
     }
   }
 
@@ -343,7 +344,7 @@ async function summaryChunks(
 export async function summarizeSegments(
   segmentSummaries: string[],
   config: LLMConfig,
-  onProgress?: (message: string, step?: number, totalSteps?: number) => void,
+  onProgress?: LLMProgressCallback,
 ): Promise<string> {
   const provider = createProvider(config);
   const combinedText = segmentSummaries

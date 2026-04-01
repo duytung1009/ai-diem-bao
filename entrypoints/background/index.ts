@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_LLM_CONFIG } from '@/lib/constants';
+import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
 import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, summarizeSegments, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
@@ -38,7 +38,7 @@ export default defineBackground(() => {
           // Keepalive — prevent service worker termination during long LLM call
           const keepalive = setInterval(() => {
             void browser.storage.sync.get(''); // no-op ping to keep service worker alive
-          }, 20_000);
+          }, KEEPALIVE_INTERVAL_MS);
 
           processLLMTask(taskId, taskType, payload)
             .finally(() => clearInterval(keepalive));

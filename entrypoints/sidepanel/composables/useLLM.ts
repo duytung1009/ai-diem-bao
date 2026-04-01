@@ -1,7 +1,7 @@
 import { ref, readonly } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { estimateTokens } from '@/lib/token-estimator';
-import { STORAGE_KEYS } from '@/lib/constants';
+import { STORAGE_KEYS, FALLBACK_MS_PER_TOKEN, LLM_TASK_CLEANUP_DELAY_MS } from '@/lib/constants';
 import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats } from '@/lib/types';
 
 interface LLMTaskState {
@@ -45,7 +45,7 @@ function handleResult(payload: LLMResultMessage) {
   task.elapsedMs = payload.stats.elapsedMs;
   task.onComplete?.(payload);
   // Cleanup after 5s so progress display fades naturally
-  setTimeout(() => activeTasks.value.delete(payload.taskId), 5000);
+  setTimeout(() => activeTasks.value.delete(payload.taskId), LLM_TASK_CLEANUP_DELAY_MS);
 }
 
 async function loadSpeedStats() {
@@ -76,7 +76,7 @@ function estimateETA(taskType: string, payload: unknown): number {
     if (Array.isArray(p.newPosts)) text += (p.newPosts as ScrapedPost[]).map((x: ScrapedPost) => x.content).join('');
   }
   const tokens = estimateTokens(text);
-  return getETA(tokens, currentModel.value) ?? tokens * 20; // fallback 20ms/token
+  return getETA(tokens, currentModel.value) ?? tokens * FALLBACK_MS_PER_TOKEN; // fallback ms/token
 }
 
 /**
@@ -120,76 +120,38 @@ function getTaskState(taskId: string): LLMTaskState | undefined {
   return activeTasks.value.get(taskId);
 }
 
-/** Typed wrapper that returns {taskId, result} — taskId available immediately, result resolves when LLM finishes */
-function summarize(posts: ScrapedPost[]): { taskId: string; result: Promise<LLMResultMessage> } {
-  let resolve!: (r: LLMResultMessage) => void;
-  let reject!: (e: Error) => void;
-  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
-  const taskId = startTask('summarize', posts, (r) => {
-    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
-  });
-  return { taskId, result };
-}
-
-function summarizeIncremental(
-  previousSummary: string,
-  newPosts: ScrapedPost[],
+/** Factory: wraps startTask with a Promise that resolves/rejects when the LLM task completes */
+function createTask<TPayload>(
+  taskType: LLMTaskRequest['taskType'],
+  payload: TPayload,
 ): { taskId: string; result: Promise<LLMResultMessage> } {
   let resolve!: (r: LLMResultMessage) => void;
   let reject!: (e: Error) => void;
   const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
-  const taskId = startTask('summarize_incremental', { previousSummary, newPosts }, (r) => {
+  const taskId = startTask(taskType, payload, (r) => {
     r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
   });
   return { taskId, result };
 }
 
-function analyzeOpinions(posts: ScrapedPost[]): { taskId: string; result: Promise<LLMResultMessage> } {
-  let resolve!: (r: LLMResultMessage) => void;
-  let reject!: (e: Error) => void;
-  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
-  const taskId = startTask('analyze_opinions', posts, (r) => {
-    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
-  });
-  return { taskId, result };
+function summarize(posts: ScrapedPost[]) { return createTask('summarize', posts); }
+
+function summarizeIncremental(previousSummary: string, newPosts: ScrapedPost[]) {
+  return createTask('summarize_incremental', { previousSummary, newPosts });
 }
 
-function researchTopic(
-  posts: ScrapedPost[],
-  question: string,
-): { taskId: string; result: Promise<LLMResultMessage> } {
-  let resolve!: (r: LLMResultMessage) => void;
-  let reject!: (e: Error) => void;
-  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
-  const taskId = startTask('research', { posts, question }, (r) => {
-    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
-  });
-  return { taskId, result };
+function analyzeOpinions(posts: ScrapedPost[]) { return createTask('analyze_opinions', posts); }
+
+function researchTopic(posts: ScrapedPost[], question: string) {
+  return createTask('research', { posts, question });
 }
 
-function summarizeSegmentsTask(
-  segmentSummaries: string[],
-): { taskId: string; result: Promise<LLMResultMessage> } {
-  let resolve!: (r: LLMResultMessage) => void;
-  let reject!: (e: Error) => void;
-  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
-  const taskId = startTask('summarize_segments', segmentSummaries, (r) => {
-    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
-  });
-  return { taskId, result };
+function summarizeSegmentsTask(segmentSummaries: string[]) {
+  return createTask('summarize_segments', segmentSummaries);
 }
 
-function extractKnowledge(
-  posts: ScrapedPost[],
-  title: string,
-): { taskId: string; result: Promise<LLMResultMessage> } {
-  let resolve!: (r: LLMResultMessage) => void;
-  let reject!: (e: Error) => void;
-  const result = new Promise<LLMResultMessage>((res, rej) => { resolve = res; reject = rej; });
-  const taskId = startTask('extract_knowledge', { posts, title }, (r) => {
-    r.success ? resolve(r) : reject(new Error(r.error ?? 'LLM error'));
-  });
-  return { taskId, result };
+function extractKnowledge(posts: ScrapedPost[], title: string) {
+  return createTask('extract_knowledge', { posts, title });
 }
 
 export function useLLM() {

@@ -188,3 +188,5 @@ export interface CustomPrompts {
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+export type LLMProgressCallback = (message: string, step?: number, totalSteps?: number) => void;

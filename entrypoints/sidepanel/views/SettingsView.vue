@@ -2,14 +2,33 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE } from '@/lib/constants';
-import type { LLMConfig, CustomPrompts, CachedTopic } from '@/lib/types';
+import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useTheme } from '../composables/useTheme';
 
 const config = ref<LLMConfig>({ ...DEFAULT_LLM_CONFIG });
+const showApiKey = ref(false);
 const saving = ref(false);
 const testing = ref(false);
+
+const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number }> = {
+  openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000 },
+  custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000 },
+  claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000 },
+  gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000 },
+};
+
+function syncCurrentProvider() {
+  if (!config.value.perProvider) config.value.perProvider = {};
+  config.value.perProvider[config.value.provider] = {
+    model: config.value.model,
+    apiKey: config.value.apiKey,
+    baseUrl: config.value.baseUrl,
+    temperature: config.value.temperature,
+    timeoutMs: config.value.timeoutMs ?? 120000,
+  };
+}
 const testResult = ref<'success' | 'fail' | ''>('');
 const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
@@ -92,6 +111,27 @@ onActivated(async () => {
   await refreshCacheSize();
 });
 
+watch(() => config.value.provider, (newProvider, oldProvider) => {
+  // Save old provider's specific settings
+  if (!config.value.perProvider) config.value.perProvider = {};
+  config.value.perProvider[oldProvider] = {
+    model: config.value.model,
+    apiKey: config.value.apiKey,
+    baseUrl: config.value.baseUrl,
+    temperature: config.value.temperature,
+    timeoutMs: config.value.timeoutMs ?? 120000,
+  };
+  // Load new provider's settings (from saved or defaults)
+  const saved = config.value.perProvider[newProvider];
+  const defaults = providerDefaults[newProvider];
+  config.value.model = saved?.model ?? defaults.model;
+  config.value.apiKey = saved?.apiKey ?? defaults.apiKey;
+  config.value.baseUrl = saved?.baseUrl ?? defaults.baseUrl;
+  config.value.temperature = saved?.temperature ?? defaults.temperature;
+  config.value.timeoutMs = saved?.timeoutMs ?? defaults.timeoutMs;
+  showApiKey.value = false;
+});
+
 watch(activePromptTab, () => {
   showDefaultPrompt.value = false;
 });
@@ -100,6 +140,7 @@ async function save() {
   saving.value = true;
   saveMessage.value = '';
   try {
+    syncCurrentProvider();
     await sendMessage('SAVE_SETTINGS', config.value);
     saveMessage.value = 'Đã lưu!';
     setTimeout(() => (saveMessage.value = ''), 2000);
@@ -114,6 +155,7 @@ async function testConnection() {
   testing.value = true;
   testResult.value = '';
   try {
+    syncCurrentProvider();
     await sendMessage('SAVE_SETTINGS', config.value);
     const result = await sendMessage<{ ok: boolean; error?: string }>('TEST_CONNECTION');
     testResult.value = result.ok ? 'success' : 'fail';
@@ -202,12 +244,32 @@ function cancelClearAll() {
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
         {{ isClaude ? 'Anthropic API Key' : isGemini ? 'Google AI API Key' : 'API Key' }}
       </label>
-      <input
-        v-model="config.apiKey"
-        type="password"
-        :placeholder="isClaude ? 'sk-ant-...' : isGemini ? 'AIza...' : 'sk-...'"
-        class="input"
-      />
+      <div class="relative">
+        <input
+          v-model="config.apiKey"
+          :type="showApiKey ? 'text' : 'password'"
+          :placeholder="isClaude ? 'sk-ant-...' : isGemini ? 'AIza...' : 'sk-...'"
+          class="input"
+          style="padding-right: 2.25rem;"
+        />
+        <button
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
+          :title="showApiKey ? 'Ẩn API Key' : 'Hiện API Key'"
+          @click="showApiKey = !showApiKey"
+        >
+          <!-- Eye icon -->
+          <svg v-if="!showApiKey" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <!-- Eye-off icon -->
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Base URL (only for OpenAI/Custom) -->

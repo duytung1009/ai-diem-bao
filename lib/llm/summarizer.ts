@@ -28,6 +28,8 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
     const singleBacktickMatch = text.match(/^`([\s\S]*?)`$/s);
     if (singleBacktickMatch) text = singleBacktickMatch[1].trim();
   }
+  // Sanitize invalid JSON escape sequences (e.g. \N, \T produced by LLMs)
+  text = text.replace(/\\([^"\\\/bfnrtu])/g, (_, ch) => ch);
   try {
     const parsed = JSON.parse(text);
     if (

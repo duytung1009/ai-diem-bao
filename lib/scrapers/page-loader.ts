@@ -56,7 +56,11 @@ export async function scrapeAllPages(
       }
       const html = await res.text();
       const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
+      // Strip <script> tags before parsing to prevent CSP violations when running
+      // in extension page context (sidepanel). DOMParser is spec-inert but Chrome's
+      // renderer evaluates src attributes for CSP checks, generating console warnings.
+      const safeHtml = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+      const doc = parser.parseFromString(safeHtml, 'text/html');
 
       // Detect login redirect
       const isLoginPage =
@@ -135,7 +139,8 @@ export async function scrapePageRange(
       }
       const html = await res.text();
       const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
+      const safeHtml = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+      const doc = parser.parseFromString(safeHtml, 'text/html');
 
       const isLoginPage =
         /login|sign.?in|đăng.nhập/i.test(res.url) ||

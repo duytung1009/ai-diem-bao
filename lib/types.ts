@@ -41,8 +41,18 @@ export interface SummaryJSON {
   conclusion: string;
 }
 
+export type LLMProvider = 'openai' | 'claude' | 'gemini' | 'custom';
+
+export interface ProviderSpecificConfig {
+  model: string;
+  apiKey: string;
+  baseUrl: string;
+  temperature: number;
+  timeoutMs: number;
+}
+
 export interface LLMConfig {
-  provider: 'openai' | 'claude' | 'gemini' | 'custom';
+  provider: LLMProvider;
   model: string;
   apiKey: string;
   baseUrl: string;
@@ -51,6 +61,7 @@ export interface LLMConfig {
   timeoutMs?: number;
   scrapeDelayMs?: number;
   segmentSize?: number;
+  perProvider?: Partial<Record<LLMProvider, ProviderSpecificConfig>>;
 }
 
 export type MessageType =

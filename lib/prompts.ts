@@ -148,6 +148,7 @@ BẮT BUỘC:
 - Viết bằng tiếng Việt
 - Loại bỏ thông tin trùng lặp giữa các phần
 - Gộp supporters của các quan điểm tương tự vào một nhóm, đếm tổng số người ủng hộ
+- Nếu có phần "TÁC GIẢ XUẤT HIỆN Ở NHIỀU PHẦN" ở đầu input, hãy dùng nó để đảm bảo mỗi tác giả chỉ xuất hiện MỘT LẦN trong supporters của mỗi nhóm quan điểm, dù họ được đề cập ở nhiều phần khác nhau
 - Chọn quotes tiêu biểu nhất (tối đa 3 quotes mỗi quan điểm)
 - Giữ bản tóm tắt cuối dưới 500 từ
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế

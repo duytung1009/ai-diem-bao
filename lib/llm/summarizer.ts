@@ -338,6 +338,60 @@ async function summaryChunks(
 }
 
 /**
+ * Build a cross-reference table of authors appearing in ≥2 segments.
+ * Returns a formatted string to prepend to the combined content, or '' if none.
+ */
+function buildAuthorCrossReference(segmentJsons: (SummaryJSON | null)[]): string {
+  const authorMap = new Map<string, { segIdx: number; title: string; originalName: string }[]>();
+
+  segmentJsons.forEach((json, i) => {
+    if (!json?.opinions) return;
+    for (const op of json.opinions) {
+      for (const name of op.supporters) {
+        const key = name.toLowerCase();
+        if (!authorMap.has(key)) authorMap.set(key, []);
+        authorMap.get(key)!.push({ segIdx: i + 1, title: op.title, originalName: name });
+      }
+    }
+  });
+
+  const crossSegmentAuthors = [...authorMap.entries()].filter(([, entries]) => {
+    const segments = new Set(entries.map(e => e.segIdx));
+    return segments.size >= 2;
+  });
+
+  if (crossSegmentAuthors.length === 0) return '';
+
+  const lines = crossSegmentAuthors.map(([, entries]) => {
+    const name = entries[0].originalName;
+    const bySegment = entries.map(e => `Phần ${e.segIdx} ('${e.title}')`);
+    return `- ${name}: ${bySegment.join(', ')}`;
+  });
+
+  return `=== TÁC GIẢ XUẤT HIỆN Ở NHIỀU PHẦN (cùng 1 người — chỉ đếm 1 lần) ===\n${lines.join('\n')}\n=== KẾT THÚC ===\n\n`;
+}
+
+/**
+ * Post-process a SummaryJSON to remove duplicate supporters within each opinion (case-insensitive).
+ * First occurrence wins (preserves original casing).
+ */
+export function deduplicateSupporters(json: SummaryJSON): SummaryJSON {
+  return {
+    ...json,
+    opinions: json.opinions.map(op => {
+      const seen = new Set<string>();
+      const unique = op.supporters.filter(name => {
+        const key = name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return { ...op, supporters: unique };
+    }),
+  };
+}
+
+/**
  * Merge multiple segment JSON summaries into one overall summary.
  * Uses REDUCE_SUMMARY_PROMPT which is designed to merge JSON chunks.
  */
@@ -347,22 +401,76 @@ export async function summarizeSegments(
   onProgress?: LLMProgressCallback,
 ): Promise<string> {
   const provider = createProvider(config);
-  const combinedText = segmentSummaries
+
+  // 1. Parse segment JSONs for cross-reference building
+  const parsed = segmentSummaries.map(s => parseSummaryJSON(s));
+
+  // 2. Build cross-reference (authors appearing in ≥2 segments)
+  const crossRef = buildAuthorCrossReference(parsed);
+
+  // 3. Build combined content (cross-reference prepended)
+  const segmentText = segmentSummaries
     .map((s, i) => `--- Phần ${i + 1} ---\n${s}`)
     .join('\n\n');
+  const combinedContent = crossRef + segmentText;
 
-  onProgress?.('Đang tạo tóm tắt tổng quan...');
+  // 4. Context check — recursive reduce if combined content exceeds context
+  const inputTokens = estimateTokens(combinedContent) + estimateTokens(REDUCE_SUMMARY_PROMPT) + RESPONSE_BUFFER_TOKENS;
+  const contextLimit = getContextLimit(config.model);
 
-  const reducePost: ScrapedPost[] = [{
-    author: 'PARTIAL_SUMMARIES',
-    content: combinedText,
-    timestamp: '',
-    postNumber: 0,
-  }];
+  let resultText: string;
 
-  const response = await provider.summarize(reducePost, REDUCE_SUMMARY_PROMPT);
-  const json = parseSummaryJSON(response.content);
-  return json ? JSON.stringify(json) : response.content;
+  if (inputTokens > contextLimit && segmentSummaries.length > 2) {
+    // Split into groups, reduce each group, then final reduce
+    onProgress?.('Đang gộp tóm tắt (nhiều bước)...');
+    const groupCount = Math.ceil(inputTokens / contextLimit);
+    const groupSize = Math.ceil(segmentSummaries.length / groupCount);
+    const groups: string[][] = [];
+    for (let i = 0; i < segmentSummaries.length; i += groupSize) {
+      groups.push(segmentSummaries.slice(i, i + groupSize));
+    }
+
+    const intermediateResults: string[] = [];
+    for (let g = 0; g < groups.length; g++) {
+      onProgress?.(`Đang gộp nhóm ${g + 1}/${groups.length}...`, g + 1, groups.length + 1);
+      const groupParsed = groups[g].map(s => parseSummaryJSON(s));
+      const groupCrossRef = buildAuthorCrossReference(groupParsed);
+      const groupText = groups[g].map((s, i) => `--- Phần ${i + 1} ---\n${s}`).join('\n\n');
+      const groupContent = groupCrossRef + groupText;
+
+      const groupPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: groupContent, timestamp: '', postNumber: 0 }];
+      const response = await provider.summarize(groupPost, REDUCE_SUMMARY_PROMPT);
+      const json = parseSummaryJSON(response.content);
+      intermediateResults.push(json ? JSON.stringify(json) : response.content);
+
+      if (g < groups.length - 1) await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
+    }
+
+    // Final reduce over intermediate results
+    onProgress?.('Đang tạo tóm tắt tổng quan...', groups.length + 1, groups.length + 1);
+    const finalParsed = intermediateResults.map(s => parseSummaryJSON(s));
+    const finalCrossRef = buildAuthorCrossReference(finalParsed);
+    const finalText = intermediateResults.map((s, i) => `--- Phần ${i + 1} ---\n${s}`).join('\n\n');
+    const finalContent = finalCrossRef + finalText;
+
+    const finalPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: finalContent, timestamp: '', postNumber: 0 }];
+    const finalResponse = await provider.summarize(finalPost, REDUCE_SUMMARY_PROMPT);
+    resultText = finalResponse.content;
+  } else {
+    // Fits in a single LLM call
+    onProgress?.('Đang tạo tóm tắt tổng quan...');
+    const reducePost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: combinedContent, timestamp: '', postNumber: 0 }];
+    const response = await provider.summarize(reducePost, REDUCE_SUMMARY_PROMPT);
+    resultText = response.content;
+  }
+
+  // 5. Post-process: programmatic dedup of supporters (safety net)
+  const json = parseSummaryJSON(resultText);
+  if (json) {
+    const deduped = deduplicateSupporters(json);
+    return JSON.stringify(deduped);
+  }
+  return resultText;
 }
 
 /**

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onActivated } from 'vue';
+import { ref, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl } from '@/lib/cache-manager';
@@ -23,10 +23,13 @@ const {
   loadedTopicUrl,
   topicInfo, isProcessing, summarizedPostCount, livePostCount,
   tokenEstimation, isSegmentMode, segments,
+  summarizedCount, progressPercent, nextPendingSegmentIndex,
   loadTopicData, handleCancel,
   handleSummarize, confirmSummarize, cancelPendingSummarize,
   handleRetry, handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate,
 } = useSummarize(store);
+
+const segmentGridExpanded = ref(false);
 
 onMounted(() => {
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
@@ -188,37 +191,97 @@ onActivated(async () => {
         </div>
 
         <!-- Segment tabs -->
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            class="px-2.5 py-1 text-xs rounded-full transition-colors"
-            :class="activeSegmentIndex === null
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
-              : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'"
-            @click="activeSegmentIndex = null"
+        <div class="space-y-2">
+          <!-- Row 1: Tổng quan + Tiếp theo -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <button
+              class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors"
+              :class="activeSegmentIndex === null
+                ? 'bg-blue-600 text-white'
+                : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-bg-muted)'"
+              @click="activeSegmentIndex = null"
+            >
+              Tổng quan
+            </button>
+            <button
+              v-if="nextPendingSegmentIndex !== null"
+              class="px-3 py-1.5 text-xs rounded-full transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) flex items-center gap-1"
+              @click="activeSegmentIndex = nextPendingSegmentIndex"
+            >
+              Tiếp theo: {{ segments[nextPendingSegmentIndex!].label }}
+              <span class="text-(--color-text-muted)">→</span>
+            </button>
+          </div>
+
+          <!-- Row 2: Progress bar + expand toggle -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
+              <span>{{ summarizedCount }} / {{ segments.length }} phần đã tóm tắt</span>
+              <button
+                class="underline hover:text-(--color-text-primary) transition-colors"
+                @click="segmentGridExpanded = !segmentGridExpanded"
+              >
+                {{ segmentGridExpanded ? 'Thu gọn ▲' : 'Xem tất cả ▼' }}
+              </button>
+            </div>
+            <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
+              <div
+                class="h-full rounded-full bg-blue-500 transition-all duration-300"
+                :style="{ width: progressPercent + '%' }"
+              />
+            </div>
+          </div>
+
+          <!-- Row 3: Collapsible pill grid -->
+          <div
+            v-if="segmentGridExpanded"
+            class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto"
           >
-            Tổng quan
-          </button>
-          <button
-            v-for="(seg, i) in segments"
-            :key="i"
-            class="px-2.5 py-1 text-xs rounded-full transition-colors flex items-center gap-1"
-            :class="activeSegmentIndex === i
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
-              : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'"
-            @click="activeSegmentIndex = i"
+            <button
+              v-for="(seg, i) in segments"
+              :key="i"
+              class="px-2.5 py-1 text-xs rounded-full transition-colors flex items-center gap-1"
+              :class="activeSegmentIndex === i
+                ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
+                : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'"
+              @click="activeSegmentIndex = i"
+            >
+              {{ seg.label }}
+              <span
+                v-if="segmentSummaries[i]?.summary"
+                class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
+                title="Đã tóm tắt"
+              />
+              <span
+                v-else-if="segmentSummaries[i]?.posts?.length"
+                class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"
+                title="Đã scrape, chưa tóm tắt"
+              />
+            </button>
+          </div>
+
+          <!-- Row 4: Prev/Next khi đang ở 1 segment cụ thể -->
+          <div
+            v-if="activeSegmentIndex !== null"
+            class="flex items-center justify-between text-xs text-(--color-text-secondary)"
           >
-            {{ seg.label }}
-            <span
-              v-if="segmentSummaries[i]?.summary"
-              class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
-              title="Đã tóm tắt"
-            />
-            <span
-              v-else-if="segmentSummaries[i]?.posts?.length"
-              class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"
-              title="Đã scrape, chưa tóm tắt"
-            />
-          </button>
+            <button
+              v-if="activeSegmentIndex > 0"
+              class="flex items-center gap-1 hover:text-(--color-text-primary) transition-colors"
+              @click="activeSegmentIndex--"
+            >
+              ← {{ segments[activeSegmentIndex - 1].label }}
+            </button>
+            <span v-else />
+            <button
+              v-if="activeSegmentIndex < segments.length - 1"
+              class="flex items-center gap-1 hover:text-(--color-text-primary) transition-colors"
+              @click="activeSegmentIndex++"
+            >
+              {{ segments[activeSegmentIndex + 1].label }} →
+            </button>
+            <span v-else />
+          </div>
         </div>
 
         <!-- Overall summary view -->

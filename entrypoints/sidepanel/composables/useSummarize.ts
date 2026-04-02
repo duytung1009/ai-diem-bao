@@ -101,6 +101,23 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     return segs;
   });
 
+  const summarizedCount = computed(() =>
+    segmentSummaries.value.filter(s => s?.summary).length,
+  );
+
+  const progressPercent = computed(() =>
+    segments.value.length > 0
+      ? Math.round((summarizedCount.value / segments.value.length) * 100)
+      : 0,
+  );
+
+  const nextPendingSegmentIndex = computed((): number | null => {
+    const idx = segmentSummaries.value.findIndex(
+      (s, i) => i < segments.value.length && s?.posts?.length && !s?.summary,
+    );
+    return idx >= 0 ? idx : null;
+  });
+
   // --- Watch ---
   watch(livePostCount, (newCount) => {
     if (cachedTopic.value && hasLivePostCount.value) {
@@ -715,6 +732,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     tokenEstimation,
     isSegmentMode,
     segments,
+    summarizedCount,
+    progressPercent,
+    nextPendingSegmentIndex,
     // functions
     loadTopicData,
     evaluateFreshness,

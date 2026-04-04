@@ -14,8 +14,71 @@ import { estimateTokens, getContextLimit, willExceedContext } from '../token-est
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS } from '../constants';
 
 /**
+ * Repair unescaped double quotes inside JSON string values.
+ * LLMs sometimes output: "description": "mục đích "cắm" tài sản"
+ * which breaks JSON.parse. This state-machine heuristic escapes inner quotes:
+ * when inside a string, a " is treated as closing only if followed by , } ] : or EOF.
+ */
+function repairUnescapedQuotes(text: string): string {
+  const out: string[] = [];
+  let i = 0;
+  const len = text.length;
+
+  while (i < len) {
+    const ch = text[i];
+
+    if (ch !== '"') {
+      out.push(ch);
+      i++;
+      continue;
+    }
+
+    // Opening quote of a JSON string value or key
+    out.push('"');
+    i++;
+
+    // Scan inside the string until we find the closing quote
+    while (i < len) {
+      const c = text[i];
+
+      if (c === '\\') {
+        // Valid escape sequence — copy both chars
+        out.push(c);
+        i++;
+        if (i < len) { out.push(text[i]); i++; }
+        continue;
+      }
+
+      if (c === '"') {
+        // Peek ahead (skip whitespace) to decide if this closes the string
+        let j = i + 1;
+        while (j < len && (text[j] === ' ' || text[j] === '\t')) j++;
+        const next = text[j] ?? '';
+        if (next === ',' || next === '}' || next === ']' || next === ':' || next === '') {
+          // Closing quote
+          out.push('"');
+          i++;
+          break;
+        } else {
+          // Unescaped quote inside the string — escape it
+          out.push('\\"');
+          i++;
+          continue;
+        }
+      }
+
+      out.push(c);
+      i++;
+    }
+  }
+
+  return out.join('');
+}
+
+/**
  * Try to parse LLM output as SummaryJSON.
  * Handles: plain JSON, triple-backtick fences (```json...```), single-backtick wrapping (`...`).
+ * Fallback: repairs unescaped quotes inside string values (common LLM mistake).
  * Returns null if output is not valid JSON or missing required fields.
  */
 export function parseSummaryJSON(raw: string): SummaryJSON | null {
@@ -31,18 +94,24 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
   }
   // Sanitize invalid JSON escape sequences (e.g. \N, \T produced by LLMs)
   text = text.replace(/\\([^"\\\/bfnrtu])/g, (_, ch) => ch);
+
+  const isValidSummaryJSON = (parsed: unknown): parsed is SummaryJSON =>
+    typeof (parsed as SummaryJSON)?.summary === 'string' &&
+    Array.isArray((parsed as SummaryJSON)?.opinions) &&
+    typeof (parsed as SummaryJSON)?.conclusion === 'string';
+
   try {
     const parsed = JSON.parse(text);
-    if (
-      typeof parsed.summary === 'string' &&
-      Array.isArray(parsed.opinions) &&
-      typeof parsed.conclusion === 'string'
-    ) {
-      return parsed as SummaryJSON;
-    }
-    return null;
+    return isValidSummaryJSON(parsed) ? parsed : null;
   } catch {
-    return null;
+    // Fallback: try repairing unescaped quotes inside string values
+    try {
+      const repaired = repairUnescapedQuotes(text);
+      const parsed = JSON.parse(repaired);
+      return isValidSummaryJSON(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
   }
 }
 

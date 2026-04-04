@@ -218,7 +218,7 @@ onActivated(async () => {
             <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
               <span>{{ summarizedCount }} / {{ segments.length }} phần đã tóm tắt</span>
               <button
-                class="underline hover:text-(--color-text-primary) transition-colors"
+                class="btn btn-secondary btn-sm"
                 @click="segmentGridExpanded = !segmentGridExpanded"
               >
                 {{ segmentGridExpanded ? 'Thu gọn ▲' : 'Xem tất cả ▼' }}
@@ -267,7 +267,7 @@ onActivated(async () => {
           >
             <button
               v-if="activeSegmentIndex > 0"
-              class="flex items-center gap-1 hover:text-(--color-text-primary) transition-colors"
+              class="flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
               @click="activeSegmentIndex--"
             >
               ← {{ segments[activeSegmentIndex - 1].label }}
@@ -275,7 +275,7 @@ onActivated(async () => {
             <span v-else />
             <button
               v-if="activeSegmentIndex < segments.length - 1"
-              class="flex items-center gap-1 hover:text-(--color-text-primary) transition-colors"
+              class="flex items-center gap-1 text-blue-600 hover:text-blue-700"
               @click="activeSegmentIndex++"
             >
               {{ segments[activeSegmentIndex + 1].label }} →

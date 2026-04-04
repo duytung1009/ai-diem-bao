@@ -420,9 +420,27 @@ function cancelClearAll() {
     </div>
 
     <!-- Save message -->
-    <p v-if="saveMessage" class="text-xs text-(--color-success-text) text-center">
+    <div 
+      v-if="saveMessage" 
+      class="alert alert-success text-center"
+    >
       {{ saveMessage }}
-    </p>
+    </div>
+
+    <!-- Test result -->
+    <LoadingSpinner v-if="testing" text="Đang kiểm tra kết nối..." />
+    <div
+      v-if="testResult === 'success'"
+      class="alert alert-success text-center"
+    >
+      Kết nối thành công!
+    </div>
+    <div
+      v-if="testResult === 'fail'"
+      class="alert alert-error text-center"
+    >
+      Kết nối thất bại. Kiểm tra lại API Key và Base URL.
+    </div>
 
     <!-- Cache storage info -->
     <div class="card space-y-2">
@@ -466,21 +484,6 @@ function cancelClearAll() {
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- Test result -->
-    <LoadingSpinner v-if="testing" text="Đang kiểm tra kết nối..." />
-    <div
-      v-if="testResult === 'success'"
-      class="alert alert-success text-center"
-    >
-      Kết nối thành công!
-    </div>
-    <div
-      v-if="testResult === 'fail'"
-      class="alert alert-error text-center"
-    >
-      Kết nối thất bại. Kiểm tra lại API Key và Base URL.
     </div>
 
     <!-- ─── Custom Prompt Templates ──────────────────────────────── -->

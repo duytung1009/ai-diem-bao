@@ -96,7 +96,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const segs: { start: number; end: number; label: string }[] = [];
     for (let start = 1; start <= total; start += size) {
       const end = Math.min(start + size - 1, total);
-      segs.push({ start, end, label: `Trang ${start}–${end}` });
+      segs.push({ start, end, label: `${start}–${end}` });
     }
     return segs;
   });

@@ -380,6 +380,26 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         totalPages: topic.totalPages,
         segments: updatedDense,
       } as Partial<CachedTopic>);
+
+      // Single-segment: promote summary to top-level so TopicHubView shows "Đã tóm tắt"
+      if (segments.value.length === 1) {
+        summary.value = newSeg.summary;
+        summaryJson.value = newSeg.summaryJson ?? null;
+        activeSegmentIndex.value = null;
+        await sendMessage('SAVE_CACHED_TOPIC', {
+          url: topic.url,
+          title: topic.title,
+          version: topic.version,
+          totalPages: topic.totalPages,
+          summary: newSeg.summary,
+          summaryJson: newSeg.summaryJson ?? undefined,
+          summarizedPostCount: segTotalPosts,
+        });
+        store.updateSelectedTopic({ summary: newSeg.summary });
+        const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+        if (saved) cachedTopic.value = saved;
+        cacheFreshness.value = 'fresh';
+      }
     } catch (err) {
       isScraping.value = false;
       scrapeProgress.value = null;

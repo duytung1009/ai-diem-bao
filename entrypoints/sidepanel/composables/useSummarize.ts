@@ -1,6 +1,5 @@
 import { ref, computed, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import { willExceedContext, estimateCost, formatTokenCount, formatCost } from '@/lib/token-estimator';
 import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
@@ -11,7 +10,7 @@ import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 
 export function useSummarize(store: ReturnType<typeof useTopicStore>) {
-  const { summarize, summarizeIncremental, summarizeSegmentsTask } = useLLM();
+  const { summarize, summarizeSegmentsTask } = useLLM();
 
   // --- State ---
   const summary = ref('');
@@ -23,8 +22,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const isScraping = ref(false);
   const scrapingWarnings = ref<string[]>([]);
   const scrapingInfo = ref<string[]>([]);
-  const pendingPosts = ref<ScrapedPost[] | null>(null);
-  const pendingIncremental = ref(false);
   const currentConfig = ref<LLMConfig | null>(null);
   const cachedTopic = ref<CachedTopic | null>(null);
   const cacheFreshness = ref<CacheFreshness | null>(null);
@@ -72,22 +69,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       isSameTopicUrl(store.activeTabUrl.value, store.selectedTopic.value.url)),
   );
 
-  const tokenEstimation = computed(() => {
-    if (!pendingPosts.value || !currentConfig.value) return null;
-    const check = willExceedContext(pendingPosts.value, currentConfig.value.model);
-    const cost = estimateCost(check.estimatedTokens, 800, currentConfig.value.model);
-    return {
-      tokens: check.estimatedTokens,
-      tokensFormatted: formatTokenCount(check.estimatedTokens),
-      cost: formatCost(cost.total),
-      exceeds: check.exceeds,
-      chunksNeeded: check.chunksNeeded,
-    };
-  });
-
-  const isSegmentMode = computed(() =>
-    (topicInfo.value?.pageCount ?? 0) > segmentSize.value,
-  );
+  const isSegmentMode = computed(() => Boolean(topicInfo.value));
 
   const segments = computed(() => {
     if (!isSegmentMode.value || !topicInfo.value) return [];
@@ -195,8 +177,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     isScraping.value = false;
     scrapingWarnings.value = [];
     scrapingInfo.value = [];
-    pendingPosts.value = null;
-    pendingIncremental.value = false;
     cachedTopic.value = null;
     cacheFreshness.value = null;
     segmentSummaries.value = [];
@@ -233,6 +213,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
             }
             return seg;
           });
+        }
+        // Backward compat: legacy normal-mode topic has summary but no segments
+        if (fresh.summary && (!fresh.segments || fresh.segments.length === 0)) {
+          segmentSummaries.value = [{
+            startPage: 1,
+            endPage: fresh.totalPages ?? 1,
+            posts: fresh.posts ?? [],
+            summary: fresh.summary,
+            summaryJson: fresh.summaryJson ?? undefined,
+            postCount: fresh.summarizedPostCount ?? 0,
+            summarizedAt: fresh.cachedAt ?? Date.now(),
+          }];
         }
         const liveCount = (store.activeTabDetect.value && store.activeTabUrl.value &&
           isSameTopicUrl(store.activeTabUrl.value, fresh.url))
@@ -285,208 +277,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
-  async function handleSummarize(incremental = false) {
-    if (!topicInfo.value) return;
-    const topic = store.selectedTopic.value!;
-    error.value = '';
-    scrapingWarnings.value = [];
-    if (!incremental) {
-      summary.value = '';
-      summaryJson.value = null;
-    }
-    pendingPosts.value = null;
-
-    try {
-      const cachedPosts = cachedTopic.value?.posts?.length
-        ? cachedTopic.value.posts
-        : topic.posts ?? [];
-      if (cachedPosts.length > 0 && !incremental) {
-        pendingPosts.value = [...cachedPosts];
-        pendingIncremental.value = false;
-        return;
-      }
-
-      const detectMatchesTopic = store.activeTabUrl.value
-        && isSameTopicUrl(store.activeTabUrl.value, topic.url);
-      const detectedPageCount = detectMatchesTopic ? (store.activeTabDetect.value?.pageCount ?? 1) : 1;
-      const cachedPageCount = topic.totalPages ?? 1;
-      const pageCount = Math.max(detectedPageCount, cachedPageCount);
-      let posts: ScrapedPost[];
-
-      if (pageCount > 1) {
-        isScraping.value = true;
-
-        if (incremental && cachedTopic.value) {
-          const existingCachedPages = cachedTopic.value.totalPages || 1;
-          const startPage = Math.max(1, existingCachedPages + 1);
-          const endPage = pageCount;
-
-          const { posts: newPosts, errors } = await scrapeRange(topic.url, startPage, endPage, currentConfig.value?.scrapeDelayMs ?? 2000);
-          isScraping.value = false;
-          scrapeProgress.value = null;
-
-          const existingPosts = cachedTopic.value.posts || [];
-          const merged = [...existingPosts, ...newPosts];
-          const seen = new Set<number>();
-          posts = merged.filter(p => {
-            if (p.postNumber === 0) return true;
-            if (seen.has(p.postNumber)) return false;
-            seen.add(p.postNumber);
-            return true;
-          }).sort((a, b) => a.postNumber - b.postNumber);
-
-          if (errors.length > 0) scrapingWarnings.value = errors;
-        } else {
-          const { posts: scraped, errors } = await scrapeRange(topic.url, 1, pageCount, currentConfig.value?.scrapeDelayMs ?? 2000);
-          isScraping.value = false;
-          scrapeProgress.value = null;
-          if (!scraped.length) throw new Error('Không tìm thấy bài viết nào.');
-          posts = scraped;
-          if (errors.length > 0) scrapingWarnings.value = errors;
-        }
-      } else {
-        scrapeProgress.value = { currentPage: 1, totalPages: 1, postsScraped: 0 };
-        isScraping.value = true;
-        const { posts: scraped, errors } = await scrapeRange(topic.url, 1, 1, 0);
-        isScraping.value = false;
-        scrapeProgress.value = null;
-        if (!scraped.length) throw new Error('Không tìm thấy bài viết nào.');
-        posts = scraped;
-        if (errors.length > 0) scrapingWarnings.value = errors;
-      }
-
-      // News detection
-      posts = await enrichWithNewsArticles(
-        posts,
-        topic.url,
-        (msg) => { simpleLoadingText.value = msg; },
-        (msg) => { scrapingInfo.value.push(msg); },
-      );
-
-      // Feature 16: Save posts early to avoid re-scraping on LLM fail/cancel
-      if (posts.length > 0) {
-        await saveTopic(topic as CachedTopic, {
-          posts,
-          totalPages: pageCount,
-          totalPosts: countRealPosts(posts),
-        });
-        const refreshed = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url).catch(() => null);
-        if (refreshed) cachedTopic.value = refreshed;
-      }
-
-      simpleLoadingText.value = '';
-      pendingPosts.value = posts;
-      pendingIncremental.value = incremental;
-    } catch (err) {
-      isScraping.value = false;
-      scrapeProgress.value = null;
-      simpleLoadingText.value = '';
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      error.value = err instanceof Error ? err.message : String(err);
-    }
-  }
-
-  async function confirmSummarize() {
-    const posts = pendingPosts.value;
-    const incremental = pendingIncremental.value;
-    const topic = store.selectedTopic.value;
-    if (!posts || !topicInfo.value || !topic) return;
-
-    pendingPosts.value = null;
-    const thisId = ++activeSummarizeId;
-    store.setSummarizing(topic.url);
-
-    try {
-      let summaryText: string;
-      if (incremental && cachedTopic.value?.summary) {
-        const newPosts = posts.filter(
-          (p) => p.postNumber < 0 || p.postNumber > (cachedTopic.value?.lastPostNumber ?? 0),
-        );
-        if (newPosts.length === 0) {
-          summary.value = cachedTopic.value.summary;
-          simpleLoadingText.value = '';
-          store.setSummarizing(null);
-          return;
-        }
-        simpleLoadingText.value = '';
-        const incr = summarizeIncremental(cachedTopic.value.summary, newPosts);
-        llmTaskId.value = incr.taskId;
-        const llmResult = await incr.result;
-        summaryText = (llmResult.data as { summary: string }).summary;
-      } else {
-        simpleLoadingText.value = '';
-        const sum = summarize(posts);
-        llmTaskId.value = sum.taskId;
-        const llmResult = await sum.result;
-        summaryText = (llmResult.data as { summary: string }).summary;
-      }
-
-      const parsedJson = parseSummaryJSON(summaryText);
-
-      // Stale guard: user navigated away while LLM was running
-      if (thisId !== activeSummarizeId) {
-        const lastPost = posts[posts.length - 1];
-        const realPostCount = countRealPosts(posts);
-        await saveTopic(topic as CachedTopic, {
-          posts,
-          summary: summaryText,
-          summaryJson: parsedJson ?? undefined,
-          lastPostNumber: lastPost?.postNumber ?? 0,
-          totalPosts: realPostCount,
-          summarizedPostCount: realPostCount,
-        }).catch(() => {});
-        return;
-      }
-
-      const lastPost = posts[posts.length - 1];
-      const realPostCount = countRealPosts(posts);
-
-      store.updateSelectedTopic({ summary: summaryText, posts, totalPosts: realPostCount, totalPages: topic.totalPages });
-      if (cachedTopic.value) {
-        cachedTopic.value = { ...cachedTopic.value, totalPosts: realPostCount, summarizedPostCount: realPostCount };
-      }
-
-      summary.value = summaryText;
-      summaryJson.value = parsedJson;
-
-      await sendMessage('SAVE_CACHED_TOPIC', {
-        url: topic.url,
-        title: topic.title,
-        version: topic.version,
-        totalPages: topic.totalPages,
-        posts,
-        summary: summaryText,
-        summaryJson: parsedJson ?? undefined,
-        lastPostNumber: lastPost?.postNumber ?? 0,
-        totalPosts: realPostCount,
-        summarizedPostCount: realPostCount,
-      });
-
-      const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-      if (saved) cachedTopic.value = saved;
-      cacheFreshness.value = 'fresh';
-    } catch (err) {
-      if (thisId !== activeSummarizeId) return;
-      error.value = err instanceof Error ? err.message : String(err);
-    } finally {
-      store.setSummarizing(null);
-      if (thisId === activeSummarizeId) {
-        simpleLoadingText.value = '';
-        llmTaskId.value = null;
-      }
-    }
-  }
-
-  function cancelPendingSummarize() {
-    pendingPosts.value = null;
-    pendingIncremental.value = false;
-  }
-
   function handleRetry() {
-    if (isSegmentMode.value && activeSegmentIndex.value !== null) {
+    if (activeSegmentIndex.value !== null) {
       handleSummarizeSegment(activeSegmentIndex.value);
     } else {
-      handleSummarize(false);
+      handleSummarizeSegment(0);
     }
   }
 
@@ -605,8 +400,27 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (!topic) return;
 
     const completedSegments = segmentSummaries.value.filter(s => s?.summary);
-    if (completedSegments.length < 2) {
-      error.value = 'Cần ít nhất 2 phần đã tóm tắt để tạo tóm tắt tổng quan.';
+    if (completedSegments.length === 0) return;
+
+    // Single segment: copy trực tiếp, không gọi LLM
+    if (completedSegments.length === 1) {
+      const seg = completedSegments[0];
+      summary.value = seg.summary;
+      summaryJson.value = seg.summaryJson ?? null;
+      activeSegmentIndex.value = null;
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        url: topic.url,
+        title: topic.title,
+        version: topic.version,
+        totalPages: topic.totalPages,
+        summary: seg.summary,
+        summaryJson: seg.summaryJson ?? undefined,
+        summarizedPostCount: seg.postCount,
+      });
+      store.updateSelectedTopic({ summary: seg.summary });
+      const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+      if (saved) cachedTopic.value = saved;
+      cacheFreshness.value = 'fresh';
       return;
     }
 
@@ -698,7 +512,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
 
     const completedCount = segmentSummaries.value.filter(s => s?.summary).length;
-    if (completedCount >= 2) {
+    if (completedCount >= 1) {
       await generateOverallSummary();
     }
   }
@@ -714,8 +528,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     isScraping,
     scrapingWarnings,
     scrapingInfo,
-    pendingPosts,
-    pendingIncremental,
     currentConfig,
     cachedTopic,
     cacheFreshness,
@@ -729,7 +541,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     summarizedPostCount,
     livePostCount,
     hasLivePostCount,
-    tokenEstimation,
     isSegmentMode,
     segments,
     summarizedCount,
@@ -739,9 +550,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     loadTopicData,
     evaluateFreshness,
     handleCancel,
-    handleSummarize,
-    confirmSummarize,
-    cancelPendingSummarize,
     handleRetry,
     handleSummarizeSegment,
     generateOverallSummary,

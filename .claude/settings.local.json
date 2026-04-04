@@ -50,7 +50,9 @@
       "Bash(git commit:*)",
       "Bash(xargs grep:*)",
       "Bash(date /T)",
-      "Bash(time /T)"
+      "Bash(time /T)",
+      "Bash(date /t)",
+      "Bash(time /t)"
     ]
   },
   "model": "sonnet"

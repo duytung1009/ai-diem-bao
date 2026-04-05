@@ -79,6 +79,22 @@ export class GeminiAdapter implements LLMProvider {
         }
 
         const data = await res.json();
+
+        const finishReason = data.candidates?.[0]?.finishReason as string | undefined;
+        if (finishReason && finishReason !== 'STOP') {
+          const FINISH_REASON_MESSAGES: Record<string, string> = {
+            MAX_TOKENS: 'Tóm tắt bị cắt ngắn: model đạt giới hạn token đầu ra. Hãy tăng "Max tokens" trong Cài đặt hoặc giảm "Segment size".',
+            SAFETY: 'Nội dung bị chặn bởi bộ lọc an toàn của Gemini.',
+            RECITATION: 'Nội dung bị chặn do vi phạm chính sách trích dẫn.',
+            LANGUAGE: 'Ngôn ngữ đầu ra không được hỗ trợ bởi Gemini.',
+            BLOCKLIST: 'Nội dung chứa cụm từ bị cấm.',
+            PROHIBITED_CONTENT: 'Nội dung bị cấm bởi chính sách Gemini.',
+          };
+          const message = FINISH_REASON_MESSAGES[finishReason]
+            ?? `Tóm tắt không hoàn chỉnh (${finishReason}). Vui lòng thử lại.`;
+          throw new LLMError(LLMErrorCode.INCOMPLETE_RESPONSE, message);
+        }
+
         const content =
           data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 

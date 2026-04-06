@@ -4,6 +4,7 @@ import type { DetectResult } from '@/lib/types';
 const props = defineProps<{
   info: DetectResult;
   url?: string;
+  isNews?: boolean;
 }>();
 
 async function navigateToTopic() {
@@ -21,7 +22,12 @@ async function navigateToTopic() {
 
 <template>
   <div class="card">
-    <h2 class="font-semibold text-sm text-(--color-text-primary) leading-snug">{{ info.title }}</h2>
+    <div class="flex items-start justify-between gap-2">
+      <h2 class="font-semibold text-sm text-(--color-text-primary) leading-snug">{{ info.title }}</h2>
+      <span v-if="isNews" class="badge bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 shrink-0">
+        Tin tức
+      </span>
+    </div>
     <div class="flex gap-3 mt-2 text-xs text-(--color-text-secondary)">
       <span>{{ info.postCount }} bài viết</span>
       <span>{{ info.pageCount }} trang</span>

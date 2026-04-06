@@ -24,11 +24,14 @@ const {
   topicInfo, isProcessing, livePostCount,
   isSegmentMode, segments,
   summarizedCount, progressPercent, nextPendingSegmentIndex,
+  isNewsTopic,
   loadTopicData, handleCancel,
   handleRetry, handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate,
 } = useSummarize(store);
 
 const segmentGridExpanded = ref(false);
+
+const newPostCount = computed(() => livePostCount.value - (cachedTopic?.value?.totalPosts ?? 0));
 
 onMounted(() => {
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
@@ -96,7 +99,7 @@ onActivated(async () => {
         </button>
       </div>
 
-      <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" />
+      <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" :is-news="isNewsTopic" />
 
       <!-- Loading + Cancel -->
       <ProgressIndicator
@@ -168,11 +171,19 @@ onActivated(async () => {
             </button>
             <button
               v-if="nextPendingSegmentIndex !== null"
-              class="px-3 py-1.5 text-xs rounded-full transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) flex items-center gap-1"
+              class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) flex items-center gap-1"
               @click="activeSegmentIndex = nextPendingSegmentIndex"
             >
               Tiếp theo: {{ segments[nextPendingSegmentIndex!].label }}
               <span class="text-(--color-text-muted)">→</span>
+            </button>
+            <button
+              v-if="cacheFreshness && cacheFreshness !== 'fresh'"
+              class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) flex items-center gap-1"
+              @click="handleSegmentUpdate"
+            >
+              Cập nhật
+              <template v-if="newPostCount > 0">(+{{ newPostCount }})</template>
             </button>
           </div>
 
@@ -182,10 +193,18 @@ onActivated(async () => {
               <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
                 <span>{{ summarizedCount }} / {{ segments.length }} phần đã tóm tắt</span>
                 <button
-                  class="btn btn-secondary btn-sm"
+                  class="btn"
                   @click="segmentGridExpanded = !segmentGridExpanded"
                 >
-                  {{ segmentGridExpanded ? 'Thu gọn ▲' : 'Xem tất cả ▼' }}
+                  <svg
+                    class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0"
+                    :class="{ 'rotate-180': segmentGridExpanded }"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
               </div>
               <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
@@ -252,20 +271,22 @@ onActivated(async () => {
           <!-- Single segment: hiển thị summary trực tiếp -->
           <template v-if="segments.length === 1">
             <div v-if="segmentSummaries[0]?.summary" class="space-y-3">
-              <div class="flex items-center justify-start gap-2">
-                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span class="text-xs text-(--color-text-secondary)">{{ segmentSummaries[0].postCount }} bài viết</span>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-start gap-2">
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span class="text-xs text-(--color-text-secondary)">{{ segmentSummaries[0].postCount }} bài viết</span>
+                </div>
+                <CacheIndicator
+                  v-if="cacheFreshness && cachedTopic"
+                  :freshness="cacheFreshness"
+                  :cached-at="cachedTopic.cachedAt"
+                  :cached-posts="cachedTopic.totalPosts"
+                  :current-posts="livePostCount"
+                  @update="handleSegmentUpdate"
+                />
               </div>
-              <CacheIndicator
-                v-if="cacheFreshness && cachedTopic"
-                :freshness="cacheFreshness"
-                :cached-at="cachedTopic.cachedAt"
-                :cached-posts="cachedTopic.totalPosts"
-                :current-posts="livePostCount"
-                @update="handleSegmentUpdate"
-              />
               <div class="card p-4">
                 <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" />
               </div>
@@ -291,22 +312,24 @@ onActivated(async () => {
           <!-- Multi-segment: overall summary flow -->
           <template v-else>
             <div v-if="summary" class="space-y-3">
-              <div class="flex items-center justify-start gap-2">
-                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span class="text-xs text-(--color-text-secondary)">
-                  Tóm tắt tổng quan {{ segments.length }} phần
-                </span>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-start gap-2">
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span class="text-xs text-(--color-text-secondary)">
+                    Tóm tắt tổng quan {{ segments.length }} phần
+                  </span>
+                </div>
+                <CacheIndicator
+                  v-if="cacheFreshness && cachedTopic"
+                  :freshness="cacheFreshness"
+                  :cached-at="cachedTopic.cachedAt"
+                  :cached-posts="cachedTopic.totalPosts"
+                  :current-posts="livePostCount"
+                  @update="handleSegmentUpdate"
+                />
               </div>
-              <CacheIndicator
-                v-if="cacheFreshness && cachedTopic"
-                :freshness="cacheFreshness"
-                :cached-at="cachedTopic.cachedAt"
-                :cached-posts="cachedTopic.totalPosts"
-                :current-posts="livePostCount"
-                @update="handleSegmentUpdate"
-              />
               <div class="card p-4">
                 <SummaryContent :content="summary" :json="summaryJson ?? undefined" />
               </div>

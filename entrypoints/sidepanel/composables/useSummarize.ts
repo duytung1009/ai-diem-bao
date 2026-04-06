@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, DeepReadonly } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
@@ -100,6 +100,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     return idx >= 0 ? idx : null;
   });
 
+  const isNewsTopic = computed(() => cachedTopic.value?.topicType === 'news');
+
   // --- Watch ---
   watch(livePostCount, (newCount) => {
     if (cachedTopic.value && hasLivePostCount.value) {
@@ -112,7 +114,27 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     return posts.filter(p => p.postNumber > 0).length;
   }
 
-  async function saveTopic(topic: CachedTopic, fields: Omit<Partial<CachedTopic>, 'segments'> & { segments?: (TopicSegment | null)[] }): Promise<void> {
+  // Auto-detect news type by fetching page 1 silently (fire-and-forget).
+  // Only persists to cache if the topic already has a summary (i.e. has been summarized before).
+  async function detectAndCacheTopicType(topic: DeepReadonly<CachedTopic>): Promise<void> {
+    try {
+      const { posts } = await scrapePageRange(topic.version, topic.url, 1, 1);
+      if (!posts.length) return;
+      const forumDomain = new URL(topic.url).hostname;
+      const { isNews } = detectNewsThread(posts, forumDomain);
+      const topicType: 'news' | 'discussion' = isNews ? 'news' : 'discussion';
+      // Guard: topic must still be the one we detected for
+      if (!cachedTopic.value?.url || !isSameTopicUrl(cachedTopic.value.url, topic.url) || cachedTopic.value.topicType) return;
+      // Update in-memory so badge shows immediately
+      cachedTopic.value = { ...cachedTopic.value, topicType };
+      // Only persist if the topic has already been summarized
+      if (topic.summary) {
+        await sendMessage('SAVE_CACHED_TOPIC', { ...topic, topicType }).catch(() => {});
+      }
+    } catch { /* silent — detection is best-effort */ }
+  }
+
+  async function saveTopic(topic: DeepReadonly<CachedTopic>, fields: Omit<Partial<CachedTopic>, 'segments'> & { segments?: (TopicSegment | null)[] }): Promise<void> {
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topic.title,
@@ -231,6 +253,17 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           ? store.activeTabDetect.value.postCount
           : null;
         cacheFreshness.value = evaluateFreshness(fresh, liveCount);
+
+        // Auto-detect news type if not yet cached
+        if (!fresh.topicType && fresh.version && fresh.version !== 'unknown') {
+          detectAndCacheTopicType(fresh);
+        }
+      } else {
+        // No cache hit: detect from store topic if version is known
+        const storeTopic = store.selectedTopic.value;
+        if (storeTopic && storeTopic.version && storeTopic.version !== 'unknown') {
+          detectAndCacheTopicType(storeTopic);
+        }
       }
     } catch { /* cache miss is fine */ }
   }
@@ -298,6 +331,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
     error.value = '';
     scrapingWarnings.value = [];
+    scrapingInfo.value = [];
     const thisId = ++activeSummarizeId;
     store.setSummarizing(topic.url);
 
@@ -318,6 +352,20 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         if (errors.length > 0) scrapingWarnings.value = errors;
       }
 
+      // News enrichment: only for segment 0 (first post may be news OP)
+      if (segmentIndex === 0) {
+        segPosts = await enrichWithNewsArticles(
+          segPosts,
+          topic.url,
+          (msg) => { simpleLoadingText.value = msg; },
+          (msg) => { scrapingInfo.value = [...scrapingInfo.value, msg]; },
+        );
+      }
+      const isNewsThread = segPosts.some(p => p.postNumber < 0);
+      if (isNewsThread && cachedTopic.value) {
+        cachedTopic.value = { ...cachedTopic.value, topicType: 'news' };
+      }
+
       // Feature 16: Save segment posts early before LLM
       const tempUpdated = makeDenseBase(segmentIndex);
       tempUpdated[segmentIndex] = {
@@ -325,10 +373,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         endPage: seg.end,
         posts: segPosts,
         summary: segmentSummaries.value[segmentIndex]?.summary ?? '',
-        postCount: segPosts.length,
+        postCount: countRealPosts(segPosts),
         summarizedAt: segmentSummaries.value[segmentIndex]?.summarizedAt ?? 0,
       };
-      await saveTopic(topic as CachedTopic, { segments: tempUpdated });
+      await saveTopic(topic, { segments: tempUpdated, ...(isNewsThread ? { topicType: 'news' } : {}) });
       segmentSummaries.value = tempUpdated as TopicSegment[];
 
       const segTask = summarize(segPosts);
@@ -343,7 +391,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         posts: segPosts,
         summary: segSummaryText,
         summaryJson: segSummaryJson ?? undefined,
-        postCount: segPosts.length,
+        postCount: countRealPosts(segPosts),
         summarizedAt: Date.now(),
       };
 
@@ -353,7 +401,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
       // Stale guard
       if (thisId !== activeSummarizeId) {
-        await saveTopic(topic as CachedTopic, {
+        await saveTopic(topic, {
           totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           segments: updated,
@@ -459,7 +507,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // Stale guard
       if (thisId !== activeSummarizeId) {
         const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-        await saveTopic(topic as CachedTopic, {
+        await saveTopic(topic, {
           summary: overallSummaryText,
           summaryJson: overallSummaryJson ?? undefined,
           summarizedPostCount: totalSummarized,
@@ -566,6 +614,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     summarizedCount,
     progressPercent,
     nextPendingSegmentIndex,
+    isNewsTopic,
     // functions
     loadTopicData,
     evaluateFreshness,

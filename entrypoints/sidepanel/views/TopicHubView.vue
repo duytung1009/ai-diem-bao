@@ -316,6 +316,7 @@ function formatRelativeTime(timestamp: number): string {
               >
                 <button
                   class="w-full text-left p-3 space-y-1.5"
+                  :title="topic.title"
                   @click="selectTopic(topic)"
                 >
                   <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">{{ topic.title }}</p>

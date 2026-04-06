@@ -44,8 +44,6 @@ const label = computed(() => {
       return 'Cache cũ';
   }
 });
-
-const newPostCount = computed(() => props.currentPosts - props.cachedPosts);
 </script>
 
 <template>
@@ -59,13 +57,5 @@ const newPostCount = computed(() => props.currentPosts - props.cachedPosts);
       {{ label }}
     </span>
     <span class="text-[11px] text-(--color-text-muted)">{{ timeAgo }}</span>
-    <button
-      v-if="freshness !== 'fresh'"
-      class="text-[11px] text-(--color-accent-text) hover:text-(--color-accent-hover) font-medium"
-      @click="emit('update')"
-    >
-      Cập nhật
-      <template v-if="newPostCount > 0">(+{{ newPostCount }})</template>
-    </button>
   </div>
 </template>

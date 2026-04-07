@@ -3,6 +3,17 @@ import type { LLMProvider, LLMResponse } from './types';
 import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
 import { withRetry } from './retry';
 
+/**
+ * Returns true if the text looks like a JSON object that was cut off mid-stream.
+ * Used to detect context-window exhaustion on local LLMs that report finish_reason "stop"
+ * even when truncated.
+ */
+function looksLikeTruncatedJson(text: string): boolean {
+  const trimmed = text.trim().replace(/^`+/, '').trimStart();
+  if (!trimmed.startsWith('{')) return false;
+  return !text.trimEnd().endsWith('}');
+}
+
 export class OpenAIAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
 
@@ -61,8 +72,29 @@ export class OpenAIAdapter implements LLMProvider {
         }
 
         const data = await res.json();
+        const choice = data.choices?.[0];
+        const finishReason = choice?.finish_reason as string | undefined;
+        const content: string = choice?.message?.content || '';
+
+        // Standard OpenAI signal: output hit max_tokens limit
+        if (finishReason === 'length') {
+          throw new LLMError(
+            LLMErrorCode.INCOMPLETE_RESPONSE,
+            'Tóm tắt bị cắt ngắn: output vượt giới hạn max tokens. Tăng "Max tokens" trong Cài đặt.',
+          );
+        }
+
+        // Heuristic for local LLMs (LM Studio / llama.cpp) that report "stop"
+        // even when context window is exhausted (prompt_tokens + completion_tokens = context_window).
+        if (finishReason === 'stop' && looksLikeTruncatedJson(content)) {
+          throw new LLMError(
+            LLMErrorCode.INCOMPLETE_RESPONSE,
+            'Tóm tắt không hoàn chỉnh: prompt có thể vượt quá context window của model. Hãy giảm "Segment size" trong Cài đặt.',
+          );
+        }
+
         return {
-          content: data.choices?.[0]?.message?.content || '',
+          content,
           tokensUsed: data.usage
             ? { prompt: data.usage.prompt_tokens, completion: data.usage.completion_tokens }
             : undefined,

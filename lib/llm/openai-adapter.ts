@@ -9,9 +9,10 @@ import { withRetry } from './retry';
  * even when truncated.
  */
 function looksLikeTruncatedJson(text: string): boolean {
-  const trimmed = text.trim().replace(/^`+/, '').trimStart();
-  if (!trimmed.startsWith('{')) return false;
-  return !text.trimEnd().endsWith('}');
+  // Strip leading/trailing backtick fences and whitespace before checking
+  const stripped = text.trim().replace(/^`+/, '').replace(/`+$/, '').trim();
+  if (!stripped.startsWith('{')) return false;
+  return !stripped.endsWith('}');
 }
 
 export class OpenAIAdapter implements LLMProvider {

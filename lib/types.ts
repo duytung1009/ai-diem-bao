@@ -150,6 +150,8 @@ export interface CachedTopic {
   summaryJson?: SummaryJSON;
   bookmarked?: boolean;
   knowledgeEntries?: KnowledgeEntry[];
+  lastKnowledgePostNumber?: number;
+  excludedKnowledgePostNumbers?: number[];
 }
 
 export interface TopicSegment {
@@ -176,8 +178,10 @@ export interface KnowledgeEntry {
   source: {
     author: string;
     postNumber: number;
+    timestamp?: string;
   };
   extractedAt: number;
+  saved?: boolean;
 }
 
 export interface CustomPrompts {

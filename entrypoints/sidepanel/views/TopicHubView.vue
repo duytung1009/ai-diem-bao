@@ -123,6 +123,7 @@ watch(selectedTopicKey, () => {
       segments: updated.segments ? [...updated.segments] as TopicSegment[] : allTopics.value[idx].segments,
       summaryJson: updated.summaryJson as SummaryJSON | undefined ?? allTopics.value[idx].summaryJson,
       knowledgeEntries: updated.knowledgeEntries ? [...updated.knowledgeEntries] as KnowledgeEntry[] : allTopics.value[idx].knowledgeEntries,
+      excludedKnowledgePostNumbers: updated.excludedKnowledgePostNumbers ? [...updated.excludedKnowledgePostNumbers] : allTopics.value[idx].excludedKnowledgePostNumbers,
     };
     allTopics.value[idx] = topic;
   } else if (updated.summary || updated.posts?.length) {

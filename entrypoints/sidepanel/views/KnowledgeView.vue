@@ -19,6 +19,8 @@ const error = ref('');
 const llmTaskId = ref<string | null>(null);
 const searchQuery = ref('');
 const selectedTags = ref<string[]>([]);
+const expandedIds = ref<Set<string>>(new Set());
+const showSavedOnly = ref(false);
 
 const TAG_CLASSES: Record<string, string> = {
   'kinh nghiệm': 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
@@ -33,6 +35,19 @@ const TAG_CLASSES: Record<string, string> = {
 
 function getTagClass(tag: string): string {
   return TAG_CLASSES[tag] ?? 'bg-(--color-bg-muted) text-(--color-text-secondary)';
+}
+
+function toggleExpand(id: string) {
+  const s = new Set(expandedIds.value);
+  s.has(id) ? s.delete(id) : s.add(id);
+  expandedIds.value = s;
+}
+
+function formatTimestamp(ts: string): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function toggleTag(tag: string) {
@@ -65,8 +80,21 @@ const allTags = computed(() => {
   return [...tags].sort();
 });
 
+const savedCount = computed(() => entries.value.filter(e => e.saved).length);
+
+const excludedCount = computed(() =>
+  cachedTopic.value?.excludedKnowledgePostNumbers?.length ?? 0
+);
+
+const newPostsCount = computed(() => {
+  const last = cachedTopic.value?.lastKnowledgePostNumber ?? -1;
+  if (last < 0) return 0;
+  return allPosts.value.filter(p => p.postNumber > last).length;
+});
+
 const filteredEntries = computed(() => {
   let result = entries.value;
+  if (showSavedOnly.value) result = result.filter(e => e.saved);
   const q = searchQuery.value.trim().toLowerCase();
   if (q) {
     result = result.filter(e =>
@@ -90,15 +118,17 @@ async function loadTopicData() {
   entries.value = [];
   cachedTopic.value = null;
   loadedTopicUrl.value = url;
+  expandedIds.value = new Set();
+  showSavedOnly.value = false;
   cachedTopic.value = topic as CachedTopic;
-  if (topic.knowledgeEntries?.length) entries.value = topic.knowledgeEntries;
+  if (topic.knowledgeEntries?.length) entries.value = topic.knowledgeEntries as KnowledgeEntry[];
 
   try {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
     if (loadedTopicUrl.value !== url) return; // topic switched during await — discard stale result
     if (fresh) {
       cachedTopic.value = fresh;
-      if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries;
+      if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
     }
   } catch { /* no cache */ }
 }
@@ -114,7 +144,7 @@ onActivated(async () => {
       const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
       if (fresh) {
         cachedTopic.value = fresh;
-        if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries;
+        if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
       }
     } catch { /* ignore */ }
   }
@@ -122,29 +152,114 @@ onActivated(async () => {
 
 async function handleExtract() {
   if (!allPosts.value.length) return;
+
+  const lastPostNum = cachedTopic.value?.lastKnowledgePostNumber ?? -1;
+  const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
+  const postsToExtract = allPosts.value.filter(p =>
+    p.postNumber > lastPostNum && !excludedNums.has(p.postNumber)
+  );
+
+  if (!postsToExtract.length) {
+    if (entries.value.length > 0) {
+      error.value = 'Không có bài viết mới để trích xuất kiến thức.';
+    }
+    return;
+  }
+
   isLoading.value = true;
   error.value = '';
   llmTaskId.value = null;
-  searchQuery.value = '';
-  selectedTags.value = [];
+  if (lastPostNum < 0) {
+    searchQuery.value = '';
+    selectedTags.value = [];
+  }
 
   try {
-    const { taskId, result } = runExtract(allPosts.value, cachedTopic.value.title);
+    const { taskId, result } = runExtract(postsToExtract, cachedTopic.value!.title);
     llmTaskId.value = taskId;
     const llmResult = await result;
-    const newEntries = ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [];
-    entries.value = newEntries;
+    const newEntries: KnowledgeEntry[] = ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [];
+
+    // Enrich with timestamp from allPosts
+    const enriched = newEntries.map(e => {
+      const post = allPosts.value.find(p => p.postNumber === e.source.postNumber);
+      return post?.timestamp ? { ...e, source: { ...e.source, timestamp: post.timestamp } } : e;
+    });
+
+    // Merge strategy (QD3, QD4, QD5)
+    let merged: KnowledgeEntry[];
+    if (lastPostNum > 0) {
+      // Incremental: keep all existing + append new
+      merged = [...entries.value, ...enriched];
+    } else if (lastPostNum === 0) {
+      // After clear tracking: keep saved + new (avoid duplicates by postNumber)
+      const savedEntries = entries.value.filter(e => e.saved);
+      merged = [...savedEntries, ...enriched.filter(e =>
+        !savedEntries.some(s => s.source.postNumber === e.source.postNumber)
+      )];
+    } else {
+      // First extract (lastPostNum === -1)
+      merged = enriched;
+    }
+
+    const newLastPostNum = Math.max(...allPosts.value.map(p => p.postNumber));
+
+    entries.value = merged;
+    expandedIds.value = new Set();
+    store.updateSelectedTopic({ knowledgeEntries: merged });
     await sendMessage('SAVE_CACHED_TOPIC', {
-      url: cachedTopic.value.url,
-      knowledgeEntries: newEntries,
+      url: cachedTopic.value!.url,
+      knowledgeEntries: merged,
+      lastKnowledgePostNumber: newLastPostNum,
     }).catch(() => {});
-    store.updateSelectedTopic({ knowledgeEntries: newEntries });
+
+    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', cachedTopic.value!.url).catch(() => null);
+    if (fresh) cachedTopic.value = fresh;
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     isLoading.value = false;
     llmTaskId.value = null;
   }
+}
+
+async function toggleSave(entry: KnowledgeEntry) {
+  const updated = entries.value.map(e =>
+    e.id === entry.id ? { ...e, saved: !e.saved } : e
+  ) as KnowledgeEntry[];
+  entries.value = updated;
+  store.updateSelectedTopic({ knowledgeEntries: updated });
+  await sendMessage('SAVE_CACHED_TOPIC', {
+    url: cachedTopic.value!.url,
+    knowledgeEntries: updated,
+  }).catch(() => {});
+}
+
+async function handleDelete(entry: KnowledgeEntry) {
+  const updated = entries.value.filter(e => e.id !== entry.id) as KnowledgeEntry[];
+  const excluded = [
+    ...(cachedTopic.value?.excludedKnowledgePostNumbers ?? []),
+    entry.source.postNumber,
+  ];
+  entries.value = updated;
+  store.updateSelectedTopic({ knowledgeEntries: updated });
+  await sendMessage('SAVE_CACHED_TOPIC', {
+    url: cachedTopic.value!.url,
+    knowledgeEntries: updated,
+    excludedKnowledgePostNumbers: excluded,
+  }).catch(() => {});
+  const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', cachedTopic.value!.url).catch(() => null);
+  if (fresh) cachedTopic.value = fresh;
+}
+
+async function handleClearTracking() {
+  await sendMessage('SAVE_CACHED_TOPIC', {
+    url: cachedTopic.value!.url,
+    excludedKnowledgePostNumbers: [],
+    lastKnowledgePostNumber: 0,
+  }).catch(() => {});
+  const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', cachedTopic.value!.url).catch(() => null);
+  if (fresh) cachedTopic.value = fresh;
 }
 </script>
 
@@ -192,19 +307,31 @@ async function handleExtract() {
 
       <!-- Entry list -->
       <template v-if="entries.length && !isLoading">
-        <!-- Search + Tag filter -->
+        <!-- Search + Saved filter + Tag filter -->
         <div class="space-y-2">
-          <!-- Search -->
-          <div class="relative">
-            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Tìm kiến thức..."
-              class="input pl-8 text-xs w-full"
-            />
+          <!-- Search + Saved pill -->
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Tìm kiến thức..."
+                class="input pl-8 text-xs w-full"
+              />
+            </div>
+            <button
+              v-if="savedCount > 0"
+              class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors shrink-0"
+              :class="showSavedOnly
+                ? 'bg-amber-500 text-white'
+                : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+              @click="showSavedOnly = !showSavedOnly"
+            >
+              Đã lưu ({{ savedCount }})
+            </button>
           </div>
           <!-- Tag filter pills -->
           <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
@@ -230,9 +357,18 @@ async function handleExtract() {
             class="text-blue-600 hover:text-blue-700"
             @click="handleExtract"
           >
-            Trích xuất lại
+            Trích xuất bài mới<span v-if="newPostsCount > 0"> ({{ newPostsCount }})</span>
           </button>
         </div>
+
+        <!-- Clear tracking button -->
+        <button
+          v-if="excludedCount > 0"
+          class="w-full text-left text-xs text-(--color-text-muted) hover:text-red-500 transition-colors"
+          @click="handleClearTracking"
+        >
+          Xóa tracking ({{ excludedCount }} bài đã loại)
+        </button>
 
         <!-- No results after filter -->
         <div v-if="filteredEntries.length === 0" class="text-center py-6">
@@ -240,29 +376,77 @@ async function handleExtract() {
         </div>
 
         <!-- Entry cards -->
-        <div class="space-y-3">
+        <div class="space-y-2">
           <div
             v-for="entry in filteredEntries"
             :key="entry.id"
-            class="card space-y-2"
+            class="card"
           >
-            <p class="text-sm font-semibold text-(--color-text-primary)">{{ entry.title }}</p>
-            <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
-            <!-- Tags -->
-            <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
-              <span
-                v-for="tag in entry.tags"
-                :key="tag"
-                class="px-1.5 py-0.5 rounded text-xs"
-                :class="getTagClass(tag)"
+            <!-- Header: always visible, click to expand -->
+            <div class="flex items-start gap-2 cursor-pointer" @click="toggleExpand(entry.id)">
+              <!-- Chevron icon -->
+              <svg
+                class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-muted)"
+                :class="expandedIds.has(entry.id) ? 'rotate-90' : ''"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {{ tag }}
-              </span>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+              <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
+              <!-- Save button -->
+              <button
+                class="shrink-0 p-0.5 transition-colors"
+                :class="entry.saved ? 'text-amber-500' : 'text-(--color-text-muted) hover:text-amber-500'"
+                :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'"
+                @click.stop="toggleSave(entry)"
+              >
+                <svg v-if="entry.saved" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                </svg>
+              </button>
+              <!-- Delete button -->
+              <button
+                class="shrink-0 p-0.5 text-(--color-text-muted) hover:text-red-500 transition-colors"
+                title="Xóa kiến thức"
+                @click.stop="handleDelete(entry)"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
-            <!-- Source citation -->
-            <p class="text-xs text-(--color-text-muted)">
-              — {{ entry.source.author }}<span v-if="entry.source.postNumber">, bài #{{ entry.source.postNumber }}</span>
-            </p>
+
+            <!-- Body: collapsible with CSS Grid animation -->
+            <div
+              class="grid transition-[grid-template-rows] duration-200 ease-in-out"
+              :class="expandedIds.has(entry.id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+            >
+              <div class="overflow-hidden">
+                <div class="pt-2 space-y-2">
+                  <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
+                  <!-- Tags -->
+                  <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
+                    <span
+                      v-for="tag in entry.tags"
+                      :key="tag"
+                      class="px-1.5 py-0.5 rounded text-xs"
+                      :class="getTagClass(tag)"
+                    >
+                      {{ tag }}
+                    </span>
+                  </div>
+                  <!-- Source citation with timestamp -->
+                  <p class="text-xs text-(--color-text-muted)">
+                    — {{ entry.source.author }}<span v-if="entry.source.postNumber">, bài #{{ entry.source.postNumber }}</span><span v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp) }}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </template>

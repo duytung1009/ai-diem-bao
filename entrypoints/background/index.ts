@@ -108,6 +108,12 @@ export default defineBackground(() => {
                 summaryJson: partial.summaryJson ?? existing?.summaryJson,
                 bookmarked: partial.bookmarked ?? existing?.bookmarked,
                 knowledgeEntries: partial.knowledgeEntries ?? existing?.knowledgeEntries,
+                lastKnowledgePostNumber: partial.lastKnowledgePostNumber !== undefined
+                  ? partial.lastKnowledgePostNumber
+                  : existing?.lastKnowledgePostNumber,
+                excludedKnowledgePostNumbers: partial.excludedKnowledgePostNumbers !== undefined
+                  ? partial.excludedKnowledgePostNumbers
+                  : existing?.excludedKnowledgePostNumbers,
               };
               await saveCachedTopic(topic);
               sendResponse({ success: true });

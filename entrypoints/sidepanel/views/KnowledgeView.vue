@@ -3,7 +3,6 @@ import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic, KnowledgeEntry, DetectResult } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
-import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 import TopicMeta from '../components/TopicMeta.vue';
@@ -303,34 +302,47 @@ async function handleClearTracking() {
       <ProgressIndicator v-if="isLoading" :task-id="llmTaskId" fallback-message="Đang trích xuất kiến thức..." />
 
       <!-- Error -->
-      <ErrorDisplay v-if="error" :message="error" action="retry" @retry="handleExtract" />
+      <div v-if="error" class="alert alert-error flex items-start gap-3">
+        <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p class="text-sm flex-1">{{ error }}</p>
+        <button class="shrink-0 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors" @click="error = ''">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
       <!-- Entry list -->
       <template v-if="entries.length && !isLoading">
         <!-- Search + Saved filter + Tag filter -->
         <div class="space-y-2">
-          <!-- Search + Saved pill -->
-          <div class="flex gap-2">
-            <div class="relative flex-1">
-              <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Tìm kiến thức..."
-                class="input pl-8 text-xs w-full"
-              />
-            </div>
+          <!-- Search + Saved filter toggle -->
+          <div class="relative">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Tìm kiến thức..."
+              class="input pl-8 pr-8 text-xs w-full"
+            />
+            <!-- Saved filter toggle -->
             <button
               v-if="savedCount > 0"
-              class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors shrink-0"
-              :class="showSavedOnly
-                ? 'bg-amber-500 text-white'
-                : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+              class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
+              :class="showSavedOnly ? 'text-amber-500' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
+              :title="showSavedOnly ? 'Xem tất cả' : `Chỉ hiện đã lưu (${savedCount})`"
               @click="showSavedOnly = !showSavedOnly"
             >
-              Đã lưu ({{ savedCount }})
+              <svg v-if="showSavedOnly" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+              </svg>
+              <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+              </svg>
             </button>
           </div>
           <!-- Tag filter pills -->
@@ -362,13 +374,14 @@ async function handleClearTracking() {
         </div>
 
         <!-- Clear tracking button -->
-        <button
-          v-if="excludedCount > 0"
-          class="w-full text-left text-xs text-(--color-text-muted) hover:text-red-500 transition-colors"
-          @click="handleClearTracking"
-        >
-          Xóa tracking ({{ excludedCount }} bài đã loại)
-        </button>
+        <div v-if="excludedCount > 0" class="flex items-center justify-end text-xs text-(--color-text-muted)">
+          <button
+            class="w-full text-left text-xs text-(--color-text-muted) hover:text-red-500 transition-colors"
+            @click="handleClearTracking"
+          >
+            Xóa tracking ({{ excludedCount }} bài đã loại)
+          </button>
+        </div>
 
         <!-- No results after filter -->
         <div v-if="filteredEntries.length === 0" class="text-center py-6">
@@ -397,8 +410,10 @@ async function handleClearTracking() {
               <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
               <!-- Save button -->
               <button
-                class="shrink-0 p-0.5 transition-colors"
-                :class="entry.saved ? 'text-amber-500' : 'text-(--color-text-muted) hover:text-amber-500'"
+                class="p-0.5 transition-colors rounded"
+                :class="entry.saved 
+                  ? 'text-yellow-500 dark:text-yellow-400' 
+                  : 'text-gray-300 dark:text-gray-600 hover:text-yellow-500 dark:hover:text-yellow-400'"
                 :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'"
                 @click.stop="toggleSave(entry)"
               >
@@ -411,7 +426,7 @@ async function handleClearTracking() {
               </button>
               <!-- Delete button -->
               <button
-                class="shrink-0 p-0.5 text-(--color-text-muted) hover:text-red-500 transition-colors"
+                class="p-0.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
                 title="Xóa kiến thức"
                 @click.stop="handleDelete(entry)"
               >

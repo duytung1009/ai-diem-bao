@@ -52,6 +52,13 @@ const topicInfo = computed<DetectResult | null>(() => {
   } satisfies DetectResult;
 });
 
+// Posts may live in segments[].posts (segment mode) or top-level posts (legacy)
+const allPosts = computed(() => {
+  if (!cachedTopic.value) return [];
+  if (cachedTopic.value.posts?.length) return cachedTopic.value.posts;
+  return cachedTopic.value.segments?.flatMap(s => s?.posts ?? []) ?? [];
+});
+
 const allTags = computed(() => {
   const tags = new Set<string>();
   entries.value.forEach(e => e.tags.forEach(t => tags.add(t)));
@@ -114,7 +121,7 @@ onActivated(async () => {
 });
 
 async function handleExtract() {
-  if (!cachedTopic.value?.posts?.length) return;
+  if (!allPosts.value.length) return;
   isLoading.value = true;
   error.value = '';
   llmTaskId.value = null;
@@ -122,7 +129,7 @@ async function handleExtract() {
   selectedTags.value = [];
 
   try {
-    const { taskId, result } = runExtract(cachedTopic.value.posts, cachedTopic.value.title);
+    const { taskId, result } = runExtract(allPosts.value, cachedTopic.value.title);
     llmTaskId.value = taskId;
     const llmResult = await result;
     const newEntries = ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [];
@@ -164,13 +171,13 @@ async function handleExtract() {
       <h2 class="font-semibold text-sm text-(--color-text-primary)">Kiến thức từ Topic</h2>
 
       <!-- No posts warning -->
-      <div v-if="!cachedTopic?.posts?.length" class="alert alert-warning">
+      <div v-if="!allPosts.length" class="alert alert-warning">
         Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
       </div>
 
       <!-- Extract button (no entries yet) -->
       <button
-        v-if="cachedTopic?.posts?.length && !entries.length && !isLoading"
+        v-if="allPosts.length && !entries.length && !isLoading"
         class="w-full btn btn-primary"
         @click="handleExtract"
       >
@@ -219,7 +226,7 @@ async function handleExtract() {
         <div class="flex items-center justify-between text-xs text-(--color-text-muted)">
           <span>{{ filteredEntries.length }}/{{ entries.length }} kiến thức</span>
           <button
-            v-if="cachedTopic?.posts?.length"
+            v-if="allPosts.length"
             class="text-blue-600 hover:text-blue-700"
             @click="handleExtract"
           >
@@ -261,7 +268,7 @@ async function handleExtract() {
       </template>
 
       <!-- Empty state (has posts but no entries extracted) -->
-      <div v-if="!isLoading && !entries.length && cachedTopic?.posts?.length" class="text-center py-6">
+      <div v-if="!isLoading && !entries.length && allPosts.length" class="text-center py-6">
         <p class="text-xs text-(--color-text-muted)">Bấm nút phía trên để trích xuất kiến thức từ topic.</p>
       </div>
     </template>

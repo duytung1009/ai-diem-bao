@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 @source not "../**/*.md";
 @plugin '@tailwindcss/typography';
+@plugin 'tailwind-scrollbar' {
+  nocompatible: true;
+};
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ─── Design Tokens ─────────────────────────────── */

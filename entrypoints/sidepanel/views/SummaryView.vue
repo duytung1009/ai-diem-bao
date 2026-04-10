@@ -6,7 +6,6 @@ import { isSameTopicUrl } from '@/lib/cache-manager';
 import type { LLMConfig } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
-import TopicMeta from '../components/TopicMeta.vue';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import CacheIndicator from '../components/CacheIndicator.vue';
@@ -24,7 +23,6 @@ const {
   topicInfo, isProcessing, livePostCount,
   isSegmentMode, segments,
   summarizedCount, progressPercent, nextPendingSegmentIndex,
-  isNewsTopic,
   loadTopicData, handleCancel,
   handleRetry, handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
 } = useSummarize(store);
@@ -98,8 +96,6 @@ onActivated(async () => {
           ← Quay lại danh sách
         </button>
       </div>
-
-      <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" :is-news="isNewsTopic" />
 
       <!-- Loading + Cancel -->
       <ProgressIndicator
@@ -224,7 +220,7 @@ onActivated(async () => {
             </div>
             <div
               v-if="segmentGridExpanded"
-              class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto"
+              class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thumb-rounded-full scrollbar-track-rounded-full scrollbar scrollbar-thumb-slate-700 scrollbar-track-slate-300"
             >
               <button
                 v-for="(seg, i) in segments"

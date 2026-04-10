@@ -135,8 +135,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const topicType: 'news' | 'discussion' = isNews ? 'news' : 'discussion';
       // Guard: topic must still be the one we detected for
       if (!cachedTopic.value?.url || !isSameTopicUrl(cachedTopic.value.url, topic.url) || cachedTopic.value.topicType) return;
-      // Update in-memory so badge shows immediately
+      // Update in-memory so badge shows immediately, sync store so App.vue TopicMeta reacts
       cachedTopic.value = { ...cachedTopic.value, topicType };
+      store.updateSelectedTopic({ topicType });
       // Only persist if the topic has already been summarized
       if (topic.summary) {
         await sendMessage('SAVE_CACHED_TOPIC', { ...topic, topicType }).catch(() => {});
@@ -384,6 +385,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const isNewsThread = segPosts.some(p => p.postNumber < 0);
       if (isNewsThread && cachedTopic.value) {
         cachedTopic.value = { ...cachedTopic.value, topicType: 'news' };
+        store.updateSelectedTopic({ topicType: 'news' });
       }
 
       // Feature 16: Save segment posts early before LLM
@@ -834,6 +836,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         );
         if (enrichedPosts.some(p => p.postNumber < 0) && cachedTopic.value) {
           cachedTopic.value = { ...cachedTopic.value, topicType: 'news' };
+          store.updateSelectedTopic({ topicType: 'news' });
         }
         simpleLoadingText.value = '';
       }

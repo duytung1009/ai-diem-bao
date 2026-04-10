@@ -5,6 +5,7 @@ import type { DetectResult } from '@/lib/types';
 import { normalizeUrl, getCachedTopic, saveCachedTopic } from '@/lib/cache-manager';
 import { useTopicStore } from './composables/useTopicStore';
 import { useTheme } from './composables/useTheme';
+import TopicMeta from './components/TopicMeta.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -41,6 +42,17 @@ onUnmounted(() => {
 
 // Topic-specific tabs disabled when no topic selected
 const hasSelectedTopic = computed(() => !!store.selectedTopic.value);
+
+// Shared TopicMeta data — displayed once above router-view on all topic-detail tabs
+const isTopicDetailRoute = computed(() =>
+  ['summary', 'knowledge', 'research'].includes(route.name as string),
+);
+const topicInfo = computed<DetectResult | null>(() => {
+  const t = store.selectedTopic.value;
+  if (!t) return null;
+  return { version: t.version, title: t.title, postCount: t.totalPosts, pageCount: t.totalPages };
+});
+const isNewsTopic = computed(() => store.selectedTopic.value?.topicType === 'news');
 
 async function detectActiveTabTopic() {
   try {
@@ -154,6 +166,10 @@ function navigateTo(path: string) {
 
     <!-- Content -->
     <main class="flex-1 overflow-y-auto">
+      <!-- Single TopicMeta shared across Tóm tắt / Kiến thức / Tra cứu tabs -->
+      <div v-if="topicInfo && isTopicDetailRoute" class="px-4 pt-4">
+        <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" :is-news="isNewsTopic" />
+      </div>
       <router-view v-slot="{ Component }">
         <keep-alive>
           <component :is="Component" />

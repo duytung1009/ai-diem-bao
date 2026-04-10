@@ -357,13 +357,13 @@ function cancelClearAll() {
         v-model.number="config.timeoutMs"
         type="range"
         :min="30000"
-        :max="600000"
+        :max="3600000"
         :step="30000"
         class="w-full"
       />
       <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
         <span>30s</span>
-        <span>600s</span>
+        <span>3600s</span>
       </div>
     </div>
 

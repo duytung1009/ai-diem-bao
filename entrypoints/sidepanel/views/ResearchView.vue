@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref, onActivated, computed } from 'vue';
-import type { CachedTopic, ResearchEntry, DetectResult } from '@/lib/types';
+import type { CachedTopic, ResearchEntry } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
-import TopicMeta from '../components/TopicMeta.vue';
-
 const cachedTopic = ref<CachedTopic | null>(null);
 const question = ref('');
 const isLoading = ref(false);
@@ -28,18 +26,6 @@ const suggestedQuestions = computed(() => {
     `Các giải pháp nào được đề xuất?`,
     `Ai có quan điểm ủng hộ và ai phản đối?`,
   ];
-});
-
-// Derived from store — replaces topicInfo ref
-const topicInfo = computed<DetectResult | null>(() => {
-  const topic = store.selectedTopic.value;
-  if (!topic) return null;
-  return {
-    version: topic.version,
-    title: topic.title,
-    postCount: topic.totalPosts,
-    pageCount: topic.totalPages,
-  } satisfies DetectResult;
 });
 
 const loadedTopicUrl = ref<string | null>(null);
@@ -136,8 +122,6 @@ function formatDate(ts: number): string {
           ← Quay lại danh sách
         </button>
       </div>
-
-      <TopicMeta v-if="topicInfo" :info="topicInfo" :url="store.selectedTopic.value?.url" />
 
       <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu Topic</h2>
 

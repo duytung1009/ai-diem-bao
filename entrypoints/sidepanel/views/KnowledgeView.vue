@@ -5,10 +5,11 @@ import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
-import TopicMeta from '../components/TopicMeta.vue';
+import { useSummarize } from '../composables/useSummarize';
 
 const { extractKnowledge: runExtract } = useLLM();
 const store = useTopicStore();
+const { topicInfo } = useSummarize(store);
 
 const entries = ref<KnowledgeEntry[]>([]);
 const cachedTopic = ref<CachedTopic | null>(null);
@@ -54,17 +55,6 @@ function toggleTag(tag: string) {
   if (idx >= 0) selectedTags.value.splice(idx, 1);
   else selectedTags.value.push(tag);
 }
-
-const topicInfo = computed<DetectResult | null>(() => {
-  const topic = store.selectedTopic.value;
-  if (!topic) return null;
-  return {
-    version: topic.version,
-    title: topic.title,
-    postCount: topic.totalPosts,
-    pageCount: topic.totalPages,
-  } satisfies DetectResult;
-});
 
 // Posts may live in segments[].posts (segment mode) or top-level posts (legacy)
 const allPosts = computed(() => {
@@ -265,22 +255,27 @@ async function handleClearTracking() {
 <template>
   <div class="p-4 space-y-4">
     <!-- No topic selected -->
-    <div v-if="!cachedTopic" class="text-center py-8">
+    <div v-if="!topicInfo" class="text-center py-8">
       <p class="text-sm text-(--color-text-secondary)">Chưa chọn chủ đề.</p>
-      <button class="mt-3 text-sm text-blue-600 hover:text-blue-700" @click="$router.push('/')">
+      <button
+        class="mt-3 text-sm text-blue-600 hover:text-blue-700"
+        @click="$router.push('/')"
+      >
         ← Quay lại danh sách
       </button>
     </div>
 
+    <!-- Topic loaded -->
     <template v-else>
-      <!-- Back button -->
+      <!-- Back button + Refresh -->
       <div class="flex items-center justify-between">
-        <button class="text-xs text-blue-600 hover:text-blue-700" @click="$router.push('/')">
+        <button
+          class="text-xs text-blue-600 hover:text-blue-700"
+          @click="$router.push('/')"
+        >
           ← Quay lại danh sách
         </button>
       </div>
-
-      <TopicMeta v-if="topicInfo" :info="topicInfo" :url="store.selectedTopic.value?.url" />
 
       <h2 class="font-semibold text-sm text-(--color-text-primary)">Kiến thức từ Topic</h2>
 

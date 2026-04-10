@@ -55,7 +55,11 @@
       "Bash(time /t)",
       "Bash(node -e ':*)",
       "Bash(node \"C:\\\\Users\\\\Tung\\\\AppData\\\\Local\\\\Temp\\\\test_repair.js\")",
-      "Bash(node \"C:\\\\Users\\\\Tung\\\\AppData\\\\Local\\\\Temp\\\\test_gemini_causes.js\")"
+      "Bash(node \"C:\\\\Users\\\\Tung\\\\AppData\\\\Local\\\\Temp\\\\test_gemini_causes.js\")",
+      "Bash(sed -n '1,35p' entrypoints/sidepanel/views/SummaryView.vue)",
+      "Bash(sed -n '95,115p' entrypoints/sidepanel/views/SummaryView.vue)",
+      "Bash(sed -n '1,20p' entrypoints/sidepanel/views/KnowledgeView.vue)",
+      "Bash(sed -n '275,290p' entrypoints/sidepanel/views/KnowledgeView.vue)"
     ]
   },
   "model": "sonnet"

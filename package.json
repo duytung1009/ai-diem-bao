@@ -25,6 +25,7 @@
     "@tailwindcss/vite": "^4.2.1",
     "@types/dompurify": "^3.0.5",
     "@wxt-dev/module-vue": "^1.0.3",
+    "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.2.5",

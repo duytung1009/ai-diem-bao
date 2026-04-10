@@ -49,6 +49,8 @@ export interface ProviderSpecificConfig {
   baseUrl: string;
   temperature: number;
   timeoutMs: number;
+  maxTokens?: number;
+  contextWindow?: number;
 }
 
 export interface LLMConfig {

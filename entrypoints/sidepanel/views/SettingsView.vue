@@ -12,11 +12,11 @@ const showApiKey = ref(false);
 const saving = ref(false);
 const testing = ref(false);
 
-const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number }> = {
-  openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000 },
-  custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000 },
-  claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000 },
-  gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000 },
+const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number; maxTokens: number; contextWindow: undefined }> = {
+  openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
+  custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
+  claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
+  gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
 };
 
 function syncCurrentProvider() {
@@ -27,6 +27,8 @@ function syncCurrentProvider() {
     baseUrl: config.value.baseUrl,
     temperature: config.value.temperature,
     timeoutMs: config.value.timeoutMs ?? 120000,
+    maxTokens: config.value.maxTokens ?? 4096,
+    contextWindow: config.value.contextWindow,
   };
 }
 const testResult = ref<'success' | 'fail' | ''>('');
@@ -123,6 +125,8 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
     baseUrl: config.value.baseUrl,
     temperature: config.value.temperature,
     timeoutMs: config.value.timeoutMs ?? 120000,
+    maxTokens: config.value.maxTokens ?? 4096,
+    contextWindow: config.value.contextWindow,
   };
   // Load new provider's settings (from saved or defaults)
   const saved = config.value.perProvider[newProvider];
@@ -132,6 +136,8 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
   config.value.baseUrl = saved?.baseUrl ?? defaults.baseUrl;
   config.value.temperature = saved?.temperature ?? defaults.temperature;
   config.value.timeoutMs = saved?.timeoutMs ?? defaults.timeoutMs;
+  config.value.maxTokens = saved?.maxTokens ?? defaults.maxTokens;
+  config.value.contextWindow = saved?.contextWindow ?? defaults.contextWindow;
   showApiKey.value = false;
 });
 

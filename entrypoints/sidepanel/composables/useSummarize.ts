@@ -286,10 +286,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   }
 
   async function handleCancel() {
+    activeSummarizeId++; // Invalidate any running flow (single segment or auto-summarize)
     scrapeAbortCtrl?.abort();
     isScraping.value = false;
     scrapeProgress.value = null;
     simpleLoadingText.value = '';
+    llmTaskId.value = null;
+    store.setSummarizing(null);
   }
 
   async function scrapeRange(
@@ -565,9 +568,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   async function handleSegmentUpdate() {
     if (!topicInfo.value || !store.selectedTopic.value) return;
 
+    const isDynamic = currentConfig.value?.dynamicSegments ?? true;
     const currentSegments = segmentSummaries.value;
-    const lastSeg = currentSegments[currentSegments.length - 1];
-    const coveredEndPage = lastSeg?.endPage ?? 0;
+    const lastSummarizedSeg = currentSegments.filter(s => s?.summary).slice(-1)[0];
+    const coveredEndPage = lastSummarizedSeg?.endPage ?? 0;
     const newTotalPages = topicInfo.value.pageCount;
 
     if (newTotalPages <= coveredEndPage) {
@@ -575,6 +579,46 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       return;
     }
 
+    if (isDynamic && dynamicSegmentBoundaries.value.length > 0) {
+      // Dynamic mode: scrape new pages and append to last segment (or create new) via resume
+      const topic = store.selectedTopic.value;
+      error.value = '';
+      scrapingWarnings.value = [];
+      scrapingInfo.value = [];
+      const thisId = ++activeSummarizeId;
+      store.setSummarizing(topic.url);
+      try {
+        const budget = await computeDynamicBudget();
+        const resume = computeResumeState();
+        if (resume && resume.fromPage <= newTotalPages) {
+          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
+        }
+        if (thisId === activeSummarizeId && !error.value) {
+          const completed = segmentSummaries.value.filter(s => s?.summary).length;
+          if (completed >= 1) {
+            simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
+            await generateOverallSummary();
+          }
+        }
+      } catch (err) {
+        isScraping.value = false;
+        scrapeProgress.value = null;
+        if (thisId !== activeSummarizeId) return;
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        error.value = err instanceof Error ? err.message : String(err);
+      } finally {
+        store.setSummarizing(null);
+        if (thisId === activeSummarizeId) {
+          simpleLoadingText.value = '';
+          llmTaskId.value = null;
+          isScraping.value = false;
+          scrapeProgress.value = null;
+        }
+      }
+      return;
+    }
+
+    // Fixed mode: original logic
     const segmentsToProcess: number[] = [];
     const newSegments = segments.value;
 
@@ -680,29 +724,89 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       summarizedPostCount: segTotalPosts,
       segments: updated,
     });
+    store.updateSelectedTopic({ segments: updated } as Partial<CachedTopic>);
+    activeSegmentIndex.value = segmentIndex;
 
     simpleLoadingText.value = '';
+  }
+
+  // --- Dynamic segment helpers ---
+
+  /** Resume state for continuing a partial dynamic auto-summarize run. */
+  interface DynamicResumeState {
+    fromPage: number;         // first page to scrape
+    segmentIndex: number;     // index of the segment being built
+    pendingPosts: ScrapedPost[];
+    pendingTokens: number;
+    pendingStartPage: number; // page where the pending segment starts
+  }
+
+  /** Fetch budget based on actual system prompt (custom or default). */
+  async function computeDynamicBudget(): Promise<number> {
+    const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+    const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
+    const systemPromptText = customPromptsData?.summary || SUMMARY_PROMPT;
+    return calculateSegmentBudget(model, estimateTokens(systemPromptText));
+  }
+
+  /**
+   * Compute resume state from currently loaded segmentSummaries.
+   * Returns null if no segments are summarized yet (fresh run needed).
+   */
+  function computeResumeState(): DynamicResumeState | null {
+    const completed = segmentSummaries.value.filter(s => s?.summary);
+    if (completed.length === 0) return null;
+
+    const lastSeg = completed[completed.length - 1];
+    const lastSegIdx = segmentSummaries.value.lastIndexOf(lastSeg);
+
+    if (lastSeg.complete === false) {
+      // Resume: append new pages to the existing incomplete last segment
+      const pendingPosts = [...lastSeg.posts];
+      const pendingTokens = pendingPosts.reduce(
+        (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
+        0,
+      );
+      return {
+        fromPage: lastSeg.endPage + 1,
+        segmentIndex: lastSegIdx,
+        pendingPosts,
+        pendingTokens,
+        pendingStartPage: lastSeg.startPage,
+      };
+    } else {
+      // All previous segments are complete → new segment starts after the last complete one
+      return {
+        fromPage: lastSeg.endPage + 1,
+        segmentIndex: lastSegIdx + 1,
+        pendingPosts: [],
+        pendingTokens: 0,
+        pendingStartPage: lastSeg.endPage + 1,
+      };
+    }
   }
 
   /**
    * Scrape topic page by page, split into segments when token budget is exceeded,
    * and summarize each segment immediately.
-   * [DECISION_NEEDED]: Planning suggests SCRAPE_BATCH=10 pages per request, but we scrape
-   * 1 page at a time here for accurate segment boundary detection. Total scraping time
-   * is identical since the per-page delay is the same either way.
+   * Decision: scrape 1 page at a time for accurate per-post token boundary detection.
+   * Total time is identical to batching since per-page delay dominates.
+   * Optional `resume` allows continuing a previous partial run without re-scraping.
    */
   async function autoSummarizeDynamic(
     topicUrl: string,
     totalPages: number,
     budgetTokens: number,
     thisId: number,
+    resume?: DynamicResumeState,
   ): Promise<void> {
-    let segmentIndex = 0;
-    let pendingPosts: ScrapedPost[] = [];
-    let pendingTokens = 0;
-    let pendingStartPage = 1;
+    let segmentIndex = resume?.segmentIndex ?? 0;
+    let pendingPosts: ScrapedPost[] = resume?.pendingPosts ? [...resume.pendingPosts] : [];
+    let pendingTokens = resume?.pendingTokens ?? 0;
+    let pendingStartPage = resume?.pendingStartPage ?? 1;
+    const startPage = resume?.fromPage ?? 1;
 
-    for (let page = 1; page <= totalPages; page++) {
+    for (let page = startPage; page <= totalPages; page++) {
       if (thisId !== activeSummarizeId) return;
 
       isScraping.value = true;
@@ -771,7 +875,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
     const totalPages = topicInfo.value.pageCount;
     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
-    const model = currentConfig.value?.model ?? 'gpt-4o-mini';
 
     error.value = '';
     scrapingWarnings.value = [];
@@ -781,17 +884,20 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
     try {
       if (isDynamic) {
-        // Calculate budget from actual system prompt (custom or default)
-        const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
-        const systemPromptText = customPromptsData?.summary || SUMMARY_PROMPT;
-        const systemPromptTokens = estimateTokens(systemPromptText);
-        const budget = calculateSegmentBudget(model, systemPromptTokens);
+        const budget = await computeDynamicBudget();
 
-        // Reset for fresh run
-        dynamicSegmentBoundaries.value = [];
-        segmentSummaries.value = [];
+        // Resume from partial results if any, otherwise start fresh
+        const resume = computeResumeState();
+        if (!resume) {
+          // Fresh run: clear any stale state from a previous run
+          dynamicSegmentBoundaries.value = [];
+          segmentSummaries.value = [];
+        }
+        // When resuming: keep existing state so already-summarized segments are not redone
 
-        await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+        if (!resume || resume.fromPage <= totalPages) {
+          await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume ?? undefined);
+        }
       } else {
         // Fixed mode: summarize all segments sequentially
         for (let i = 0; i < segments.value.length; i++) {
@@ -844,6 +950,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     segmentSummaries,
     activeSegmentIndex,
     loadedTopicUrl,
+    dynamicSegmentBoundaries,
     // computed
     topicInfo,
     isProcessing,

@@ -20,7 +20,7 @@ const {
   currentConfig,
   cachedTopic, cacheFreshness,
   segmentSize, segmentSummaries, activeSegmentIndex,
-  loadedTopicUrl,
+  loadedTopicUrl, dynamicSegmentBoundaries,
   topicInfo, isProcessing, livePostCount,
   isSegmentMode, segments,
   summarizedCount, progressPercent, nextPendingSegmentIndex,
@@ -175,7 +175,7 @@ onActivated(async () => {
               class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50"
               @click="handleAutoSummarizeAll"
             >
-              ⚡ Tóm tắt toàn bộ ({{ segments.length }} phần)
+              ⚡ Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ segments.length }} phần)</template>
             </button>
             <button
               v-if="nextPendingSegmentIndex !== null"
@@ -237,9 +237,14 @@ onActivated(async () => {
               >
                 {{ seg.label }}
                 <span
-                  v-if="segmentSummaries[i]?.summary"
+                  v-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete !== false"
                   class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
                   title="Đã tóm tắt"
+                />
+                <span
+                  v-else-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete === false"
+                  class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+                  title="Đã tóm tắt — có thể có bài viết mới"
                 />
                 <span
                   v-else-if="segmentSummaries[i]?.posts?.length"

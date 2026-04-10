@@ -98,6 +98,8 @@ onMounted(async () => {
     config.value = {
       ...loaded,
       timeoutMs: loaded.timeoutMs ?? 120000,
+      maxTokens: loaded.maxTokens ?? 4096,
+      contextWindow: loaded.contextWindow,
       scrapeDelayMs: loaded.scrapeDelayMs ?? DEFAULT_SCRAPE_DELAY_MS,
       segmentSize: loaded.segmentSize ?? DEFAULT_SEGMENT_SIZE,
       dynamicSegments: loaded.dynamicSegments ?? DEFAULT_DYNAMIC_SEGMENTS,
@@ -334,6 +336,10 @@ function cancelClearAll() {
         step="0.1"
         class="w-full"
       />
+      <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
+        <span>0</span>
+        <span>1</span>
+      </div>
     </div>
 
     <!-- Timeout -->
@@ -352,6 +358,57 @@ function cancelClearAll() {
       <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
         <span>30s</span>
         <span>600s</span>
+      </div>
+    </div>
+
+    <!-- Max output tokens -->
+    <div>
+      <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
+        Max output tokens: {{ config.maxTokens ?? 4096 }}
+      </label>
+      <p class="text-[11px] text-(--color-text-muted) mb-1">
+        Giới hạn số token LLM có thể trả về trong một lần gọi. Tăng nếu tóm tắt bị cắt ngắn.
+      </p>
+      <input
+        v-model.number="config.maxTokens"
+        type="range"
+        min="1024"
+        max="16384"
+        step="1024"
+        class="w-full"
+      />
+      <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
+        <span>1024</span>
+        <span>16384</span>
+      </div>
+    </div>
+
+    <!-- Context window override (especially useful for custom/local LLMs) -->
+    <div>
+      <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
+        Context window (tokens): {{ config.contextWindow ? config.contextWindow.toLocaleString() : 'Tự động' }}
+      </label>
+      <p class="text-[11px] text-(--color-text-muted) mb-1">
+        Giới hạn context window của model. Để trống hoặc 0 = dùng giá trị mặc định (theo model đã biết, hoặc 128K).
+        Quan trọng với LLM local/custom có context nhỏ hơn.
+      </p>
+      <div class="flex gap-2 items-center">
+        <input
+          v-model.number="config.contextWindow"
+          type="number"
+          min="0"
+          step="1000"
+          placeholder="0 = tự động"
+          class="input flex-1"
+        />
+        <button
+          v-if="config.contextWindow"
+          class="btn btn-sm btn-secondary"
+          @click="config.contextWindow = undefined"
+          title="Reset về tự động"
+        >
+          Reset
+        </button>
       </div>
     </div>
 

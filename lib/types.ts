@@ -58,6 +58,7 @@ export interface LLMConfig {
   baseUrl: string;
   temperature: number;
   maxTokens?: number;
+  contextWindow?: number;  // Override context window (tokens) for models not in PRICING_TABLE (e.g. local LLMs)
   timeoutMs?: number;
   scrapeDelayMs?: number;
   segmentSize?: number;

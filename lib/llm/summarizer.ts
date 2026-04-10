@@ -125,7 +125,7 @@ export async function summarizeTopic(
   const systemPrompt = customPrompts?.summary || SUMMARY_PROMPT;
 
   // Check if topic will fit in context
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt));
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     // Use map-reduce for large topics
     const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
@@ -162,7 +162,7 @@ export async function updateSummary(
   ];
 
   // Check if needs chunking
-  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt));
+  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
     const rawResult = await summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
@@ -185,7 +185,7 @@ export async function analyzeOpinions(
   const systemPrompt = customPrompts?.opinions || OPINION_ANALYSIS_PROMPT;
 
   // For opinion analysis, check if we need to chunk
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt));
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Phân tích ý kiến (${contextCheck.chunksNeeded} phần)...`);
     // Use map-reduce to extract opinions
@@ -223,7 +223,7 @@ export async function researchTopic(
   const allPosts = [...posts, questionPost];
 
   // Check if needs chunking
-  const contextCheck = willExceedContext(allPosts, config.model, estimateTokens(systemPrompt));
+  const contextCheck = willExceedContext(allPosts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Đang tra cứu (${contextCheck.chunksNeeded} phần)...`);
     // Map-reduce: summarize chunks preserving citation info, then answer at reduce
@@ -251,11 +251,11 @@ export async function extractKnowledge(
   const systemPrompt = customPrompts?.knowledge || KNOWLEDGE_EXTRACT_PROMPT;
 
   // For V1: truncate posts to fit within context, keeping earlier posts
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt));
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
   let postsToUse = posts;
   if (contextCheck.exceeds) {
     let tokenCount = 0;
-    const contextLimit = getContextLimit(config.model);
+    const contextLimit = getContextLimit(config.model, config.contextWindow);
     const budget = contextLimit - estimateTokens(systemPrompt) - 500;
     postsToUse = [];
     for (const post of posts) {
@@ -293,8 +293,9 @@ function chunkPosts(
   model: string,
   mapPrompt: string,
   suggestedChunks?: number,
+  contextWindowOverride?: number,
 ): ScrapedPost[][] {
-  const contextLimit = getContextLimit(model);
+  const contextLimit = getContextLimit(model, contextWindowOverride);
   const bufferTokens = estimateTokens(mapPrompt) + RESPONSE_BUFFER_TOKENS;
 
   // If suggestedChunks is provided, size chunks to fill ~N buckets rather than
@@ -349,7 +350,7 @@ async function summaryChunks(
   reducePrompt: string = REDUCE_SUMMARY_PROMPT,
 ): Promise<string> {
   const provider = createProvider(config);
-  const chunks = chunkPosts(posts, config.model, mapPrompt, suggestedChunks);
+  const chunks = chunkPosts(posts, config.model, mapPrompt, suggestedChunks, config.contextWindow);
 
   if (chunks.length === 1) {
     // No chunking needed
@@ -380,7 +381,7 @@ async function summaryChunks(
 
   // Recursive reduce: if combinedText itself would exceed context, reduce in stages
   const combinedTokens = estimateTokens(combinedText) + estimateTokens(REDUCE_SUMMARY_PROMPT) + 2000;
-  const contextLimit = getContextLimit(config.model);
+  const contextLimit = getContextLimit(config.model, config.contextWindow);
   if (combinedTokens > contextLimit && partialSummaries.length > 2) {
     // Convert partials to fake posts and recurse
     const partialAsPosts: ScrapedPost[] = partialSummaries.map((s, i) => ({
@@ -485,7 +486,7 @@ export async function summarizeSegments(
 
   // 4. Context check — recursive reduce if combined content exceeds context
   const inputTokens = estimateTokens(combinedContent) + estimateTokens(REDUCE_SUMMARY_PROMPT) + RESPONSE_BUFFER_TOKENS;
-  const contextLimit = getContextLimit(config.model);
+  const contextLimit = getContextLimit(config.model, config.contextWindow);
 
   let resultText: string;
 

@@ -30,11 +30,12 @@ export function estimateTokens(text: string): number {
 }
 
 /**
- * Get context limit for a model
- * @param model Model name
- * @returns Context limit in tokens, or default 128000 if unknown
+ * Get context limit for a model.
+ * If contextWindowOverride is provided (from user settings), it takes precedence.
+ * Otherwise falls back to PRICING_TABLE lookup, then 128000 default.
  */
-export function getContextLimit(model: string): number {
+export function getContextLimit(model: string, contextWindowOverride?: number): number {
+  if (contextWindowOverride && contextWindowOverride > 0) return contextWindowOverride;
   return PRICING_TABLE[model]?.contextLimit ?? 128000;
 }
 
@@ -83,13 +84,14 @@ export function willExceedContext(
   model: string,
   systemPromptLength: number = 500,
   responseBuffer: number = 2000,
+  contextWindowOverride?: number,
 ): {
   exceeds: boolean;
   estimatedTokens: number;
   contextLimit: number;
   chunksNeeded: number;
 } {
-  const contextLimit = getContextLimit(model);
+  const contextLimit = getContextLimit(model, contextWindowOverride);
 
   // Calculate used tokens: system + posts + response buffer
   const postsText = posts
@@ -129,8 +131,9 @@ export function calculateSegmentBudget(
   model: string,
   systemPromptTokens: number,
   responseBuffer?: number,
+  contextWindowOverride?: number,
 ): number {
-  const contextLimit = getContextLimit(model);
+  const contextLimit = getContextLimit(model, contextWindowOverride);
   const usable = Math.floor(contextLimit * CONTEXT_USAGE_RATIO);
   const buffer = responseBuffer ?? RESPONSE_BUFFER_TOKENS;
   return Math.max(usable - systemPromptTokens - buffer, 4000); // floor 4000 tokens

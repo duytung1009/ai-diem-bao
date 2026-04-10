@@ -744,9 +744,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   /** Fetch budget based on actual system prompt (custom or default). */
   async function computeDynamicBudget(): Promise<number> {
     const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+    const contextWindowOverride = currentConfig.value?.contextWindow;
     const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
     const systemPromptText = customPromptsData?.summary || SUMMARY_PROMPT;
-    return calculateSegmentBudget(model, estimateTokens(systemPromptText));
+    return calculateSegmentBudget(model, estimateTokens(systemPromptText), undefined, contextWindowOverride);
   }
 
   /**

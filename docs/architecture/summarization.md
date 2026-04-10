@@ -292,6 +292,44 @@ Scrape page 1 → tích lũy tokens → ...page N
 
 ---
 
+## LLM Output Parsing (`parseSummaryJSON`)
+
+LLM không đảm bảo trả về JSON hợp lệ 100%. `parseSummaryJSON` dùng multi-layer strategy để tối đa khả năng parse thành công:
+
+```
+raw LLM output
+  │
+  ├─ Strip wrapping: ```json...``` hoặc `...` (single backtick)
+  │
+  ├─ Pre-processing (trước JSON.parse):
+  │    ├─ NBSP (\u00A0) → space  ← tránh fail ở structural position
+  │    └─ Invalid escape sequences (\N, \T, ...) → strip backslash
+  │
+  ├─ JSON.parse() — happy path
+  │
+  └─ Fallback: repairUnescapedQuotes() + JSON.parse()
+       ├─ Escape raw newlines (\n → \\n, \r → \\r) inside string values
+       ├─ Escape raw tabs (\t → \\t) inside string values
+       └─ Escape unescaped " inside string values (heuristic: " closing
+          only if followed by , } ] : or whitespace+EOF)
+```
+
+### Các lỗi LLM phổ biến đã được xử lý
+
+| Lỗi | Ví dụ | Cách xử lý |
+|-----|-------|------------|
+| Code fence | ` ```json\n{...}\n``` ` | Strip fence trước khi parse |
+| Single backtick | `` `{...}` `` | Strip backtick trước khi parse |
+| NBSP structural | `{\u00A0"key":...}` | Replace NBSP → space (pre-process) |
+| Invalid escape | `"text \N value"` | Strip backslash (pre-process) |
+| Raw newline in string | `"para1\npara2"` (literal) | Escape → `\\n` (repair) |
+| Raw tab in string | `"col1\tcol2"` (literal) | Escape → `\\t` (repair) |
+| Unescaped inner quote | `"mục đích "cắm" tài sản"` | Escape → `\\"` (repair heuristic) |
+
+**Validation:** sau parse, kiểm tra `summary` (string) + `opinions` (array) + `conclusion` (string). Thiếu bất kỳ field nào → trả `null`.
+
+---
+
 ## Chunking strategy (`chunkPosts`)
 
 ```typescript

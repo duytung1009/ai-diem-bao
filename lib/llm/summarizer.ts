@@ -14,10 +14,15 @@ import { estimateTokens, getContextLimit, willExceedContext } from '../token-est
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS } from '../constants';
 
 /**
- * Repair unescaped double quotes inside JSON string values.
- * LLMs sometimes output: "description": "mục đích "cắm" tài sản"
- * which breaks JSON.parse. This state-machine heuristic escapes inner quotes:
- * when inside a string, a " is treated as closing only if followed by , } ] : or EOF.
+ * Repair common LLM JSON string value errors:
+ * 1. Unescaped double quotes: "description": "mục đích "cắm" tài sản"
+ * 2. Raw control characters inside string values (newline, carriage return) instead
+ *    of their JSON escape sequences (\n, \r). LLMs often output multi-paragraph text
+ *    with literal newlines, which JSON.parse rejects as "Bad control character".
+ *
+ * State-machine approach: track whether we are inside a JSON string, then:
+ * - Escape raw \n/\r to \\n/\\r
+ * - A " is treated as closing only if followed by , } ] : or whitespace+EOF
  */
 function repairUnescapedQuotes(text: string): string {
   const out: string[] = [];
@@ -50,9 +55,10 @@ function repairUnescapedQuotes(text: string): string {
       }
 
       if (c === '"') {
-        // Peek ahead (skip whitespace) to decide if this closes the string
+        // Peek ahead (skip all JSON whitespace: space, tab, newline, CR)
+        // to decide if this closes the string
         let j = i + 1;
-        while (j < len && (text[j] === ' ' || text[j] === '\t')) j++;
+        while (j < len && (text[j] === ' ' || text[j] === '\t' || text[j] === '\n' || text[j] === '\r')) j++;
         const next = text[j] ?? '';
         if (next === ',' || next === '}' || next === ']' || next === ':' || next === '') {
           // Closing quote
@@ -66,6 +72,11 @@ function repairUnescapedQuotes(text: string): string {
           continue;
         }
       }
+
+      // Raw control characters inside string values — must be escaped for valid JSON
+      if (c === '\n') { out.push('\\n'); i++; continue; }
+      if (c === '\r') { out.push('\\r'); i++; continue; }
+      if (c === '\t') { out.push('\\t'); i++; continue; }
 
       out.push(c);
       i++;
@@ -92,6 +103,10 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
     const singleBacktickMatch = text.match(/^`([\s\S]*?)`$/s);
     if (singleBacktickMatch) text = singleBacktickMatch[1].trim();
   }
+  // Normalize non-standard whitespace (e.g. NBSP \u00A0) to regular space.
+  // NBSP at structural positions (outside strings) causes JSON.parse to fail
+  // since only \u0020, \t, \n, \r are valid JSON whitespace.
+  text = text.replace(/\u00A0/g, ' ');
   // Sanitize invalid JSON escape sequences (e.g. \N, \T produced by LLMs)
   text = text.replace(/\\([^"\\\/bfnrtu])/g, (_, ch) => ch);
 

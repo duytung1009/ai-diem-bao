@@ -52,7 +52,10 @@
       "Bash(date /T)",
       "Bash(time /T)",
       "Bash(date /t)",
-      "Bash(time /t)"
+      "Bash(time /t)",
+      "Bash(node -e ':*)",
+      "Bash(node \"C:\\\\Users\\\\Tung\\\\AppData\\\\Local\\\\Temp\\\\test_repair.js\")",
+      "Bash(node \"C:\\\\Users\\\\Tung\\\\AppData\\\\Local\\\\Temp\\\\test_gemini_causes.js\")"
     ]
   },
   "model": "sonnet"

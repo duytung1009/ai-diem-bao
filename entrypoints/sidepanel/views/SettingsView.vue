@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, MAX_CACHE_DISPLAY_BYTES } from '@/lib/constants';
+import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS, MAX_CACHE_DISPLAY_BYTES } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -100,6 +100,7 @@ onMounted(async () => {
       timeoutMs: loaded.timeoutMs ?? 120000,
       scrapeDelayMs: loaded.scrapeDelayMs ?? DEFAULT_SCRAPE_DELAY_MS,
       segmentSize: loaded.segmentSize ?? DEFAULT_SEGMENT_SIZE,
+      dynamicSegments: loaded.dynamicSegments ?? DEFAULT_DYNAMIC_SEGMENTS,
     };
   }
   await refreshCacheSize();
@@ -379,8 +380,24 @@ function cancelClearAll() {
       </div>
     </div>
 
-    <!-- Segment size -->
-    <div class="space-y-1">
+    <!-- Dynamic segments toggle -->
+    <div class="flex items-center gap-3">
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input
+          v-model="config.dynamicSegments"
+          type="checkbox"
+          class="sr-only peer"
+        />
+        <div class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+      </label>
+      <div>
+        <p class="text-xs font-medium text-(--color-text-secondary)">Tự động chia segment theo độ dài nội dung</p>
+        <p class="text-[11px] text-(--color-text-muted)">Tính số trang mỗi phần dựa trên token, giảm thiểu map-reduce.</p>
+      </div>
+    </div>
+
+    <!-- Segment size (chỉ hiển khi dynamic segments tắt) -->
+    <div v-if="!config.dynamicSegments" class="space-y-1">
       <label class="block text-xs font-medium text-(--color-text-secondary)">
         Số trang mỗi phần (Segment): {{ config.segmentSize ?? DEFAULT_SEGMENT_SIZE }}
       </label>

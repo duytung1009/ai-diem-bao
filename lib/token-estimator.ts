@@ -1,4 +1,5 @@
 import type { ScrapedPost } from './types';
+import { CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS } from './constants';
 
 // Token estimation heuristic for mixed Vietnamese/English text
 const TOKEN_RATIO = 3.5; // ~1 token per 3.5 chars for mixed content
@@ -115,6 +116,24 @@ export function willExceedContext(
  */
 export function formatTokenCount(tokens: number): string {
   return `${tokens.toLocaleString()} tokens`;
+}
+
+/**
+ * Calculate token budget for each dynamic segment.
+ * Budget = contextLimit * CONTEXT_USAGE_RATIO - systemPromptTokens - responseBuffer
+ *
+ * systemPromptTokens MUST be calculated from the actual prompt text (default or custom from Settings).
+ * Caller should call estimateTokens() on the prompt before passing here.
+ */
+export function calculateSegmentBudget(
+  model: string,
+  systemPromptTokens: number,
+  responseBuffer?: number,
+): number {
+  const contextLimit = getContextLimit(model);
+  const usable = Math.floor(contextLimit * CONTEXT_USAGE_RATIO);
+  const buffer = responseBuffer ?? RESPONSE_BUFFER_TOKENS;
+  return Math.max(usable - systemPromptTokens - buffer, 4000); // floor 4000 tokens
 }
 
 /**

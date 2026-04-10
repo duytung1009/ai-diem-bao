@@ -22,6 +22,10 @@ export const DEFAULT_THEME: ThemeMode = 'system';
 export const DEFAULT_SCRAPE_DELAY_MS = 2000;
 export const DEFAULT_SEGMENT_SIZE = 20;
 
+// Dynamic segments
+export const CONTEXT_USAGE_RATIO = 0.75;
+export const DEFAULT_DYNAMIC_SEGMENTS = true;
+
 // LLM task
 export const KEEPALIVE_INTERVAL_MS = 20_000;
 export const FALLBACK_MS_PER_TOKEN = 20;

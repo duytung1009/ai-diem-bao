@@ -4,8 +4,10 @@ import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON } from '@/lib/types';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts } from '@/lib/types';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
+import { estimateTokens, calculateSegmentBudget } from '@/lib/token-estimator';
+import { SUMMARY_PROMPT } from '@/lib/prompts';
 import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 
@@ -29,6 +31,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const segmentSummaries = ref<TopicSegment[]>([]);
   const activeSegmentIndex = ref<number | null>(null);
   const loadedTopicUrl = ref<string | null>(null);
+  const dynamicSegmentBoundaries = ref<{ start: number; end: number; label: string }[]>([]);
 
   // Non-reactive
   let scrapeAbortCtrl: AbortController | null = null;
@@ -73,6 +76,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   const segments = computed(() => {
     if (!isSegmentMode.value || !topicInfo.value) return [];
+
+    // Dynamic mode: use computed boundaries if available (populated during auto-summarize or loaded from cache)
+    if (currentConfig.value?.dynamicSegments && dynamicSegmentBoundaries.value.length > 0) {
+      return dynamicSegmentBoundaries.value;
+    }
+
+    // Fallback: fixed page count (original logic)
     const total = topicInfo.value.pageCount;
     const size = segmentSize.value;
     const segs: { start: number; end: number; label: string }[] = [];
@@ -203,6 +213,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     cacheFreshness.value = null;
     segmentSummaries.value = [];
     activeSegmentIndex.value = null;
+    dynamicSegmentBoundaries.value = [];
 
     loadedTopicUrl.value = topic.url;
     cachedTopic.value = topic as CachedTopic;
@@ -235,6 +246,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
             }
             return seg;
           });
+          // Restore dynamic boundaries from cached segments so segments computed works correctly
+          dynamicSegmentBoundaries.value = fresh.segments.map(seg => ({
+            start: seg.startPage,
+            end: seg.endPage,
+            label: `${seg.startPage}–${seg.endPage}`,
+          }));
         }
         // Backward compat: legacy normal-mode topic has summary but no segments
         if (fresh.summary && (!fresh.segments || fresh.segments.length === 0)) {
@@ -585,6 +602,230 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
+  /**
+   * Summarize a single segment's posts and persist to cache.
+   * Used internally by autoSummarizeDynamic.
+   * Updates dynamicSegmentBoundaries reactively as segments are created.
+   */
+  async function summarizeAndSaveSegment(
+    segmentIndex: number,
+    startPage: number,
+    endPage: number,
+    posts: ScrapedPost[],
+    incomplete: boolean,
+    thisId: number,
+  ): Promise<void> {
+    if (thisId !== activeSummarizeId) return;
+    const topic = store.selectedTopic.value!;
+    const labelStr = `${startPage}–${endPage}`;
+
+    simpleLoadingText.value = `Đang tóm tắt phần ${segmentIndex + 1} (trang ${labelStr})...`;
+
+    // Update dynamic boundaries for this segment reactively
+    const boundaries = [...dynamicSegmentBoundaries.value];
+    while (boundaries.length <= segmentIndex) boundaries.push({ start: 0, end: 0, label: '' });
+    boundaries[segmentIndex] = { start: startPage, end: endPage, label: labelStr };
+    dynamicSegmentBoundaries.value = boundaries;
+
+    // Save posts early before LLM call
+    const tempBase = makeDenseBase(segmentIndex);
+    tempBase[segmentIndex] = {
+      startPage,
+      endPage,
+      posts,
+      summary: segmentSummaries.value[segmentIndex]?.summary ?? '',
+      postCount: countRealPosts(posts),
+      summarizedAt: segmentSummaries.value[segmentIndex]?.summarizedAt ?? 0,
+    };
+    await saveTopic(topic, { segments: tempBase });
+    segmentSummaries.value = tempBase as TopicSegment[];
+
+    const segTask = summarize(posts);
+    llmTaskId.value = segTask.taskId;
+    const segResult = await segTask.result;
+    llmTaskId.value = null;
+
+    const segSummaryText = (segResult.data as { summary: string }).summary;
+    const segSummaryJson = parseSummaryJSON(segSummaryText);
+
+    const newSeg: TopicSegment = {
+      startPage,
+      endPage,
+      posts,
+      summary: segSummaryText,
+      summaryJson: segSummaryJson ?? undefined,
+      postCount: countRealPosts(posts),
+      summarizedAt: Date.now(),
+      complete: !incomplete,
+    };
+
+    const updated = makeDenseBase(segmentIndex);
+    updated[segmentIndex] = newSeg;
+
+    if (thisId !== activeSummarizeId) {
+      // Stale: still save but don't update UI
+      const totalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+      await saveTopic(topic, { totalPosts, summarizedPostCount: totalPosts, segments: updated }).catch(() => {});
+      return;
+    }
+
+    segmentSummaries.value = updated as TopicSegment[];
+    const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    await sendMessage('SAVE_CACHED_TOPIC', {
+      url: topic.url,
+      title: topic.title,
+      version: topic.version,
+      totalPages: topic.totalPages,
+      totalPosts: segTotalPosts,
+      summarizedPostCount: segTotalPosts,
+      segments: updated,
+    });
+
+    simpleLoadingText.value = '';
+  }
+
+  /**
+   * Scrape topic page by page, split into segments when token budget is exceeded,
+   * and summarize each segment immediately.
+   * [DECISION_NEEDED]: Planning suggests SCRAPE_BATCH=10 pages per request, but we scrape
+   * 1 page at a time here for accurate segment boundary detection. Total scraping time
+   * is identical since the per-page delay is the same either way.
+   */
+  async function autoSummarizeDynamic(
+    topicUrl: string,
+    totalPages: number,
+    budgetTokens: number,
+    thisId: number,
+  ): Promise<void> {
+    let segmentIndex = 0;
+    let pendingPosts: ScrapedPost[] = [];
+    let pendingTokens = 0;
+    let pendingStartPage = 1;
+
+    for (let page = 1; page <= totalPages; page++) {
+      if (thisId !== activeSummarizeId) return;
+
+      isScraping.value = true;
+      simpleLoadingText.value = `Đang đọc trang ${page} / ${totalPages}...`;
+
+      const { posts: pagePosts, errors: pageErrors } = await scrapeRange(
+        topicUrl, page, page,
+        currentConfig.value?.scrapeDelayMs ?? 2000,
+      );
+      isScraping.value = false;
+      scrapeProgress.value = null;
+      simpleLoadingText.value = '';
+
+      if (pageErrors.length) scrapingWarnings.value.push(...pageErrors);
+      if (thisId !== activeSummarizeId) return;
+
+      // News enrichment for page 1 only
+      let enrichedPosts = pagePosts;
+      if (page === 1) {
+        enrichedPosts = await enrichWithNewsArticles(
+          pagePosts, topicUrl,
+          msg => { simpleLoadingText.value = msg; },
+          msg => { scrapingInfo.value = [...scrapingInfo.value, msg]; },
+        );
+        if (enrichedPosts.some(p => p.postNumber < 0) && cachedTopic.value) {
+          cachedTopic.value = { ...cachedTopic.value, topicType: 'news' };
+        }
+        simpleLoadingText.value = '';
+      }
+
+      const pageTokens = enrichedPosts.reduce(
+        (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
+        0,
+      );
+
+      // If adding this page would overflow the budget → finalize current segment
+      if (pendingTokens + pageTokens > budgetTokens && pendingPosts.length > 0) {
+        await summarizeAndSaveSegment(segmentIndex, pendingStartPage, page - 1, pendingPosts, false, thisId);
+        if (error.value || thisId !== activeSummarizeId) return;
+
+        segmentIndex++;
+        pendingPosts = [];
+        pendingTokens = 0;
+        pendingStartPage = page;
+      }
+
+      pendingPosts.push(...enrichedPosts);
+      pendingTokens += pageTokens;
+    }
+
+    // Summarize remaining posts (last segment — mark incomplete since topic may get new posts)
+    if (pendingPosts.length > 0 && thisId === activeSummarizeId) {
+      const isIncomplete = pendingTokens < budgetTokens; // didn't fill the budget → may grow
+      await summarizeAndSaveSegment(segmentIndex, pendingStartPage, totalPages, pendingPosts, isIncomplete, thisId);
+    }
+  }
+
+  /**
+   * "Tóm tắt toàn bộ" — scrape + summarize all segments sequentially then generate overall summary.
+   * In dynamic mode: scrapes page by page, splits on token budget, summarizes each chunk.
+   * In fixed mode: summarizes all existing fixed segments sequentially.
+   */
+  async function handleAutoSummarizeAll() {
+    const topic = store.selectedTopic.value;
+    if (!topic || !topicInfo.value) return;
+
+    const totalPages = topicInfo.value.pageCount;
+    const isDynamic = currentConfig.value?.dynamicSegments ?? true;
+    const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+
+    error.value = '';
+    scrapingWarnings.value = [];
+    scrapingInfo.value = [];
+    const thisId = ++activeSummarizeId;
+    store.setSummarizing(topic.url);
+
+    try {
+      if (isDynamic) {
+        // Calculate budget from actual system prompt (custom or default)
+        const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
+        const systemPromptText = customPromptsData?.summary || SUMMARY_PROMPT;
+        const systemPromptTokens = estimateTokens(systemPromptText);
+        const budget = calculateSegmentBudget(model, systemPromptTokens);
+
+        // Reset for fresh run
+        dynamicSegmentBoundaries.value = [];
+        segmentSummaries.value = [];
+
+        await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+      } else {
+        // Fixed mode: summarize all segments sequentially
+        for (let i = 0; i < segments.value.length; i++) {
+          if (thisId !== activeSummarizeId) return;
+          await handleSummarizeSegment(i);
+          if (error.value) return;
+        }
+      }
+
+      // Generate overall summary
+      if (thisId === activeSummarizeId && !error.value) {
+        const completed = segmentSummaries.value.filter(s => s?.summary).length;
+        if (completed >= 1) {
+          simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
+          await generateOverallSummary();
+        }
+      }
+    } catch (err) {
+      isScraping.value = false;
+      scrapeProgress.value = null;
+      if (thisId !== activeSummarizeId) return;
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      error.value = err instanceof Error ? err.message : String(err);
+    } finally {
+      store.setSummarizing(null);
+      if (thisId === activeSummarizeId) {
+        simpleLoadingText.value = '';
+        llmTaskId.value = null;
+        isScraping.value = false;
+        scrapeProgress.value = null;
+      }
+    }
+  }
+
   return {
     // refs
     summary,
@@ -623,5 +864,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     handleSummarizeSegment,
     generateOverallSummary,
     handleSegmentUpdate,
+    handleAutoSummarizeAll,
   };
 }

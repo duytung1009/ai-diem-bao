@@ -61,6 +61,7 @@ export interface LLMConfig {
   timeoutMs?: number;
   scrapeDelayMs?: number;
   segmentSize?: number;
+  dynamicSegments?: boolean;
   perProvider?: Partial<Record<LLMProvider, ProviderSpecificConfig>>;
 }
 
@@ -158,6 +159,7 @@ export interface TopicSegment {
   startPage: number;
   endPage: number;
   posts: ScrapedPost[];
+  complete?: boolean;  // false = last segment not yet at budget, more posts may be appended
   summary: string;
   summaryJson?: SummaryJSON;
   postCount: number;

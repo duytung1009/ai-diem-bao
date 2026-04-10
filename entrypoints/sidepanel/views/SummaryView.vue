@@ -26,7 +26,7 @@ const {
   summarizedCount, progressPercent, nextPendingSegmentIndex,
   isNewsTopic,
   loadTopicData, handleCancel,
-  handleRetry, handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate,
+  handleRetry, handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
 } = useSummarize(store);
 
 const segmentGridExpanded = ref(false);
@@ -153,7 +153,8 @@ onActivated(async () => {
         <!-- Info banner: chỉ hiển thị khi > 1 segment -->
         <div v-if="segments.length > 1" class="alert alert-info text-xs">
           <p class="font-medium">Chủ đề dài ({{ topicInfo!.pageCount }} trang)</p>
-          <p class="mt-0.5">Chia thành {{ segments.length }} phần, mỗi phần ~{{ segmentSize }} trang. Tóm tắt từng phần rồi tạo tổng quan.</p>
+          <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ segments.length }} phần theo độ dài nội dung. Tóm tắt từng phần rồi tạo tổng quan.</p>
+          <p v-else class="mt-0.5">Chia thành {{ segments.length }} phần, mỗi phần ~{{ segmentSize }} trang. Tóm tắt từng phần rồi tạo tổng quan.</p>
         </div>
 
         <!-- Segment tabs -->
@@ -168,6 +169,13 @@ onActivated(async () => {
               @click="activeSegmentIndex = null"
             >
               Tổng quan
+            </button>
+            <button
+              v-if="segments.length > 1"
+              class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+              @click="handleAutoSummarizeAll"
+            >
+              ⚡ Tóm tắt toàn bộ ({{ segments.length }} phần)
             </button>
             <button
               v-if="nextPendingSegmentIndex !== null"

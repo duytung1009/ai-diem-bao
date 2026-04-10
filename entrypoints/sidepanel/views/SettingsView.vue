@@ -455,7 +455,7 @@ function cancelClearAll() {
       </label>
       <div>
         <p class="text-xs font-medium text-(--color-text-secondary)">Tự động chia segment theo độ dài nội dung</p>
-        <p class="text-[11px] text-(--color-text-muted)">Tính số trang mỗi phần dựa trên token, giảm thiểu map-reduce.</p>
+        <p class="text-[11px] text-(--color-text-muted)">Tính số trang mỗi phần dựa trên LLM Context window, tránh vượt quá giới hạn context.</p>
       </div>
     </div>
 

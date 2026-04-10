@@ -11,7 +11,8 @@ import {
   KNOWLEDGE_EXTRACT_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext } from '../token-estimator';
-import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS } from '../constants';
+import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO } from '../constants';
+import { LLMError, LLMErrorCode } from '../errors';
 
 /**
  * Repair common LLM JSON string value errors:
@@ -477,79 +478,106 @@ export function deduplicateSupporters(json: SummaryJSON): SummaryJSON {
 }
 
 /**
- * Merge multiple segment JSON summaries into one overall summary.
- * Uses REDUCE_SUMMARY_PROMPT which is designed to merge JSON chunks.
+ * Reduce a list of segment summary strings into one combined summary,
+ * recursing as many times as needed until the combined input fits in context.
+ *
+ * Each recursion level reduces the number of summaries by factor `groupCount`;
+ * total LLM calls ≈ O(N/k), total levels ≈ O(log_k N).
+ *
+ * **Note:** cross-reference authors are built local to each reduce call — with
+ * tree-reduce across multiple levels, authors spanning different groups at the
+ * same level may not be fully de-duplicated until the final merge call.
  */
+async function reduceSegmentSummaries(
+  summaries: string[],
+  provider: ReturnType<typeof createProvider>,
+  contextLimit: number,
+  onProgress?: LLMProgressCallback,
+  depth: number = 0,
+): Promise<string> {
+  // Fast path: nothing to reduce
+  if (summaries.length === 1) return summaries[0];
+
+  // Helper: build combined content with cross-reference header for an LLM call
+  function buildReduceContent(group: string[]): string {
+    const parsed = group.map(s => parseSummaryJSON(s));
+    const crossRef = buildAuthorCrossReference(parsed);
+    const groupText = group.map((s, i) => `--- Phần ${i + 1} ---\n${s}`).join('\n\n');
+    return crossRef + groupText;
+  }
+
+  // Usable content tokens per reduce call (prompt overhead + response buffer + safety margin).
+  // Note: cross-reference header adds ~100-300 tokens per call but is covered by the 25% safety margin.
+  const promptOverhead = estimateTokens(REDUCE_SUMMARY_PROMPT) + RESPONSE_BUFFER_TOKENS;
+  const usablePerGroup = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
+
+  if (usablePerGroup < 1000) {
+    throw new LLMError(
+      LLMErrorCode.BAD_REQUEST,
+      'Context window quá nhỏ để gộp tóm tắt. Cần ít nhất ~4000 tokens context window.',
+    );
+  }
+
+  // Guard: individual summary larger than usable window — cannot reduce, fail early
+  for (const s of summaries) {
+    if (estimateTokens(s) > usablePerGroup) {
+      throw new LLMError(
+        LLMErrorCode.BAD_REQUEST,
+        'Một phần tóm tắt segment quá lớn để xử lý. Hãy giảm kích thước segment hoặc tăng context window.',
+      );
+    }
+  }
+
+  // Cheap token estimate: sum of individual summaries (avoids building full content when splitting)
+  const contentTokenSum = summaries.reduce((sum, s) => sum + estimateTokens(s), 0);
+
+  if (contentTokenSum <= usablePerGroup) {
+    // Fits in one call — base case
+    const content = buildReduceContent(summaries);
+    const label = depth === 0 ? 'Đang tạo tóm tắt tổng quan...' : `Đang gộp tóm tắt (lớp ${depth + 1})...`;
+    onProgress?.(label);
+    const post: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content, timestamp: '', postNumber: 0 }];
+    const response = await provider.summarize(post, REDUCE_SUMMARY_PROMPT);
+    return response.content;
+  }
+
+  // Exceeds context — split into groups and recurse
+  // groupCount based on content-only tokens vs usable window (overhead already subtracted)
+  const groupCount = Math.max(2, Math.ceil(contentTokenSum / usablePerGroup));
+  const groupSize = Math.ceil(summaries.length / groupCount);
+  const groups: string[][] = [];
+  for (let i = 0; i < summaries.length; i += groupSize) {
+    groups.push(summaries.slice(i, i + groupSize));
+  }
+
+  const intermediates: string[] = [];
+  for (let g = 0; g < groups.length; g++) {
+    onProgress?.(`Đang gộp nhóm ${g + 1}/${groups.length} (lớp ${depth + 1})...`, g + 1, groups.length);
+    const groupContent = buildReduceContent(groups[g]);
+    const groupPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: groupContent, timestamp: '', postNumber: 0 }];
+    const response = await provider.summarize(groupPost, REDUCE_SUMMARY_PROMPT);
+    const json = parseSummaryJSON(response.content);
+    intermediates.push(json ? JSON.stringify(json) : response.content);
+
+    if (g < groups.length - 1) await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
+  }
+
+  return reduceSegmentSummaries(intermediates, provider, contextLimit, onProgress, depth + 1);
+}
+
 export async function summarizeSegments(
   segmentSummaries: string[],
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
 ): Promise<string> {
   const provider = createProvider(config);
-
-  // 1. Parse segment JSONs for cross-reference building
-  const parsed = segmentSummaries.map(s => parseSummaryJSON(s));
-
-  // 2. Build cross-reference (authors appearing in ≥2 segments)
-  const crossRef = buildAuthorCrossReference(parsed);
-
-  // 3. Build combined content (cross-reference prepended)
-  const segmentText = segmentSummaries
-    .map((s, i) => `--- Phần ${i + 1} ---\n${s}`)
-    .join('\n\n');
-  const combinedContent = crossRef + segmentText;
-
-  // 4. Context check — recursive reduce if combined content exceeds context
-  const inputTokens = estimateTokens(combinedContent) + estimateTokens(REDUCE_SUMMARY_PROMPT) + RESPONSE_BUFFER_TOKENS;
   const contextLimit = getContextLimit(config.model, config.contextWindow);
 
-  let resultText: string;
+  const resultText = await reduceSegmentSummaries(
+    segmentSummaries, provider, contextLimit, onProgress,
+  );
 
-  if (inputTokens > contextLimit && segmentSummaries.length > 2) {
-    // Split into groups, reduce each group, then final reduce
-    onProgress?.('Đang gộp tóm tắt (nhiều bước)...');
-    const groupCount = Math.ceil(inputTokens / contextLimit);
-    const groupSize = Math.ceil(segmentSummaries.length / groupCount);
-    const groups: string[][] = [];
-    for (let i = 0; i < segmentSummaries.length; i += groupSize) {
-      groups.push(segmentSummaries.slice(i, i + groupSize));
-    }
-
-    const intermediateResults: string[] = [];
-    for (let g = 0; g < groups.length; g++) {
-      onProgress?.(`Đang gộp nhóm ${g + 1}/${groups.length}...`, g + 1, groups.length + 1);
-      const groupParsed = groups[g].map(s => parseSummaryJSON(s));
-      const groupCrossRef = buildAuthorCrossReference(groupParsed);
-      const groupText = groups[g].map((s, i) => `--- Phần ${i + 1} ---\n${s}`).join('\n\n');
-      const groupContent = groupCrossRef + groupText;
-
-      const groupPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: groupContent, timestamp: '', postNumber: 0 }];
-      const response = await provider.summarize(groupPost, REDUCE_SUMMARY_PROMPT);
-      const json = parseSummaryJSON(response.content);
-      intermediateResults.push(json ? JSON.stringify(json) : response.content);
-
-      if (g < groups.length - 1) await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
-    }
-
-    // Final reduce over intermediate results
-    onProgress?.('Đang tạo tóm tắt tổng quan...', groups.length + 1, groups.length + 1);
-    const finalParsed = intermediateResults.map(s => parseSummaryJSON(s));
-    const finalCrossRef = buildAuthorCrossReference(finalParsed);
-    const finalText = intermediateResults.map((s, i) => `--- Phần ${i + 1} ---\n${s}`).join('\n\n');
-    const finalContent = finalCrossRef + finalText;
-
-    const finalPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: finalContent, timestamp: '', postNumber: 0 }];
-    const finalResponse = await provider.summarize(finalPost, REDUCE_SUMMARY_PROMPT);
-    resultText = finalResponse.content;
-  } else {
-    // Fits in a single LLM call
-    onProgress?.('Đang tạo tóm tắt tổng quan...');
-    const reducePost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: combinedContent, timestamp: '', postNumber: 0 }];
-    const response = await provider.summarize(reducePost, REDUCE_SUMMARY_PROMPT);
-    resultText = response.content;
-  }
-
-  // 5. Post-process: programmatic dedup of supporters (safety net)
+  // Post-process: programmatic dedup of supporters (safety net)
   const json = parseSummaryJSON(resultText);
   if (json) {
     const deduped = deduplicateSupporters(json);

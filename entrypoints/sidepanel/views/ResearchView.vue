@@ -8,6 +8,14 @@ import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 const cachedTopic = ref<CachedTopic | null>(null);
+
+// Posts may live in segments (F20 Unified Segment Mode) rather than top-level posts
+const allPosts = computed(() => {
+  const t = cachedTopic.value;
+  if (!t) return [];
+  if (t.posts?.length) return t.posts;
+  return t.segments?.flatMap(s => s.posts ?? []) ?? [];
+});
 const question = ref('');
 const isLoading = ref(false);
 const error = ref<string | null>(null);
@@ -52,13 +60,13 @@ onActivated(async () => {
 
 async function handleResearch() {
   const q = question.value.trim();
-  if (!q || !cachedTopic.value?.posts?.length) return;
+  if (!q || !allPosts.value.length) return;
 
   isLoading.value = true;
   error.value = null;
 
   try {
-    const { taskId, result } = runResearch(cachedTopic.value.posts, q);
+    const { taskId, result } = runResearch(allPosts.value, q);
     llmTaskId.value = taskId;
     const llmResult = await result;
     const answer = (llmResult.data as { answer: string }).answer;
@@ -126,11 +134,11 @@ function formatDate(ts: number): string {
       <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu Topic</h2>
 
       <!-- No cache warning -->
-      <div v-if="!cachedTopic?.posts?.length" class="alert alert-warning">
+      <div v-if="!allPosts.length" class="alert alert-warning">
         Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
       </div>
 
-      <template v-if="cachedTopic?.posts?.length">
+      <template v-if="allPosts.length">
         <!-- Question input -->
         <div class="space-y-2">
           <textarea v-model="question" rows="2" class="input resize-none" placeholder="Đặt câu hỏi về nội dung topic..." :disabled="isLoading"

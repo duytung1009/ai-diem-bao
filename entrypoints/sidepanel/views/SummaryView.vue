@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onActivated } from 'vue';
+import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl } from '@/lib/cache-manager';
@@ -28,8 +28,24 @@ const {
 } = useSummarize(store);
 
 const segmentGridExpanded = ref(false);
+const confirmingAutoSummarize = ref(false);
 
 const newPostCount = computed(() => livePostCount.value - (cachedTopic?.value?.totalPosts ?? 0));
+
+// postNumber → page mapping, built from all cached posts (top-level + segments)
+const postPageMap = computed<Record<number, number>>(() => {
+  const topic = cachedTopic?.value;
+  if (!topic) return {};
+  const map: Record<number, number> = {};
+  const addPosts = (posts: typeof topic.posts) => {
+    for (const p of posts) {
+      if (p.page !== undefined) map[p.postNumber] = p.page;
+    }
+  };
+  addPosts(topic.posts);
+  for (const seg of topic.segments ?? []) addPosts(seg.posts);
+  return map;
+});
 
 onMounted(() => {
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
@@ -165,13 +181,30 @@ onActivated(async () => {
             >
               Tổng quan
             </button>
-            <button
-              v-if="segments.length > 1"
-              class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-              @click="handleAutoSummarizeAll"
-            >
-              ⚡ Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ segments.length }} phần)</template>
-            </button>
+            <template v-if="segments.length > 1">
+              <button
+                v-if="!confirmingAutoSummarize"
+                class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                @click="confirmingAutoSummarize = true"
+              >
+                ⚡ Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ segments.length }} phần)</template>
+              </button>
+              <span v-else class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs text-(--color-text-secondary)">Tóm tắt {{ segments.length }} phần, không thể hủy. Tiếp tục?</span>
+                <button
+                  class="px-2.5 py-1 text-xs rounded-full font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  @click="confirmingAutoSummarize = false; handleAutoSummarizeAll()"
+                >
+                  Xác nhận
+                </button>
+                <button
+                  class="px-2.5 py-1 text-xs rounded-full font-medium bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
+                  @click="confirmingAutoSummarize = false"
+                >
+                  Hủy
+                </button>
+              </span>
+            </template>
             <button
               v-if="nextPendingSegmentIndex !== null"
               class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) flex items-center gap-1"
@@ -296,7 +329,7 @@ onActivated(async () => {
                 />
               </div>
               <div class="card p-4">
-                <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" />
+                <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" />
               </div>
               <button
                 class="w-full btn btn-secondary text-sm"
@@ -339,7 +372,7 @@ onActivated(async () => {
                 />
               </div>
               <div class="card p-4">
-                <SummaryContent :content="summary" :json="summaryJson ?? undefined" />
+                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" />
               </div>
               <button
                 class="w-full btn btn-secondary text-sm"
@@ -379,6 +412,7 @@ onActivated(async () => {
               <SummaryContent
                 :content="segmentSummaries[activeSegmentIndex].summary"
                 :json="segmentSummaries[activeSegmentIndex].summaryJson"
+                :topic-url="cachedTopic?.url" :post-page-map="postPageMap"
               />
             </div>
             <button

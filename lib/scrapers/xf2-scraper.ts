@@ -103,18 +103,22 @@ export class XF2Scraper implements TopicScraper {
   }
 
   private extractPostNumber(article: Element): number {
-    // XF2 stores post number in the header link like #post-123 or "Post #5"
-    const headerLink = article.querySelector('.message-attribution-opposite a');
-    if (headerLink) {
-      const text = headerLink.textContent?.trim() || '';
-      const match = text.match(/#?([\d,]+)/);
-      if (match) return parseInt(match[1].replace(/,/g, ''), 10);
-    }
-    // Fallback: data-content attribute
+    // Primary: data-content="post-41558917" on the <article> element — real post ID
     const dataContent = article.getAttribute('data-content');
     if (dataContent) {
       const match = dataContent.match(/post-(\d+)/);
       if (match) return parseInt(match[1], 10);
+    }
+    // Fallback: href of the attribution link, e.g. href=".../#post-41558917"
+    const headerLink = article.querySelector('.message-attribution-opposite a');
+    if (headerLink) {
+      const href = headerLink.getAttribute('href') || '';
+      const hrefMatch = href.match(/#post-(\d+)/);
+      if (hrefMatch) return parseInt(hrefMatch[1], 10);
+      // Last resort: text content shows sequential "#5" — less reliable
+      const text = headerLink.textContent?.trim() || '';
+      const textMatch = text.match(/#?([\d,]+)/);
+      if (textMatch) return parseInt(textMatch[1].replace(/,/g, ''), 10);
     }
     return 0;
   }

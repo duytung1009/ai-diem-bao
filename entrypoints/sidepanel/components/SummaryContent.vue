@@ -7,7 +7,17 @@ import type { SummaryJSON } from '@/lib/types';
 const props = defineProps<{
   content: string;
   json?: SummaryJSON;
+  topicUrl?: string;
+  postPageMap?: Record<number, number>;
 }>();
+
+function openPostLink(postNumber: number) {
+  if (!props.topicUrl) return;
+  const page = props.postPageMap?.[postNumber];
+  const base = props.topicUrl.replace(/\/$/, '');
+  const pageSegment = page && page > 1 ? `/page-${page}` : '';
+  browser.tabs.create({ url: `${base}${pageSegment}#post-${postNumber}` });
+}
 
 // --- Markdown fallback parse (backward compat for old cache entries) ---
 
@@ -104,7 +114,13 @@ const totalJsonSupporters = computed(() =>
               >
                 <p class="italic leading-relaxed">{{ q.text }}</p>
                 <cite class="not-italic text-xs text-(--color-text-muted) mt-0.5 block">
-                  — {{ q.author }} <span class="font-mono opacity-70">#{{ q.postNumber }}</span>
+                  — {{ q.author }}
+                  <button
+                    v-if="topicUrl"
+                    class="font-mono opacity-70 hover:opacity-100 hover:underline cursor-pointer"
+                    @click="openPostLink(q.postNumber)"
+                  >#{{ q.postNumber }}</button>
+                  <span v-else class="font-mono opacity-70">#{{ q.postNumber }}</span>
                 </cite>
               </blockquote>
             </div>

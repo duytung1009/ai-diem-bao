@@ -5,6 +5,7 @@ export interface ScrapedPost {
   content: string;
   timestamp: string;
   postNumber: number;
+  page?: number;
 }
 
 export interface TopicData {

@@ -52,6 +52,14 @@ function toggleExpand(id: string) {
   expandedIds.value = s;
 }
 
+function openPostLink(postNumber: number) {
+  if (!cachedTopic.value) return;
+  const post = allPosts.value.find(p => p.postNumber === postNumber);
+  const base = cachedTopic.value.url.replace(/\/$/, '');
+  const pageSegment = post?.page && post.page > 1 ? `/page-${post.page}` : '';
+  browser.tabs.create({ url: `${base}${pageSegment}#post-${postNumber}` });
+}
+
 function formatTimestamp(ts: string): string {
   if (!ts) return '';
   const d = new Date(ts);
@@ -702,7 +710,10 @@ async function handleClearTracking() {
                   </div>
                   <!-- Source citation with timestamp -->
                   <p class="text-xs text-(--color-text-muted)">
-                    — {{ entry.source.author }}<span v-if="entry.source.postNumber">, bài #{{ entry.source.postNumber }}</span><span v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp) }}</span>
+                    — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài <button
+                        class="font-mono hover:underline cursor-pointer"
+                        @click="openPostLink(entry.source.postNumber)"
+                      >#{{ entry.source.postNumber }}</button></template><span v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp) }}</span>
                   </p>
                 </div>
               </div>

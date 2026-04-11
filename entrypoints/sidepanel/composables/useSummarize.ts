@@ -562,6 +562,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (thisId === activeSummarizeId) {
         simpleLoadingText.value = '';
         llmTaskId.value = null;
+        // Also clear scrapeProgress/isScraping in case we were called from
+        // handleAutoSummarizeAll, where autoSummarizeDynamic keeps scrapeProgress
+        // set across phases. handleAutoSummarizeAll's own finally can't clear it
+        // because generateOverallSummary bumps activeSummarizeId (stale guard).
+        isScraping.value = false;
+        scrapeProgress.value = null;
       }
     }
   }

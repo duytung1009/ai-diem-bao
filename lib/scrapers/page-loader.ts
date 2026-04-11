@@ -73,7 +73,8 @@ export async function scrapePageRange(
       // CSP checks for resource-loading elements even in inert parsed documents.
       const safeHtml = html
         .replace(/<head\b[\s\S]*?<\/head>/gi, '')
-        .replace(/<script\b[\s\S]*?<\/script>/gi, '');
+        .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+        .replace(/<link\b[^>]*>/gi, '');  // Strip <link> in <body> (e.g. preload as="script")
       const doc = parser.parseFromString(safeHtml, 'text/html');
 
       const isLoginPage =
@@ -85,7 +86,7 @@ export async function scrapePageRange(
       }
 
       const pageData = scraper.scrape(doc, pageUrl);
-      allPosts.push(...pageData.posts);
+      allPosts.push(...pageData.posts.map(p => ({ ...p, page })));
       pagesScraped++;
       onProgress?.(pagesScraped, totalPagesInRange, allPosts.length);
     } catch (err) {

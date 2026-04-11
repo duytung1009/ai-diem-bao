@@ -60,7 +60,9 @@
       "Bash(sed -n '95,115p' entrypoints/sidepanel/views/SummaryView.vue)",
       "Bash(sed -n '1,20p' entrypoints/sidepanel/views/KnowledgeView.vue)",
       "Bash(sed -n '275,290p' entrypoints/sidepanel/views/KnowledgeView.vue)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(node /tmp/test_regex.js)",
+      "Bash(powershell -Command \"Get-Date -Format 'HHmm'\")"
     ]
   },
   "model": "sonnet"

@@ -1,10 +1,10 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
-import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, summarizeSegments, testLLMConnection } from '@/lib/llm/summarizer';
+import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry } from '@/lib/types';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
@@ -108,6 +108,9 @@ export default defineBackground(() => {
                 summaryJson: partial.summaryJson ?? existing?.summaryJson,
                 bookmarked: partial.bookmarked ?? existing?.bookmarked,
                 knowledgeEntries: partial.knowledgeEntries ?? existing?.knowledgeEntries,
+                knowledgeChunks: partial.knowledgeChunks !== undefined
+                  ? partial.knowledgeChunks
+                  : existing?.knowledgeChunks,
                 lastKnowledgePostNumber: partial.lastKnowledgePostNumber !== undefined
                   ? partial.lastKnowledgePostNumber
                   : existing?.lastKnowledgePostNumber,
@@ -268,6 +271,20 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }
+      case 'extract_knowledge_chunk': {
+        const { posts, title } = payload as { posts: ScrapedPost[]; title: string };
+        inputTokens = estimateTokens(posts.map(p => p.content).join(''));
+        const raw = await extractKnowledgeChunk(posts, title, config, onProgress);
+        result = { entries: parseKnowledgeEntries(raw) };
+        break;
+      }
+      case 'reduce_knowledge_chunks': {
+        const { partialEntries } = payload as { partialEntries: KnowledgeEntry[][] };
+        inputTokens = estimateTokens(JSON.stringify(partialEntries));
+        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress);
+        result = { entries: parseKnowledgeEntries(raw) };
+        break;
+      }
       case 'summarize_segments': {
         const summaries = payload as string[];
         inputTokens = estimateTokens(summaries.join(''));
@@ -325,8 +342,9 @@ function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const text = (fenceMatch ? fenceMatch[1] : raw).trim();
   try {
-    const parsed = JSON.parse(text);
+    let parsed: unknown[] = JSON.parse(text);
     if (!Array.isArray(parsed)) return [];
+    parsed = parsed.flat();
     const now = Date.now();
     return parsed
       .filter((e: unknown): e is Record<string, unknown> =>

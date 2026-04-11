@@ -1,4 +1,4 @@
-import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback } from '../types';
+import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback, KnowledgeEntry } from '../types';
 import { createProvider } from './factory';
 import {
   SUMMARY_PROMPT,
@@ -9,10 +9,15 @@ import {
   REDUCE_SUMMARY_PROMPT,
   RESEARCH_PROMPT,
   KNOWLEDGE_EXTRACT_PROMPT,
+  KNOWLEDGE_CHUNK_PROMPT,
+  KNOWLEDGE_REDUCE_PROMPT,
 } from '../prompts';
-import { estimateTokens, getContextLimit, willExceedContext } from '../token-estimator';
+import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget } from '../token-estimator';
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO } from '../constants';
 import { LLMError, LLMErrorCode } from '../errors';
+
+// Pre-computed prompt token count (module-level, computed once)
+export const KNOWLEDGE_CHUNK_PROMPT_TOKENS = estimateTokens(KNOWLEDGE_CHUNK_PROMPT);
 
 /**
  * Repair common LLM JSON string value errors:
@@ -256,6 +261,10 @@ export async function researchTopic(
   return response.content;
 }
 
+/**
+ * Direct single-call knowledge extraction (for small topics that fit in context).
+ * Chunking + reduce is handled at the composable/orchestration layer (F24).
+ */
 export async function extractKnowledge(
   posts: ScrapedPost[],
   title: string,
@@ -266,24 +275,29 @@ export async function extractKnowledge(
   const provider = createProvider(config);
   const systemPrompt = customPrompts?.knowledge || KNOWLEDGE_EXTRACT_PROMPT;
 
-  // For V1: truncate posts to fit within context, keeping earlier posts
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
-  let postsToUse = posts;
-  if (contextCheck.exceeds) {
-    let tokenCount = 0;
-    const contextLimit = getContextLimit(config.model, config.contextWindow);
-    const budget = contextLimit - estimateTokens(systemPrompt) - 500;
-    postsToUse = [];
-    for (const post of posts) {
-      const tokens = estimateTokens(`[${post.author}] (#${post.postNumber}):\n${post.content}`);
-      if (tokenCount + tokens > budget) break;
-      postsToUse.push(post);
-      tokenCount += tokens;
-    }
-    onProgress?.(`Trích xuất kiến thức (${postsToUse.length}/${posts.length} bài viết)...`);
-  } else {
-    onProgress?.('Đang trích xuất kiến thức...');
-  }
+  const topicContextPost: ScrapedPost = {
+    author: 'CONTEXT',
+    content: `Topic: ${title}`,
+    timestamp: '',
+    postNumber: 0,
+  };
+
+  onProgress?.('Đang trích xuất kiến thức...');
+  const response = await provider.summarize([topicContextPost, ...posts], systemPrompt);
+  return response.content;
+}
+
+/**
+ * Map phase: extract knowledge entries from a single chunk of posts.
+ * Used by the orchestration layer in KnowledgeView (F24 chunked flow).
+ */
+export async function extractKnowledgeChunk(
+  chunkPosts: ScrapedPost[],
+  title: string,
+  config: LLMConfig,
+  onProgress?: LLMProgressCallback,
+): Promise<string> {
+  const provider = createProvider(config);
 
   const topicContextPost: ScrapedPost = {
     author: 'CONTEXT',
@@ -292,8 +306,79 @@ export async function extractKnowledge(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([topicContextPost, ...postsToUse], systemPrompt);
+  onProgress?.('Đang trích xuất kiến thức...');
+  const response = await provider.summarize([topicContextPost, ...chunkPosts], KNOWLEDGE_CHUNK_PROMPT);
   return response.content;
+}
+
+/**
+ * Reduce phase: merge multiple sets of partial knowledge entries into a final list.
+ * partialEntries[i] = parsed entries from chunk i.
+ */
+export async function reduceKnowledgeChunks(
+  partialEntries: KnowledgeEntry[][],
+  config: LLMConfig,
+  onProgress?: LLMProgressCallback,
+): Promise<string> {
+  const provider = createProvider(config);
+
+  onProgress?.('Đang gộp kiến thức...');
+
+  const combinedText = partialEntries
+    .map((entries, i) => `--- Phần ${i + 1} ---\n${JSON.stringify(entries)}`)
+    .join('\n\n');
+
+  const combinedPost: ScrapedPost = {
+    author: 'PARTIAL_ENTRIES',
+    content: combinedText,
+    timestamp: '',
+    postNumber: 0,
+  };
+
+  const response = await provider.summarize([combinedPost], KNOWLEDGE_REDUCE_PROMPT);
+  return response.content;
+}
+
+/**
+ * Plan knowledge chunk boundaries for a set of posts.
+ * Returns array of { startIndex, endIndex } (indices into posts array).
+ * Uses KNOWLEDGE_CHUNK_PROMPT token budget to determine chunk sizes.
+ */
+export function planKnowledgeChunks(
+  posts: ScrapedPost[],
+  model: string,
+  contextWindowOverride?: number,
+): { startIndex: number; endIndex: number }[] {
+  const budget = calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, 2000, contextWindowOverride);
+
+  const chunks: { startIndex: number; endIndex: number }[] = [];
+  let chunkStart = 0;
+  let chunkTokens = 0;
+
+  for (let i = 0; i < posts.length; i++) {
+    const post = posts[i];
+    const postTokens = estimateTokens(`[${post.author}] (#${post.postNumber}):\n${post.content}`);
+
+    if (chunkTokens + postTokens > budget && chunkTokens > 0) {
+      // Current post would exceed budget — close current chunk and start new one
+      chunks.push({ startIndex: chunkStart, endIndex: i - 1 });
+      chunkStart = i;
+      chunkTokens = postTokens;
+    } else {
+      // Single post > budget: force it into its own chunk (edge case)
+      if (postTokens > budget && chunkTokens === 0) {
+        console.warn(`[planKnowledgeChunks] Post #${post.postNumber} exceeds budget (${postTokens} > ${budget} tokens)`);
+      }
+      chunkTokens += postTokens;
+    }
+  }
+
+  // Last chunk
+  if (posts.length > 0) {
+    chunks.push({ startIndex: chunkStart, endIndex: posts.length - 1 });
+  }
+
+  return chunks;
 }
 
 export async function testLLMConnection(config: LLMConfig): Promise<boolean> {

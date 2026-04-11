@@ -24,7 +24,7 @@ const {
   isSegmentMode, segments,
   summarizedCount, progressPercent, nextPendingSegmentIndex,
   loadTopicData, handleCancel,
-  handleRetry, handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
+  handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
 } = useSummarize(store);
 
 const segmentGridExpanded = ref(false);
@@ -113,8 +113,7 @@ onActivated(async () => {
       <ErrorDisplay
         v-if="error"
         :message="error"
-        action="retry"
-        @retry="handleRetry"
+        action="none"
       />
 
       <!-- Page scraping warnings -->

@@ -85,15 +85,6 @@ export class OpenAIAdapter implements LLMProvider {
           );
         }
 
-        // Heuristic for local LLMs (LM Studio / llama.cpp) that report "stop"
-        // even when context window is exhausted (prompt_tokens + completion_tokens = context_window).
-        if (finishReason === 'stop' && looksLikeTruncatedJson(content)) {
-          throw new LLMError(
-            LLMErrorCode.INCOMPLETE_RESPONSE,
-            'Tóm tắt không hoàn chỉnh: prompt có thể vượt quá context window của model. Hãy giảm "Segment size" trong Cài đặt.',
-          );
-        }
-
         return {
           content,
           tokensUsed: data.usage

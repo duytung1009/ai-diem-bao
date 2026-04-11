@@ -87,7 +87,7 @@ export type MessageType =
 
 export interface LLMTaskRequest {
   taskId: string;
-  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research' | 'extract_knowledge' | 'summarize_segments';
+  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research' | 'extract_knowledge' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks';
   payload: unknown;
 }
 
@@ -154,6 +154,7 @@ export interface CachedTopic {
   summaryJson?: SummaryJSON;
   bookmarked?: boolean;
   knowledgeEntries?: KnowledgeEntry[];
+  knowledgeChunks?: KnowledgeChunk[];     // raw chunks, persistent (F24)
   lastKnowledgePostNumber?: number;
   excludedKnowledgePostNumbers?: number[];
 }
@@ -187,6 +188,15 @@ export interface KnowledgeEntry {
   };
   extractedAt: number;
   saved?: boolean;
+}
+
+export interface KnowledgeChunk {
+  index: number;                // thứ tự chunk, 0-based
+  startPostNumber: number;      // post đầu (inclusive)
+  endPostNumber: number;        // post cuối (inclusive)
+  entries: KnowledgeEntry[];    // raw entries từ chunk này (PRE-reduce)
+  extractedAt: number;          // timestamp
+  complete?: boolean;           // false = chunk cuối, chưa đầy budget, cho phép append posts mới
 }
 
 export interface CustomPrompts {

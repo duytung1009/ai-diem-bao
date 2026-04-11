@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl, normalizeUrl } from '@/lib/cache-manager';
-import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry } from '@/lib/types';
+import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry, KnowledgeChunk } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -123,6 +123,7 @@ watch(selectedTopicKey, () => {
       segments: updated.segments ? [...updated.segments] as TopicSegment[] : allTopics.value[idx].segments,
       summaryJson: updated.summaryJson as SummaryJSON | undefined ?? allTopics.value[idx].summaryJson,
       knowledgeEntries: updated.knowledgeEntries ? [...updated.knowledgeEntries] as KnowledgeEntry[] : allTopics.value[idx].knowledgeEntries,
+      knowledgeChunks: updated.knowledgeChunks ? [...updated.knowledgeChunks] as KnowledgeChunk[] : allTopics.value[idx].knowledgeChunks,
       excludedKnowledgePostNumbers: updated.excludedKnowledgePostNumbers ? [...updated.excludedKnowledgePostNumbers] : allTopics.value[idx].excludedKnowledgePostNumbers,
     };
     allTopics.value[idx] = topic;
@@ -389,7 +390,7 @@ function formatRelativeTime(timestamp: number): string {
                 <span class="text-xs">Xóa topic này?</span>
                 <div class="flex gap-2">
                   <button
-                    class="btn btn-danger"
+                    class="btn btn-sm btn-danger"
                     @click.stop="executeDelete"
                   >
                     Xóa

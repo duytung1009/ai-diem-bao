@@ -59,7 +59,8 @@
       "Bash(sed -n '1,35p' entrypoints/sidepanel/views/SummaryView.vue)",
       "Bash(sed -n '95,115p' entrypoints/sidepanel/views/SummaryView.vue)",
       "Bash(sed -n '1,20p' entrypoints/sidepanel/views/KnowledgeView.vue)",
-      "Bash(sed -n '275,290p' entrypoints/sidepanel/views/KnowledgeView.vue)"
+      "Bash(sed -n '275,290p' entrypoints/sidepanel/views/KnowledgeView.vue)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   },
   "model": "sonnet"

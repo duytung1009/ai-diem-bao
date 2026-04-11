@@ -363,11 +363,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         segPosts = existing.posts;
       } else {
         isScraping.value = true;
-        simpleLoadingText.value = `Đang đọc ${seg.label}...`;
+        // Let scrapeProgress's default message drive the display during scrape.
         const { posts: scraped, errors } = await scrapeRange(topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
         isScraping.value = false;
         scrapeProgress.value = null;
-        simpleLoadingText.value = '';
         segPosts = scraped;
         if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
         if (errors.length > 0) scrapingWarnings.value = errors;
@@ -809,19 +808,59 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     let pendingStartPage = resume?.pendingStartPage ?? 1;
     const startPage = resume?.fromPage ?? 1;
 
+    const version = topicInfo.value?.version;
+    if (!version || version === 'unknown') {
+      throw new Error('Không xác định được phiên bản diễn đàn.');
+    }
+
+    // Overall-progress accumulator: count posts from completed segments + pending.
+    // This drives a single topic-wide scrapeProgress that stays set across both
+    // scrape and LLM phases, so the progress bar reflects page/totalPages of the
+    // whole task (not each 1-page scrape) and ETA covers remaining topic scrape time.
+    let totalPostsScraped = pendingPosts.length;
+    for (let i = 0; i < segmentIndex; i++) {
+      const seg = segmentSummaries.value[i];
+      if (seg?.posts) totalPostsScraped += seg.posts.length;
+    }
+
+    const delayMs = currentConfig.value?.scrapeDelayMs ?? 2000;
+
     for (let page = startPage; page <= totalPages; page++) {
       if (thisId !== activeSummarizeId) return;
 
       isScraping.value = true;
-      simpleLoadingText.value = `Đang đọc trang ${page} / ${totalPages}...`;
+      // Overall topic progress — scrapeProgress stays set across both scrape
+      // and LLM phases so the bar + ETA reflect the whole run.
+      scrapeProgress.value = {
+        currentPage: page,
+        totalPages,
+        postsScraped: totalPostsScraped,
+      };
 
-      const { posts: pagePosts, errors: pageErrors } = await scrapeRange(
-        topicUrl, page, page,
-        currentConfig.value?.scrapeDelayMs ?? 2000,
-      );
+      // Call scrapePageRange directly: going through scrapeRange() would install
+      // a per-range progress callback that clobbers our overall scrapeProgress
+      // with a meaningless 1/1 = 100% each iteration.
+      scrapeAbortCtrl = new AbortController();
+      const signal = scrapeAbortCtrl.signal;
+      let pagePosts: ScrapedPost[];
+      let pageErrors: string[];
+      try {
+        const result = await scrapePageRange(
+          version as XenForoVersion,
+          topicUrl,
+          page,
+          page,
+          undefined,
+          signal,
+          delayMs,
+        );
+        if (signal.aborted) throw new DOMException('Scraping cancelled', 'AbortError');
+        pagePosts = result.posts;
+        pageErrors = result.errors;
+      } finally {
+        scrapeAbortCtrl = null;
+      }
       isScraping.value = false;
-      scrapeProgress.value = null;
-      simpleLoadingText.value = '';
 
       if (pageErrors.length) scrapingWarnings.value.push(...pageErrors);
       if (thisId !== activeSummarizeId) return;
@@ -841,12 +880,22 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         simpleLoadingText.value = '';
       }
 
+      totalPostsScraped += enrichedPosts.length;
+      scrapeProgress.value = {
+        currentPage: page,
+        totalPages,
+        postsScraped: totalPostsScraped,
+      };
+
       const pageTokens = enrichedPosts.reduce(
         (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
         0,
       );
 
-      // If adding this page would overflow the budget → finalize current segment
+      // If adding this page would overflow the budget → finalize current segment.
+      // Keep scrapeProgress set during summarize so the overall bar keeps ticking;
+      // summarizeAndSaveSegment will set simpleLoadingText which takes precedence
+      // over the scrape default message in ProgressIndicator.
       if (pendingTokens + pageTokens > budgetTokens && pendingPosts.length > 0) {
         await summarizeAndSaveSegment(segmentIndex, pendingStartPage, page - 1, pendingPosts, false, thisId);
         if (error.value || thisId !== activeSummarizeId) return;

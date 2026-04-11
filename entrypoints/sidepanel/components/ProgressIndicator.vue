@@ -88,11 +88,14 @@ const etaDisplay = computed(() => {
 });
 
 const displayMessage = computed(() => {
+  // Explicit message (e.g. "Đang tóm tắt phần X...") wins over scrape default,
+  // so that during the LLM phase of an overall-progress run we can keep the
+  // page-progress bar while showing the current stage text.
+  if (props.message) return props.message;
   if (props.scrapeProgress) {
     const p = props.scrapeProgress;
     return `Đang đọc trang ${p.currentPage}/${p.totalPages} (${p.postsScraped} bài)...`;
   }
-  if (props.message) return props.message;
   return task.value?.progress?.message || props.fallbackMessage || 'Đang xử lý...';
 });
 </script>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS, MAX_CACHE_DISPLAY_BYTES } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
+import { buildCacheExport } from '@/lib/exporter';
 import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useTheme } from '../composables/useTheme';
@@ -36,6 +37,7 @@ const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
 const MAX_CACHE_BYTES = MAX_CACHE_DISPLAY_BYTES;
 const showClearConfirm = ref(false);
+const exporting = ref(false);
 
 const { themeMode: currentTheme, setTheme } = useTheme();
 const themeOptions = [
@@ -209,6 +211,24 @@ async function executeClearAll() {
 
 function cancelClearAll() {
   showClearConfirm.value = false;
+}
+
+async function exportCache() {
+  exporting.value = true;
+  try {
+    const topics = await sendMessage<CachedTopic[]>('GET_ALL_CACHED_TOPICS');
+    const payload = buildCacheExport(topics || []);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `ai-diem-bao-export-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    exporting.value = false;
+  }
 }
 </script>
 
@@ -540,6 +560,14 @@ function cancelClearAll() {
       <p v-if="cacheNearFull" class="text-xs text-orange-600 dark:text-orange-400">
         ⚠ Cache gần đầy. Các cache cũ sẽ tự động bị xoá khi lưu mới.
       </p>
+      <button
+        v-if="!showClearConfirm"
+        class="w-full btn btn-sm btn-secondary"
+        :disabled="exporting"
+        @click="exportCache"
+      >
+        {{ exporting ? 'Đang xuất...' : 'Xuất dữ liệu (JSON)' }}
+      </button>
       <button
         v-if="!showClearConfirm"
         class="w-full btn btn-sm btn-danger"

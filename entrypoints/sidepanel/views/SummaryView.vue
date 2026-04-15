@@ -4,6 +4,10 @@ import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import type { LLMConfig } from '@/lib/types';
+import { calculateSegmentBudget, estimateTokens } from '@/lib/token-estimator';
+import { SUMMARY_PROMPT } from '@/lib/prompts';
+import { estimateAutoSummarizeCalls } from '@/lib/llm/cost-estimator';
+import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
@@ -33,6 +37,17 @@ const {
 const segmentGridExpanded = ref(false);
 const confirmingAutoSummarize = ref(false);
 const activeSummaryView = ref<'summary' | 'analysis'>('summary');
+
+const summaryPromptTokens = estimateTokens(SUMMARY_PROMPT);
+const estimatedAutoSummarizeCalls = computed(() => {
+  if (!topicInfo.value || !currentConfig.value) return 0;
+  const model = currentConfig.value.model ?? 'gpt-4o-mini';
+  const budget = calculateSegmentBudget(model, summaryPromptTokens, undefined, currentConfig.value.contextWindow);
+  return estimateAutoSummarizeCalls(topicInfo.value.pageCount, budget);
+});
+const showAutoSummarizeCostWarning = computed(() =>
+  estimatedAutoSummarizeCalls.value > LLM_WARN_THRESHOLD_CALLS,
+);
 
 const newPostCount = computed(() => livePostCount.value - (cachedTopic?.value?.totalPosts ?? 0));
 
@@ -198,6 +213,7 @@ onActivated(async () => {
               </button>
               <span v-else class="flex items-center gap-1.5 flex-wrap">
                 <span class="text-xs text-(--color-text-secondary)">Tóm tắt {{ segments.length }} phần, không thể hủy. Tiếp tục?</span>
+                <span v-if="showAutoSummarizeCostWarning" class="text-xs text-amber-600 dark:text-amber-400">⚠️ Ước tính ~{{ estimatedAutoSummarizeCalls }} API calls. Chi phí có thể cao.</span>
                 <button
                   class="px-2.5 py-1 text-xs rounded-full font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                   @click="confirmingAutoSummarize = false; handleAutoSummarizeAll()"

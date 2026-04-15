@@ -142,6 +142,7 @@ export async function summarizeTopic(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
   const systemPrompt = customPrompts?.summary || SUMMARY_PROMPT;
@@ -152,13 +153,13 @@ export async function summarizeTopic(
     // Use map-reduce for large topics
     const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
     onProgress?.(`Đang tóm tắt phần 1/${contextCheck.chunksNeeded}...`, 1, total);
-    const rawResult = await summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
+    const rawResult = await summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded, systemPrompt, signal);
     const json = parseSummaryJSON(rawResult);
     return json ? JSON.stringify(json) : rawResult;
   }
 
   // Direct summarization for small topics
-  const response = await provider.summarize(posts, systemPrompt);
+  const response = await provider.summarize(posts, systemPrompt, signal);
   const json = parseSummaryJSON(response.content);
   return json ? JSON.stringify(json) : response.content;
 }
@@ -202,6 +203,7 @@ export async function analyzeOpinions(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
   const systemPrompt = customPrompts?.opinions || OPINION_ANALYSIS_PROMPT;
@@ -211,16 +213,17 @@ export async function analyzeOpinions(
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Phân tích ý kiến (${contextCheck.chunksNeeded} phần)...`);
     // Use map-reduce to extract opinions
-    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, OPINION_CHUNK_PROMPT);
+    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, OPINION_CHUNK_PROMPT, undefined, signal);
     // Then analyze the combined summary
     const opinionResponse = await provider.summarize(
       [{ author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 } as ScrapedPost],
       systemPrompt,
+      signal,
     );
     return opinionResponse.content;
   }
 
-  const response = await provider.summarize(posts, systemPrompt);
+  const response = await provider.summarize(posts, systemPrompt, signal);
   return response.content;
 }
 
@@ -230,6 +233,7 @@ export async function researchTopic(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
   const systemPrompt = customPrompts?.research || RESEARCH_PROMPT;
@@ -249,16 +253,16 @@ export async function researchTopic(
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Đang tra cứu (${contextCheck.chunksNeeded} phần)...`);
     // Map-reduce: summarize chunks preserving citation info, then answer at reduce
-    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, CHUNK_SUMMARY_PROMPT);
+    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, CHUNK_SUMMARY_PROMPT, undefined, signal);
     const condensedPosts: ScrapedPost[] = [
       { author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 },
       questionPost,
     ] as ScrapedPost[];
-    const response = await provider.summarize(condensedPosts, systemPrompt);
+    const response = await provider.summarize(condensedPosts, systemPrompt, signal);
     return response.content;
   }
 
-  const response = await provider.summarize(allPosts, systemPrompt);
+  const response = await provider.summarize(allPosts, systemPrompt, signal);
   return response.content;
 }
 
@@ -272,6 +276,7 @@ export async function extractKnowledge(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
   const systemPrompt = customPrompts?.knowledge || KNOWLEDGE_EXTRACT_PROMPT;
@@ -284,7 +289,7 @@ export async function extractKnowledge(
   };
 
   onProgress?.('Đang trích xuất kiến thức...');
-  const response = await provider.summarize([topicContextPost, ...posts], systemPrompt);
+  const response = await provider.summarize([topicContextPost, ...posts], systemPrompt, signal);
   return response.content;
 }
 
@@ -297,6 +302,7 @@ export async function extractKnowledgeChunk(
   title: string,
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
 
@@ -308,7 +314,7 @@ export async function extractKnowledgeChunk(
   };
 
   onProgress?.('Đang trích xuất kiến thức...');
-  const response = await provider.summarize([topicContextPost, ...chunkPosts], KNOWLEDGE_CHUNK_PROMPT);
+  const response = await provider.summarize([topicContextPost, ...chunkPosts], KNOWLEDGE_CHUNK_PROMPT, signal);
   return response.content;
 }
 
@@ -320,6 +326,7 @@ export async function reduceKnowledgeChunks(
   partialEntries: KnowledgeEntry[][],
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
 
@@ -336,7 +343,7 @@ export async function reduceKnowledgeChunks(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([combinedPost], KNOWLEDGE_REDUCE_PROMPT);
+  const response = await provider.summarize([combinedPost], KNOWLEDGE_REDUCE_PROMPT, signal);
   return response.content;
 }
 
@@ -435,6 +442,7 @@ export async function generateThreadAnalysis(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
+  signal?: AbortSignal,
 ): Promise<ThreadAnalysisJSON> {
   const provider = createProvider(config);
   const systemPrompt = customPrompts?.threadAnalysis || THREAD_ANALYSIS_PROMPT;
@@ -448,7 +456,7 @@ export async function generateThreadAnalysis(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([inputPost], systemPrompt);
+  const response = await provider.summarize([inputPost], systemPrompt, signal);
   const result = parseThreadAnalysisJSON(response.content);
   if (!result) {
     throw new Error('Không thể parse kết quả phân tích thread. LLM trả về dữ liệu không hợp lệ.');
@@ -517,13 +525,14 @@ async function summaryChunks(
   suggestedChunks?: number,
   mapPrompt: string = CHUNK_SUMMARY_PROMPT,
   reducePrompt: string = REDUCE_SUMMARY_PROMPT,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
   const chunks = chunkPosts(posts, config.model, mapPrompt, suggestedChunks, config.contextWindow);
 
   if (chunks.length === 1) {
     // No chunking needed
-    const response = await provider.summarize(chunks[0], mapPrompt);
+    const response = await provider.summarize(chunks[0], mapPrompt, signal);
     return response.content;
   }
 
@@ -533,7 +542,7 @@ async function summaryChunks(
   const partialSummaries: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(`Đang tóm tắt phần ${i + 1}/${chunks.length}...`, i + 1, total);
-    const response = await provider.summarize(chunks[i], mapPrompt);
+    const response = await provider.summarize(chunks[i], mapPrompt, signal);
     partialSummaries.push(response.content);
 
     // Small delay between requests to avoid rate limiting
@@ -560,7 +569,7 @@ async function summaryChunks(
       postNumber: i + 1,
     } as ScrapedPost));
     onProgress?.(`Gộp đệ quy (${partialSummaries.length} phần)...`);
-    return summaryChunks(partialAsPosts, config, onProgress, undefined, reducePrompt, reducePrompt);
+    return summaryChunks(partialAsPosts, config, onProgress, undefined, reducePrompt, reducePrompt, signal);
   }
 
   const reduceChunks: ScrapedPost[] = [
@@ -572,7 +581,7 @@ async function summaryChunks(
     } as ScrapedPost,
   ];
 
-  const finalResponse = await provider.summarize(reduceChunks, reducePrompt);
+  const finalResponse = await provider.summarize(reduceChunks, reducePrompt, signal);
   return finalResponse.content;
 }
 
@@ -647,6 +656,7 @@ async function reduceSegmentSummaries(
   contextLimit: number,
   onProgress?: LLMProgressCallback,
   depth: number = 0,
+  signal?: AbortSignal,
 ): Promise<string> {
   // Fast path: nothing to reduce
   if (summaries.length === 1) return summaries[0];
@@ -690,7 +700,7 @@ async function reduceSegmentSummaries(
     const label = depth === 0 ? 'Đang tạo tóm tắt tổng quan...' : `Đang gộp tóm tắt (lớp ${depth + 1})...`;
     onProgress?.(label);
     const post: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content, timestamp: '', postNumber: 0 }];
-    const response = await provider.summarize(post, REDUCE_SUMMARY_PROMPT);
+    const response = await provider.summarize(post, REDUCE_SUMMARY_PROMPT, signal);
     return response.content;
   }
 
@@ -708,26 +718,27 @@ async function reduceSegmentSummaries(
     onProgress?.(`Đang gộp nhóm ${g + 1}/${groups.length} (lớp ${depth + 1})...`, g + 1, groups.length);
     const groupContent = buildReduceContent(groups[g]);
     const groupPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: groupContent, timestamp: '', postNumber: 0 }];
-    const response = await provider.summarize(groupPost, REDUCE_SUMMARY_PROMPT);
+    const response = await provider.summarize(groupPost, REDUCE_SUMMARY_PROMPT, signal);
     const json = parseSummaryJSON(response.content);
     intermediates.push(json ? JSON.stringify(json) : response.content);
 
     if (g < groups.length - 1) await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
   }
 
-  return reduceSegmentSummaries(intermediates, provider, contextLimit, onProgress, depth + 1);
+  return reduceSegmentSummaries(intermediates, provider, contextLimit, onProgress, depth + 1, signal);
 }
 
 export async function summarizeSegments(
   segmentSummaries: string[],
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
   const contextLimit = getContextLimit(config.model, config.contextWindow);
 
   const resultText = await reduceSegmentSummaries(
-    segmentSummaries, provider, contextLimit, onProgress,
+    segmentSummaries, provider, contextLimit, onProgress, 0, signal,
   );
 
   // Post-process: programmatic dedup of supporters (safety net)
@@ -748,7 +759,8 @@ async function summarizeWithMapReduce(
   onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   suggestedChunks?: number,
   finalPrompt?: string,
+  signal?: AbortSignal,
 ): Promise<string> {
-  const combined = await summaryChunks(posts, config, onProgress, suggestedChunks, undefined, finalPrompt);
+  const combined = await summaryChunks(posts, config, onProgress, suggestedChunks, undefined, finalPrompt, signal);
   return combined;
 }

@@ -166,6 +166,10 @@ function threadAnalysisTask(summaryJson: SummaryJSON, meta: { title: string; tot
   return createTask('thread_analysis', { summaryJson, meta });
 }
 
+function cancelTask(taskId: string) {
+  sendMessage('CANCEL_LLM_TASK', { taskId }).catch(() => {});
+}
+
 export function useLLM() {
   if (!listenerRegistered) {
     browser.runtime.onMessage.addListener((message: { type: string; payload: unknown }) => {
@@ -193,6 +197,7 @@ export function useLLM() {
     extractKnowledgeChunkTask,
     reduceKnowledgeChunksTask,
     threadAnalysisTask,
+    cancelTask,
     getTaskState,
     getETA,
     activeTasks: readonly(activeTasks),

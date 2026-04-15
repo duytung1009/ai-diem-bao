@@ -12,7 +12,7 @@ import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 
 export function useSummarize(store: ReturnType<typeof useTopicStore>) {
-  const { summarize, summarizeSegmentsTask, threadAnalysisTask } = useLLM();
+  const { summarize, summarizeSegmentsTask, threadAnalysisTask, cancelTask } = useLLM();
 
   // --- State ---
   const summary = ref('');
@@ -297,6 +297,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   async function handleCancel() {
     activeSummarizeId++; // Invalidate any running flow (single segment or auto-summarize)
     scrapeAbortCtrl?.abort();
+    if (llmTaskId.value) cancelTask(llmTaskId.value);
     isScraping.value = false;
     scrapeProgress.value = null;
     simpleLoadingText.value = '';

@@ -1,7 +1,7 @@
 import type { ScrapedPost } from '../types';
 
 export interface LLMProvider {
-  summarize(posts: ScrapedPost[], systemPrompt: string): Promise<LLMResponse>;
+  summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal): Promise<LLMResponse>;
   testConnection(): Promise<boolean>;
 }
 

@@ -33,6 +33,9 @@ export const LLM_TASK_CLEANUP_DELAY_MS = 5_000;
 export const MAP_REDUCE_CHUNK_DELAY_MS = 100;
 export const RESPONSE_BUFFER_TOKENS = 2_000;
 
+// LLM cost guard
+export const LLM_WARN_THRESHOLD_CALLS = 5; // warn if estimated LLM calls > this
+
 // Cache freshness
 export const FRESHNESS_ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const FRESHNESS_ONE_WEEK_MS = 7 * FRESHNESS_ONE_DAY_MS;

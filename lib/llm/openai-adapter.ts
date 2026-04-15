@@ -4,6 +4,20 @@ import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
 import { withRetry } from './retry';
 
 /**
+ * Merge multiple AbortSignals into one: aborts the combined controller when any input fires.
+ * Fallback for environments where AbortSignal.any() is not available.
+ */
+function mergeAbortSignals(...signals: (AbortSignal | undefined)[]): AbortController {
+  const ctrl = new AbortController();
+  for (const s of signals) {
+    if (!s) continue;
+    if (s.aborted) { ctrl.abort(s.reason); break; }
+    s.addEventListener('abort', () => ctrl.abort(s.reason), { once: true });
+  }
+  return ctrl;
+}
+
+/**
  * Returns true if the text looks like a JSON object that was cut off mid-stream.
  * Used to detect context-window exhaustion on local LLMs that report finish_reason "stop"
  * even when truncated.
@@ -18,7 +32,7 @@ function looksLikeTruncatedJson(text: string): boolean {
 export class OpenAIAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
 
-  async summarize(posts: ScrapedPost[], systemPrompt: string): Promise<LLMResponse> {
+  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal): Promise<LLMResponse> {
     const userContent = posts
       .map((p) => `[${p.author}] (#${p.postNumber}):\n${p.content}`)
       .join('\n\n---\n\n');
@@ -26,7 +40,7 @@ export class OpenAIAdapter implements LLMProvider {
     const response = await this.chatCompletion([
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userContent },
-    ]);
+    ], signal);
 
     return response;
   }
@@ -44,13 +58,15 @@ export class OpenAIAdapter implements LLMProvider {
 
   private async chatCompletion(
     messages: Array<{ role: string; content: string }>,
+    externalSignal?: AbortSignal,
   ): Promise<LLMResponse> {
     return withRetry(async () => {
       const baseUrl = this.config.baseUrl.replace(/\/+$/, '');
       const url = `${baseUrl}/chat/completions`;
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 120000);
+      const timeoutCtrl = new AbortController();
+      const timeoutId = setTimeout(() => timeoutCtrl.abort(), this.config.timeoutMs ?? 120000);
+      const merged = mergeAbortSignals(timeoutCtrl.signal, externalSignal);
 
       try {
         const res = await fetch(url, {
@@ -64,7 +80,7 @@ export class OpenAIAdapter implements LLMProvider {
             messages,
             temperature: this.config.temperature,
           }),
-          signal: controller.signal,
+          signal: merged.signal,
         });
 
         if (!res.ok) {
@@ -93,7 +109,12 @@ export class OpenAIAdapter implements LLMProvider {
         };
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
-          throw new LLMError(LLMErrorCode.TIMEOUT, 'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.');
+          if (timeoutCtrl.signal.aborted) {
+            // Timeout fired — wrap as LLM timeout error
+            throw new LLMError(LLMErrorCode.TIMEOUT, 'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.');
+          }
+          // User cancel — propagate AbortError as-is
+          throw err;
         }
         throw err;
       } finally {

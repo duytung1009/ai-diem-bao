@@ -15,6 +15,9 @@ export default defineBackground(() => {
     .then(() => migrateNormalizedUrls())
     .catch(console.error);
 
+  // Track in-flight LLM tasks for true cancel support (F26)
+  const activeLLMTasks = new Map<string, AbortController>();
+
   browser.runtime?.onMessage.addListener(
     (message: Message, _sender, sendResponse) => {
       console.log('[BG] onMessage:', message.type, message.payload);
@@ -40,9 +43,22 @@ export default defineBackground(() => {
             void browser.storage.sync.get(''); // no-op ping to keep service worker alive
           }, KEEPALIVE_INTERVAL_MS);
 
-          processLLMTask(taskId, taskType, payload)
-            .finally(() => clearInterval(keepalive));
+          const ctrl = new AbortController();
+          activeLLMTasks.set(taskId, ctrl);
 
+          processLLMTask(taskId, taskType, payload, ctrl.signal)
+            .finally(() => {
+              clearInterval(keepalive);
+              activeLLMTasks.delete(taskId);
+            });
+
+          return true;
+        }
+
+        case 'CANCEL_LLM_TASK': {
+          const { taskId } = message.payload as { taskId: string };
+          activeLLMTasks.get(taskId)?.abort();
+          sendResponse({ cancelled: true });
           return true;
         }
 
@@ -222,7 +238,7 @@ async function migrateNormalizedUrls(): Promise<void> {
   }
 }
 
-async function processLLMTask(taskId: string, taskType: string, payload: unknown): Promise<void> {
+async function processLLMTask(taskId: string, taskType: string, payload: unknown, signal?: AbortSignal): Promise<void> {
   const startTime = Date.now();
   const config = await getSettings();
   const prompts = await getCustomPrompts();
@@ -246,58 +262,58 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
       case 'summarize': {
         const posts = payload as ScrapedPost[];
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        result = { summary: await summarizeTopic(posts, config, onProgress, prompts) };
+        result = { summary: await summarizeTopic(posts, config, onProgress, prompts, signal) };
         break;
       }
       case 'summarize_incremental': {
         const { previousSummary, newPosts } = payload as { previousSummary: string; newPosts: ScrapedPost[] };
         inputTokens = estimateTokens(previousSummary + newPosts.map(p => p.content).join(''));
-        result = { summary: await updateSummary(previousSummary, newPosts, config, onProgress, prompts) };
+        result = { summary: await updateSummary(previousSummary, newPosts, config, onProgress, prompts, signal) };
         break;
       }
       case 'analyze_opinions': {
         const posts = payload as ScrapedPost[];
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        result = { opinions: await analyzeOpinions(posts, config, onProgress, prompts) };
+        result = { opinions: await analyzeOpinions(posts, config, onProgress, prompts, signal) };
         break;
       }
       case 'research': {
         const { posts, question } = payload as { posts: ScrapedPost[]; question: string };
         inputTokens = estimateTokens(posts.map(p => p.content).join('') + question);
-        result = { answer: await researchTopic(posts, question, config, onProgress, prompts) };
+        result = { answer: await researchTopic(posts, question, config, onProgress, prompts, signal) };
         break;
       }
       case 'extract_knowledge': {
         const { posts, title } = payload as { posts: ScrapedPost[]; title: string };
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        const raw = await extractKnowledge(posts, title, config, onProgress, prompts);
+        const raw = await extractKnowledge(posts, title, config, onProgress, prompts, signal);
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }
       case 'extract_knowledge_chunk': {
         const { posts, title } = payload as { posts: ScrapedPost[]; title: string };
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        const raw = await extractKnowledgeChunk(posts, title, config, onProgress);
+        const raw = await extractKnowledgeChunk(posts, title, config, onProgress, signal);
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }
       case 'reduce_knowledge_chunks': {
         const { partialEntries } = payload as { partialEntries: KnowledgeEntry[][] };
         inputTokens = estimateTokens(JSON.stringify(partialEntries));
-        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress);
+        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress, signal);
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }
       case 'summarize_segments': {
         const summaries = payload as string[];
         inputTokens = estimateTokens(summaries.join(''));
-        result = { summary: await summarizeSegments(summaries, config, onProgress) };
+        result = { summary: await summarizeSegments(summaries, config, onProgress, signal) };
         break;
       }
       case 'thread_analysis': {
         const { summaryJson, meta } = payload as { summaryJson: SummaryJSON; meta: { title: string; totalPages: number; totalPosts: number } };
         inputTokens = estimateTokens(JSON.stringify(summaryJson));
-        result = { analysis: await generateThreadAnalysis(summaryJson, meta, config, onProgress, prompts) };
+        result = { analysis: await generateThreadAnalysis(summaryJson, meta, config, onProgress, prompts, signal) };
         break;
       }
       default:

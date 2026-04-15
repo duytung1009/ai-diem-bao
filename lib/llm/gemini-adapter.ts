@@ -3,15 +3,25 @@ import type { LLMProvider, LLMResponse } from './types';
 import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
 import { withRetry } from './retry';
 
+function mergeAbortSignals(...signals: (AbortSignal | undefined)[]): AbortController {
+  const ctrl = new AbortController();
+  for (const s of signals) {
+    if (!s) continue;
+    if (s.aborted) { ctrl.abort(s.reason); break; }
+    s.addEventListener('abort', () => ctrl.abort(s.reason), { once: true });
+  }
+  return ctrl;
+}
+
 export class GeminiAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
 
-  async summarize(posts: ScrapedPost[], systemPrompt: string): Promise<LLMResponse> {
+  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal): Promise<LLMResponse> {
     const userContent = posts
       .map((p) => `[${p.author}] (#${p.postNumber}):\n${p.content}`)
       .join('\n\n---\n\n');
 
-    return this.generateContent(systemPrompt, userContent);
+    return this.generateContent(systemPrompt, userContent, signal);
   }
 
   async testConnection(): Promise<boolean> {
@@ -29,6 +39,7 @@ export class GeminiAdapter implements LLMProvider {
   private async generateContent(
     systemInstruction: string,
     userMessage: string,
+    externalSignal?: AbortSignal,
   ): Promise<LLMResponse> {
     const apiKey = this.config.apiKey;
     if (!apiKey) {
@@ -42,11 +53,12 @@ export class GeminiAdapter implements LLMProvider {
       const model = this.config.model || 'gemini-2.0-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-      const controller = new AbortController();
+      const timeoutCtrl = new AbortController();
       const timeoutId = setTimeout(
-        () => controller.abort(),
+        () => timeoutCtrl.abort(),
         this.config.timeoutMs ?? 120000,
       );
+      const merged = mergeAbortSignals(timeoutCtrl.signal, externalSignal);
 
       try {
         const res = await fetch(url, {
@@ -70,7 +82,7 @@ export class GeminiAdapter implements LLMProvider {
               maxOutputTokens: this.config.maxTokens ?? 4096,
             },
           }),
-          signal: controller.signal,
+          signal: merged.signal,
         });
 
         if (!res.ok) {
@@ -109,10 +121,13 @@ export class GeminiAdapter implements LLMProvider {
         };
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
-          throw new LLMError(
-            LLMErrorCode.TIMEOUT,
-            'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.',
-          );
+          if (timeoutCtrl.signal.aborted) {
+            throw new LLMError(
+              LLMErrorCode.TIMEOUT,
+              'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.',
+            );
+          }
+          throw err;
         }
         throw err;
       } finally {

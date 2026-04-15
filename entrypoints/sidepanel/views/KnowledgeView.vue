@@ -4,12 +4,14 @@ import type { CachedTopic, KnowledgeEntry, KnowledgeChunk, LLMConfig, ScrapedPos
 import { sendMessage } from '@/lib/messaging';
 import { estimateTokens, calculateSegmentBudget } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
+import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
+import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 
-const { extractKnowledge: runExtract, extractKnowledgeChunkTask, reduceKnowledgeChunksTask } = useLLM();
+const { extractKnowledge: runExtract, extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask } = useLLM();
 const store = useTopicStore();
 const { topicInfo } = useSummarize(store);
 
@@ -23,6 +25,7 @@ const searchQuery = ref('');
 const selectedTags = ref<string[]>([]);
 const expandedIds = ref<Set<string>>(new Set());
 const showSavedOnly = ref(false);
+const confirmingExtract = ref(false);
 
 // F24: chunked flow state
 let activeExtractId = 0;
@@ -30,6 +33,15 @@ const currentChunkIndex = ref(0);
 const totalChunks = ref(0);
 const currentPhase = ref<'idle' | 'extracting' | 'reducing'>('idle');
 const currentConfig = ref<LLMConfig | null>(null);
+
+// Cost estimate for extract
+const estimatedExtractApiCalls = computed(() => {
+  if (!allPosts.value.length || !currentConfig.value) return 0;
+  const model = currentConfig.value.model ?? 'gpt-4o-mini';
+  const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow);
+  return estimateExtractCalls(chunks.length);
+});
+const showExtractCostWarning = computed(() => estimatedExtractApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
 
 const TAG_CLASSES: Record<string, string> = {
   'kinh nghiệm': 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
@@ -276,7 +288,16 @@ async function runDirectExtract(postsToProcess: ScrapedPost[], guardId: number, 
   if (fresh && guardId === activeExtractId) cachedTopic.value = fresh;
 }
 
+function onExtractClick() {
+  if (showExtractCostWarning.value) {
+    confirmingExtract.value = true;
+  } else {
+    handleExtract();
+  }
+}
+
 async function handleExtract() {
+  confirmingExtract.value = false;
   if (!allPosts.value.length) return;
   if (isLoading.value) return;
 
@@ -457,6 +478,7 @@ async function runReducePhase(
 }
 
 function handleCancel() {
+  if (llmTaskId.value) cancelTask(llmTaskId.value);
   activeExtractId++;
   isLoading.value = false;
   llmTaskId.value = null;
@@ -539,14 +561,23 @@ async function handleClearTracking() {
         Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
       </div>
 
-      <!-- Extract button (no entries yet) -->
-      <button
-        v-if="allPosts.length && !entries.length && !isLoading"
-        class="w-full btn btn-primary"
-        @click="handleExtract"
-      >
-        Trích xuất Kiến thức
-      </button>
+      <!-- Extract button (no entries yet) — with optional confirm for high-cost topics -->
+      <template v-if="allPosts.length && !entries.length && !isLoading">
+        <button
+          v-if="!confirmingExtract"
+          class="w-full btn btn-primary"
+          @click="onExtractClick"
+        >
+          Trích xuất Kiến thức
+        </button>
+        <div v-else class="space-y-2">
+          <p class="text-xs text-amber-600 dark:text-amber-400">⚠️ Topic này ước tính cần ~{{ estimatedExtractApiCalls }} API calls. Chi phí có thể cao. Tiếp tục?</p>
+          <div class="flex gap-2">
+            <button class="flex-1 btn btn-primary text-xs" @click="handleExtract">Xác nhận</button>
+            <button class="flex-1 btn btn-secondary text-xs" @click="confirmingExtract = false">Hủy</button>
+          </div>
+        </div>
+      </template>
 
       <!-- Progress -->
       <ProgressIndicator v-if="isLoading" :task-id="llmTaskId" :fallback-message="progressLabel" />

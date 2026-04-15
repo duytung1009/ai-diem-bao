@@ -1,4 +1,4 @@
-export const SUMMARY_PROMPT = `Bạn là trợ lý AI chuyên tóm tắt các cuộc thảo luận trên diễn đàn.
+export const SUMMARY_PROMPT = `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
 
 Nhiệm vụ: Đọc các bài viết trong topic và tóm tắt thành JSON có cấu trúc.
 
@@ -264,7 +264,7 @@ Trả về JSON theo đúng format sau:
     "heat": "hot" | "normal" | "low",
     "coreConflict": "Chủ đề/mâu thuẫn chính của thread",
     "keyFacts": ["fact 1", "fact 2", "fact 3"],
-    "misconception": "Điểm VOZ hiểu sai nhiều nhất"
+    "misconception": "Điểm VOZ hiểu sai nhiều nhất (nếu có)"
   },
   "userProfiles": [
     {

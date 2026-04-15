@@ -297,7 +297,7 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
       case 'thread_analysis': {
         const { summaryJson, meta } = payload as { summaryJson: SummaryJSON; meta: { title: string; totalPages: number; totalPosts: number } };
         inputTokens = estimateTokens(JSON.stringify(summaryJson));
-        result = { analysis: await generateThreadAnalysis(summaryJson, meta, config, onProgress) };
+        result = { analysis: await generateThreadAnalysis(summaryJson, meta, config, onProgress, prompts) };
         break;
       }
       default:

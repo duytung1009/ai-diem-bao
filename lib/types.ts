@@ -262,6 +262,7 @@ export interface CustomPrompts {
   opinions?: string;
   research?: string;
   knowledge?: string;
+  threadAnalysis?: string;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';

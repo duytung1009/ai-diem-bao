@@ -434,8 +434,10 @@ export async function generateThreadAnalysis(
   meta: { title: string; totalPages: number; totalPosts: number },
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
+  customPrompts?: CustomPrompts,
 ): Promise<ThreadAnalysisJSON> {
   const provider = createProvider(config);
+  const systemPrompt = customPrompts?.threadAnalysis || THREAD_ANALYSIS_PROMPT;
 
   onProgress?.('Đang phân tích thread...');
 
@@ -446,7 +448,7 @@ export async function generateThreadAnalysis(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([inputPost], THREAD_ANALYSIS_PROMPT);
+  const response = await provider.summarize([inputPost], systemPrompt);
   const result = parseThreadAnalysisJSON(response.content);
   if (!result) {
     throw new Error('Không thể parse kết quả phân tích thread. LLM trả về dữ liệu không hợp lệ.');

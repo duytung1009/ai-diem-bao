@@ -4,7 +4,7 @@ import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS, MAX_CACHE_DISPLAY_BYTES } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { buildCacheExport } from '@/lib/exporter';
-import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT } from '@/lib/prompts';
+import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT, THREAD_ANALYSIS_PROMPT } from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useTheme } from '../composables/useTheme';
 
@@ -48,7 +48,7 @@ const themeOptions = [
 
 // Custom prompts
 const customPrompts = ref<CustomPrompts>({});
-const activePromptTab = ref<'summary' | 'knowledge' | 'research'>('summary');
+const activePromptTab = ref<'summary' | 'knowledge' | 'research' | 'threadAnalysis'>('summary');
 const promptSaveMessage = ref('');
 const promptError = ref('');
 const showDefaultPrompt = ref(false);
@@ -57,12 +57,14 @@ const defaultPrompts = {
   summary: SUMMARY_PROMPT,
   knowledge: KNOWLEDGE_EXTRACT_PROMPT,
   research: RESEARCH_PROMPT,
+  threadAnalysis: THREAD_ANALYSIS_PROMPT,
 };
 
 const promptTabLabels = {
   summary: 'Tóm tắt',
   knowledge: 'Kiến thức',
   research: 'Tra cứu',
+  threadAnalysis: 'Phân tích',
 };
 
 const activePromptValue = computed({
@@ -73,17 +75,30 @@ const activePromptValue = computed({
 });
 
 const claudeModels = [
-  'claude-opus-4-6',
+  'claude-haiku-4-5',
   'claude-sonnet-4-6',
-  'claude-haiku-4-5-20251001',
+  'claude-opus-4-6',
 ];
 
 const geminiModels = [
+  'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
   'gemini-2.5-pro',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
+  'gemini-3-flash-preview',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-3.1-pro-preview',
 ];
+
+const showModelDropdown = ref(false);
+
+function selectModel(model: string) {
+  config.value.model = model;
+  showModelDropdown.value = false;
+}
+
+function closeModelDropdown() {
+  setTimeout(() => { showModelDropdown.value = false; }, 150);
+}
 
 const cacheSizeMB = computed(() => (cacheSizeBytes.value / (1024 * 1024)).toFixed(1));
 const cacheUsagePercent = computed(() => Math.round((cacheSizeBytes.value / MAX_CACHE_BYTES) * 100));
@@ -141,6 +156,7 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
   config.value.maxTokens = saved?.maxTokens ?? defaults.maxTokens;
   config.value.contextWindow = saved?.contextWindow ?? defaults.contextWindow;
   showApiKey.value = false;
+  showModelDropdown.value = false;
 });
 
 watch(activePromptTab, () => {
@@ -315,27 +331,71 @@ async function exportCache() {
     <!-- Model selector for Claude -->
     <div v-if="isClaude">
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Model</label>
-      <select
-        v-model="config.model"
-        class="input"
-      >
-        <option v-for="model in claudeModels" :key="model" :value="model">
-          {{ model }}
-        </option>
-      </select>
+      <div class="relative">
+        <input
+          v-model="config.model"
+          type="text"
+          placeholder="claude-sonnet-4-6"
+          class="input pr-7"
+          @focus="showModelDropdown = true"
+          @blur="closeModelDropdown"
+        />
+        <button
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-primary) text-xs"
+          tabindex="-1"
+          @click="showModelDropdown = !showModelDropdown"
+        >
+          <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </button>
+        <ul
+          v-if="showModelDropdown"
+          class="absolute z-50 w-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-lg shadow-lg overflow-hidden"
+        >
+          <li
+            v-for="model in claudeModels"
+            :key="model"
+            class="px-3 py-1.5 text-xs cursor-pointer hover:bg-(--color-bg-muted) text-(--color-text-primary)"
+            :class="config.model === model ? 'font-medium text-(--color-accent)' : ''"
+            @mousedown.prevent="selectModel(model)"
+          >{{ model }}</li>
+        </ul>
+      </div>
     </div>
 
     <!-- Model selector for Gemini -->
     <div v-if="isGemini">
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Model</label>
-      <select
-        v-model="config.model"
-        class="input"
-      >
-        <option v-for="model in geminiModels" :key="model" :value="model">
-          {{ model }}
-        </option>
-      </select>
+      <div class="relative">
+        <input
+          v-model="config.model"
+          type="text"
+          placeholder="gemini-2.5-flash"
+          class="input pr-7"
+          @focus="showModelDropdown = true"
+          @blur="closeModelDropdown"
+        />
+        <button
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-primary) text-xs"
+          tabindex="-1"
+          @click="showModelDropdown = !showModelDropdown"
+        >
+          <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </button>
+        <ul
+          v-if="showModelDropdown"
+          class="absolute z-50 w-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-lg shadow-lg overflow-hidden"
+        >
+          <li
+            v-for="model in geminiModels"
+            :key="model"
+            class="px-3 py-1.5 text-xs cursor-pointer hover:bg-(--color-bg-muted) text-(--color-text-primary)"
+            :class="config.model === model ? 'font-medium text-(--color-accent)' : ''"
+            @mousedown.prevent="selectModel(model)"
+          >{{ model }}</li>
+        </ul>
+      </div>
     </div>
 
     <!-- Model input for OpenAI/Custom -->
@@ -390,7 +450,7 @@ async function exportCache() {
     <!-- Max output tokens -->
     <div>
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
-        Max output tokens: {{ config.maxTokens ?? 4096 }}
+        Max output tokens: {{ config.maxTokens ?? 16384 }}
       </label>
       <p class="text-[11px] text-(--color-text-muted) mb-1">
         Giới hạn số token LLM có thể trả về trong một lần gọi. Tăng nếu tóm tắt bị cắt ngắn.
@@ -398,14 +458,14 @@ async function exportCache() {
       <input
         v-model.number="config.maxTokens"
         type="range"
-        min="1024"
-        max="16384"
-        step="1024"
+        min="2048"
+        max="1024000"
+        step="2048"
         class="w-full"
       />
       <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
-        <span>1024</span>
-        <span>16384</span>
+        <span>2048</span>
+        <span>1024000</span>
       </div>
     </div>
 
@@ -604,7 +664,7 @@ async function exportCache() {
       <!-- Tabs -->
       <div class="flex border-b border-(--color-border)">
         <button
-          v-for="tab in (['summary', 'knowledge', 'research'] as const)"
+          v-for="tab in (['summary', 'knowledge', 'research', 'threadAnalysis'] as const)"
           :key="tab"
           class="flex-1 py-1.5 text-xs font-medium transition-colors"
           :class="activePromptTab === tab

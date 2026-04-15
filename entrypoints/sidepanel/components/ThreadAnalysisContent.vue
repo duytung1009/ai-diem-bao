@@ -43,7 +43,9 @@ function formatAnalysisAsText(analysis: ThreadAnalysisJSON, title: string, total
   for (const fact of analysis.overview.keyFacts) {
     lines.push(`  - ${fact}`);
   }
-  lines.push(`VOZ hiểu sai: ${analysis.overview.misconception}`);
+  if (analysis.overview?.misconception) {
+    lines.push(`VOZ hiểu sai: ${analysis.overview.misconception}`);
+  }
   lines.push('');
 
   // 2. USER TIÊU BIỂU
@@ -123,8 +125,9 @@ async function handleCopy() {
 
 <template>
   <div class="space-y-5 text-sm">
-    <!-- Copy button -->
-    <div class="flex justify-end">
+    <!-- Actions row: slot bên trái, Copy bên phải -->
+    <div class="flex items-center justify-between">
+      <slot name="actions" />
       <button
         class="btn text-xs flex items-center gap-1.5"
         @click="handleCopy"
@@ -152,7 +155,7 @@ async function handleCopy() {
           <span>{{ fact }}</span>
         </li>
       </ul>
-      <div class="bg-(--color-bg-muted) rounded p-2.5 text-xs text-(--color-text-secondary) border-l-2 border-amber-400">
+      <div v-if="analysis.overview?.misconception" class="bg-(--color-bg-muted) rounded p-2.5 text-xs text-(--color-text-secondary) border-l-2 border-amber-400">
         <span class="font-medium text-amber-600 dark:text-amber-400">VOZ hiểu sai:</span> {{ analysis.overview.misconception }}
       </div>
     </section>

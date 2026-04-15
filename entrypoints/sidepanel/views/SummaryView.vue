@@ -359,9 +359,7 @@ onActivated(async () => {
                     @update="handleSegmentUpdate"
                   />
                 </div>
-                <div class="card p-4">
-                  <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" />
-                </div>
+                <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" />
                 <button
                   class="w-full btn btn-secondary text-sm"
                   :disabled="isProcessing"
@@ -370,7 +368,8 @@ onActivated(async () => {
                   Tóm tắt lại
                 </button>
               </div>
-              <div v-else class="text-center py-4">
+              <div v-else class="flex flex-col items-center gap-3 py-8">
+                <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
                 <button
                   class="btn btn-primary"
                   :disabled="isProcessing"
@@ -402,30 +401,31 @@ onActivated(async () => {
                     @update="handleSegmentUpdate"
                   />
                 </div>
-                <div class="card p-4">
-                  <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" />
-                </div>
-                <button
-                  class="w-full btn btn-secondary text-sm"
-                  :disabled="isProcessing"
-                  @click="generateOverallSummary"
-                >
-                  Tạo lại tóm tắt tổng quan
-                </button>
+                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
+                  <template #actions>
+                    <button
+                      class="btn text-xs flex items-center gap-1.5"
+                      :disabled="isProcessing"
+                      @click="generateOverallSummary"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Tạo lại tổng quan
+                    </button>
+                  </template>
+                </SummaryContent>
               </div>
-              <div v-else class="text-center py-4 space-y-2">
-                <p class="text-xs text-(--color-text-muted)">
-                  Tóm tắt từng phần trước, sau đó tạo tóm tắt tổng quan.
-                </p>
+              <div v-else class="flex flex-col items-center gap-3 py-8">
+                <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
                 <button
-                  v-if="segmentSummaries.filter(s => s?.summary).length >= 2"
                   class="btn btn-primary"
                   :disabled="isProcessing"
-                  @click="generateOverallSummary"
+                  @click="handleAutoSummarizeAll()"
                 >
-                  Tạo tóm tắt tổng quan
+                  Tóm tắt toàn bộ
                 </button>
-                <p v-else class="text-xs text-(--color-text-muted)">(Cần ít nhất 2 phần đã tóm tắt)</p>
+                <p class="text-xs text-(--color-text-muted)">Chủ đề dài, thời gian tóm tắt có thể lâu</p>
               </div>
             </template>
           </template>
@@ -437,7 +437,20 @@ onActivated(async () => {
               :analysis="threadAnalysis"
               :thread-title="store.selectedTopic.value?.title ?? ''"
               :total-pages="cachedTopic?.totalPages ?? 0"
-            />
+            >
+              <template #actions>
+                <button
+                  class="btn text-xs flex items-center gap-1.5"
+                  :disabled="isAnalyzing || isProcessing"
+                  @click="handleGenerateAnalysis"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {{ isAnalyzing ? 'Đang phân tích...' : 'Phân tích lại' }}
+                </button>
+              </template>
+            </ThreadAnalysisContent>
             <div v-else class="flex flex-col items-center gap-3 py-8">
               <p class="text-sm text-(--color-text-secondary)">Chưa có phân tích cho thread này.</p>
               <button
@@ -461,13 +474,11 @@ onActivated(async () => {
               </svg>
               <span class="text-xs text-(--color-text-secondary)">{{ segmentSummaries[activeSegmentIndex].postCount }} bài viết</span>
             </div>
-            <div class="card p-4">
-              <SummaryContent
-                :content="segmentSummaries[activeSegmentIndex].summary"
-                :json="segmentSummaries[activeSegmentIndex].summaryJson"
-                :topic-url="cachedTopic?.url" :post-page-map="postPageMap"
-              />
-            </div>
+            <SummaryContent
+              :content="segmentSummaries[activeSegmentIndex].summary"
+              :json="segmentSummaries[activeSegmentIndex].summaryJson"
+              :topic-url="cachedTopic?.url" :post-page-map="postPageMap"
+            />
             <button
               class="w-full btn btn-secondary text-xs"
               :disabled="isProcessing"

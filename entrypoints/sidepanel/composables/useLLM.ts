@@ -2,7 +2,7 @@ import { ref, readonly } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { estimateTokens } from '@/lib/token-estimator';
 import { STORAGE_KEYS, FALLBACK_MS_PER_TOKEN, LLM_TASK_CLEANUP_DELAY_MS } from '@/lib/constants';
-import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry } from '@/lib/types';
+import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON } from '@/lib/types';
 
 interface LLMTaskState {
   taskId: string;
@@ -162,6 +162,10 @@ function reduceKnowledgeChunksTask(partialEntries: KnowledgeEntry[][]) {
   return createTask('reduce_knowledge_chunks', { partialEntries });
 }
 
+function threadAnalysisTask(summaryJson: SummaryJSON, meta: { title: string; totalPages: number; totalPosts: number }) {
+  return createTask('thread_analysis', { summaryJson, meta });
+}
+
 export function useLLM() {
   if (!listenerRegistered) {
     browser.runtime.onMessage.addListener((message: { type: string; payload: unknown }) => {
@@ -188,6 +192,7 @@ export function useLLM() {
     extractKnowledge,
     extractKnowledgeChunkTask,
     reduceKnowledgeChunksTask,
+    threadAnalysisTask,
     getTaskState,
     getETA,
     activeTasks: readonly(activeTasks),

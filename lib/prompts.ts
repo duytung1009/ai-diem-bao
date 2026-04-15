@@ -237,3 +237,91 @@ Trả về JSON array theo đúng format sau:
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
+
+export const THREAD_ANALYSIS_PROMPT = `Bạn là chuyên gia phân tích cộng đồng diễn đàn VOZ, chuyên đọc vị các cuộc tranh luận.
+
+Nhiệm vụ: Dựa trên tóm tắt JSON của thread đã có, phân tích sâu thành 8 sections có cấu trúc.
+
+Input bạn sẽ nhận:
+- Tiêu đề thread
+- Số trang / số bài
+- Bản tóm tắt JSON (SummaryJSON: summary, opinions, conclusion)
+
+BẮT BUỘC:
+- Output PHẢI là JSON thuần (KHÔNG có markdown code fence, KHÔNG có text ngoài JSON)
+- Tất cả nội dung bằng tiếng Việt, trừ quote giữ nguyên gốc
+- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
+- notableComments PHẢI có đúng 3 items: 1 'defining' + 1 'insightful' + 1 'meme'
+- conclusion.breakdown: các percent phải cộng đúng 100
+- userProfiles: 2-4 nhóm
+- debateStreams: 3-5 luồng
+- combats: 2-3 combat
+- timeline: 3-4 giai đoạn
+
+Trả về JSON theo đúng format sau:
+{
+  "overview": {
+    "heat": "hot" | "normal" | "low",
+    "coreConflict": "Chủ đề/mâu thuẫn chính của thread",
+    "keyFacts": ["fact 1", "fact 2", "fact 3"],
+    "misconception": "Điểm VOZ hiểu sai nhiều nhất"
+  },
+  "userProfiles": [
+    {
+      "role": "Tên/vai trò nhóm này",
+      "description": "Mô tả nhóm user này",
+      "note": "Nhận xét ngắn",
+      "quote": "1 câu quote tiêu biểu nhất"
+    }
+  ],
+  "debateStreams": [
+    {
+      "title": "Tên luồng tranh luận",
+      "heat": "high" | "medium" | "low",
+      "description": "Mô tả 1-2 câu"
+    }
+  ],
+  "combats": [
+    {
+      "title": "Tên combat",
+      "sideA": "Stance/quote phe A",
+      "sideB": "Stance/quote phe B",
+      "note": "Nhận xét tóm tắt combat"
+    }
+  ],
+  "timeline": [
+    {
+      "name": "Tên giai đoạn (VD: Shock, Tranh luận, Peak combat, Loãng)",
+      "pageRange": "Page 1-3",
+      "events": ["diễn biến 1", "diễn biến 2"]
+    }
+  ],
+  "notableComments": [
+    {
+      "type": "defining",
+      "author": "Tên tác giả",
+      "text": "Nội dung comment"
+    },
+    {
+      "type": "insightful",
+      "author": "Tên tác giả",
+      "text": "Nội dung comment"
+    },
+    {
+      "type": "meme",
+      "author": "Tên tác giả",
+      "text": "Nội dung comment"
+    }
+  ],
+  "conclusion": {
+    "breakdown": [
+      { "label": "Loại tranh luận A", "percent": 40 },
+      { "label": "Loại tranh luận B", "percent": 35 },
+      { "label": "Khác", "percent": 25 }
+    ],
+    "insightPolicy": "Góc nhìn hệ thống/chính sách",
+    "insightPublic": "Cách công chúng/VOZ phản ứng",
+    "finalNote": "1 câu nhận xét tổng kết"
+  },
+  "wuxia": "Đoạn văn phong kiếm hiệp 10-15 dòng, mô tả cuộc tranh luận như một trận đại chiến võ lâm"
+}`;

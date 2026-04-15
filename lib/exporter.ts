@@ -64,7 +64,7 @@ function stripTopic(topic: CachedTopic): ExportedTopic {
     opinions: topic.opinions,
     overallSummary: topic.overallSummary,
     summaryJson: topic.summaryJson,
-    segments: topic.segments?.map(({ startPage, endPage, summary, summaryJson, postCount, summarizedAt }) => ({
+    segments: topic.segments?.filter(Boolean).map(({ startPage, endPage, summary, summaryJson, postCount, summarizedAt }) => ({
       startPage, endPage, summary, summaryJson, postCount, summarizedAt,
     })),
     knowledgeEntries: topic.knowledgeEntries,

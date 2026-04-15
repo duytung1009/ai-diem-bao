@@ -4,7 +4,7 @@ import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts } from '@/lib/types';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON } from '@/lib/types';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { estimateTokens, calculateSegmentBudget } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
@@ -12,11 +12,13 @@ import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 
 export function useSummarize(store: ReturnType<typeof useTopicStore>) {
-  const { summarize, summarizeSegmentsTask } = useLLM();
+  const { summarize, summarizeSegmentsTask, threadAnalysisTask } = useLLM();
 
   // --- State ---
   const summary = ref('');
   const summaryJson = ref<SummaryJSON | null>(null);
+  const threadAnalysis = ref<ThreadAnalysisJSON | null>(null);
+  const isAnalyzing = ref(false);
   const error = ref('');
   const scrapeProgress = ref<{ currentPage: number; totalPages: number; postsScraped: number } | null>(null);
   const simpleLoadingText = ref('');
@@ -36,6 +38,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   // Non-reactive
   let scrapeAbortCtrl: AbortController | null = null;
   let activeSummarizeId = 0;
+  let activeAnalyzeId = 0;
 
   // --- Computed ---
   const topicInfo = computed<DetectResult | null>(() => {
@@ -203,6 +206,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     activeSummarizeId++;
     summary.value = '';
     summaryJson.value = null;
+    threadAnalysis.value = null;
+    isAnalyzing.value = false;
     error.value = '';
     scrapeProgress.value = null;
     simpleLoadingText.value = '';
@@ -238,6 +243,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         }
         if (fresh.summaryJson) {
           summaryJson.value = fresh.summaryJson;
+        }
+        if (fresh.threadAnalysis) {
+          threadAnalysis.value = fresh.threadAnalysis;
         }
         if (fresh.segments) {
           segmentSummaries.value = fresh.segments.map(seg => {
@@ -991,10 +999,54 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
+  async function handleGenerateAnalysis(): Promise<void> {
+    const topic = store.selectedTopic.value;
+    if (!topic || !summaryJson.value || isAnalyzing.value) return;
+
+    const thisAnalyzeId = ++activeAnalyzeId;
+    isAnalyzing.value = true;
+    error.value = '';
+
+    try {
+      const task = threadAnalysisTask(summaryJson.value, {
+        title: topic.title,
+        totalPages: topic.totalPages,
+        totalPosts: topic.totalPosts,
+      });
+      llmTaskId.value = task.taskId;
+      const taskResult = await task.result;
+      llmTaskId.value = null;
+
+      // Stale guard: topic changed while analyzing
+      if (thisAnalyzeId !== activeAnalyzeId) return;
+
+      const analysis = (taskResult.data as { analysis: unknown }).analysis;
+      threadAnalysis.value = analysis as typeof threadAnalysis.value;
+
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        url: topic.url,
+        title: topic.title,
+        version: topic.version,
+        totalPages: topic.totalPages,
+        threadAnalysis: analysis,
+      }).catch(() => {});
+    } catch (err) {
+      if (thisAnalyzeId !== activeAnalyzeId) return;
+      error.value = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (thisAnalyzeId === activeAnalyzeId) {
+        isAnalyzing.value = false;
+        llmTaskId.value = null;
+      }
+    }
+  }
+
   return {
     // refs
     summary,
     summaryJson,
+    threadAnalysis,
+    isAnalyzing,
     error,
     scrapeProgress,
     simpleLoadingText,
@@ -1031,5 +1083,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     generateOverallSummary,
     handleSegmentUpdate,
     handleAutoSummarizeAll,
+    handleGenerateAnalysis,
   };
 }

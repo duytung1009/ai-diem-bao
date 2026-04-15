@@ -1,4 +1,4 @@
-import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback, KnowledgeEntry } from '../types';
+import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback, KnowledgeEntry, ThreadAnalysisJSON } from '../types';
 import { createProvider } from './factory';
 import {
   SUMMARY_PROMPT,
@@ -11,6 +11,7 @@ import {
   KNOWLEDGE_EXTRACT_PROMPT,
   KNOWLEDGE_CHUNK_PROMPT,
   KNOWLEDGE_REDUCE_PROMPT,
+  THREAD_ANALYSIS_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget } from '../token-estimator';
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO } from '../constants';
@@ -386,10 +387,75 @@ export async function testLLMConnection(config: LLMConfig): Promise<boolean> {
   return provider.testConnection();
 }
 
+export function parseThreadAnalysisJSON(raw: string): ThreadAnalysisJSON | null {
+  let text = raw.trim();
+  const fenceMatch = text.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/s);
+  if (fenceMatch) {
+    text = fenceMatch[1].trim();
+  } else {
+    const singleBacktickMatch = text.match(/^`([\s\S]*?)`$/s);
+    if (singleBacktickMatch) text = singleBacktickMatch[1].trim();
+  }
+  text = text.replace(/\u00A0/g, ' ');
+  text = text.replace(/\\([^"\\\/bfnrtu])/g, (_, ch) => ch);
+
+  const isValid = (parsed: unknown): parsed is ThreadAnalysisJSON => {
+    const p = parsed as ThreadAnalysisJSON;
+    return (
+      p !== null &&
+      typeof p === 'object' &&
+      typeof p.overview?.coreConflict === 'string' &&
+      Array.isArray(p.userProfiles) &&
+      Array.isArray(p.debateStreams) &&
+      Array.isArray(p.combats) &&
+      Array.isArray(p.timeline) &&
+      Array.isArray(p.notableComments) &&
+      typeof p.conclusion?.finalNote === 'string' &&
+      typeof p.wuxia === 'string'
+    );
+  };
+
+  try {
+    const parsed = JSON.parse(text);
+    return isValid(parsed) ? parsed : null;
+  } catch {
+    try {
+      const repaired = repairUnescapedQuotes(text);
+      const parsed = JSON.parse(repaired);
+      return isValid(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+export async function generateThreadAnalysis(
+  summaryJson: SummaryJSON,
+  meta: { title: string; totalPages: number; totalPosts: number },
+  config: LLMConfig,
+  onProgress?: LLMProgressCallback,
+): Promise<ThreadAnalysisJSON> {
+  const provider = createProvider(config);
+
+  onProgress?.('Đang phân tích thread...');
+
+  const inputPost: ScrapedPost = {
+    author: 'INPUT',
+    content: `Tiêu đề thread: ${meta.title}\nSố trang: ${meta.totalPages}\nSố bài viết: ${meta.totalPosts}\n\nBản tóm tắt JSON:\n${JSON.stringify(summaryJson)}`,
+    timestamp: '',
+    postNumber: 0,
+  };
+
+  const response = await provider.summarize([inputPost], THREAD_ANALYSIS_PROMPT);
+  const result = parseThreadAnalysisJSON(response.content);
+  if (!result) {
+    throw new Error('Không thể parse kết quả phân tích thread. LLM trả về dữ liệu không hợp lệ.');
+  }
+  return result;
+}
+
 /**
  * Split posts into chunks that fit within context limit
- */
-function chunkPosts(
   posts: ScrapedPost[],
   model: string,
   mapPrompt: string,

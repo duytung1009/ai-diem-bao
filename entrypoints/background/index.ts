@@ -1,10 +1,10 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
-import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection } from '@/lib/llm/summarizer';
+import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk } from '@/lib/types';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
@@ -117,6 +117,9 @@ export default defineBackground(() => {
                 excludedKnowledgePostNumbers: partial.excludedKnowledgePostNumbers !== undefined
                   ? partial.excludedKnowledgePostNumbers
                   : existing?.excludedKnowledgePostNumbers,
+                threadAnalysis: partial.threadAnalysis !== undefined
+                  ? partial.threadAnalysis
+                  : existing?.threadAnalysis,
               };
               await saveCachedTopic(topic);
               sendResponse({ success: true });
@@ -289,6 +292,12 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         const summaries = payload as string[];
         inputTokens = estimateTokens(summaries.join(''));
         result = { summary: await summarizeSegments(summaries, config, onProgress) };
+        break;
+      }
+      case 'thread_analysis': {
+        const { summaryJson, meta } = payload as { summaryJson: SummaryJSON; meta: { title: string; totalPages: number; totalPosts: number } };
+        inputTokens = estimateTokens(JSON.stringify(summaryJson));
+        result = { analysis: await generateThreadAnalysis(summaryJson, meta, config, onProgress) };
         break;
       }
       default:

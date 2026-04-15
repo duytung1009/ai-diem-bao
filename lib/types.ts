@@ -88,7 +88,7 @@ export type MessageType =
 
 export interface LLMTaskRequest {
   taskId: string;
-  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research' | 'extract_knowledge' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks';
+  taskType: 'summarize' | 'summarize_incremental' | 'analyze_opinions' | 'research' | 'extract_knowledge' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks' | 'thread_analysis';
   payload: unknown;
 }
 
@@ -158,6 +158,7 @@ export interface CachedTopic {
   knowledgeChunks?: KnowledgeChunk[];     // raw chunks, persistent (F24)
   lastKnowledgePostNumber?: number;
   excludedKnowledgePostNumbers?: number[];
+  threadAnalysis?: ThreadAnalysisJSON;
 }
 
 export interface TopicSegment {
@@ -198,6 +199,62 @@ export interface KnowledgeChunk {
   entries: KnowledgeEntry[];    // raw entries từ chunk này (PRE-reduce)
   extractedAt: number;          // timestamp
   complete?: boolean;           // false = chunk cuối, chưa đầy budget, cho phép append posts mới
+}
+
+// --- Thread Analysis types (F25) ---
+
+export interface ThreadUserProfile {
+  role: string;
+  description: string;
+  note: string;
+  quote: string;
+}
+
+export interface ThreadDebateStream {
+  title: string;
+  heat: 'high' | 'medium' | 'low';
+  description: string;
+}
+
+export interface ThreadCombat {
+  title: string;
+  sideA: string;
+  sideB: string;
+  note: string;
+}
+
+export interface ThreadTimelinePhase {
+  name: string;
+  pageRange: string;
+  events: string[];
+}
+
+export interface ThreadNotableComment {
+  type: 'defining' | 'insightful' | 'meme';
+  author: string;
+  text: string;
+}
+
+export interface ThreadAnalysisJSON {
+  overview: {
+    heat: 'hot' | 'normal' | 'low';
+    coreConflict: string;
+    keyFacts: string[];
+    misconception: string;
+  };
+  userProfiles: ThreadUserProfile[];
+  debateStreams: ThreadDebateStream[];
+  combats: ThreadCombat[];
+  timeline: ThreadTimelinePhase[];
+  notableComments: ThreadNotableComment[];
+  conclusion: {
+    breakdown: { label: string; percent: number }[];
+    insightPolicy: string;
+    insightPublic: string;
+    finalNote: string;
+  };
+  wuxia: string;
+}
 }
 
 export interface CustomPrompts {

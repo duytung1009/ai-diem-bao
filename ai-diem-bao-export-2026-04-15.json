@@ -1,0 +1,398 @@
+{
+  "url": "https://voz.vn/t/thue-dong-loat-yeu-cau-ho-kinh-doanh-co-doanh-thu-duoi-500-trieu-ngung-su-dung-hoa-don.1228509/",
+  "title": "Thuế đồng loạt yêu cầu hộ kinh doanh có doanh thu dưới 500 triệu ngừng sử dụng hóa đơn",
+  "topicType": "news",
+  "cachedAt": 1776236835004,
+  "llmConfig": {
+    "provider": "custom",
+    "model": "qwen3.5"
+  },
+  "totalPosts": 276,
+  "summarizedPostCount": 276,
+  "totalPages": 14,
+  "summary": "{\"summary\":\"Cuộc thảo luận xoay quanh sự bất cập của hệ thống thuế và hóa đơn điện tử tại Việt Nam, đặc biệt là áp đặt các quy định phức tạp lên các hộ kinh doanh nhỏ (dưới 500 triệu đồng) trong khi hạ tầng kỹ thuật và năng lực nhân sự chưa đáp ứng. Người dùng bày tỏ sự bất mãn vì chính sách thay đổi liên tục, gây khó khăn cho việc kinh doanh và làm hệ thống thuế bị quá tải. Họ chỉ trích sự thiếu chuyên môn của đội ngũ cán bộ thuế, dẫn đến các lỗi hệ thống hiển thị trực tiếp trên giao diện người dùng và sự thiếu hỗ trợ thực tế.\",\"opinions\":[{\"title\":\"Chính sách thiếu tầm nhìn và gây rối loạn\",\"description\":\"Người dùng cho rằng việc thay đổi quy định liên tục khiến người dân bị quay như chong chóng, không có lộ trình rõ ràng. Họ cho rằng đây là hành động của những người chỉ muốn thu tiền mà không quan tâm đến hậu quả thực tế.\",\"supporters\":[\"Sanguinius\",\"Raybanglass\",\"Vhnguyen\",\"Foreveru\",\"shini1989qn\",\"0verseer\"],\"quotes\":[{\"author\":\"Sanguinius\",\"postNumber\":41629923,\"text\":\"Tầm nhìn 100 năm làm đến đâu nghĩ đến đó. Người dân bị quay như chong chóng\"},{\"author\":\"Raybanglass\",\"postNumber\":41629963,\"text\":\"Hahahahhaha tầm nhìn 100 năm đó hahahaha, áp luật đéo tính đc server quá tải hahahaha, tao cười sặc, đéo nổi qua ngọn cỏ\"},{\"author\":\"Foreveru\",\"postNumber\":41634966,\"text\":\"Tôi vừa làm sáng hqua mà,làm như tôi nói là vào được nếu trước đây fen chỉ đăng nhập bằng mst 001 hoặc vneid\"}]},{\"title\":\"Hệ thống quá tải và thiếu chuyên môn\",\"description\":\"Nhiều người dùng cho rằng nguyên nhân chính là do hệ thống không chịu tải được lượng truy cập lớn từ hàng triệu hộ kinh doanh cùng lúc. Họ chỉ trích đội ngũ làm phần mềm và quản lý dự án thiếu chuyên môn, chỉ biết ra lệnh mà không biết kỹ thuật.\",\"supporters\":[\"Fryderyk Chopin\",\"mrphamvn\",\"LastStand\",\"TechDiscussed01\",\"djonas9\",\"John117\"],\"quotes\":[{\"author\":\"Fryderyk Chopin\",\"postNumber\":41629937,\"text\":\"Ủa họ xuất hóa đơn thì có ảnh hưởng gì ko nhỉ mà lại cấm dùng?\"},{\"author\":\"mrphamvn\",\"postNumber\":41629947,\"text\":\"Quá tải sv đéo nộp được hs. Thay vì nâng cấp sv thì họ chọn cách đơn giản hơn\"},{\"author\":\"djonas9\",\"postNumber\":41634253,\"text\":\"Chắc thím chưa từng làm việc với đội nhà nước thím ko biết, đội này ko phải toàn người ko biết gì đâu, lắm ông giỏi phết (về cả tech), nhưng rất tiếc cái giỏi của họ không để phục vụ phát triển chung đâu, mà họ dùng cái đó để phục vụ phát triển riêng.\"}]},{\"title\":\"Khó khăn trong thực thi và chi phí\",\"description\":\"Người dùng lo ngại về chi phí mua thiết bị, phần mềm và dịch vụ hóa đơn điện tử, đặc biệt khi doanh thu nhỏ. Họ cho rằng việc ép buộc xuất hóa đơn cho các hộ nhỏ là không cần thiết và gây tốn kém.\",\"supporters\":[\"Foreveru\",\"cuipap8x\",\"Yui_Salvation\",\"fusioncat1401\",\"sunshineangel\",\"rongden184\",\"BoAnh3Day\"],\"quotes\":[{\"author\":\"Foreveru\",\"postNumber\":41629958,\"text\":\"Vậy là gian thương phần mềm đã úp bô thành công hkd. Năm ngoái dù bán dưới 500tr-1 tỷ tôi vẫn cân nhắc hddt, hên là không mua, không h này cũng ăn quả đắng bọn này\"},{\"author\":\"sunshineangel\",\"postNumber\":41635730,\"text\":\"Đầu tháng bắt mua quyển số để ghi đơn bán, bắt mua phần mềm mất mẹ hơn 5tr cho 2 năm bây giờ lại không dùng., mua bộ máy mini mất mẹ 4tr5 nữa, màn hình thêm 2tr.\"},{\"author\":\"rongden184\",\"postNumber\":41636006,\"text\":\"Cái trang hoadondientu chỉ tra cứu được trong vòng 01 tháng tại một thời điểm nhất định là hiểu hệ thống đéo cân nổi rồi.\"}]},{\"title\":\"Lỗi hệ thống và trải nghiệm người dùng kém\",\"description\":\"Người dùng phàn nàn về các lỗi hiển thị trực tiếp trên giao diện, thông báo đăng nhập thất bại, và sự thiếu hỗ trợ từ phía cơ quan thuế. Họ cho rằng việc lỗi hệ thống được thiết kế để gây khó khăn cho người dân.\",\"supporters\":[\"Thích Yên Tĩnh\",\"paulBon101\",\"noneedname\",\"LastStand\"],\"quotes\":[{\"author\":\"Thích Yên Tĩnh\",\"postNumber\":41633796,\"text\":\"Vãi. Vừa cập nhật etax, đăng nhập báo thông tin đăng nhập ko đúng. Đợi tối vậy. Lỗi làm khai báo trễ có phạt ko nhỉ. Bắt làm onl, onl lỗi sv, để dễ phạt hàng loạt chắc. Ưu việt.\"},{\"author\":\"paulBon101\",\"postNumber\":41633901,\"text\":\"mỗi user là 1 tester, show ra dễ thấy, khỏi cần vô xem log\"},{\"author\":\"LastStand\",\"postNumber\":41632047,\"text\":\"CHất vc, lỗi show thẳng ra front end. Đỡ phải chui vào đọc log\"}]},{\"title\":\"Cán bộ thuế thiếu chuyên môn và thiếu trách nhiệm\",\"description\":\"Nhiều người cho rằng đội ngũ cán bộ thuế thiếu chuyên môn, chỉ làm theo thói quen hoặc dựa trên các văn bản không rõ ràng. Họ thiếu sự am hiểu về nghiệp vụ và kỹ thuật, dẫn đến việc áp dụng sai luật hoặc gây khó khăn cho người dân khi giải quyết các vấn đề thực tế.\",\"supporters\":[\"kissem\",\"Thích Yên Tĩnh\",\"kisanhtrangls\"],\"quotes\":[{\"author\":\"kissem\",\"postNumber\":41636365,\"text\":\"Cán bộ thuế nói thẳng ra là nghiệp vụ kém lắm, chỉ có tổ trưởng, trưởng phòng là có chuyên môn thôi, còn lại là làm theo thói quen\"},{\"author\":\"Thích Yên Tĩnh\",\"postNumber\":41636453,\"text\":\"Này là tui đi lên thuế thấy, nhiều người làm onl mãi ko được hỏi thẳng nhờ cb giúp, gửi cảm ơn, xong việc (cả tui cũng thế)\"}]}],\"conclusion\":\"Cuộc thảo luận cho thấy sự bất đồng lớn giữa nhận thức của người dân/doanh nghiệp và cách thức thực thi của đội ngũ nhà nước. Mặc dù có những ý kiến chỉ trích về sự tham nhũng và thiếu chuyên môn, nhưng đa số người tham gia vẫn thừa nhận rằng đội ngũ nhà nước có nhiều người giỏi về kỹ thuật. Vấn đề cốt lõi nằm ở việc áp dụng các quy định phức tạp lên các doanh nghiệp nhỏ lẻ trong khi hạ tầng kỹ thuật và năng lực nhân sự chưa đáp ứng, dẫn đến sự bất cập và thiếu niềm tin vào hệ thống.\"}",
+  "summaryJson": {
+    "summary": "Cuộc thảo luận xoay quanh sự bất cập của hệ thống thuế và hóa đơn điện tử tại Việt Nam, đặc biệt là áp đặt các quy định phức tạp lên các hộ kinh doanh nhỏ (dưới 500 triệu đồng) trong khi hạ tầng kỹ thuật và năng lực nhân sự chưa đáp ứng. Người dùng bày tỏ sự bất mãn vì chính sách thay đổi liên tục, gây khó khăn cho việc kinh doanh và làm hệ thống thuế bị quá tải. Họ chỉ trích sự thiếu chuyên môn của đội ngũ cán bộ thuế, dẫn đến các lỗi hệ thống hiển thị trực tiếp trên giao diện người dùng và sự thiếu hỗ trợ thực tế.",
+    "opinions": [
+      {
+        "title": "Chính sách thiếu tầm nhìn và gây rối loạn",
+        "description": "Người dùng cho rằng việc thay đổi quy định liên tục khiến người dân bị quay như chong chóng, không có lộ trình rõ ràng. Họ cho rằng đây là hành động của những người chỉ muốn thu tiền mà không quan tâm đến hậu quả thực tế.",
+        "supporters": [
+          "Sanguinius",
+          "Raybanglass",
+          "Vhnguyen",
+          "Foreveru",
+          "shini1989qn",
+          "0verseer"
+        ],
+        "quotes": [
+          {
+            "author": "Sanguinius",
+            "postNumber": 41629923,
+            "text": "Tầm nhìn 100 năm làm đến đâu nghĩ đến đó. Người dân bị quay như chong chóng"
+          },
+          {
+            "author": "Raybanglass",
+            "postNumber": 41629963,
+            "text": "Hahahahhaha tầm nhìn 100 năm đó hahahaha, áp luật đéo tính đc server quá tải hahahaha, tao cười sặc, đéo nổi qua ngọn cỏ"
+          },
+          {
+            "author": "Foreveru",
+            "postNumber": 41634966,
+            "text": "Tôi vừa làm sáng hqua mà,làm như tôi nói là vào được nếu trước đây fen chỉ đăng nhập bằng mst 001 hoặc vneid"
+          }
+        ]
+      },
+      {
+        "title": "Hệ thống quá tải và thiếu chuyên môn",
+        "description": "Nhiều người dùng cho rằng nguyên nhân chính là do hệ thống không chịu tải được lượng truy cập lớn từ hàng triệu hộ kinh doanh cùng lúc. Họ chỉ trích đội ngũ làm phần mềm và quản lý dự án thiếu chuyên môn, chỉ biết ra lệnh mà không biết kỹ thuật.",
+        "supporters": [
+          "Fryderyk Chopin",
+          "mrphamvn",
+          "LastStand",
+          "TechDiscussed01",
+          "djonas9",
+          "John117"
+        ],
+        "quotes": [
+          {
+            "author": "Fryderyk Chopin",
+            "postNumber": 41629937,
+            "text": "Ủa họ xuất hóa đơn thì có ảnh hưởng gì ko nhỉ mà lại cấm dùng?"
+          },
+          {
+            "author": "mrphamvn",
+            "postNumber": 41629947,
+            "text": "Quá tải sv đéo nộp được hs. Thay vì nâng cấp sv thì họ chọn cách đơn giản hơn"
+          },
+          {
+            "author": "djonas9",
+            "postNumber": 41634253,
+            "text": "Chắc thím chưa từng làm việc với đội nhà nước thím ko biết, đội này ko phải toàn người ko biết gì đâu, lắm ông giỏi phết (về cả tech), nhưng rất tiếc cái giỏi của họ không để phục vụ phát triển chung đâu, mà họ dùng cái đó để phục vụ phát triển riêng."
+          }
+        ]
+      },
+      {
+        "title": "Khó khăn trong thực thi và chi phí",
+        "description": "Người dùng lo ngại về chi phí mua thiết bị, phần mềm và dịch vụ hóa đơn điện tử, đặc biệt khi doanh thu nhỏ. Họ cho rằng việc ép buộc xuất hóa đơn cho các hộ nhỏ là không cần thiết và gây tốn kém.",
+        "supporters": [
+          "Foreveru",
+          "cuipap8x",
+          "Yui_Salvation",
+          "fusioncat1401",
+          "sunshineangel",
+          "rongden184",
+          "BoAnh3Day"
+        ],
+        "quotes": [
+          {
+            "author": "Foreveru",
+            "postNumber": 41629958,
+            "text": "Vậy là gian thương phần mềm đã úp bô thành công hkd. Năm ngoái dù bán dưới 500tr-1 tỷ tôi vẫn cân nhắc hddt, hên là không mua, không h này cũng ăn quả đắng bọn này"
+          },
+          {
+            "author": "sunshineangel",
+            "postNumber": 41635730,
+            "text": "Đầu tháng bắt mua quyển số để ghi đơn bán, bắt mua phần mềm mất mẹ hơn 5tr cho 2 năm bây giờ lại không dùng., mua bộ máy mini mất mẹ 4tr5 nữa, màn hình thêm 2tr."
+          },
+          {
+            "author": "rongden184",
+            "postNumber": 41636006,
+            "text": "Cái trang hoadondientu chỉ tra cứu được trong vòng 01 tháng tại một thời điểm nhất định là hiểu hệ thống đéo cân nổi rồi."
+          }
+        ]
+      },
+      {
+        "title": "Lỗi hệ thống và trải nghiệm người dùng kém",
+        "description": "Người dùng phàn nàn về các lỗi hiển thị trực tiếp trên giao diện, thông báo đăng nhập thất bại, và sự thiếu hỗ trợ từ phía cơ quan thuế. Họ cho rằng việc lỗi hệ thống được thiết kế để gây khó khăn cho người dân.",
+        "supporters": [
+          "Thích Yên Tĩnh",
+          "paulBon101",
+          "noneedname",
+          "LastStand"
+        ],
+        "quotes": [
+          {
+            "author": "Thích Yên Tĩnh",
+            "postNumber": 41633796,
+            "text": "Vãi. Vừa cập nhật etax, đăng nhập báo thông tin đăng nhập ko đúng. Đợi tối vậy. Lỗi làm khai báo trễ có phạt ko nhỉ. Bắt làm onl, onl lỗi sv, để dễ phạt hàng loạt chắc. Ưu việt."
+          },
+          {
+            "author": "paulBon101",
+            "postNumber": 41633901,
+            "text": "mỗi user là 1 tester, show ra dễ thấy, khỏi cần vô xem log"
+          },
+          {
+            "author": "LastStand",
+            "postNumber": 41632047,
+            "text": "CHất vc, lỗi show thẳng ra front end. Đỡ phải chui vào đọc log"
+          }
+        ]
+      },
+      {
+        "title": "Cán bộ thuế thiếu chuyên môn và thiếu trách nhiệm",
+        "description": "Nhiều người cho rằng đội ngũ cán bộ thuế thiếu chuyên môn, chỉ làm theo thói quen hoặc dựa trên các văn bản không rõ ràng. Họ thiếu sự am hiểu về nghiệp vụ và kỹ thuật, dẫn đến việc áp dụng sai luật hoặc gây khó khăn cho người dân khi giải quyết các vấn đề thực tế.",
+        "supporters": [
+          "kissem",
+          "Thích Yên Tĩnh",
+          "kisanhtrangls"
+        ],
+        "quotes": [
+          {
+            "author": "kissem",
+            "postNumber": 41636365,
+            "text": "Cán bộ thuế nói thẳng ra là nghiệp vụ kém lắm, chỉ có tổ trưởng, trưởng phòng là có chuyên môn thôi, còn lại là làm theo thói quen"
+          },
+          {
+            "author": "Thích Yên Tĩnh",
+            "postNumber": 41636453,
+            "text": "Này là tui đi lên thuế thấy, nhiều người làm onl mãi ko được hỏi thẳng nhờ cb giúp, gửi cảm ơn, xong việc (cả tui cũng thế)"
+          }
+        ]
+      }
+    ],
+    "conclusion": "Cuộc thảo luận cho thấy sự bất đồng lớn giữa nhận thức của người dân/doanh nghiệp và cách thức thực thi của đội ngũ nhà nước. Mặc dù có những ý kiến chỉ trích về sự tham nhũng và thiếu chuyên môn, nhưng đa số người tham gia vẫn thừa nhận rằng đội ngũ nhà nước có nhiều người giỏi về kỹ thuật. Vấn đề cốt lõi nằm ở việc áp dụng các quy định phức tạp lên các doanh nghiệp nhỏ lẻ trong khi hạ tầng kỹ thuật và năng lực nhân sự chưa đáp ứng, dẫn đến sự bất cập và thiếu niềm tin vào hệ thống."
+  },
+  "segments": [
+    {
+      "startPage": 1,
+      "endPage": 10,
+      "summary": "{\"summary\":\"Chủ đề thảo luận xoay quanh việc cơ quan thuế yêu cầu các hộ kinh doanh (HKD) có doanh thu dưới 500 triệu đồng phải ngừng sử dụng hóa đơn điện tử. Nhiều người dùng bày tỏ sự bất mãn vì chính sách thay đổi liên tục, gây khó khăn cho việc kinh doanh và làm hệ thống thuế bị quá tải. Họ cho rằng việc ép buộc sử dụng hóa đơn rồi lại cấm sử dụng là hành động thiếu tầm nhìn, chỉ nhằm mục đích thu tiền hoặc kiểm soát dân đen mà không tính đến thực tế hạ tầng kỹ thuật số. Nhiều người cũng chỉ trích sự thiếu chuyên môn của đội ngũ cán bộ thuế và công nghệ nhà nước, dẫn đến các lỗi hệ thống hiển thị trực tiếp trên giao diện người dùng.\",\"opinions\":[{\"title\":\"Chính sách thiếu tầm nhìn và gây rối loạn\",\"description\":\"Người dùng cho rằng việc thay đổi quy định liên tục khiến người dân bị quay như chong chóng, không có lộ trình rõ ràng. Họ cho rằng đây là hành động của những người chỉ muốn thu tiền mà không quan tâm đến hậu quả thực tế.\",\"supporters\":[\"Sanguinius\",\"Raybanglass\",\"Jokerhero3\",\"Vhnguyen\"],\"quotes\":[{\"author\":\"Sanguinius\",\"postNumber\":41629923,\"text\":\"Tầm nhìn 100 năm làm đến đâu nghĩ đến đó. Người dân bị quay như chong chóng\"},{\"author\":\"Raybanglass\",\"postNumber\":41629963,\"text\":\"Hahahahhaha tầm nhìn 100 năm đó hahahaha, áp luật đéo tính đc server quá tải hahahaha, tao cười sặc, đéo nổi qua ngọn cỏ\"},{\"author\":\"Vhnguyen\",\"postNumber\":4131471,\"text\":\"Vấn đề là không có lộ trình chuyển đổi thực tiễn. Cũng dễ hiểu thôi vì ông top server muốn tăng trưởng 2 số, bơm tiền mọi giá nên phải tích cực vắt kiệt đc ai thì vắt thôi.\"}]},{\"title\":\"Hệ thống quá tải và thiếu chuyên môn\",\"description\":\"Nhiều người dùng cho rằng nguyên nhân chính là do hệ thống không chịu tải được lượng truy cập lớn từ hàng triệu hộ kinh doanh cùng lúc. Họ chỉ trích đội ngũ làm phần mềm và quản lý dự án thiếu chuyên môn, chỉ biết ra lệnh mà không biết kỹ thuật.\",\"supporters\":[\"Fryderyk Chopin\",\"mrphamvn\",\"Sanguinius\",\"LastStand\",\"TechDiscussed01\"],\"quotes\":[{\"author\":\"Fryderyk Chopin\",\"postNumber\":41629937,\"text\":\"Ủa họ xuất hóa đơn thì có ảnh hưởng gì ko nhỉ mà lại cấm dùng?\"},{\"author\":\"mrphamvn\",\"postNumber\":41629947,\"text\":\"Quá tải sv đéo nộp được hs. Thay vì nâng cấp sv thì họ chọn cách đơn giản hơn\"},{\"author\":\"LastStand\",\"postNumber\":41633223,\"text\":\"Chừng nào còn lập cái PMU cho mỗi dự án trọng điểm thì còn tái diễn cái tình trạng nói như rồng như hổ, làm như chó hóc xương. Đã đ có trình độ, chuyên môn thì thuê bên ngoài vào mà tư vấn giám sát.\"},{\"author\":\"TechDiscussed01\",\"postNumber\":41633654,\"text\":\"dân kỹ thuật nó có cái gọi là chuyên môn hoá, đã học kĩ thuật đều biết cái gì k phải chuyên môn của mình thì k trõ mõm vào, đấy mới là cái quan trọng nhất\"}]},{\"title\":\"Khó khăn trong thực thi và chi phí\",\"description\":\"Người dùng lo ngại về chi phí mua thiết bị, phần mềm và dịch vụ hóa đơn điện tử, đặc biệt khi doanh thu nhỏ. Họ cho rằng việc ép buộc xuất hóa đơn cho các hộ nhỏ là không cần thiết và gây tốn kém.\",\"supporters\":[\"Foreveru\",\"cuipap8x\",\"Yui_Salvation\"],\"quotes\":[{\"author\":\"Foreveru\",\"postNumber\":41629958,\"text\":\"Vậy là gian thương phần mềm đã úp bô thành công hkd. Năm ngoái dù bán dưới 500tr-1 tỷ tôi vẫn cân nhắc hddt, hên là không mua, không h này cũng ăn quả đắng bọn này\"},{\"author\":\"cuipap8x\",\"postNumber\":41633218,\"text\":\"nhóm 1 thì đơn giản có sổ s1, ngày ghi 1 dòng doanh thu thôi ( tôi đi hợp bên thuế lãnh đạo thuế cơ sở họ hd như vậy ), quy mô bé tẹo chả ai bắt bẻ trừ khi gian dối chênh lệch lớn doanh thu thôi\"},{\"author\":\"Yui_Salvation\",\"postNumber\":41633673,\"text\":\"Ra cái yêu cầu dừng này là bắt tất cả những thằng nào muốn xuất hoá đơn là buộc phải lên nhóm 2 hết hả? Đéo mẹ cái này là tống tiền rồi\"}]},{\"title\":\"Lỗi hệ thống và trải nghiệm người dùng kém\",\"description\":\"Người dùng phàn nàn về các lỗi hiển thị trực tiếp trên giao diện, thông báo đăng nhập thất bại, và sự thiếu hỗ trợ từ phía cơ quan thuế. Họ cho rằng việc lỗi hệ thống được thiết kế để gây khó khăn cho người dân.\",\"supporters\":[\"Thích Yên Tĩnh\",\"paulBon101\",\"noneedname\",\"LastStand\"],\"quotes\":[{\"author\":\"Thích Yên Tĩnh\",\"postNumber\":41633796,\"text\":\"Vãi. Vừa cập nhật etax, đăng nhập báo thông tin đăng nhập ko đúng. Đợi tối vậy. Lỗi làm khai báo trễ có phạt ko nhỉ. Bắt làm onl, onl lỗi sv, để dễ phạt hàng loạt chắc. Ưu việt.\"},{\"author\":\"paulBon101\",\"postNumber\":41633901,\"text\":\"mỗi user là 1 tester, show ra dễ thấy, khỏi cần vô xem log\"},{\"author\":\"LastStand\",\"postNumber\":41632047,\"text\":\"CHất vc, lỗi show thẳng ra front end. Đỡ phải chui vào đọc log\"},{\"author\":\"noneedname\",\"postNumber\":41634026,\"text\":\"Lỗi trực quan chi tiết vậy còn gì, đỡ phải kêu thằng user bật debug mode ẩn\"}]}],\"conclusion\":\"Không có sự đồng thuận chung về giải pháp. Người dùng chủ yếu mong đợi cơ quan thuế có lộ trình rõ ràng, nâng cấp hạ tầng kỹ thuật số và giảm bớt các quy định áp đặt không cần thiết cho các hộ kinh doanh nhỏ.\"}",
+      "summaryJson": {
+        "summary": "Chủ đề thảo luận xoay quanh việc cơ quan thuế yêu cầu các hộ kinh doanh (HKD) có doanh thu dưới 500 triệu đồng phải ngừng sử dụng hóa đơn điện tử. Nhiều người dùng bày tỏ sự bất mãn vì chính sách thay đổi liên tục, gây khó khăn cho việc kinh doanh và làm hệ thống thuế bị quá tải. Họ cho rằng việc ép buộc sử dụng hóa đơn rồi lại cấm sử dụng là hành động thiếu tầm nhìn, chỉ nhằm mục đích thu tiền hoặc kiểm soát dân đen mà không tính đến thực tế hạ tầng kỹ thuật số. Nhiều người cũng chỉ trích sự thiếu chuyên môn của đội ngũ cán bộ thuế và công nghệ nhà nước, dẫn đến các lỗi hệ thống hiển thị trực tiếp trên giao diện người dùng.",
+        "opinions": [
+          {
+            "title": "Chính sách thiếu tầm nhìn và gây rối loạn",
+            "description": "Người dùng cho rằng việc thay đổi quy định liên tục khiến người dân bị quay như chong chóng, không có lộ trình rõ ràng. Họ cho rằng đây là hành động của những người chỉ muốn thu tiền mà không quan tâm đến hậu quả thực tế.",
+            "supporters": [
+              "Sanguinius",
+              "Raybanglass",
+              "Jokerhero3",
+              "Vhnguyen"
+            ],
+            "quotes": [
+              {
+                "author": "Sanguinius",
+                "postNumber": 41629923,
+                "text": "Tầm nhìn 100 năm làm đến đâu nghĩ đến đó. Người dân bị quay như chong chóng"
+              },
+              {
+                "author": "Raybanglass",
+                "postNumber": 41629963,
+                "text": "Hahahahhaha tầm nhìn 100 năm đó hahahaha, áp luật đéo tính đc server quá tải hahahaha, tao cười sặc, đéo nổi qua ngọn cỏ"
+              },
+              {
+                "author": "Vhnguyen",
+                "postNumber": 4131471,
+                "text": "Vấn đề là không có lộ trình chuyển đổi thực tiễn. Cũng dễ hiểu thôi vì ông top server muốn tăng trưởng 2 số, bơm tiền mọi giá nên phải tích cực vắt kiệt đc ai thì vắt thôi."
+              }
+            ]
+          },
+          {
+            "title": "Hệ thống quá tải và thiếu chuyên môn",
+            "description": "Nhiều người dùng cho rằng nguyên nhân chính là do hệ thống không chịu tải được lượng truy cập lớn từ hàng triệu hộ kinh doanh cùng lúc. Họ chỉ trích đội ngũ làm phần mềm và quản lý dự án thiếu chuyên môn, chỉ biết ra lệnh mà không biết kỹ thuật.",
+            "supporters": [
+              "Fryderyk Chopin",
+              "mrphamvn",
+              "Sanguinius",
+              "LastStand",
+              "TechDiscussed01"
+            ],
+            "quotes": [
+              {
+                "author": "Fryderyk Chopin",
+                "postNumber": 41629937,
+                "text": "Ủa họ xuất hóa đơn thì có ảnh hưởng gì ko nhỉ mà lại cấm dùng?"
+              },
+              {
+                "author": "mrphamvn",
+                "postNumber": 41629947,
+                "text": "Quá tải sv đéo nộp được hs. Thay vì nâng cấp sv thì họ chọn cách đơn giản hơn"
+              },
+              {
+                "author": "LastStand",
+                "postNumber": 41633223,
+                "text": "Chừng nào còn lập cái PMU cho mỗi dự án trọng điểm thì còn tái diễn cái tình trạng nói như rồng như hổ, làm như chó hóc xương. Đã đ có trình độ, chuyên môn thì thuê bên ngoài vào mà tư vấn giám sát."
+              },
+              {
+                "author": "TechDiscussed01",
+                "postNumber": 41633654,
+                "text": "dân kỹ thuật nó có cái gọi là chuyên môn hoá, đã học kĩ thuật đều biết cái gì k phải chuyên môn của mình thì k trõ mõm vào, đấy mới là cái quan trọng nhất"
+              }
+            ]
+          },
+          {
+            "title": "Khó khăn trong thực thi và chi phí",
+            "description": "Người dùng lo ngại về chi phí mua thiết bị, phần mềm và dịch vụ hóa đơn điện tử, đặc biệt khi doanh thu nhỏ. Họ cho rằng việc ép buộc xuất hóa đơn cho các hộ nhỏ là không cần thiết và gây tốn kém.",
+            "supporters": [
+              "Foreveru",
+              "cuipap8x",
+              "Yui_Salvation"
+            ],
+            "quotes": [
+              {
+                "author": "Foreveru",
+                "postNumber": 41629958,
+                "text": "Vậy là gian thương phần mềm đã úp bô thành công hkd. Năm ngoái dù bán dưới 500tr-1 tỷ tôi vẫn cân nhắc hddt, hên là không mua, không h này cũng ăn quả đắng bọn này"
+              },
+              {
+                "author": "cuipap8x",
+                "postNumber": 41633218,
+                "text": "nhóm 1 thì đơn giản có sổ s1, ngày ghi 1 dòng doanh thu thôi ( tôi đi hợp bên thuế lãnh đạo thuế cơ sở họ hd như vậy ), quy mô bé tẹo chả ai bắt bẻ trừ khi gian dối chênh lệch lớn doanh thu thôi"
+              },
+              {
+                "author": "Yui_Salvation",
+                "postNumber": 41633673,
+                "text": "Ra cái yêu cầu dừng này là bắt tất cả những thằng nào muốn xuất hoá đơn là buộc phải lên nhóm 2 hết hả? Đéo mẹ cái này là tống tiền rồi"
+              }
+            ]
+          },
+          {
+            "title": "Lỗi hệ thống và trải nghiệm người dùng kém",
+            "description": "Người dùng phàn nàn về các lỗi hiển thị trực tiếp trên giao diện, thông báo đăng nhập thất bại, và sự thiếu hỗ trợ từ phía cơ quan thuế. Họ cho rằng việc lỗi hệ thống được thiết kế để gây khó khăn cho người dân.",
+            "supporters": [
+              "Thích Yên Tĩnh",
+              "paulBon101",
+              "noneedname",
+              "LastStand"
+            ],
+            "quotes": [
+              {
+                "author": "Thích Yên Tĩnh",
+                "postNumber": 41633796,
+                "text": "Vãi. Vừa cập nhật etax, đăng nhập báo thông tin đăng nhập ko đúng. Đợi tối vậy. Lỗi làm khai báo trễ có phạt ko nhỉ. Bắt làm onl, onl lỗi sv, để dễ phạt hàng loạt chắc. Ưu việt."
+              },
+              {
+                "author": "paulBon101",
+                "postNumber": 41633901,
+                "text": "mỗi user là 1 tester, show ra dễ thấy, khỏi cần vô xem log"
+              },
+              {
+                "author": "LastStand",
+                "postNumber": 41632047,
+                "text": "CHất vc, lỗi show thẳng ra front end. Đỡ phải chui vào đọc log"
+              },
+              {
+                "author": "noneedname",
+                "postNumber": 41634026,
+                "text": "Lỗi trực quan chi tiết vậy còn gì, đỡ phải kêu thằng user bật debug mode ẩn"
+              }
+            ]
+          }
+        ],
+        "conclusion": "Không có sự đồng thuận chung về giải pháp. Người dùng chủ yếu mong đợi cơ quan thuế có lộ trình rõ ràng, nâng cấp hạ tầng kỹ thuật số và giảm bớt các quy định áp đặt không cần thiết cho các hộ kinh doanh nhỏ."
+      },
+      "postCount": 198,
+      "summarizedAt": 1776236220795
+    },
+    {
+      "startPage": 11,
+      "endPage": 14,
+      "summary": "{\"summary\":\"Cuộc thảo luận xoay quanh sự bất cập của hệ thống thuế và hóa đơn điện tử tại Việt Nam, đặc biệt là vấn đề áp đặt các quy định phức tạp lên các doanh nghiệp nhỏ lẻ (dưới 500 triệu đồng) trong khi hạ tầng kỹ thuật và năng lực nhân sự của đội ngũ nhà nước lại chưa đáp ứng. Nhiều người chia sẻ về trải nghiệm thực tế khi hệ thống e-tax bị quá tải, các văn bản pháp luật thay đổi liên tục (\\\"chạy theo chong chóng\\\"), và sự thiếu chuyên môn của cán bộ thuế dẫn đến việc áp dụng sai luật hoặc gây khó khăn cho người dân. Bên cạnh đó, có những ý kiến chỉ trích sự tham nhũng, lợi dụng chức quyền của đội ngũ nhà nước để phục vụ lợi ích cá nhân thay vì phát triển chung, khiến niềm tin vào hệ thống giảm sút nghiêm trọng.\",\"opinions\":[{\"title\":\"Đội ngũ nhà nước giỏi nhưng phục vụ lợi ích riêng\",\"description\":\"Một số người cho rằng đội ngũ nhà nước có nhiều người giỏi về kỹ thuật nhưng họ lại dùng năng lực đó để phục vụ lợi ích cá nhân hoặc tranh công chối tội thay vì phục vụ phát triển chung. Họ chỉ giỏi trong việc hành chính và hạch sách chứ không chuyên về kỹ thuật thực sự.\",\"supporters\":[\"djonas9\",\"John117\",\"kirist\",\"PhongVan.474\"],\"quotes\":[{\"author\":\"djonas9\",\"postNumber\":41634253,\"text\":\"Chắc thím chưa từng làm việc với đội nhà nước thím ko biết, đội này ko phải toàn người ko biết gì đâu, lắm ông giỏi phết (về cả tech), nhưng rất tiếc cái giỏi của họ không để phục vụ phát triển chung đâu, mà họ dùng cái đó để phục vụ phát triển riêng.\"},{\"author\":\"John117\",\"postNumber\":41634705,\"text\":\"Cái giỏi của tụi này đến 80-90% được dùng vào những việc mưu hèn kế bẩn bợ đít tranh công chối tội đổ lỗi thanh minh... để tồn tại trong môi trường nn rồi, vậy thì còn bao nhiêu công lực dành cho những công việc chuyên môn nữa đâu\"}]},{\"title\":\"Hạ tầng và quy định không đồng bộ, gây áp lực lớn cho doanh nghiệp\",\"description\":\"Hệ thống hóa đơn điện tử và e-tax thường xuyên bị quá tải do số lượng người truy cập lớn, trong khi hạ tầng và quy định lại thay đổi liên tục. Các doanh nghiệp nhỏ lẻ phải đối mặt với áp lực phải xuất hóa đơn ngay cả khi doanh thu dưới 500 triệu, dẫn đến việc phải mua phần mềm, máy móc tốn kém nhưng lại không được sử dụng hiệu quả.\",\"supporters\":[\"fusioncat1401\",\"sunshineangel\",\"rongden184\",\"BoAnh3Day\"],\"quotes\":[{\"author\":\"fusioncat1401\",\"postNumber\":41634265,\"text\":\"Làm thông tư nghị định pháp luật mà cứ kiểu sớm nắng chiều mưa như mấy em gái dẩm dở thì ai mà bắt sóng cho kịp có thể nào họp mặt điều chỉnh cho thật bài bản và đầy đủ rồi mới ban hành được không?\"},{\"author\":\"sunshineangel\",\"postNumber\":41635730,\"text\":\"Đầu tháng bắt mua quyển số để ghi đơn bán, bắt mua phần mềm mất mẹ hơn 5tr cho 2 năm bây giờ lại không dùng., mua bộ máy mini mất mẹ 4tr5 nữa, màn hình thêm 2tr.\"},{\"author\":\"rongden184\",\"postNumber\":41636006,\"text\":\"Cái trang hoadondientu chỉ tra cứu được trong vòng 01 tháng tại một thời điểm nhất định là hiểu hệ thống đéo cân nổi rồi.\"}]},{\"title\":\"Cán bộ thuế thiếu chuyên môn và thiếu trách nhiệm\",\"description\":\"Nhiều người cho rằng đội ngũ cán bộ thuế thiếu chuyên môn, chỉ làm theo thói quen hoặc dựa trên các văn bản không rõ ràng. Họ thiếu sự am hiểu về nghiệp vụ và kỹ thuật, dẫn đến việc áp dụng sai luật hoặc gây khó khăn cho người dân khi giải quyết các vấn đề thực tế.\",\"supporters\":[\"kissem\",\"Thích Yên Tĩnh\",\"kisanhtrangls\"],\"quotes\":[{\"author\":\"kissem\",\"postNumber\":41636365,\"text\":\"Cán bộ thuế nói thẳng ra là nghiệp vụ kém lắm, chỉ có tổ trưởng, trưởng phòng là có chuyên môn thôi, còn lại là làm theo thói quen\"},{\"author\":\"Thích Yên Tĩnh\",\"postNumber\":41636453,\"text\":\"Này là tui đi lên thuế thấy, nhiều người làm onl mãi ko được hỏi thẳng nhờ cb giúp, gửi cảm ơn, xong việc (cả tui cũng thế)\"}]},{\"title\":\"Luật pháp thay đổi liên tục, thiếu tính ổn định\",\"description\":\"Các quy định về hóa đơn điện tử và thuế thay đổi liên tục, gây khó khăn cho việc tuân thủ và tạo ra sự bất an cho doanh nghiệp. Nhiều người cho rằng việc thay đổi chính sách liên tục là một cách để tránh trách nhiệm hoặc tạo áp lực lên người dân.\",\"supporters\":[\"shini1989qn\",\"Foreveru\",\"0verseer\"],\"quotes\":[{\"author\":\"shini1989qn\",\"postNumber\":41634456,\"text\":\"mới mấy hôm trước tui đọc mấy người lên trêu là bắt làm tk hkd xong giờ kêu không cần nữa. Luật lá ko rõ ràng nên thôi cứ làm cho chắc cú, mịa cú bạn toàn nói mồm không có văn bản sau này lấy cái gì mà cãi.\"},{\"author\":\"Foreveru\",\"postNumber\":41634966,\"text\":\"Tôi vừa làm sáng hqua mà,làm như tôi nói là vào được nếu trước đây fen chỉ đăng nhập bằng mst 001 hoặc vneid\"},{\"author\":\"0verseer\",\"postNumber\":41635785,\"text\":\"Bởi 8 ngờ u như cờ hó. Bỏ cái chính sách khoáng 1 tỷ trong khi nó giảm bớt áp lực công lên việc kiểm toán thuế má, vừa khuyến khích dân đen buôn bán nhỏ lẻ để phát triển kinh tế.\"}]}],\"conclusion\":\"Cuộc thảo luận cho thấy sự bất đồng lớn giữa nhận thức của người dân/doanh nghiệp và cách thức thực thi của đội ngũ nhà nước. Mặc dù có những ý kiến chỉ trích về sự tham nhũng và thiếu chuyên môn, nhưng đa số người tham gia vẫn thừa nhận rằng đội ngũ nhà nước có nhiều người giỏi về kỹ thuật. Vấn đề cốt lõi nằm ở việc áp dụng các quy định phức tạp lên các doanh nghiệp nhỏ lẻ trong khi hạ tầng kỹ thuật và năng lực nhân sự chưa đáp ứng, dẫn đến sự bất cập và thiếu niềm tin vào hệ thống.\"}",
+      "summaryJson": {
+        "summary": "Cuộc thảo luận xoay quanh sự bất cập của hệ thống thuế và hóa đơn điện tử tại Việt Nam, đặc biệt là vấn đề áp đặt các quy định phức tạp lên các doanh nghiệp nhỏ lẻ (dưới 500 triệu đồng) trong khi hạ tầng kỹ thuật và năng lực nhân sự của đội ngũ nhà nước lại chưa đáp ứng. Nhiều người chia sẻ về trải nghiệm thực tế khi hệ thống e-tax bị quá tải, các văn bản pháp luật thay đổi liên tục (\"chạy theo chong chóng\"), và sự thiếu chuyên môn của cán bộ thuế dẫn đến việc áp dụng sai luật hoặc gây khó khăn cho người dân. Bên cạnh đó, có những ý kiến chỉ trích sự tham nhũng, lợi dụng chức quyền của đội ngũ nhà nước để phục vụ lợi ích cá nhân thay vì phát triển chung, khiến niềm tin vào hệ thống giảm sút nghiêm trọng.",
+        "opinions": [
+          {
+            "title": "Đội ngũ nhà nước giỏi nhưng phục vụ lợi ích riêng",
+            "description": "Một số người cho rằng đội ngũ nhà nước có nhiều người giỏi về kỹ thuật nhưng họ lại dùng năng lực đó để phục vụ lợi ích cá nhân hoặc tranh công chối tội thay vì phục vụ phát triển chung. Họ chỉ giỏi trong việc hành chính và hạch sách chứ không chuyên về kỹ thuật thực sự.",
+            "supporters": [
+              "djonas9",
+              "John117",
+              "kirist",
+              "PhongVan.474"
+            ],
+            "quotes": [
+              {
+                "author": "djonas9",
+                "postNumber": 41634253,
+                "text": "Chắc thím chưa từng làm việc với đội nhà nước thím ko biết, đội này ko phải toàn người ko biết gì đâu, lắm ông giỏi phết (về cả tech), nhưng rất tiếc cái giỏi của họ không để phục vụ phát triển chung đâu, mà họ dùng cái đó để phục vụ phát triển riêng."
+              },
+              {
+                "author": "John117",
+                "postNumber": 41634705,
+                "text": "Cái giỏi của tụi này đến 80-90% được dùng vào những việc mưu hèn kế bẩn bợ đít tranh công chối tội đổ lỗi thanh minh... để tồn tại trong môi trường nn rồi, vậy thì còn bao nhiêu công lực dành cho những công việc chuyên môn nữa đâu"
+              }
+            ]
+          },
+          {
+            "title": "Hạ tầng và quy định không đồng bộ, gây áp lực lớn cho doanh nghiệp",
+            "description": "Hệ thống hóa đơn điện tử và e-tax thường xuyên bị quá tải do số lượng người truy cập lớn, trong khi hạ tầng và quy định lại thay đổi liên tục. Các doanh nghiệp nhỏ lẻ phải đối mặt với áp lực phải xuất hóa đơn ngay cả khi doanh thu dưới 500 triệu, dẫn đến việc phải mua phần mềm, máy móc tốn kém nhưng lại không được sử dụng hiệu quả.",
+            "supporters": [
+              "fusioncat1401",
+              "sunshineangel",
+              "rongden184",
+              "BoAnh3Day"
+            ],
+            "quotes": [
+              {
+                "author": "fusioncat1401",
+                "postNumber": 41634265,
+                "text": "Làm thông tư nghị định pháp luật mà cứ kiểu sớm nắng chiều mưa như mấy em gái dẩm dở thì ai mà bắt sóng cho kịp có thể nào họp mặt điều chỉnh cho thật bài bản và đầy đủ rồi mới ban hành được không?"
+              },
+              {
+                "author": "sunshineangel",
+                "postNumber": 41635730,
+                "text": "Đầu tháng bắt mua quyển số để ghi đơn bán, bắt mua phần mềm mất mẹ hơn 5tr cho 2 năm bây giờ lại không dùng., mua bộ máy mini mất mẹ 4tr5 nữa, màn hình thêm 2tr."
+              },
+              {
+                "author": "rongden184",
+                "postNumber": 41636006,
+                "text": "Cái trang hoadondientu chỉ tra cứu được trong vòng 01 tháng tại một thời điểm nhất định là hiểu hệ thống đéo cân nổi rồi."
+              }
+            ]
+          },
+          {
+            "title": "Cán bộ thuế thiếu chuyên môn và thiếu trách nhiệm",
+            "description": "Nhiều người cho rằng đội ngũ cán bộ thuế thiếu chuyên môn, chỉ làm theo thói quen hoặc dựa trên các văn bản không rõ ràng. Họ thiếu sự am hiểu về nghiệp vụ và kỹ thuật, dẫn đến việc áp dụng sai luật hoặc gây khó khăn cho người dân khi giải quyết các vấn đề thực tế.",
+            "supporters": [
+              "kissem",
+              "Thích Yên Tĩnh",
+              "kisanhtrangls"
+            ],
+            "quotes": [
+              {
+                "author": "kissem",
+                "postNumber": 41636365,
+                "text": "Cán bộ thuế nói thẳng ra là nghiệp vụ kém lắm, chỉ có tổ trưởng, trưởng phòng là có chuyên môn thôi, còn lại là làm theo thói quen"
+              },
+              {
+                "author": "Thích Yên Tĩnh",
+                "postNumber": 41636453,
+                "text": "Này là tui đi lên thuế thấy, nhiều người làm onl mãi ko được hỏi thẳng nhờ cb giúp, gửi cảm ơn, xong việc (cả tui cũng thế)"
+              }
+            ]
+          },
+          {
+            "title": "Luật pháp thay đổi liên tục, thiếu tính ổn định",
+            "description": "Các quy định về hóa đơn điện tử và thuế thay đổi liên tục, gây khó khăn cho việc tuân thủ và tạo ra sự bất an cho doanh nghiệp. Nhiều người cho rằng việc thay đổi chính sách liên tục là một cách để tránh trách nhiệm hoặc tạo áp lực lên người dân.",
+            "supporters": [
+              "shini1989qn",
+              "Foreveru",
+              "0verseer"
+            ],
+            "quotes": [
+              {
+                "author": "shini1989qn",
+                "postNumber": 41634456,
+                "text": "mới mấy hôm trước tui đọc mấy người lên trêu là bắt làm tk hkd xong giờ kêu không cần nữa. Luật lá ko rõ ràng nên thôi cứ làm cho chắc cú, mịa cú bạn toàn nói mồm không có văn bản sau này lấy cái gì mà cãi."
+              },
+              {
+                "author": "Foreveru",
+                "postNumber": 41634966,
+                "text": "Tôi vừa làm sáng hqua mà,làm như tôi nói là vào được nếu trước đây fen chỉ đăng nhập bằng mst 001 hoặc vneid"
+              },
+              {
+                "author": "0verseer",
+                "postNumber": 41635785,
+                "text": "Bởi 8 ngờ u như cờ hó. Bỏ cái chính sách khoáng 1 tỷ trong khi nó giảm bớt áp lực công lên việc kiểm toán thuế má, vừa khuyến khích dân đen buôn bán nhỏ lẻ để phát triển kinh tế."
+              }
+            ]
+          }
+        ],
+        "conclusion": "Cuộc thảo luận cho thấy sự bất đồng lớn giữa nhận thức của người dân/doanh nghiệp và cách thức thực thi của đội ngũ nhà nước. Mặc dù có những ý kiến chỉ trích về sự tham nhũng và thiếu chuyên môn, nhưng đa số người tham gia vẫn thừa nhận rằng đội ngũ nhà nước có nhiều người giỏi về kỹ thuật. Vấn đề cốt lõi nằm ở việc áp dụng các quy định phức tạp lên các doanh nghiệp nhỏ lẻ trong khi hạ tầng kỹ thuật và năng lực nhân sự chưa đáp ứng, dẫn đến sự bất cập và thiếu niềm tin vào hệ thống."
+      },
+      "postCount": 78,
+      "summarizedAt": 1776236395446
+    }
+  ]
+}

@@ -2,10 +2,11 @@
 import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic, KnowledgeEntry, KnowledgeChunk, LLMConfig, ScrapedPost } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
-import { estimateTokens, calculateSegmentBudget } from '@/lib/token-estimator';
+import { estimateTokens, calculateSegmentBudget, getContextLimit } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
 import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
-import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
+import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS } from '@/lib/constants';
+import { KNOWLEDGE_REDUCE_PROMPT } from '@/lib/prompts';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
@@ -34,9 +35,9 @@ const totalChunks = ref(0);
 const currentPhase = ref<'idle' | 'extracting' | 'reducing'>('idle');
 const currentConfig = ref<LLMConfig | null>(null);
 
-// Cost estimate for extract
+// Cost estimate for extract — skip during active extraction (warning is hidden then anyway)
 const estimatedExtractApiCalls = computed(() => {
-  if (!allPosts.value.length || !currentConfig.value) return 0;
+  if (!allPosts.value.length || !currentConfig.value || isLoading.value) return 0;
   const model = currentConfig.value.model ?? 'gpt-4o-mini';
   const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow);
   return estimateExtractCalls(chunks.length);
@@ -432,7 +433,9 @@ async function handleExtract() {
   }
 }
 
-/** Reduce phase: merge all chunk entries into final knowledgeEntries */
+/** Reduce phase: merge all chunk entries into final knowledgeEntries.
+ *  Tree-reduces if total entry JSON exceeds the model's usable context budget.
+ */
 async function runReducePhase(
   chunks: KnowledgeChunk[],
   excludedNums: Set<number>,
@@ -447,13 +450,50 @@ async function runReducePhase(
     // Single chunk — skip reduce call
     finalEntries = enrichEntries(allPartial[0]);
   } else {
-    const { taskId, result } = reduceKnowledgeChunksTask(allPartial);
+    // Estimate token budget for a single reduce call
+    const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+    const contextLimit = getContextLimit(model, currentConfig.value?.contextWindow);
+    const promptOverhead = estimateTokens(KNOWLEDGE_REDUCE_PROMPT) + RESPONSE_BUFFER_TOKENS;
+    const usableTokens = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
+    const totalTokens = estimateTokens(JSON.stringify(allPartial));
+
+    let entriesToReduce = allPartial;
+
+    if (totalTokens > usableTokens && allPartial.length > 2) {
+      // Too large for one call — batch-reduce first, then do a final reduce
+      const groupCount = Math.max(2, Math.ceil(totalTokens / usableTokens));
+      const groupSize = Math.ceil(allPartial.length / groupCount);
+      const groupResults: KnowledgeEntry[][] = [];
+
+      for (let g = 0; g < allPartial.length; g += groupSize) {
+        if (guardId !== activeExtractId) return;
+        const group = allPartial.slice(g, g + groupSize);
+        const { taskId, result } = reduceKnowledgeChunksTask(group);
+        llmTaskId.value = taskId;
+        const groupResult = await result;
+        if (guardId !== activeExtractId) return;
+        groupResults.push(
+          ((groupResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
+        );
+        if (g + groupSize < allPartial.length) {
+          await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
+        }
+      }
+      entriesToReduce = groupResults;
+    }
+
+    // Final (or only) reduce call
+    const { taskId, result } = reduceKnowledgeChunksTask(entriesToReduce);
     llmTaskId.value = taskId;
     const reduceResult = await result;
     if (guardId !== activeExtractId) return;
     finalEntries = enrichEntries(
       ((reduceResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
     );
+  }
+
+  if (finalEntries.length === 0) {
+    throw new Error('Gộp kiến thức không trả về kết quả. LLM có thể trả về dữ liệu không hợp lệ — vui lòng thử lại hoặc tăng Context window trong Cài đặt.');
   }
 
   // Filter excluded entries

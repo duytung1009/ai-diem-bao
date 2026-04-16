@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl, normalizeUrl } from '@/lib/cache-manager';
-import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry, KnowledgeChunk } from '@/lib/types';
+import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry, KnowledgeChunk, ThreadAnalysisJSON } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -125,6 +125,7 @@ watch(selectedTopicKey, () => {
       knowledgeEntries: updated.knowledgeEntries ? [...updated.knowledgeEntries] as KnowledgeEntry[] : allTopics.value[idx].knowledgeEntries,
       knowledgeChunks: updated.knowledgeChunks ? [...updated.knowledgeChunks] as KnowledgeChunk[] : allTopics.value[idx].knowledgeChunks,
       excludedKnowledgePostNumbers: updated.excludedKnowledgePostNumbers ? [...updated.excludedKnowledgePostNumbers] : allTopics.value[idx].excludedKnowledgePostNumbers,
+      threadAnalysis: updated.threadAnalysis as ThreadAnalysisJSON | undefined ?? allTopics.value[idx].threadAnalysis,
     };
     allTopics.value[idx] = topic;
   } else if (updated.summary || updated.posts?.length) {

@@ -6,8 +6,10 @@ import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON } from '@/lib/types';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
-import { estimateTokens, calculateSegmentBudget } from '@/lib/token-estimator';
+import { estimateTokens, calculateSegmentBudget, willExceedContext } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
+import { estimateSummarizeSegmentCalls } from '@/lib/llm/cost-estimator';
+import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 
@@ -408,6 +410,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       };
       await saveTopic(topic, { segments: tempUpdated, ...(isNewsThread ? { topicType: 'news' } : {}) });
       segmentSummaries.value = tempUpdated as TopicSegment[];
+
+      // Phase A3 (F26): informational cost hint for large segments (non-blocking)
+      const { chunksNeeded } = willExceedContext(
+        segPosts,
+        currentConfig.value?.model ?? 'gpt-4o-mini',
+        estimateTokens(SUMMARY_PROMPT),
+        2000,
+        currentConfig.value?.contextWindow,
+      );
+      if (estimateSummarizeSegmentCalls(chunksNeeded) >= LLM_WARN_THRESHOLD_CALLS) {
+        simpleLoadingText.value = `Segment lớn — sẽ dùng ~${estimateSummarizeSegmentCalls(chunksNeeded)} API calls...`;
+      }
 
       const segTask = summarize(segPosts);
       llmTaskId.value = segTask.taskId;

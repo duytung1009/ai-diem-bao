@@ -2,32 +2,7 @@ import type { ScrapedPost, LLMConfig } from '../types';
 import type { LLMProvider, LLMResponse } from './types';
 import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
 import { withRetry } from './retry';
-
-/**
- * Merge multiple AbortSignals into one: aborts the combined controller when any input fires.
- * Fallback for environments where AbortSignal.any() is not available.
- */
-function mergeAbortSignals(...signals: (AbortSignal | undefined)[]): AbortController {
-  const ctrl = new AbortController();
-  for (const s of signals) {
-    if (!s) continue;
-    if (s.aborted) { ctrl.abort(s.reason); break; }
-    s.addEventListener('abort', () => ctrl.abort(s.reason), { once: true });
-  }
-  return ctrl;
-}
-
-/**
- * Returns true if the text looks like a JSON object that was cut off mid-stream.
- * Used to detect context-window exhaustion on local LLMs that report finish_reason "stop"
- * even when truncated.
- */
-function looksLikeTruncatedJson(text: string): boolean {
-  // Strip leading/trailing backtick fences and whitespace before checking
-  const stripped = text.trim().replace(/^`+/, '').replace(/`+$/, '').trim();
-  if (!stripped.startsWith('{')) return false;
-  return !stripped.endsWith('}');
-}
+import { mergeAbortSignals } from './utils';
 
 export class OpenAIAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}

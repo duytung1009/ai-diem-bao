@@ -15,7 +15,6 @@ export default defineBackground(() => {
     .then(() => migrateNormalizedUrls())
     .catch(console.error);
 
-  // Track in-flight LLM tasks for true cancel support (F26)
   const activeLLMTasks = new Map<string, AbortController>();
 
   browser.runtime?.onMessage.addListener(

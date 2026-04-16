@@ -240,7 +240,7 @@ export interface ThreadAnalysisJSON {
   overview: {
     heat: 'hot' | 'normal' | 'low';
     coreConflict: string;
-    keyFacts: string[];
+    keyFacts: readonly string[];
     misconception: string;
   };
   userProfiles: ThreadUserProfile[];
@@ -255,7 +255,6 @@ export interface ThreadAnalysisJSON {
     finalNote: string;
   };
   wuxia: string;
-}
 }
 
 export interface CustomPrompts {

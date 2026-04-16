@@ -1,6 +1,5 @@
 /**
- * LLM Cost Estimation utilities for F26.
- * Used to warn users before running expensive multi-call operations.
+ * LLM Cost Estimation utilities — warn users before running expensive multi-call operations.
  */
 
 /**
@@ -30,9 +29,9 @@ export function estimateExtractCalls(chunkCount: number): number {
 }
 
 /**
- * Estimate the number of API calls for summarizing a single segment.
- * @param chunksNeeded - from willExceedContext().chunksNeeded
+ * Estimate the number of API calls for summarizing a single segment via map-reduce.
+ * @param chunksNeeded - number of chunks (from willExceedContext().chunksNeeded)
  */
 export function estimateSummarizeSegmentCalls(chunksNeeded: number): number {
-  return chunksNeeded + (chunksNeeded > 1 ? 1 : 0);
+  return chunksNeeded + (chunksNeeded > 1 ? 1 : 0); // chunks + 1 reduce
 }

@@ -170,6 +170,7 @@ export async function updateSummary(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
+  signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
   const systemPrompt = INCREMENTAL_UPDATE_PROMPT;
@@ -188,12 +189,12 @@ export async function updateSummary(
   const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
-    const rawResult = await summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded, systemPrompt);
+    const rawResult = await summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded, systemPrompt, signal);
     const json = parseSummaryJSON(rawResult);
     return json ? JSON.stringify(json) : rawResult;
   }
 
-  const response = await provider.summarize(postsWithContext, systemPrompt);
+  const response = await provider.summarize(postsWithContext, systemPrompt, signal);
   const json = parseSummaryJSON(response.content);
   return json ? JSON.stringify(json) : response.content;
 }
@@ -466,6 +467,8 @@ export async function generateThreadAnalysis(
 
 /**
  * Split posts into chunks that fit within context limit
+ */
+function chunkPosts(
   posts: ScrapedPost[],
   model: string,
   mapPrompt: string,

@@ -297,9 +297,9 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         break;
       }
       case 'reduce_knowledge_chunks': {
-        const { partialEntries } = payload as { partialEntries: KnowledgeEntry[][] };
+        const { partialEntries, entryCap } = payload as { partialEntries: KnowledgeEntry[][]; entryCap?: number };
         inputTokens = estimateTokens(JSON.stringify(partialEntries));
-        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress, signal);
+        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress, signal, entryCap);
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }

@@ -62,7 +62,8 @@
       "Bash(sed -n '275,290p' entrypoints/sidepanel/views/KnowledgeView.vue)",
       "Bash(echo \"EXIT=$?\")",
       "Bash(node /tmp/test_regex.js)",
-      "Bash(powershell -Command \"Get-Date -Format 'HHmm'\")"
+      "Bash(powershell -Command \"Get-Date -Format 'HHmm'\")",
+      "Bash(python3 -c ':*)"
     ]
   },
   "model": "opusplan"

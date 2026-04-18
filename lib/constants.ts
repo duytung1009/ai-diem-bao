@@ -42,3 +42,7 @@ export const FRESHNESS_ONE_WEEK_MS = 7 * FRESHNESS_ONE_DAY_MS;
 
 // Cache display
 export const MAX_CACHE_DISPLAY_BYTES = 50 * 1024 * 1024;
+
+// Knowledge reduce — output overflow prevention
+export const TOKENS_PER_KNOWLEDGE_ENTRY = 100;
+export const REDUCE_OUTPUT_FRACTION = 0.35;

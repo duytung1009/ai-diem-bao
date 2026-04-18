@@ -216,7 +216,8 @@ Trả về JSON array theo đúng format sau:
   }
 ]`;
 
-export const KNOWLEDGE_REDUCE_PROMPT = `Bạn là trợ lý AI chuyên hợp nhất và tổng hợp kiến thức.
+export function buildKnowledgeReducePrompt(cap: number): string {
+  return `Bạn là trợ lý AI chuyên hợp nhất và tổng hợp kiến thức.
 
 Nhiệm vụ: Nhận nhiều danh sách kiến thức (JSON arrays) được trích xuất từ các phần khác nhau của cùng một topic, sau đó merge, dedup và chọn lọc thành 1 danh sách cuối cùng.
 
@@ -224,7 +225,7 @@ BẮT BUỘC:
 - Output PHẢI là JSON array hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
 - Viết bằng tiếng Việt
 - Merge các entry trùng hoặc tương tự — giữ entry chi tiết hơn, bỏ entry trùng lặp
-- Tối đa 20 entries cuối cùng (ưu tiên chất lượng và đa dạng)
+- Tối đa ${cap} entries cuối cùng (ưu tiên chất lượng và đa dạng)
 - Giữ nguyên format từng entry: title, content, tags, source
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
@@ -237,6 +238,7 @@ Trả về JSON array theo đúng format sau:
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
+}
 
 export const THREAD_ANALYSIS_PROMPT = `Bạn là chuyên gia phân tích cộng đồng diễn đàn VOZ, chuyên đọc vị các cuộc tranh luận.
 

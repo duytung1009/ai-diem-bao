@@ -158,8 +158,8 @@ function extractKnowledgeChunkTask(posts: ScrapedPost[], title: string) {
   return createTask('extract_knowledge_chunk', { posts, title });
 }
 
-function reduceKnowledgeChunksTask(partialEntries: KnowledgeEntry[][]) {
-  return createTask('reduce_knowledge_chunks', { partialEntries });
+function reduceKnowledgeChunksTask(partialEntries: KnowledgeEntry[][], entryCap?: number) {
+  return createTask('reduce_knowledge_chunks', { partialEntries, entryCap });
 }
 
 function threadAnalysisTask(summaryJson: SummaryJSON, meta: { title: string; totalPages: number; totalPosts: number }) {

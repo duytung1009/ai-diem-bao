@@ -10,7 +10,7 @@ import {
   RESEARCH_PROMPT,
   KNOWLEDGE_EXTRACT_PROMPT,
   KNOWLEDGE_CHUNK_PROMPT,
-  KNOWLEDGE_REDUCE_PROMPT,
+  buildKnowledgeReducePrompt,
   THREAD_ANALYSIS_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget } from '../token-estimator';
@@ -148,7 +148,8 @@ export async function summarizeTopic(
   const systemPrompt = customPrompts?.summary || SUMMARY_PROMPT;
 
   // Check if topic will fit in context
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
+  const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     // Use map-reduce for large topics
     const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
@@ -186,7 +187,8 @@ export async function updateSummary(
   ];
 
   // Check if needs chunking
-  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
+  const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
+  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
     const rawResult = await summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded, systemPrompt, signal);
@@ -210,7 +212,8 @@ export async function analyzeOpinions(
   const systemPrompt = customPrompts?.opinions || OPINION_ANALYSIS_PROMPT;
 
   // For opinion analysis, check if we need to chunk
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
+  const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Phân tích ý kiến (${contextCheck.chunksNeeded} phần)...`);
     // Use map-reduce to extract opinions
@@ -250,7 +253,8 @@ export async function researchTopic(
   const allPosts = [...posts, questionPost];
 
   // Check if needs chunking
-  const contextCheck = willExceedContext(allPosts, config.model, estimateTokens(systemPrompt), 2000, config.contextWindow);
+  const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
+  const contextCheck = willExceedContext(allPosts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Đang tra cứu (${contextCheck.chunksNeeded} phần)...`);
     // Map-reduce: summarize chunks preserving citation info, then answer at reduce
@@ -328,6 +332,7 @@ export async function reduceKnowledgeChunks(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   signal?: AbortSignal,
+  entryCap?: number,
 ): Promise<string> {
   const provider = createProvider(config);
 
@@ -344,7 +349,7 @@ export async function reduceKnowledgeChunks(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([combinedPost], KNOWLEDGE_REDUCE_PROMPT, signal);
+  const response = await provider.summarize([combinedPost], buildKnowledgeReducePrompt(entryCap ?? 20), signal);
   return response.content;
 }
 
@@ -474,9 +479,10 @@ function chunkPosts(
   mapPrompt: string,
   suggestedChunks?: number,
   contextWindowOverride?: number,
+  maxTokensReserve?: number,
 ): ScrapedPost[][] {
   const contextLimit = getContextLimit(model, contextWindowOverride);
-  const bufferTokens = estimateTokens(mapPrompt) + RESPONSE_BUFFER_TOKENS;
+  const bufferTokens = estimateTokens(mapPrompt) + Math.max(RESPONSE_BUFFER_TOKENS, maxTokensReserve ?? 0);
 
   // If suggestedChunks is provided, size chunks to fill ~N buckets rather than
   // greedily filling and then merging (which can produce oversized chunks).
@@ -531,7 +537,7 @@ async function summaryChunks(
   signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
-  const chunks = chunkPosts(posts, config.model, mapPrompt, suggestedChunks, config.contextWindow);
+  const chunks = chunkPosts(posts, config.model, mapPrompt, suggestedChunks, config.contextWindow, config.maxTokens);
 
   if (chunks.length === 1) {
     // No chunking needed

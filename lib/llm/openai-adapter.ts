@@ -54,6 +54,7 @@ export class OpenAIAdapter implements LLMProvider {
             model: this.config.model,
             messages,
             temperature: this.config.temperature,
+            max_tokens: this.config.maxTokens ?? 4096,
           }),
           signal: merged.signal,
         });

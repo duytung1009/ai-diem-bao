@@ -5,8 +5,8 @@ import { sendMessage } from '@/lib/messaging';
 import { estimateTokens, calculateSegmentBudget, getContextLimit } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
 import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
-import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS } from '@/lib/constants';
-import { KNOWLEDGE_REDUCE_PROMPT } from '@/lib/prompts';
+import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION } from '@/lib/constants';
+import { buildKnowledgeReducePrompt } from '@/lib/prompts';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
@@ -436,6 +436,26 @@ async function handleExtract() {
 /** Reduce phase: merge all chunk entries into final knowledgeEntries.
  *  Tree-reduces if total entry JSON exceeds the model's usable context budget.
  */
+function calcMaxOutputEntries(
+  contextLimit: number,
+  promptTokens: number,
+  inputTokens: number,
+): number {
+  void promptTokens; void inputTokens; // reserved for future precise budget
+  const outputBudget = contextLimit * REDUCE_OUTPUT_FRACTION;
+  return Math.max(10, Math.floor(outputBudget / TOKENS_PER_KNOWLEDGE_ENTRY));
+}
+
+function clientSideDedup(entries: KnowledgeEntry[]): KnowledgeEntry[] {
+  const seen = new Set<string>();
+  return entries.filter(e => {
+    const key = e.title.toLowerCase().replace(/[^\p{L}\d]/gu, '').trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function runReducePhase(
   chunks: KnowledgeChunk[],
   excludedNums: Set<number>,
@@ -444,6 +464,8 @@ async function runReducePhase(
 ): Promise<void> {
   currentPhase.value = 'reducing';
   const allPartial = chunks.map(c => c.entries);
+  // Dynamic cap: 3 entries per chunk, min 20, max 150
+  const finalCap = Math.min(150, Math.max(20, chunks.length * 3));
 
   let finalEntries: KnowledgeEntry[];
   if (allPartial.length === 1) {
@@ -453,9 +475,10 @@ async function runReducePhase(
     // Estimate token budget for a single reduce call
     const model = currentConfig.value?.model ?? 'gpt-4o-mini';
     const contextLimit = getContextLimit(model, currentConfig.value?.contextWindow);
-    const promptOverhead = estimateTokens(KNOWLEDGE_REDUCE_PROMPT) + RESPONSE_BUFFER_TOKENS;
+    const promptOverhead = estimateTokens(buildKnowledgeReducePrompt(finalCap)) + RESPONSE_BUFFER_TOKENS;
     const usableTokens = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
-    const totalTokens = estimateTokens(JSON.stringify(allPartial));
+    // Vietnamese/JSON text tokenizes ~1.35–1.40× more than char-based estimate; use 1.4 to keep groups safely within context
+    const totalTokens = estimateTokens(JSON.stringify(allPartial)) * 1.4;
 
     let entriesToReduce = allPartial;
 
@@ -482,14 +505,42 @@ async function runReducePhase(
       entriesToReduce = groupResults;
     }
 
-    // Final (or only) reduce call
-    const { taskId, result } = reduceKnowledgeChunksTask(entriesToReduce);
-    llmTaskId.value = taskId;
-    const reduceResult = await result;
-    if (guardId !== activeExtractId) return;
-    finalEntries = enrichEntries(
-      ((reduceResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
-    );
+    // Determine if output would overflow context; if so, split into multiple calls
+    const promptTokens = estimateTokens(buildKnowledgeReducePrompt(finalCap));
+    const inputTokens = estimateTokens(JSON.stringify(entriesToReduce)) * 1.4;
+    const maxPerCall = calcMaxOutputEntries(contextLimit, promptTokens, inputTokens);
+
+    let rawFinalEntries: KnowledgeEntry[];
+    if (finalCap <= maxPerCall) {
+      // Fit in one call — existing path
+      const { taskId, result } = reduceKnowledgeChunksTask(entriesToReduce, finalCap);
+      llmTaskId.value = taskId;
+      const reduceResult = await result;
+      if (guardId !== activeExtractId) return;
+      rawFinalEntries = ((reduceResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [];
+    } else {
+      // Split output: multiple calls, each produces maxPerCall entries
+      const numCalls = Math.ceil(finalCap / maxPerCall);
+      const groupSize = Math.ceil(entriesToReduce.length / numCalls);
+      const allRaw: KnowledgeEntry[] = [];
+
+      for (let g = 0; g < entriesToReduce.length; g += groupSize) {
+        if (guardId !== activeExtractId) return;
+        const group = entriesToReduce.slice(g, g + groupSize);
+        const { taskId, result } = reduceKnowledgeChunksTask(group, maxPerCall);
+        llmTaskId.value = taskId;
+        const groupResult = await result;
+        if (guardId !== activeExtractId) return;
+        allRaw.push(
+          ...((groupResult.data as { entries?: KnowledgeEntry[] })?.entries ?? []),
+        );
+        if (g + groupSize < entriesToReduce.length) {
+          await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
+        }
+      }
+      rawFinalEntries = clientSideDedup(allRaw);
+    }
+    finalEntries = enrichEntries(rawFinalEntries);
   }
 
   if (finalEntries.length === 0) {

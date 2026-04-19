@@ -5,11 +5,13 @@ import {
   INCREMENTAL_UPDATE_PROMPT,
   OPINION_ANALYSIS_PROMPT,
   OPINION_CHUNK_PROMPT,
-  CHUNK_SUMMARY_PROMPT,
-  REDUCE_SUMMARY_PROMPT,
+  buildChunkSummaryPrompt,
+  buildReduceSummaryPrompt,
   RESEARCH_PROMPT,
   KNOWLEDGE_EXTRACT_PROMPT,
   KNOWLEDGE_CHUNK_PROMPT,
+  buildKnowledgeExtractPrompt,
+  buildKnowledgeChunkPrompt,
   buildKnowledgeReducePrompt,
   THREAD_ANALYSIS_PROMPT,
 } from '../prompts';
@@ -19,6 +21,22 @@ import { LLMError, LLMErrorCode } from '../errors';
 
 // Pre-computed prompt token count (module-level, computed once)
 export const KNOWLEDGE_CHUNK_PROMPT_TOKENS = estimateTokens(KNOWLEDGE_CHUNK_PROMPT);
+
+/** Compute word cap for reduce summary prompt based on maxTokens.
+ * Vietnamese JSON output ≈ 1.4 tokens/word (text + JSON structure overhead).
+ * Clamped to [100, 500].
+ */
+function computeReduceWordCap(maxTokens: number | undefined): number {
+  return Math.max(100, Math.min(500, Math.floor((maxTokens ?? 2000) / 1.4)));
+}
+
+/** Compute entry cap for knowledge extract/chunk prompts based on maxTokens.
+ * Each knowledge entry ≈ 150 tokens (title + content + tags + source in JSON).
+ * Clamped to [5, 20].
+ */
+function computeKnowledgeEntryCap(maxTokens: number | undefined): number {
+  return Math.max(5, Math.min(20, Math.floor((maxTokens ?? 2000) / 150)));
+}
 
 /**
  * Repair common LLM JSON string value errors:
@@ -258,7 +276,7 @@ export async function researchTopic(
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Đang tra cứu (${contextCheck.chunksNeeded} phần)...`);
     // Map-reduce: summarize chunks preserving citation info, then answer at reduce
-    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, CHUNK_SUMMARY_PROMPT, undefined, signal);
+    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, undefined, undefined, signal);
     const condensedPosts: ScrapedPost[] = [
       { author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 },
       questionPost,
@@ -284,7 +302,7 @@ export async function extractKnowledge(
   signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
-  const systemPrompt = customPrompts?.knowledge || KNOWLEDGE_EXTRACT_PROMPT;
+  const systemPrompt = customPrompts?.knowledge || buildKnowledgeExtractPrompt(computeKnowledgeEntryCap(config.maxTokens));
 
   const topicContextPost: ScrapedPost = {
     author: 'CONTEXT',
@@ -319,7 +337,7 @@ export async function extractKnowledgeChunk(
   };
 
   onProgress?.('Đang trích xuất kiến thức...');
-  const response = await provider.summarize([topicContextPost, ...chunkPosts], KNOWLEDGE_CHUNK_PROMPT, signal);
+  const response = await provider.summarize([topicContextPost, ...chunkPosts], buildKnowledgeChunkPrompt(computeKnowledgeEntryCap(config.maxTokens)), signal);
   return response.content;
 }
 
@@ -362,8 +380,10 @@ export function planKnowledgeChunks(
   posts: ScrapedPost[],
   model: string,
   contextWindowOverride?: number,
+  maxTokens?: number,
 ): { startIndex: number; endIndex: number }[] {
-  const budget = calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, 2000, contextWindowOverride);
+  const responseBuffer = Math.max(2000, maxTokens ?? 0);
+  const budget = calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, responseBuffer, contextWindowOverride);
 
   const chunks: { startIndex: number; endIndex: number }[] = [];
   let chunkStart = 0;
@@ -532,16 +552,19 @@ async function summaryChunks(
   config: LLMConfig,
   onProgress?: LLMProgressCallback,
   suggestedChunks?: number,
-  mapPrompt: string = CHUNK_SUMMARY_PROMPT,
-  reducePrompt: string = REDUCE_SUMMARY_PROMPT,
+  mapPrompt?: string,
+  reducePrompt?: string,
   signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
-  const chunks = chunkPosts(posts, config.model, mapPrompt, suggestedChunks, config.contextWindow, config.maxTokens);
+  const wordCap = Math.max(100, Math.min(300, Math.floor((config.maxTokens ?? 2000) / 1.4)));
+  const resolvedMapPrompt = mapPrompt ?? buildChunkSummaryPrompt(wordCap);
+  const resolvedReducePrompt = reducePrompt ?? buildReduceSummaryPrompt(computeReduceWordCap(config.maxTokens));
+  const chunks = chunkPosts(posts, config.model, resolvedMapPrompt, suggestedChunks, config.contextWindow, config.maxTokens);
 
   if (chunks.length === 1) {
     // No chunking needed
-    const response = await provider.summarize(chunks[0], mapPrompt, signal);
+    const response = await provider.summarize(chunks[0], resolvedMapPrompt, signal);
     return response.content;
   }
 
@@ -551,7 +574,7 @@ async function summaryChunks(
   const partialSummaries: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(`Đang tóm tắt phần ${i + 1}/${chunks.length}...`, i + 1, total);
-    const response = await provider.summarize(chunks[i], mapPrompt, signal);
+    const response = await provider.summarize(chunks[i], resolvedMapPrompt, signal);
     partialSummaries.push(response.content);
 
     // Small delay between requests to avoid rate limiting
@@ -567,7 +590,8 @@ async function summaryChunks(
     .join('\n\n');
 
   // Recursive reduce: if combinedText itself would exceed context, reduce in stages
-  const combinedTokens = estimateTokens(combinedText) + estimateTokens(REDUCE_SUMMARY_PROMPT) + 2000;
+  const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
+  const combinedTokens = estimateTokens(combinedText) + estimateTokens(resolvedReducePrompt) + responseBuffer;
   const contextLimit = getContextLimit(config.model, config.contextWindow);
   if (combinedTokens > contextLimit && partialSummaries.length > 2) {
     // Convert partials to fake posts and recurse
@@ -578,7 +602,7 @@ async function summaryChunks(
       postNumber: i + 1,
     } as ScrapedPost));
     onProgress?.(`Gộp đệ quy (${partialSummaries.length} phần)...`);
-    return summaryChunks(partialAsPosts, config, onProgress, undefined, reducePrompt, reducePrompt, signal);
+    return summaryChunks(partialAsPosts, config, onProgress, undefined, resolvedReducePrompt, resolvedReducePrompt, signal);
   }
 
   const reduceChunks: ScrapedPost[] = [
@@ -590,7 +614,7 @@ async function summaryChunks(
     } as ScrapedPost,
   ];
 
-  const finalResponse = await provider.summarize(reduceChunks, reducePrompt, signal);
+  const finalResponse = await provider.summarize(reduceChunks, resolvedReducePrompt, signal);
   return finalResponse.content;
 }
 
@@ -666,9 +690,12 @@ async function reduceSegmentSummaries(
   onProgress?: LLMProgressCallback,
   depth: number = 0,
   signal?: AbortSignal,
+  maxTokens?: number,
 ): Promise<string> {
   // Fast path: nothing to reduce
   if (summaries.length === 1) return summaries[0];
+
+  const reduceSummaryPrompt = buildReduceSummaryPrompt(computeReduceWordCap(maxTokens));
 
   // Helper: build combined content with cross-reference header for an LLM call
   function buildReduceContent(group: string[]): string {
@@ -680,7 +707,7 @@ async function reduceSegmentSummaries(
 
   // Usable content tokens per reduce call (prompt overhead + response buffer + safety margin).
   // Note: cross-reference header adds ~100-300 tokens per call but is covered by the 25% safety margin.
-  const promptOverhead = estimateTokens(REDUCE_SUMMARY_PROMPT) + RESPONSE_BUFFER_TOKENS;
+  const promptOverhead = estimateTokens(reduceSummaryPrompt) + Math.max(RESPONSE_BUFFER_TOKENS, maxTokens ?? 0);
   const usablePerGroup = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
 
   if (usablePerGroup < 1000) {
@@ -709,7 +736,7 @@ async function reduceSegmentSummaries(
     const label = depth === 0 ? 'Đang tạo tóm tắt tổng quan...' : `Đang gộp tóm tắt (lớp ${depth + 1})...`;
     onProgress?.(label);
     const post: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content, timestamp: '', postNumber: 0 }];
-    const response = await provider.summarize(post, REDUCE_SUMMARY_PROMPT, signal);
+    const response = await provider.summarize(post, reduceSummaryPrompt, signal);
     return response.content;
   }
 
@@ -727,14 +754,14 @@ async function reduceSegmentSummaries(
     onProgress?.(`Đang gộp nhóm ${g + 1}/${groups.length} (lớp ${depth + 1})...`, g + 1, groups.length);
     const groupContent = buildReduceContent(groups[g]);
     const groupPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: groupContent, timestamp: '', postNumber: 0 }];
-    const response = await provider.summarize(groupPost, REDUCE_SUMMARY_PROMPT, signal);
+    const response = await provider.summarize(groupPost, reduceSummaryPrompt, signal);
     const json = parseSummaryJSON(response.content);
     intermediates.push(json ? JSON.stringify(json) : response.content);
 
     if (g < groups.length - 1) await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
   }
 
-  return reduceSegmentSummaries(intermediates, provider, contextLimit, onProgress, depth + 1, signal);
+  return reduceSegmentSummaries(intermediates, provider, contextLimit, onProgress, depth + 1, signal, maxTokens);
 }
 
 export async function summarizeSegments(
@@ -747,7 +774,7 @@ export async function summarizeSegments(
   const contextLimit = getContextLimit(config.model, config.contextWindow);
 
   const resultText = await reduceSegmentSummaries(
-    segmentSummaries, provider, contextLimit, onProgress, 0, signal,
+    segmentSummaries, provider, contextLimit, onProgress, 0, signal, config.maxTokens,
   );
 
   // Post-process: programmatic dedup of supporters (safety net)

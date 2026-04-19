@@ -8,6 +8,7 @@ import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION } from '@/lib/constants';
 import { buildKnowledgeReducePrompt } from '@/lib/prompts';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
+import ConfirmInline from '../components/ConfirmInline.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
@@ -39,7 +40,7 @@ const currentConfig = ref<LLMConfig | null>(null);
 const estimatedExtractApiCalls = computed(() => {
   if (!allPosts.value.length || !currentConfig.value || isLoading.value) return 0;
   const model = currentConfig.value.model ?? 'gpt-4o-mini';
-  const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow);
+  const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow, currentConfig.value.maxTokens);
   return estimateExtractCalls(chunks.length);
 });
 const showExtractCostWarning = computed(() => estimatedExtractApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
@@ -373,6 +374,7 @@ async function handleExtract() {
       postsToProcess,
       currentConfig.value?.model ?? 'gpt-4o-mini',
       currentConfig.value?.contextWindow,
+      currentConfig.value?.maxTokens,
     );
     const newChunks: KnowledgeChunk[] = [...resume.existingChunks];
     totalChunks.value = newChunks.length + chunkPlan.length;
@@ -661,13 +663,13 @@ async function handleClearTracking() {
         >
           Trích xuất Kiến thức
         </button>
-        <div v-else class="space-y-2">
-          <p class="text-xs text-amber-600 dark:text-amber-400">⚠️ Topic này ước tính cần ~{{ estimatedExtractApiCalls }} API calls. Chi phí có thể cao. Tiếp tục?</p>
-          <div class="flex gap-2">
-            <button class="flex-1 btn btn-primary text-xs" @click="handleExtract">Xác nhận</button>
-            <button class="flex-1 btn btn-secondary text-xs" @click="confirmingExtract = false">Hủy</button>
-          </div>
-        </div>
+        <ConfirmInline
+          v-else
+          :message="`Trích xuất kiến thức từ topic này. Tiếp tục?`"
+          :warning="showExtractCostWarning ? `⚠️ Ước tính ~${estimatedExtractApiCalls} API calls. Chi phí có thể cao.` : undefined"
+          @confirm="handleExtract()"
+          @cancel="confirmingExtract = false"
+        />
       </template>
 
       <!-- Progress -->

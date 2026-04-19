@@ -11,6 +11,7 @@ import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
+import ConfirmInline from '../components/ConfirmInline.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import CacheIndicator from '../components/CacheIndicator.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
@@ -211,22 +212,13 @@ onActivated(async () => {
               >
                 ⚡ Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ segments.length }} phần)</template>
               </button>
-              <span v-else class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs text-(--color-text-secondary)">Tóm tắt {{ segments.length }} phần, không thể hủy. Tiếp tục?</span>
-                <span v-if="showAutoSummarizeCostWarning" class="text-xs text-amber-600 dark:text-amber-400">⚠️ Ước tính ~{{ estimatedAutoSummarizeCalls }} API calls. Chi phí có thể cao.</span>
-                <button
-                  class="px-2.5 py-1 text-xs rounded-full font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                  @click="confirmingAutoSummarize = false; handleAutoSummarizeAll()"
-                >
-                  Xác nhận
-                </button>
-                <button
-                  class="px-2.5 py-1 text-xs rounded-full font-medium bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
-                  @click="confirmingAutoSummarize = false"
-                >
-                  Hủy
-                </button>
-              </span>
+              <ConfirmInline
+                v-else
+                :message="`Tóm tắt ${segments.length} phần, không thể hủy. Tiếp tục?`"
+                :warning="showAutoSummarizeCostWarning ? `⚠️ Ước tính ~${estimatedAutoSummarizeCalls} API calls. Chi phí có thể cao.` : undefined"
+                @confirm="confirmingAutoSummarize = false; handleAutoSummarizeAll()"
+                @cancel="confirmingAutoSummarize = false"
+              />
             </template>
             <button
               v-if="nextPendingSegmentIndex !== null"

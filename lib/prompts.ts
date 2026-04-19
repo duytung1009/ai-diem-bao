@@ -89,14 +89,15 @@ Yêu cầu:
   "summary": "Tóm tắt ngắn về cuộc tranh luận (3-4 câu)"
 }`;
 
-export const CHUNK_SUMMARY_PROMPT = `Bạn là trợ lý AI tóm tắt một phần của cuộc thảo luận trên diễn đàn.
+export function buildChunkSummaryPrompt(wordCap: number): string {
+  return `Bạn là trợ lý AI tóm tắt một phần của cuộc thảo luận trên diễn đàn.
 
 Nhiệm vụ: Đọc các bài viết này và tóm tắt thành JSON có cấu trúc. Đây là một phần của topic lớn hơn — giữ đủ chi tiết để gộp sau.
 
 BẮT BUỘC:
 - Output PHẢI là JSON hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
 - Viết bằng tiếng Việt
-- Giữ bản tóm tắt dưới 300 từ
+- Giữ bản tóm tắt dưới ${wordCap} từ
 - Không thêm thông tin ngoài nội dung các bài viết
 - BẮT BUỘC giữ tên tác giả và số bài (#N) khi đề cập quan điểm
 - Trích dẫn PHẢI là câu nguyên văn từ bài viết (1-2 câu)
@@ -117,6 +118,9 @@ Trả về JSON theo đúng format sau:
   ],
   "conclusion": "Kết luận tạm (nếu có)"
 }`;
+}
+
+export const CHUNK_SUMMARY_PROMPT = buildChunkSummaryPrompt(300);
 
 export const OPINION_CHUNK_PROMPT = `Bạn là chuyên gia trích xuất ý kiến từ một đoạn thảo luận trên diễn đàn.
 
@@ -139,7 +143,8 @@ Yêu cầu:
 - Nếu topic không có thông tin liên quan, hãy nói rõ "Không tìm thấy thông tin về vấn đề này trong topic."
 - Format Markdown, có thể dùng danh sách hoặc tiêu đề nếu phù hợp`;
 
-export const REDUCE_SUMMARY_PROMPT = `Bạn là trợ lý AI gộp nhiều bản tóm tắt JSON thành một tóm tắt cuối cùng.
+export function buildReduceSummaryPrompt(wordCap: number): string {
+  return `Bạn là trợ lý AI gộp nhiều bản tóm tắt JSON thành một tóm tắt cuối cùng.
 
 Nhiệm vụ: Bạn nhận nhiều bản tóm tắt dạng JSON (mỗi phần nằm trong khối "--- Phần N ---"). Hãy gộp chúng thành một JSON tóm tắt hoàn chỉnh.
 
@@ -150,7 +155,7 @@ BẮT BUỘC:
 - Gộp supporters của các quan điểm tương tự vào một nhóm, đếm tổng số người ủng hộ
 - Nếu có phần "TÁC GIẢ XUẤT HIỆN Ở NHIỀU PHẦN" ở đầu input, hãy dùng nó để đảm bảo mỗi tác giả chỉ xuất hiện MỘT LẦN trong supporters của mỗi nhóm quan điểm, dù họ được đề cập ở nhiều phần khác nhau
 - Chọn quotes tiêu biểu nhất (tối đa 3 quotes mỗi quan điểm)
-- Giữ bản tóm tắt cuối dưới 500 từ
+- Giữ bản tóm tắt cuối dưới ${wordCap} từ
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
 Trả về JSON theo đúng format sau:
@@ -168,8 +173,12 @@ Trả về JSON theo đúng format sau:
   ],
   "conclusion": "Kết luận hoặc đồng thuận chung (nếu có)"
 }`;
+}
 
-export const KNOWLEDGE_EXTRACT_PROMPT = `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
+export const REDUCE_SUMMARY_PROMPT = buildReduceSummaryPrompt(500);
+
+export function buildKnowledgeExtractPrompt(cap: number): string {
+  return `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
 
 Nhiệm vụ: Đọc các bài viết và trích xuất các kiến thức, mẹo, kinh nghiệm, thông tin quan trọng được chia sẻ.
 
@@ -179,7 +188,7 @@ BẮT BUỘC:
 - Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
 - Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
 - Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
-- Tối đa 20 entries (ưu tiên chất lượng hơn số lượng)
+- Tối đa ${cap} entries (ưu tiên chất lượng hơn số lượng)
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
 Trả về JSON array theo đúng format sau:
@@ -191,8 +200,12 @@ Trả về JSON array theo đúng format sau:
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
+}
 
-export const KNOWLEDGE_CHUNK_PROMPT = `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
+export const KNOWLEDGE_EXTRACT_PROMPT = buildKnowledgeExtractPrompt(20);
+
+export function buildKnowledgeChunkPrompt(cap: number): string {
+  return `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
 
 Nhiệm vụ: Đọc các bài viết và trích xuất các kiến thức, mẹo, kinh nghiệm, thông tin quan trọng được chia sẻ.
 
@@ -204,6 +217,7 @@ BẮT BUỘC:
 - Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
 - Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
 - Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
+- Tối đa ${cap} entries (ưu tiên chất lượng hơn số lượng)
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
 Trả về JSON array theo đúng format sau:
@@ -215,6 +229,9 @@ Trả về JSON array theo đúng format sau:
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
+}
+
+export const KNOWLEDGE_CHUNK_PROMPT = buildKnowledgeChunkPrompt(20);
 
 export function buildKnowledgeReducePrompt(cap: number): string {
   return `Bạn là trợ lý AI chuyên hợp nhất và tổng hợp kiến thức.

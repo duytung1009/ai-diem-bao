@@ -204,22 +204,6 @@ onActivated(async () => {
             >
               Tổng quan
             </button>
-            <template v-if="segments.length > 1">
-              <button
-                v-if="!confirmingAutoSummarize"
-                class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                @click="confirmingAutoSummarize = true"
-              >
-                ⚡ Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ segments.length }} phần)</template>
-              </button>
-              <ConfirmInline
-                v-else
-                :message="`Tóm tắt ${segments.length} phần, không thể hủy. Tiếp tục?`"
-                :warning="showAutoSummarizeCostWarning ? `⚠️ Ước tính ~${estimatedAutoSummarizeCalls} API calls. Chi phí có thể cao.` : undefined"
-                @confirm="confirmingAutoSummarize = false; handleAutoSummarizeAll()"
-                @cancel="confirmingAutoSummarize = false"
-              />
-            </template>
             <button
               v-if="nextPendingSegmentIndex !== null"
               class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) flex items-center gap-1"
@@ -411,6 +395,25 @@ onActivated(async () => {
                 </div>
                 <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
                   <template #actions>
+                    <template v-if="segments.length > 1">
+                      <button
+                        v-if="!confirmingAutoSummarize"
+                        class="btn text-xs flex items-center gap-1.5"
+                        @click="confirmingAutoSummarize = true"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ segments.length }} phần)</template>
+                      </button>
+                      <ConfirmInline
+                        v-else
+                        :message="`Tóm tắt ${segments.length} phần, không thể hủy. Tiếp tục?`"
+                        :warning="showAutoSummarizeCostWarning ? `⚠️ Ước tính ~${estimatedAutoSummarizeCalls} API calls. Chi phí có thể cao.` : undefined"
+                        @confirm="confirmingAutoSummarize = false; handleAutoSummarizeAll()"
+                        @cancel="confirmingAutoSummarize = false"
+                      />
+                    </template>
                     <button
                       class="btn text-xs flex items-center gap-1.5"
                       :disabled="isProcessing"

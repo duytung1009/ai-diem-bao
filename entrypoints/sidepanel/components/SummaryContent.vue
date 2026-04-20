@@ -117,7 +117,9 @@ async function handleCopy() {
   <div class="space-y-5 text-sm">
     <!-- Actions row: slot bên trái, Copy bên phải -->
     <div class="flex items-center justify-between">
-      <slot name="actions" />
+      <div class="flex items-center justify-start">
+        <slot name="actions" />
+      </div>
       <button
         class="btn text-xs flex items-center gap-1.5"
         @click="handleCopy"

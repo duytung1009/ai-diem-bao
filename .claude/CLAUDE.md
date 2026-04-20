@@ -44,9 +44,27 @@ Mục đích: Khi Sonnet implement, tham chiếu Decision Log để hiểu lý d
 - Với decisions mới chưa có trong log: tag `[DECISION_NEEDED]` kèm reasoning
 - Ghi vào MEMORY.md section `Pending Opus Review`
 
+## Task Master — Quản lý task
+
+Task-master là source of truth cho tất cả pending/in-progress/done tasks.
+
+### Commands thường dùng
+
+```bash
+task-master list                        # Xem tất cả tasks + status
+task-master show <id>                   # Xem chi tiết task (subtasks, details)
+task-master next                        # Task tiếp theo nên làm
+task-master set-status <id> <status>    # Cập nhật status (pending|in-progress|done|blocked)
+task-master add-task --prompt "..."     # Thêm task mới (LLM parse)
+task-master expand <id> --num 4         # Chia task thành subtasks
+task-master update <id> --prompt "..."  # Cập nhật task
+```
+
+Statuses: `pending` | `in-progress` | `done` | `blocked` | `deferred` | `cancelled` | `review`
+
 ## File Naming Convention (BẮT BUỘC)
 
-Tất cả file trong `planning/`, `tasks/`, `review/` PHẢI đặt tên theo format có timestamp:
+Tất cả file trong `planning/` và `review/` PHẢI đặt tên theo format có timestamp:
 
 ```
 yyyyMMdd_HHmm_tên_file.md
@@ -54,7 +72,7 @@ yyyyMMdd_HHmm_tên_file.md
 
 Ví dụ: `20260319_1450_09-feature-detect-search-opinions.md`
 
-Timestamp lấy từ thời điểm tạo file.
+Timestamp lấy từ thời điểm tạo file. Planning files được link từ task details trong tasks.json.
 
 ### Review file naming — thêm tier prefix:
 ```
@@ -68,33 +86,32 @@ review/yyyyMMdd_HHmm_tier3_tên_file.md
 ### Sau khi lập planning (feature hoặc bugfix)
 
 1. Lưu file planning vào `planning/`
-2. Tên file: `yyyyMMdd_HHmm_tên_file.md`
    - Feature: `yyyyMMdd_HHmm_NN-feature-tên.md` (NN = số thứ tự feature)
    - Bug fix: `yyyyMMdd_HHmm_fix-tên.md`
    - Batch: `yyyyMMdd_HHmm_batch_tên_nhóm.md`
-3. Planning file PHẢI có Decision Log
-4. Cập nhật `MEMORY.md` — thêm entry mới vào section "Planning Files"
+2. Planning file PHẢI có Decision Log
+3. Thêm/cập nhật task trong task-master:
+   ```bash
+   task-master add-task --prompt "Mô tả task, link planning file path"
+   # hoặc cập nhật details của task hiện có
+   task-master update <id> --prompt "Link planning/yyyyMMdd_... vừa tạo"
+   ```
+4. Cập nhật `MEMORY.md` — thêm entry vào section "Planning Files"
 
 ### Sau khi implement/fix code
 
 1. Chạy **Self-review** (Sonnet) theo checklist trong `template/self_review_checklist.md`
 2. Fix tất cả issues tìm được
-3. Lưu tóm tắt vào `tasks/`:
-   - Task/feature: `yyyyMMdd_HHmm_task_tên_file.md`
-   - Bug fix: `yyyyMMdd_HHmm_bug_tên_file.md`
-   - Bug batch (Phase A): `yyyyMMdd_HHmm_bug_batch_tên.md`
-4. Task report PHẢI có section **Self-review Results**:
-   ```markdown
-   ## Self-review Results
-   - Issues found: [N]
-   - Issues fixed: [N]
-   - Remaining (cần review thêm): [danh sách nếu có]
+3. Cập nhật task status:
+   ```bash
+   task-master set-status <id> done
    ```
-5. Cập nhật `MEMORY.md` — cập nhật status
+4. Lưu self-review notes vào `review/yyyyMMdd_HHmm_tierN_tên_file.md` (nếu có issues đáng ghi)
+5. Cập nhật `MEMORY.md` — cập nhật status feature/bugfix
 
 ### Sau khi implement — Review Triage
 
-Sau khi commit + task report, chạy Sonnet phân tích diff:
+Sau khi commit, chạy Sonnet phân tích diff:
 
 ```
 Phân tích diff sau và xác định review tier:
@@ -110,22 +127,22 @@ Output: tier, lý do, và danh sách concerns cần review.
 
 ### Sau khi review
 
-1. Lưu nội dung review vào `review/`
-2. Tên file: `yyyyMMdd_HHmm_tierN_tên_file.md` (N = 1, 2, hoặc 3)
-3. BẮT BUỘC theo format Review Template bên dưới
+1. Lưu nội dung review vào `review/yyyyMMdd_HHmm_tierN_tên_file.md`
+2. BẮT BUỘC theo format Review Template bên dưới
+3. Nếu request-changes: cập nhật task status → `blocked` + ghi issue vào task notes
 4. Cập nhật `MEMORY.md` — thêm entry vào section "Review Files"
 
 ### QA 2 Phase (sau khi Tùng test)
 
 **Phase A — Bug Hunting (Sonnet):**
 - Input: notes testing của Tùng
-- Output: `tasks/yyyyMMdd_HHmm_bug_batch_tên.md` (theo format `template/bug_report.md`)
+- Output: thêm bug tasks vào task-master (`task-master add-task --prompt "..."`)
+- Theo format `template/bug_report.md`
 
 **Phase B — Strategic Review (Opus):**
 - Input: feature vừa hoàn thành + bug list từ Phase A
-- Output: `tasks/yyyyMMdd_HHmm_improvement_tên.md`
 - Đánh giá: improvements, feature mới phát sinh, technical debt, priority ranking
-- Items feed ngược vào `planning/backlog.md` cho batch planning
+- Items feed ngược vào task-master + `planning/backlog.md`
 
 ### Batch Planning (khi có 2-3 feature liên quan)
 
@@ -140,7 +157,8 @@ Output: tier, lý do, và danh sách concerns cần review.
    - Shared components cần tạo trước
    - Implementation order
    - Plan chi tiết từng feature (theo Planning Template)
-4. Cập nhật backlog: chuyển items sang "Đã batch plan"
+4. Cập nhật task dependencies trong tasks.json
+5. Cập nhật backlog: chuyển items sang "Đã batch plan"
 
 ## Review Template (BẮT BUỘC cho mọi review file)
 
@@ -173,11 +191,16 @@ Output: tier, lý do, và danh sách concerns cần review.
 
 ## Cập nhật MEMORY.md
 
-Mọi thay đổi về planning, task completion, hoặc review đều PHẢI được phản ánh vào `MEMORY.md` (nằm trong thư mục memory của Claude project). Đảm bảo:
-- Status của feature/bugfix được cập nhật (pending → done)
-- Tên file mới được ghi nhận đúng (kèm timestamp prefix)
-- Tóm tắt ngắn gọn những gì đã làm
+**Task status** được quản lý bởi task-master (`tasks.json`). MEMORY.md chỉ cần cập nhật khi:
+- Thêm planning file mới (section "Planning Files")
+- Thêm review file mới (section "Review Files")
+- Ghi nhận bug fix đã hoàn thành (section "Bug Fixes")
+- Thay đổi kiến trúc, patterns, hoặc key decisions
+
+Đừng duplicate task status vào MEMORY.md — dùng `task-master list` để xem trạng thái.
 
 ## Project Context
 
-Xem `MEMORY.md` để nắm tổng quan dự án, kiến trúc, patterns, và trạng thái hiện tại của từng feature/bugfix.
+- Xem `MEMORY.md` để nắm tổng quan dự án, kiến trúc, patterns, và lịch sử planning/review files
+- Dùng `task-master list` để xem trạng thái pending tasks hiện tại
+- Dùng `task-master show <id>` để xem chi tiết và subtasks của từng task

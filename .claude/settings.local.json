@@ -63,7 +63,9 @@
       "Bash(echo \"EXIT=$?\")",
       "Bash(node /tmp/test_regex.js)",
       "Bash(powershell -Command \"Get-Date -Format 'HHmm'\")",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(npx task-master-ai *)",
+      "Bash(npx task-master *)"
     ]
   },
   "model": "opusplan"

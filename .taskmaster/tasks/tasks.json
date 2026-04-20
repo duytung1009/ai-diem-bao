@@ -1,0 +1,432 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 101,
+        "title": "Phase 1-4: Initial Extension Setup",
+        "description": "Các phase đầu: WXT scaffold, Vue router, XenForo detector, scraper, OpenAI adapter, sidepanel UI, TopicHub, SummaryView, SettingsView.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [],
+        "details": "planning: planning/20260314_2216_phase-1.md\nplanning: planning/20260314_2216_phase-2.md\nplanning: planning/20260314_2216_phase-3.md\nplanning: planning/20260314_2216_phase-4.md\nreview: review/20260317_0915_phase-3.md\nreview: review/20260317_0958_phase-4.md\nreview: review/20260318_1650_final-review.md",
+        "subtasks": []
+      },
+      {
+        "id": 102,
+        "title": "Phase 5: Claude Adapter + Opinions + ResearchView",
+        "description": "ClaudeAdapter, phân tích ý kiến (opinions), ResearchView, TopicMeta component, bug fixes từ final review.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [101],
+        "details": "planning: planning/20260318_1859_phase-5.md\nreview: review/20260318_2033_phase-5.md",
+        "subtasks": []
+      },
+      {
+        "id": 103,
+        "title": "Early Bug Fixes: duplicate URL, hub UI, race condition, hub loading",
+        "description": "4 bug fixes từ initial testing: duplicate topic URL, remove summarize button from hub, opinions empty state style, detect race condition, hub loading stuck.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [102],
+        "details": "planning: planning/20260318_2114_fix-duplicate-topic-url.md\nplanning: planning/20260318_2114_fix-hub-remove-summarize-button.md\nplanning: planning/20260318_2114_fix-opinions-empty-state-style.md\nplanning: planning/20260318_2254_fix-detect-race-condition.md\nplanning: planning/20260318_2254_fix-hub-loading-stuck.md",
+        "subtasks": []
+      },
+      {
+        "id": 1,
+        "title": "F01: Delete Topic",
+        "description": "Delete button per topic card + 'Xóa tất cả cache' trong Settings.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [103],
+        "details": "planning: planning/20260319_0920_01-feature-delete-topic.md\nreview: review/20260319_1059_features-01-to-06.md",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "F02: Default Prompt Display",
+        "description": "Toggle 'Xem prompt mặc định' dưới textarea trong Settings.",
+        "status": "done",
+        "priority": "low",
+        "dependencies": [103],
+        "details": "planning: planning/20260319_0920_02-feature-default-prompt-display.md\nreview: review/20260319_1059_features-01-to-06.md",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "F03: Realtime Summary Status",
+        "description": "summarizingUrl ref + temp topic card trong hub khi đang tóm tắt.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [103],
+        "details": "planning: planning/20260319_0920_03-feature-realtime-summary-status.md\nreview: review/20260319_1059_features-01-to-06.md",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "F04: Design System + Styling Rules",
+        "description": "Design tokens CSS vars, @utility classes (btn, card, badge, alert), STYLE_GUIDE.md.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [103],
+        "details": "planning: planning/20260319_0920_04-feature-styling-rules.md\nreview: review/20260319_1059_features-01-to-06.md",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "F05: Dark Mode",
+        "description": "useTheme composable, class-based .dark trên <html>, Settings selector.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [4],
+        "details": "planning: planning/20260319_0920_05-feature-dark-mode.md\nreview: review/20260319_1059_features-01-to-06.md",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "F06: Gemini Provider",
+        "description": "GeminiAdapter, Gemini REST API, 4 model options.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [103],
+        "details": "planning: planning/20260319_0920_06-feature-gemini-provider.md\nreview: review/20260319_1059_features-01-to-06.md",
+        "subtasks": []
+      },
+      {
+        "id": 104,
+        "title": "Bug Fixes: cache display, stale summary, message timeout, auto-update",
+        "description": "refreshCacheSize trong onMounted+onActivated; reset state trong loadTopicData(); onActivated skip khi đang summarize; chunked scraping + fire-and-forget LLM; fix auto-update overwrite totalPosts.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [1, 2, 3, 4, 5, 6],
+        "details": "planning: planning/20260319_0920_fix-cache-display.md\nplanning: planning/20260319_1327_fix-stale-summary-on-topic-switch.md\nplanning: planning/20260319_2254_fix-auto-update-overwrites-totalPosts.md",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "F07: IndexedDB Cache",
+        "description": "cache-db.ts IndexedDB wrapper, rewrite cache-manager.ts, IDB migration từ localStorage.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [104],
+        "details": "planning: planning/20260319_1137_07-feature-indexeddb-cache.md\nreview: review/20260319_2320_features-07-to-10.md",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "F08: Topic URL Refresh + Auto-Update Cache",
+        "description": "URL navigation detection, auto-update cache khi topic có post mới, remove ExportButton, fix CacheIndicator livePostCount.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [7],
+        "details": "planning: planning/20260319_1327_08-feature-topic-url-refresh-cleanup.md\nreview: review/20260319_2320_features-07-to-10.md",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "F09: Detect Search + Opinions",
+        "description": "Thread-only detect, hub search+sort, opinion support bars.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [8],
+        "details": "planning: planning/20260319_1450_09-feature-detect-search-opinions.md\nreview: review/20260319_2320_features-07-to-10.md",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "F10: Smart Scraping",
+        "description": "Incremental scraping, news detection + article fetch, Segment Mode.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [9],
+        "details": "planning: planning/20260319_1710_10-feature-smart-scraping.md\nreview: review/20260319_2320_features-07-to-10.md",
+        "subtasks": []
+      },
+      {
+        "id": 105,
+        "title": "Bug Fixes: segment mode, stale summarize guard, post count, save metadata",
+        "description": "Version metadata, normalize URL compare, handleSegmentUpdate; activeSummarizeId invalidation; summarizedPostCount field; đủ metadata trong SAVE_CACHED_TOPIC; segment mode metadata lost on return.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [10],
+        "details": "planning: planning/20260320_1148_fix-segment-mode-bugs.md\nplanning: planning/20260320_2227_fix-stale-summarize-guard.md\nplanning: planning/20260320_2323_fix-summarized-post-count.md\nplanning: planning/20260321_0337_fix-stale-save-missing-metadata.md\nplanning: planning/20260321_0500_fix-segment-mode-metadata-lost-on-return.md",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "F11: Rate Limiter + UI Fixes",
+        "description": "Rate limiter slider, UI overflow fix, cursor pointer, segment size config.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [10],
+        "details": "planning: planning/20260320_1042_11-feature-rate-limiter-and-ui-fix.md",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "F12: Scrape Any Tab",
+        "description": "Scrape từ any forum tab (không chỉ active tab), findForumTab().",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [11],
+        "details": "planning: planning/20260320_1319_12-feature-scrape-any-tab.md\nreview: review/20260320_2121_feature-12-scrape-any-tab.md",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "F13: Fire-and-Forget LLM Progress",
+        "description": "START_LLM_TASK + LLM_RESULT messaging, useLLM task manager, LLMProgress.vue, ETA stats.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [12, 105],
+        "details": "planning: planning/20260320_1633_13-feature-fire-and-forget-llm-progress.md\nreview: review/20260321_1500_feature-13-fire-and-forget-llm-progress.md",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "F14: Custom Chunk & Reduce Prompt Templates",
+        "description": "Thêm 2 tab mới 'Tóm tắt phần' và 'Gộp tóm tắt' vào Settings → Prompt Templates, cho phép user tùy chỉnh CHUNK_SUMMARY_PROMPT (map) và REDUCE_SUMMARY_PROMPT (reduce).",
+        "status": "pending",
+        "priority": "low",
+        "dependencies": [13],
+        "details": "planning: planning/20260321_1450_14-feature-custom-chunk-reduce-prompts.md\n\nAffected modules:\n- lib/types.ts — mở rộng CustomPrompts interface (thêm chunkSummaryPrompt, reduceSummaryPrompt)\n- lib/llm/summarizer.ts — thread custom prompts qua toàn bộ pipeline\n- entrypoints/sidepanel/views/SettingsView.vue — thêm 2 tab UI\n\nBackground index.ts không cần sửa — prompts từ getCustomPrompts() đã pass vào tất cả 4 hàm LLM.",
+        "testStrategy": "Test custom chunk prompt override → verify LLM nhận đúng prompt. Test custom reduce prompt. Test fallback về default khi field rỗng.",
+        "subtasks": []
+      },
+      {
+        "id": 106,
+        "title": "Bug Fix: Wrong Post Count Display",
+        "description": "cachedTopic.posts, posts vào updateSelectedTopic, max(detected, cached) pageCount.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [13],
+        "details": "planning: planning/20260325_2143_fix-wrong-post-count-display.md",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "F15+F16: JSON Structured Output + Persist Scraping",
+        "description": "SummaryJSON structured output, persist posts trước LLM (early-save).",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [106],
+        "details": "planning: planning/20260330_1220_batch_json-output-and-persist-scraping.md",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "F17: Unified Progress Indicator",
+        "description": "Unified progress indicator cho scraping + LLM phases.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [15],
+        "details": "planning: planning/20260330_1400_17-feature-unified-progress-indicator.md",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "F18: Scrape in Sidepanel",
+        "description": "Scrape via scrapePageRange trong sidepanel (bypass content script limitations).",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [17],
+        "details": "planning: planning/20260331_2038_18-feature-scrape-in-sidepanel.md\nreview: review/20260331_2110_tier2_feature-18-scrape-in-sidepanel.md",
+        "subtasks": []
+      },
+      {
+        "id": 107,
+        "title": "Bug Fixes: JSON parsing, CSP violations, segment sparse array",
+        "description": "parseSummaryJSON single-backtick; segment retry full-scrape; segment mode JSON output; settings knowledge tab; CSP script violation sidepanel; CSP preload (strip <head>); fix-segment-sparse-array (makeDenseBase(), skip re-scrape nếu posts đã cache).",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [18],
+        "details": "planning: planning/20260401_1123_fix-knowledge-extraction-timeout.md\nplanning: planning/20260401_1213_fix-csp-script-violation-sidepanel.md\nplanning: planning/20260401_1400_fix-segment-sparse-array-and-rescrape.md",
+        "subtasks": []
+      },
+      {
+        "id": 108,
+        "title": "Refactor: Technical Debt Batch",
+        "description": "Batch refactor technical debt: typing, unused imports, LLM settings per-provider, miscellaneous cleanup. Commit ecc8559.",
+        "status": "done",
+        "priority": "low",
+        "dependencies": [18],
+        "details": "planning: planning/20260401_1330_batch_refactor-technical-debt.md",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "F19: Cross-Segment Author Deduplication",
+        "description": "Phân tách trách nhiệm: LLM làm semantic grouping, code làm exact dedup (đếm tác giả duy nhất cross-segment, xây bảng thống kê).",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [20],
+        "details": "planning: planning/20260402_1409_19-feature-cross-segment-author-dedup.md\n\nVấn đề: LLM không dedup chính xác tác giả xuất hiện ở nhiều segment. Nghiêm trọng hơn khi segment count > 20.\n\nAffected modules:\n- lib/llm/summarizer.ts — buildAuthorCrossReference(), deduplicateSupporters(), sửa summarizeSegments()\n- lib/prompts.ts — cập nhật REDUCE_SUMMARY_PROMPT với instruction bảng tác giả",
+        "testStrategy": "Test với topic có tác giả xuất hiện ở nhiều segment. Verify supporter count không bị inflate. Verify giảm LLM hallucination ở opinion grouping.",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "F20: Unified Segment Mode",
+        "description": "Unify Normal+Segment Mode → always Segment; isSegmentMode=Boolean(topicInfo); backward compat legacy topics; single-segment fast path.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [107, 108],
+        "details": "planning: planning/20260402_1600_20-feature-segment-ui-progress.md\nCommits: d9dbdca, 934f329",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "F21: News Topic Badge + CacheIndicator Refactor",
+        "description": "Auto-detect news thread (detectAndCacheTopicType fire-and-forget), badge 'Tin tức', CacheIndicator refactor, countRealPosts fix, DeepReadonly<CachedTopic> type safety.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [20],
+        "details": "Không có planning file riêng — implemented directly.\ntask: .taskmaster/tasks/20260407_1500_task_21-feature-news-topic-badge.md",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "F22: Knowledge Tab Improvements",
+        "description": "Collapse/expand entries (CSS Grid animation), timestamp display, save/unsave (bookmark), delete + excludedKnowledgePostNumbers, 'Saved only' filter, incremental re-extract, clear tracking.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [21],
+        "details": "planning: planning/20260409_1120_22-feature-knowledge-tab-improvements.md\nreview: review/20260410_0900_tier2_feature-22-knowledge-tab-improvements.md\n\nReview: approve; 3 minor issues open:\n1. Math.max no fallback\n2. Stale URL after async\n3. Filter not reset on clear-tracking re-extract",
+        "subtasks": []
+      },
+      {
+        "id": 109,
+        "title": "Bug Fixes: JSON parsing, tree-reduce, isnewstopic sync",
+        "description": "repairUnescapedQuotes + NBSP + control chars trong parseSummaryJSON; summarizeSegments tree-reduce thực sự (đệ quy); fix-gemini-finish-reason; fix-openai-truncated-json; fix-isnewstopic-store-sync (useSummarize set topicType nhưng không sync store).",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [22],
+        "details": "Commits: 8b55a51 (repairUnescapedQuotes), 4b2ab0d (gemini), b34cb2e+894df83 (openai truncated)\nreview: review/20260410_1900_tier3_summarize-segments-tree-reduce.md\nreview: review/20260410_2030_tier3_summarize-tree-reduce-review-fixes.md",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "F23: Dynamic Segments Auto-Summarize",
+        "description": "autoSummarizeDynamic: scrape + tóm tắt từng segment theo real-time context window, LLMConfig.contextWindow override, cost estimator.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [22, 109],
+        "details": "planning: planning/20260410_1507_23-feature-dynamic-segments-auto-summarize.md\nreview: review/20260410_1530_tier3_feature-23-dynamic-segments-auto-summarize.md\n\nReview (Opus): request-changes; 1 critical, 3 major, 4 minor, 1 nit — đã fix hết.\nFix: .taskmaster/tasks/20260410_1700_bug_23-review-fixes.md",
+        "subtasks": []
+      },
+      {
+        "id": 110,
+        "title": "Bug Fixes: scrape progress, confirm dialog, post links, post URL page, post number sequential",
+        "description": "fix-scrape-progress-overall-task (regression F23); confirm-before-auto-summarize inline; post-number-as-link; fix-post-url-wrong-page-number (thêm page? vào ScrapedPost); fix-post-number-sequential (data-content thay vì text content).",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [23],
+        "details": "task: .taskmaster/tasks/20260411_1053_bug_fix-scrape-progress-overall-task.md\ntask: .taskmaster/tasks/20260411_1650_task_confirm-before-auto-summarize.md\ntask: .taskmaster/tasks/20260411_1700_task_post-number-as-link.md\ntask: .taskmaster/tasks/20260411_1705_bug_post-url-wrong-page-number.md\ntask: .taskmaster/tasks/20260411_1715_bug_post-number-sequential-not-id.md",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "F24: Dynamic Chunks Knowledge — Fix Critical Issues",
+        "description": "Fix 1 CRITICAL (topic switch mid-extract → data corruption) + 1 major (stale cachedTopic.value sau persistChunks) từ Opus review.",
+        "status": "in-progress",
+        "priority": "high",
+        "dependencies": [23],
+        "details": "planning: planning/20260410_2316_24-feature-dynamic-chunks-knowledge.md\nreview (Sonnet, degraded): review/20260411_0030_tier3_feature-24-dynamic-chunks-knowledge.md\nreview (Opus verified): review/20260411_0128_tier3_feature-24-opus-verification.md\n\nCRITICAL (Opus phát hiện, Sonnet bỏ sót):\n- KnowledgeView.loadTopicData() thiếu activeExtractId++ → topic switch mid-extract corrupt cache\n- persistChunks đọc cachedTopic.value!.url tại thời điểm persist thay vì snapshot → chunks Topic A → Topic B\n\nFix order:\n1. activeExtractId++ + state reset trong loadTopicData\n2. Capture topicUrl/topicTitle snapshot đầu handleExtract\n3. Update cachedTopic.value trong persistChunks\n4. Minors: reset search/tags on fresh extract, compact JSON (JSON.stringify(x) thay vì null,2 → ~30% savings)",
+        "testStrategy": "Switch topic khi đang extract → verify không data corruption. Cancel+resume → verify restart đúng chunk. Test compact JSON reduce tokens.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Fix activeExtractId invalidation trong loadTopicData",
+            "status": "pending",
+            "description": "Thêm activeExtractId++ + full state reset trong KnowledgeView.loadTopicData() theo pattern F23 (useSummarize.ts:203)"
+          },
+          {
+            "id": 2,
+            "title": "Capture topicUrl/topicTitle snapshot tại đầu handleExtract",
+            "status": "pending",
+            "description": "const topicUrl = cachedTopic.value!.url ở đầu hàm, không đọc lại trong persistChunks"
+          },
+          {
+            "id": 3,
+            "title": "Update cachedTopic.value trong persistChunks",
+            "status": "pending",
+            "description": "Sau IDB update, sync cachedTopic.value để resume detect đúng lastKnowledgePostNumber"
+          },
+          {
+            "id": 4,
+            "title": "Fix minors: search/tags reset, compact JSON",
+            "status": "pending",
+            "description": "Reset search+tags filter khi extract mới. JSON.stringify(x) thay vì null,2 trong reduceKnowledgeChunks"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "title": "Bug Fixes: export cache, simplify F26 cleanup, knowledge reduce bugs",
+        "description": "export-cache-json (lib/exporter.ts); simplify-f26-cleanup (mergeAbortSignals, dead code, type errors); fix-knowledge-reduce-empty-entries; fix-knowledge-dynamic-entry-cap.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [26, 24, 110],
+        "details": "task: .taskmaster/tasks/20260413_1430_task_export-cache-json.md\ntask: .taskmaster/tasks/20260416_1400_task_simplify-f26-cleanup.md (commit b7bf166)\ntask: .taskmaster/tasks/20260416_1500_bug_fix-knowledge-reduce-empty-entries.md\ntask: .taskmaster/tasks/20260417_1447_bug_fix-knowledge-dynamic-entry-cap.md",
+        "subtasks": []
+      },
+      {
+        "id": 112,
+        "title": "Bug Fixes: token overflow, reduce summary word cap, topic-meta refactor",
+        "description": "fix-summarize-token-overflow-maxtokens (willExceedContext hardcode buffer 2000 không tính maxTokens; tree-reduce guard; 1.4× token correction); fix-reduce-summary-word-cap (buildReduceSummaryPrompt(wordCap)); refactor-topic-meta-to-app (lift TopicMeta lên App.vue).",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [111],
+        "details": "task: .taskmaster/tasks/20260418_1041_bug_fix-summarize-token-overflow-maxtokens.md\ntask: .taskmaster/tasks/20260419_1400_bug_fix-reduce-summary-word-cap.md\nplanning: planning/20260419_1400_fix-reduce-summary-prompt-word-cap.md\ntask: .taskmaster/tasks/20260410_2210_task_refactor-topic-meta-to-app.md",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "F25: Thread Analysis View",
+        "description": "Thêm loại tóm tắt 'Phân tích Thread VOZ' với 8 sections (TỔNG QUAN, USER TIÊU BIỂU, LUỒNG TRANH LUẬN, COMBAT, TIMELINE, COMMENT NỔI BẬT, KẾT LUẬN, KIẾM HIỆP). 2 sub-tab trong Tổng quan, copy plain-text.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [14],
+        "details": "planning: planning/20260415_1948_25-feature-thread-analysis-view.md\n\nAffected modules:\n- lib/types.ts — ThreadAnalysisJSON interface + threadAnalysis? field trong CachedTopic\n- lib/prompts.ts — THREAD_ANALYSIS_PROMPT\n- lib/llm/summarizer.ts — generateThreadAnalysis(summaryJson, meta, config)\n- entrypoints/background/index.ts — handler cho task mới trong START_LLM_TASK\n- entrypoints/sidepanel/composables/useSummarize.ts — threadAnalysis ref + handleGenerateAnalysis()\n- entrypoints/sidepanel/components/ThreadAnalysisContent.vue — component mới render 8 sections\n- entrypoints/sidepanel/views/SummaryView.vue — 2 sub-tab 'Tóm tắt' / 'Phân tích'",
+        "testStrategy": "Generate analysis sau khi có summary. Verify 8 sections present. Test copy plain-text. Test persist + reload từ cache. Test với news vs regular topic.",
+        "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "F26: LLM Cost Guard",
+        "description": "estimateAutoSummarizeCalls + estimateExtractCalls trước khi chạy; warning dialog nếu vượt ngưỡng; lib/llm/cost-estimator.ts.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [23],
+        "details": "planning: planning/20260416_0110_26-feature-llm-cost-guard.md\ntask: .taskmaster/tasks/20260416_0115_task_26-feature-llm-cost-guard.md",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Refactor: ConfirmInline Common Component",
+        "description": "Tạo ConfirmInline.vue dùng chung, thay 2 inline confirm pattern ở SummaryView (confirmingAutoSummarize) và KnowledgeView (confirmingExtract).",
+        "status": "pending",
+        "priority": "low",
+        "dependencies": [],
+        "details": "planning: planning/20260418_1131_refactor-confirm-dialog-common.md\n\nAffected modules:\n- entrypoints/sidepanel/components/ConfirmInline.vue — tạo mới, props: message, confirmLabel, cancelLabel\n- entrypoints/sidepanel/views/SummaryView.vue — thay inline confirm\n- entrypoints/sidepanel/views/KnowledgeView.vue — thay inline confirm\n\nDesign: block layout, dùng design tokens (btn, card). Không dùng modal overlay.",
+        "testStrategy": "Verify behavior giống hệt inline confirm cũ. Test ở cả 2 views. Test keyboard/click cancel vs confirm.",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Fix: Knowledge Reduce Output Overflow Prevention",
+        "description": "runReducePhase không kiểm tra output budget. Chia thành nhiều call nhỏ nếu finalCap quá lớn cho 1 call, rồi client-side dedup.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [24],
+        "details": "planning: planning/20260417_1608_fix-knowledge-output-overflow.md\n\nVấn đề: finalCap = min(150, max(20, chunks×3)) không check output budget. 81 entries × ~100 tokens = ~8.1K output → dễ tràn 16K context.\n\nAffected modules:\n- entrypoints/sidepanel/views/KnowledgeView.vue — runReducePhase (thay đổi chính)\n- lib/constants.ts — TOKENS_PER_KNOWLEDGE_ENTRY = 100, REDUCE_OUTPUT_FRACTION = 0.35\n\nImplementation:\n- maxOutputTokens = contextWindow × REDUCE_OUTPUT_FRACTION\n- maxEntriesPerCall = floor(maxOutputTokens / TOKENS_PER_KNOWLEDGE_ENTRY)\n- Chia input thành batches → concat + dedup by title+source\n- guard finalEntries.length === 0 → throw error",
+        "testStrategy": "Test với topic 27+ chunks → verify không tràn context. Verify dedup loại entries trùng title. Verify guard throw khi empty.",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-04-20T00:00:00.000Z",
+      "updated": "2026-04-20T08:00:00.000Z",
+      "description": "AI Điểm Báo — Chrome Extension, đầy đủ lịch sử features F01-F26 + bug fixes + pending tasks"
+    }
+  }
+}

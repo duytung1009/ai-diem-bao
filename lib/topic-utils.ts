@@ -5,12 +5,17 @@ export type TopicSummaryStatus = 'none' | 'in-progress' | 'partial' | 'done';
 export function topicSummaryStatus(
   topic: CachedTopic,
   isSummarizing: boolean,
+  livePostCount?: number,
 ): TopicSummaryStatus {
   if (isSummarizing) return 'in-progress';
   const hasSummary = !!(topic.summary || topic.segments?.some(s => s?.summary));
   if (!hasSummary) return 'none';
   const summarized = topic.summarizedPostCount ?? topic.totalPosts ?? 0;
-  if (summarized < (topic.totalPosts ?? 0)) return 'partial';
+  // Use livePostCount if available and > cached totalPosts
+  const effectiveTotalPosts = (livePostCount != null && livePostCount > (topic.totalPosts ?? 0))
+    ? livePostCount
+    : (topic.totalPosts ?? 0);
+  if (summarized < effectiveTotalPosts) return 'partial';
   return 'done';
 }
 

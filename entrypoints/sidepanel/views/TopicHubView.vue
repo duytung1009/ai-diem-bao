@@ -91,6 +91,22 @@ const activeTabInList = computed(() => {
   return allTopics.value.some(t => normalizeUrl(t.url) === normalizeUrl(store.activeTabUrl.value!));
 });
 
+// Track new posts count for active tab topic (live detect vs cached totalPosts)
+const newPostsMap = computed<Record<string, number>>(() => {
+  if (!store.activeTabDetect.value || !store.activeTabUrl.value) return {};
+  const liveCount = store.activeTabDetect.value.postCount;
+  const activeUrl = normalizeUrl(store.activeTabUrl.value);
+  const result: Record<string, number> = {};
+  for (const topic of allTopics.value) {
+    if (normalizeUrl(topic.url) === activeUrl) {
+      const delta = liveCount - (topic.totalPosts ?? 0);
+      if (delta > 0) result[topic.url] = delta;
+      break;
+    }
+  }
+  return result;
+});
+
 async function refreshTopicList(showLoading = false) {
   if (showLoading) isLoading.value = true;
   try {
@@ -108,7 +124,7 @@ onActivated(() => { refreshTopicList(); });
 const selectedTopicKey = computed(() => {
   const t = store.selectedTopic.value;
   if (!t) return null;
-  return `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}`;
+  return `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}|${t.totalPosts ?? 0}`;
 });
 
 watch(selectedTopicKey, () => {
@@ -321,13 +337,13 @@ async function toggleBookmark(topic: CachedTopic) {
                         ⟳ Đang tóm tắt...
                       </span>
                       <span
-                        v-else-if="topicSummaryStatus(topic, false) === 'done'"
+                        v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'done'"
                         class="badge badge-success"
                       >
                         ✓ Đã tóm tắt
                       </span>
                       <span
-                        v-else-if="topicSummaryStatus(topic, false) === 'partial'"
+                        v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'"
                         class="badge bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
                       >
                         ~ Một phần
@@ -348,16 +364,14 @@ async function toggleBookmark(topic: CachedTopic) {
                     <div class="flex items-center gap-2 justify-end">
                       <!-- Post count -->
                       <span class="text-xs text-(--color-text-muted)">
-                        <template v-if="topicSummaryStatus(topic, false) === 'partial'">
+                        <template v-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'">
                           {{ topic.summarizedPostCount ?? topic.totalPosts }}/{{ topic.totalPosts }} bài
                         </template>
                         <template v-else>{{ topic.totalPosts }} bài</template>
                         <span
-                          v-if="store.activeTabDetect.value && store.activeTabUrl.value &&
-                                isSameTopicUrl(store.activeTabUrl.value, topic.url) &&
-                                store.activeTabDetect.value.postCount > topic.totalPosts"
+                          v-if="newPostsMap[topic.url]"
                           class="text-(--color-accent-text) ml-0.5"
-                        >(+{{ store.activeTabDetect.value.postCount - topic.totalPosts }} mới)</span>
+                        >(+{{ newPostsMap[topic.url] }} mới)</span>
                       </span>
                       <!-- Time -->
                       <span v-if="topic.cachedAt" class="text-xs text-(--color-text-muted)">

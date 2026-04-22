@@ -127,11 +127,11 @@ async function handleCopy() {
   <div class="space-y-5 text-sm">
     <!-- Actions row: slot bên trái, Copy bên phải -->
     <div class="flex items-center justify-between">
-      <div class="flex items-center justify-start">
+      <div class="flex items-center justify-start gap-2">
         <slot name="actions" />
       </div>
       <button
-        class="btn text-xs flex items-center gap-1.5"
+        class="btn text-xs flex items-center gap-1"
         @click="handleCopy"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

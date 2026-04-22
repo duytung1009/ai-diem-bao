@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onActivated, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import type { CachedTopic, DetectResult } from '@/lib/types';
+import type { CachedTopic } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
@@ -34,18 +34,6 @@ interface OpinionAnalysis {
   }>;
   summary: string;
 }
-
-// Derived from store — replaces topicInfo ref
-const topicInfo = computed<DetectResult | null>(() => {
-  const topic = store.selectedTopic.value;
-  if (!topic) return null;
-  return {
-    version: topic.version,
-    title: topic.title,
-    postCount: topic.totalPosts,
-    pageCount: topic.totalPages,
-  } satisfies DetectResult;
-});
 
 /**
  * Best-effort repair for LLM-generated JSON with unescaped double quotes inside string values.
@@ -201,7 +189,7 @@ function getSentimentColor(sentiment: string): string {
         </button>
       </div>
 
-      <TopicMeta v-if="topicInfo" :info="topicInfo" :url="store.selectedTopic.value?.url" />
+      <TopicMeta v-if="store.selectedTopic.value" :topic="store.selectedTopic.value" />
 
       <h2 class="font-semibold text-sm text-(--color-text-primary)">Phân tích Ý kiến</h2>
 

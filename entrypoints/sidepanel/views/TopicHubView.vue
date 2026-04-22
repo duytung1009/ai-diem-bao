@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl, normalizeUrl } from '@/lib/cache-manager';
+import { topicSummaryStatus, formatTopicDate } from '@/lib/topic-utils';
 import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry, KnowledgeChunk, ThreadAnalysisJSON } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -201,19 +202,6 @@ async function toggleBookmark(topic: CachedTopic) {
   }
   await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, bookmarked: updated.bookmarked }).catch(() => {});
 }
-
-function formatRelativeTime(timestamp: number): string {
-  if (!timestamp) return '';
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'Vừa xong';
-  if (minutes < 60) return `${minutes} phút trước`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} ngày trước`;
-  return new Date(timestamp).toLocaleDateString('vi-VN');
-}
 </script>
 
 <template>
@@ -323,32 +311,59 @@ function formatRelativeTime(timestamp: number): string {
                   @click="selectTopic(topic)"
                 >
                   <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">{{ topic.title }}</p>
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <!-- Status badge -->
-                    <span
-                      v-if="isSameTopicUrl(store.summarizingUrl.value, topic.url)"
-                      class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
-                    >
-                      ⟳ Đang tóm tắt...
-                    </span>
-                    <span
-                      v-else-if="topic.summary"
-                      class="badge badge-success"
-                    >
-                      ✓ Đã tóm tắt
-                    </span>
-                    <span
-                      v-else
-                      class="badge badge-neutral"
-                    >
-                      ○ Chưa tóm tắt
-                    </span>
-                    <!-- Post count -->
-                    <span class="text-xs text-(--color-text-muted)">{{ topic.totalPosts }} bài</span>
-                    <!-- Time -->
-                    <span v-if="topic.cachedAt" class="text-xs text-(--color-text-muted)">
-                      {{ formatRelativeTime(topic.cachedAt) }}
-                    </span>
+                  <div class="flex items-center gap-2 justify-between">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <!-- Status badge -->
+                      <span
+                        v-if="isSameTopicUrl(store.summarizingUrl.value, topic.url)"
+                        class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
+                      >
+                        ⟳ Đang tóm tắt...
+                      </span>
+                      <span
+                        v-else-if="topicSummaryStatus(topic, false) === 'done'"
+                        class="badge badge-success"
+                      >
+                        ✓ Đã tóm tắt
+                      </span>
+                      <span
+                        v-else-if="topicSummaryStatus(topic, false) === 'partial'"
+                        class="badge bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
+                      >
+                        ~ Một phần
+                      </span>
+                      <span
+                        v-else
+                        class="badge badge-neutral"
+                      >
+                        ○ Chưa tóm tắt
+                      </span>
+                      <!-- News badge -->
+                      <span v-if="topic.topicType === 'news'"
+                        class="badge bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400"
+                      >
+                        Tin tức
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2 justify-end">
+                      <!-- Post count -->
+                      <span class="text-xs text-(--color-text-muted)">
+                        <template v-if="topicSummaryStatus(topic, false) === 'partial'">
+                          {{ topic.summarizedPostCount ?? topic.totalPosts }}/{{ topic.totalPosts }} bài
+                        </template>
+                        <template v-else>{{ topic.totalPosts }} bài</template>
+                        <span
+                          v-if="store.activeTabDetect.value && store.activeTabUrl.value &&
+                                isSameTopicUrl(store.activeTabUrl.value, topic.url) &&
+                                store.activeTabDetect.value.postCount > topic.totalPosts"
+                          class="text-(--color-accent-text) ml-0.5"
+                        >(+{{ store.activeTabDetect.value.postCount - topic.totalPosts }} mới)</span>
+                      </span>
+                      <!-- Time -->
+                      <span v-if="topic.cachedAt" class="text-xs text-(--color-text-muted)">
+                        {{ formatTopicDate(topic.cachedAt) }}
+                      </span>
+                    </div>
                   </div>
                 </button>
                 <!-- Action buttons — top-right corner -->

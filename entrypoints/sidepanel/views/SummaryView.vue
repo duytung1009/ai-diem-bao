@@ -398,7 +398,7 @@ onActivated(async () => {
                     <template v-if="segments.length > 1">
                       <button
                         v-if="!confirmingAutoSummarize"
-                        class="btn text-xs flex items-center gap-1.5"
+                        class="btn text-xs flex items-center gap-1"
                         @click="confirmingAutoSummarize = true"
                       >
                         <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -415,7 +415,7 @@ onActivated(async () => {
                       />
                     </template>
                     <button
-                      class="btn text-xs flex items-center gap-1.5"
+                      class="btn text-xs flex items-center gap-1"
                       :disabled="isProcessing"
                       @click="generateOverallSummary"
                     >
@@ -451,7 +451,7 @@ onActivated(async () => {
             >
               <template #actions>
                 <button
-                  class="btn text-xs flex items-center gap-1.5"
+                  class="btn text-xs flex items-center gap-1"
                   :disabled="isAnalyzing || isProcessing"
                   @click="handleGenerateAnalysis"
                 >

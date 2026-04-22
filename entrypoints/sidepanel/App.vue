@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { DetectResult } from '@/lib/types';
-import { normalizeUrl, getCachedTopic, saveCachedTopic } from '@/lib/cache-manager';
+import type { DetectResult, CachedTopic } from '@/lib/types';
+import { normalizeUrl, getCachedTopic, saveCachedTopic, isSameTopicUrl } from '@/lib/cache-manager';
 import { useTopicStore } from './composables/useTopicStore';
 import { useTheme } from './composables/useTheme';
 import TopicMeta from './components/TopicMeta.vue';
@@ -43,16 +43,32 @@ onUnmounted(() => {
 // Topic-specific tabs disabled when no topic selected
 const hasSelectedTopic = computed(() => !!store.selectedTopic.value);
 
-// Shared TopicMeta data — displayed once above router-view on all topic-detail tabs
+// Shared TopicMeta displayed once above router-view on all topic-detail tabs
 const isTopicDetailRoute = computed(() =>
   ['summary', 'knowledge', 'research'].includes(route.name as string),
 );
-const topicInfo = computed<DetectResult | null>(() => {
-  const t = store.selectedTopic.value;
-  if (!t) return null;
-  return { version: t.version, title: t.title, postCount: t.totalPosts, pageCount: t.totalPages };
+const selectedTopicForMeta = computed<CachedTopic | null>(() =>
+  isTopicDetailRoute.value ? store.selectedTopic.value as CachedTopic : null,
+);
+
+const livePostCount = computed(() => {
+  const topic = store.selectedTopic.value;
+  if (!topic) return undefined;
+  if (
+    store.activeTabDetect.value &&
+    store.activeTabUrl.value &&
+    isSameTopicUrl(store.activeTabUrl.value, topic.url)
+  ) {
+    return store.activeTabDetect.value.postCount;
+  }
+  return undefined;
 });
-const isNewsTopic = computed(() => store.selectedTopic.value?.topicType === 'news');
+
+const isSummarizingCurrentTopic = computed(() =>
+  !!(store.summarizingUrl.value &&
+    store.selectedTopic.value &&
+    isSameTopicUrl(store.summarizingUrl.value, store.selectedTopic.value.url)),
+);
 
 async function detectActiveTabTopic() {
   try {
@@ -167,8 +183,12 @@ function navigateTo(path: string) {
     <!-- Content -->
     <main class="flex-1 overflow-y-auto">
       <!-- Single TopicMeta shared across Tóm tắt / Kiến thức / Tra cứu tabs -->
-      <div v-if="topicInfo && isTopicDetailRoute" class="px-4 pt-4">
-        <TopicMeta :info="topicInfo" :url="store.selectedTopic.value?.url" :is-news="isNewsTopic" />
+      <div v-if="selectedTopicForMeta" class="px-4 pt-4">
+        <TopicMeta
+          :topic="selectedTopicForMeta"
+          :live-post-count="livePostCount"
+          :is-summarizing="isSummarizingCurrentTopic"
+        />
       </div>
       <router-view v-slot="{ Component }">
         <keep-alive>

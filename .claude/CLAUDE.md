@@ -9,21 +9,42 @@
 | Tier 2 — Standard | Sonnet | Implementation, bug logging, review 50-200 LOC, 2-3 files | Thêm API endpoint, filter/sort, bug fix routine |
 | Tier 3 — Deep | Opus | Planning phức tạp, architecture, review > 200 LOC, cross-module, security | Refactor data flow, đổi cache schema, batch planning |
 
-## Planning Template
+## Planning Template (PRD format — dùng với `task-master parse-prd`)
 
-- [ ] Objective & scope
-- [ ] Affected modules
-- [ ] Implementation steps (ordered)
-- [ ] Edge cases
-- [ ] Test plan
-- [ ] Rollback plan
-- [ ] Decision Log (xem bên dưới)
-
-### Decision Log (BẮT BUỘC trong mọi planning file)
-
-Mỗi quyết định kiến trúc quan trọng cần ghi lại:
+Planning files phải viết theo format PRD để có thể parse bằng `task-master parse-prd --append`. Task-master sẽ đọc file này và tự động generate tasks + subtasks.
 
 ```markdown
+# [Tên feature/bugfix]
+
+## Overview
+Mô tả ngắn gọn: mục tiêu, scope, lý do cần làm.
+
+## Goals
+- Goal 1 (measurable outcome)
+- Goal 2
+
+## Requirements
+
+### [Component / Module A]
+- Requirement 1: mô tả chi tiết
+- Requirement 2
+
+### [Component / Module B]
+- Requirement 3
+
+## Technical Considerations
+- Affected files/modules
+- Dependencies giữa components
+- Edge cases cần xử lý
+- Constraints (performance, backward compat, v.v.)
+
+## Implementation Notes
+Gợi ý cụ thể cho agent implement: patterns cần dùng, files cần sửa, thứ tự ưu tiên.
+
+## Test Plan
+- Cách verify feature hoạt động đúng
+- Edge cases cần test thủ công
+
 ## Decision Log
 
 ### Quyết định 1: [Tên quyết định]
@@ -31,11 +52,10 @@ Mỗi quyết định kiến trúc quan trọng cần ghi lại:
 - **Lý do:** [Tại sao chọn cái này]
 - **Đã cân nhắc nhưng loại:**
   - [Alternative A] — loại vì [lý do]
-  - [Alternative B] — loại vì [lý do]
-- **Điều kiện thay đổi:** [Khi nào nên xem xét lại quyết định này]
+- **Điều kiện thay đổi:** [Khi nào nên xem xét lại]
 ```
 
-Mục đích: Khi Sonnet implement, tham chiếu Decision Log để hiểu lý do đằng sau mỗi approach. Nếu gặp tình huống không cover → tag `[DECISION_NEEDED]` kèm reasoning và tiếp tục.
+**Decision Log BẮT BUỘC** trong mọi planning file. Khi Sonnet implement, tham chiếu Decision Log để hiểu lý do đằng sau mỗi approach. Nếu gặp tình huống không cover → tag `[DECISION_NEEDED]` kèm reasoning và tiếp tục.
 
 ## Degraded Mode (khi Opus bị rate limit)
 - Dùng Sonnet với template đầy đủ
@@ -85,16 +105,15 @@ review/yyyyMMdd_HHmm_tier3_tên_file.md
 
 ### Sau khi lập planning (feature hoặc bugfix)
 
-1. Lưu file planning vào `planning/`
+1. Lưu file planning vào `planning/` theo PRD format (xem Planning Template)
    - Feature: `yyyyMMdd_HHmm_NN-feature-tên.md` (NN = số thứ tự feature)
    - Bug fix: `yyyyMMdd_HHmm_fix-tên.md`
    - Batch: `yyyyMMdd_HHmm_batch_tên_nhóm.md`
 2. Planning file PHẢI có Decision Log
-3. Thêm/cập nhật task trong task-master:
+3. Parse PRD thành tasks trong task-master:
    ```bash
-   task-master add-task --prompt "Mô tả task, link planning file path"
-   # hoặc cập nhật details của task hiện có
-   task-master update <id> --prompt "Link planning/yyyyMMdd_... vừa tạo"
+   task-master parse-prd planning/yyyyMMdd_HHmm_tên.md --append
+   # --append để thêm vào task list hiện có, không overwrite
    ```
 4. Cập nhật `MEMORY.md` — thêm entry vào section "Planning Files"
 
@@ -102,16 +121,14 @@ review/yyyyMMdd_HHmm_tier3_tên_file.md
 
 1. Chạy **Self-review** (Sonnet) theo checklist trong `template/self_review_checklist.md`
 2. Fix tất cả issues tìm được
-3. Cập nhật task status:
+3. Chuyển task sang trạng thái chờ review:
    ```bash
-   task-master set-status <id> done
+   task-master set-status --id=<id> --status=review
    ```
-4. Lưu self-review notes vào `review/yyyyMMdd_HHmm_tierN_tên_file.md` (nếu có issues đáng ghi)
-5. Cập nhật `MEMORY.md` — cập nhật status feature/bugfix
 
 ### Sau khi implement — Review Triage
 
-Sau khi commit, chạy Sonnet phân tích diff:
+Phân tích diff để xác định tier:
 
 ```
 Phân tích diff sau và xác định review tier:
@@ -127,10 +144,18 @@ Output: tier, lý do, và danh sách concerns cần review.
 
 ### Sau khi review
 
-1. Lưu nội dung review vào `review/yyyyMMdd_HHmm_tierN_tên_file.md`
-2. BẮT BUỘC theo format Review Template bên dưới
-3. Nếu request-changes: cập nhật task status → `blocked` + ghi issue vào task notes
-4. Cập nhật `MEMORY.md` — thêm entry vào section "Review Files"
+1. Lưu nội dung review vào `review/yyyyMMdd_HHmm_tierN_tên_file.md` theo Review Template
+2. Link file vào task và cập nhật status:
+   ```bash
+   # Approve
+   task-master update-task --id=<id> --prompt="Review: review/yyyyMMdd_HHmm_tierN_tên.md — approve"
+   task-master set-status --id=<id> --status=done
+
+   # Request changes
+   task-master update-task --id=<id> --prompt="Review: review/yyyyMMdd_HHmm_tierN_tên.md — request-changes: [tóm tắt issue chính]"
+   task-master set-status --id=<id> --status=blocked
+   ```
+3. Không cần cập nhật MEMORY.md "Review Files" — link đã có trong task notes
 
 ### QA 2 Phase (sau khi Tùng test)
 
@@ -152,13 +177,16 @@ Output: tier, lý do, và danh sách concerns cần review.
    Lên kế hoạch implementation cho nhóm feature sau.
    Chú ý: shared dependencies, thứ tự tối ưu, shared components, potential conflicts.
    ```
-3. Output: `planning/yyyyMMdd_HHmm_batch_tên_nhóm.md`
-   - Dependency graph
+3. Output: `planning/yyyyMMdd_HHmm_batch_tên_nhóm.md` theo PRD format, gồm:
+   - Dependency graph + implementation order
    - Shared components cần tạo trước
-   - Implementation order
-   - Plan chi tiết từng feature (theo Planning Template)
-4. Cập nhật task dependencies trong tasks.json
-5. Cập nhật backlog: chuyển items sang "Đã batch plan"
+   - Requirements chi tiết từng feature (theo Planning Template)
+4. Parse PRD thành tasks:
+   ```bash
+   task-master parse-prd planning/yyyyMMdd_HHmm_batch_tên_nhóm.md --append
+   ```
+5. Cập nhật task dependencies trong tasks.json nếu cần
+6. Cập nhật backlog: chuyển items sang "Đã batch plan"
 
 ## Review Template (BẮT BUỘC cho mọi review file)
 
@@ -193,10 +221,10 @@ Output: tier, lý do, và danh sách concerns cần review.
 
 **Task status** được quản lý bởi task-master (`tasks.json`). MEMORY.md chỉ cần cập nhật khi:
 - Thêm planning file mới (section "Planning Files")
-- Thêm review file mới (section "Review Files")
-- Ghi nhận bug fix đã hoàn thành (section "Bug Fixes")
+- Ghi nhận bug fix đáng chú ý (section "Bug Fixes")
 - Thay đổi kiến trúc, patterns, hoặc key decisions
 
+Không cần cập nhật MEMORY.md cho review files — link review đã lưu trong task notes qua `update-task`.
 Đừng duplicate task status vào MEMORY.md — dùng `task-master list` để xem trạng thái.
 
 ## Project Context

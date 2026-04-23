@@ -237,6 +237,16 @@ async function persistChunks(chunks: KnowledgeChunk[], guardId: number, topicUrl
     url: topicUrl,
     knowledgeChunks: chunks,
   }).catch(() => {});
+
+  if (cachedTopic.value?.url === topicUrl) {
+    cachedTopic.value = {
+      ...cachedTopic.value,
+      knowledgeChunks: [...chunks],
+      lastKnowledgePostNumber: chunks.length > 0
+        ? chunks[chunks.length - 1].endPostNumber
+        : cachedTopic.value.lastKnowledgePostNumber,
+    };
+  }
 }
 
 /** Direct path: single LLM call for small topics that fit in context */

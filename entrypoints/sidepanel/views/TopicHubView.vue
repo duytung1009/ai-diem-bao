@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl, normalizeUrl } from '@/lib/cache-manager';
 import { topicSummaryStatus, formatTopicDate } from '@/lib/topic-utils';
+import { formatNumber } from '@/lib/format';
 import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry, KnowledgeChunk, ThreadAnalysisJSON } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -286,18 +287,22 @@ async function toggleBookmark(topic: CachedTopic) {
         <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2">
           {{ store.activeTabDetect.value.title }}
         </p>
-        <div class="flex items-center gap-3 text-xs text-(--color-text-secondary)">
-          <span
-            v-if="store.summarizingUrl.value && store.activeTabUrl.value && isSameTopicUrl(store.summarizingUrl.value, store.activeTabUrl.value)"
-            class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
-          >
-            ⟳ Đang tóm tắt...
-          </span>
-          <span v-else class="badge badge-neutral">
-            ○ Chưa tóm tắt
-          </span>
-          <span>{{ store.activeTabDetect.value.postCount }} bài viết</span>
-          <span>{{ store.activeTabDetect.value.pageCount }} trang</span>
+        <div class="flex items-center gap-2 justify-between">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span
+              v-if="store.summarizingUrl.value && store.activeTabUrl.value && isSameTopicUrl(store.summarizingUrl.value, store.activeTabUrl.value)"
+              class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
+            >
+              ⟳ Đang tóm tắt...
+            </span>
+            <span v-else class="badge badge-neutral">
+              ○ Chưa tóm tắt
+            </span>
+          </div>
+          <div class="flex items-center gap-2 justify-end">
+            <span class="text-xs text-(--color-text-muted)">{{ store.activeTabDetect.value.postCount }} bài</span>
+            <span class="text-xs text-(--color-text-muted)">{{ store.activeTabDetect.value.pageCount }} trang</span>
+          </div>
         </div>
       </button>
 
@@ -365,13 +370,13 @@ async function toggleBookmark(topic: CachedTopic) {
                       <!-- Post count -->
                       <span class="text-xs text-(--color-text-muted)">
                         <template v-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'">
-                          {{ topic.summarizedPostCount ?? topic.totalPosts }}/{{ topic.totalPosts }} bài
+                          {{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }}/{{ formatNumber(topic.totalPosts) }} bài
                         </template>
-                        <template v-else>{{ topic.totalPosts }} bài</template>
+                        <template v-else>{{ formatNumber(topic.totalPosts) }} bài</template>
                         <span
                           v-if="newPostsMap[topic.url]"
                           class="text-(--color-accent-text) ml-0.5"
-                        >(+{{ newPostsMap[topic.url] }} mới)</span>
+                        >(+{{ formatNumber(newPostsMap[topic.url]) }} mới)</span>
                       </span>
                       <!-- Time -->
                       <span v-if="topic.cachedAt" class="text-xs text-(--color-text-muted)">

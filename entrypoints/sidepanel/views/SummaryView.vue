@@ -8,6 +8,7 @@ import { calculateSegmentBudget, estimateTokens } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import { estimateAutoSummarizeCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
+import { formatNumber } from '@/lib/format';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
@@ -186,9 +187,9 @@ onActivated(async () => {
       <template v-if="isSegmentMode && !isProcessing">
         <!-- Info banner: chỉ hiển thị khi > 1 segment -->
         <div v-if="segments.length > 1" class="alert alert-info text-xs">
-          <p class="font-medium">Chủ đề dài ({{ topicInfo!.pageCount }} trang)</p>
-          <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ segments.length }} phần theo độ dài nội dung. Tóm tắt từng phần rồi tạo tổng quan.</p>
-          <p v-else class="mt-0.5">Chia thành {{ segments.length }} phần, mỗi phần ~{{ segmentSize }} trang. Tóm tắt từng phần rồi tạo tổng quan.</p>
+          <p class="font-medium">Chủ đề dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
+          <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần theo độ dài nội dung. Tóm tắt từng phần rồi tạo tổng quan.</p>
+          <p v-else class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần, mỗi phần ~{{ formatNumber(segmentSize) }} trang. Tóm tắt từng phần rồi tạo tổng quan.</p>
         </div>
 
         <!-- Segment tabs -->
@@ -218,7 +219,7 @@ onActivated(async () => {
               @click="handleSegmentUpdate"
             >
               Cập nhật
-              <template v-if="newPostCount > 0">(+{{ newPostCount }})</template>
+              <template v-if="newPostCount > 0">(+{{ formatNumber(newPostCount) }})</template>
             </button>
           </div>
 
@@ -226,7 +227,7 @@ onActivated(async () => {
           <template v-if="segments.length > 1">
             <div class="space-y-1">
               <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
-                <span>{{ summarizedCount }} / {{ segments.length }} phần đã tóm tắt</span>
+                <span>{{ formatNumber(summarizedCount) }} / {{ formatNumber(segments.length) }} phần đã tóm tắt</span>
                 <button
                   class="btn"
                   @click="segmentGridExpanded = !segmentGridExpanded"
@@ -340,7 +341,7 @@ onActivated(async () => {
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span class="text-xs text-(--color-text-secondary)">{{ segmentSummaries[0].postCount }} bài viết</span>
+                    <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(segmentSummaries[0].postCount) }} bài viết</span>
                   </div>
                   <CacheIndicator
                     v-if="cacheFreshness && cachedTopic"
@@ -381,7 +382,7 @@ onActivated(async () => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <span class="text-xs text-(--color-text-secondary)">
-                      Tóm tắt tổng quan {{ segments.length }} phần
+                      Tóm tắt tổng quan {{ formatNumber(segments.length) }} phần
                     </span>
                   </div>
                   <CacheIndicator
@@ -404,11 +405,11 @@ onActivated(async () => {
                         <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                         </svg>
-                        Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ segments.length }} phần)</template>
+                        Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ formatNumber(segments.length) }} phần)</template>
                       </button>
                       <ConfirmInline
                         v-else
-                        :message="`Tóm tắt ${segments.length} phần, không thể hủy. Tiếp tục?`"
+                        :message="`Tóm tắt ${formatNumber(segments.length)} phần, không thể hủy. Tiếp tục?`"
                         :warning="showAutoSummarizeCostWarning ? `⚠️ Ước tính ~${estimatedAutoSummarizeCalls} API calls. Chi phí có thể cao.` : undefined"
                         @confirm="confirmingAutoSummarize = false; handleAutoSummarizeAll()"
                         @cancel="confirmingAutoSummarize = false"
@@ -483,7 +484,7 @@ onActivated(async () => {
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span class="text-xs text-(--color-text-secondary)">{{ segmentSummaries[activeSegmentIndex].postCount }} bài viết</span>
+              <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(segmentSummaries[activeSegmentIndex].postCount) }} bài viết</span>
             </div>
             <SummaryContent
               :content="segmentSummaries[activeSegmentIndex].summary"

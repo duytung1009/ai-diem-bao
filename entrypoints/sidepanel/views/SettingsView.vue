@@ -4,7 +4,14 @@ import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS, MAX_CACHE_DISPLAY_BYTES } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { buildCacheExport } from '@/lib/exporter';
-import { SUMMARY_PROMPT, KNOWLEDGE_EXTRACT_PROMPT, RESEARCH_PROMPT, THREAD_ANALYSIS_PROMPT } from '@/lib/prompts';
+import {
+  SUMMARY_PROMPT,
+  CHUNK_SUMMARY_PROMPT,
+  REDUCE_SUMMARY_PROMPT,
+  KNOWLEDGE_EXTRACT_PROMPT,
+  RESEARCH_PROMPT,
+  THREAD_ANALYSIS_PROMPT,
+} from '@/lib/prompts';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useTheme } from '../composables/useTheme';
 
@@ -48,13 +55,15 @@ const themeOptions = [
 
 // Custom prompts
 const customPrompts = ref<CustomPrompts>({});
-const activePromptTab = ref<'summary' | 'knowledge' | 'research' | 'threadAnalysis'>('summary');
+const activePromptTab = ref<'summary' | 'chunkSummaryPrompt' | 'reduceSummaryPrompt' | 'knowledge' | 'research' | 'threadAnalysis'>('summary');
 const promptSaveMessage = ref('');
 const promptError = ref('');
 const showDefaultPrompt = ref(false);
 
 const defaultPrompts = {
   summary: SUMMARY_PROMPT,
+  chunkSummaryPrompt: CHUNK_SUMMARY_PROMPT,
+  reduceSummaryPrompt: REDUCE_SUMMARY_PROMPT,
   knowledge: KNOWLEDGE_EXTRACT_PROMPT,
   research: RESEARCH_PROMPT,
   threadAnalysis: THREAD_ANALYSIS_PROMPT,
@@ -62,6 +71,8 @@ const defaultPrompts = {
 
 const promptTabLabels = {
   summary: 'Tóm tắt',
+  chunkSummaryPrompt: 'Tóm tắt phần',
+  reduceSummaryPrompt: 'Gộp tóm tắt',
   knowledge: 'Kiến thức',
   research: 'Tra cứu',
   threadAnalysis: 'Phân tích',
@@ -664,7 +675,7 @@ async function exportCache() {
       <!-- Tabs -->
       <div class="flex border-b border-(--color-border)">
         <button
-          v-for="tab in (['summary', 'knowledge', 'research', 'threadAnalysis'] as const)"
+          v-for="tab in (['summary', 'chunkSummaryPrompt', 'reduceSummaryPrompt', 'knowledge', 'research', 'threadAnalysis'] as const)"
           :key="tab"
           class="flex-1 py-1.5 text-xs font-medium transition-colors"
           :class="activePromptTab === tab

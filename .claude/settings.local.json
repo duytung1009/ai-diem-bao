@@ -65,7 +65,12 @@
       "Bash(powershell -Command \"Get-Date -Format 'HHmm'\")",
       "Bash(python3 -c ':*)",
       "Bash(npx task-master-ai *)",
-      "Bash(npx task-master *)"
+      "Bash(npx task-master *)",
+      "mcp__task-master-ai__parse_prd",
+      "Bash(task-master parse-prd *)",
+      "Bash(task-master list *)",
+      "Bash(task-master show *)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   },
   "model": "opusplan"

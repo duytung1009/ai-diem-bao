@@ -225,14 +225,15 @@
         "id": "14",
         "title": "F14: Custom Chunk & Reduce Prompt Templates",
         "description": "Thêm 2 tab mới 'Tóm tắt phần' và 'Gộp tóm tắt' vào Settings → Prompt Templates, cho phép user tùy chỉnh CHUNK_SUMMARY_PROMPT (map) và REDUCE_SUMMARY_PROMPT (reduce).",
-        "status": "pending",
+        "status": "done",
         "priority": "low",
         "dependencies": [
           "13"
         ],
         "details": "planning: planning/20260321_1450_14-feature-custom-chunk-reduce-prompts.md\n\nAffected modules:\n- lib/types.ts — mở rộng CustomPrompts interface (thêm chunkSummaryPrompt, reduceSummaryPrompt)\n- lib/llm/summarizer.ts — thread custom prompts qua toàn bộ pipeline\n- entrypoints/sidepanel/views/SettingsView.vue — thêm 2 tab UI\n\nBackground index.ts không cần sửa — prompts từ getCustomPrompts() đã pass vào tất cả 4 hàm LLM.",
         "testStrategy": "Test custom chunk prompt override → verify LLM nhận đúng prompt. Test custom reduce prompt. Test fallback về default khi field rỗng.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:25:22.767Z"
       },
       {
         "id": "106",
@@ -310,14 +311,15 @@
         "id": "19",
         "title": "F19: Cross-Segment Author Deduplication",
         "description": "Phân tách trách nhiệm: LLM làm semantic grouping, code làm exact dedup (đếm tác giả duy nhất cross-segment, xây bảng thống kê).",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
           "20"
         ],
         "details": "planning: planning/20260402_1409_19-feature-cross-segment-author-dedup.md\n\nVấn đề: LLM không dedup chính xác tác giả xuất hiện ở nhiều segment. Nghiêm trọng hơn khi segment count > 20.\n\nAffected modules:\n- lib/llm/summarizer.ts — buildAuthorCrossReference(), deduplicateSupporters(), sửa summarizeSegments()\n- lib/prompts.ts — cập nhật REDUCE_SUMMARY_PROMPT với instruction bảng tác giả",
         "testStrategy": "Test với topic có tác giả xuất hiện ở nhiều segment. Verify supporter count không bị inflate. Verify giảm LLM hallucination ở opinion grouping.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:22:31.902Z"
       },
       {
         "id": "20",
@@ -397,7 +399,7 @@
         "id": "24",
         "title": "F24: Dynamic Chunks Knowledge — Fix Critical Issues",
         "description": "Fix 1 CRITICAL (topic switch mid-extract → data corruption) + 1 major (stale cachedTopic.value sau persistChunks) từ Opus review.",
-        "status": "in-progress",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           "23"
@@ -408,32 +410,37 @@
           {
             "id": 1,
             "title": "Fix activeExtractId invalidation trong loadTopicData",
-            "status": "pending",
+            "status": "done",
             "description": "Thêm activeExtractId++ + full state reset trong KnowledgeView.loadTopicData() theo pattern F23 (useSummarize.ts:203)",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-23T10:18:00.056Z"
           },
           {
             "id": 2,
             "title": "Capture topicUrl/topicTitle snapshot tại đầu handleExtract",
-            "status": "pending",
+            "status": "done",
             "description": "const topicUrl = cachedTopic.value!.url ở đầu hàm, không đọc lại trong persistChunks",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-23T10:21:38.644Z"
           },
           {
             "id": 3,
             "title": "Update cachedTopic.value trong persistChunks",
-            "status": "pending",
+            "status": "done",
             "description": "Sau IDB update, sync cachedTopic.value để resume detect đúng lastKnowledgePostNumber",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-23T10:21:38.668Z"
           },
           {
             "id": 4,
             "title": "Fix minors: search/tags reset, compact JSON",
-            "status": "pending",
+            "status": "done",
             "description": "Reset search+tags filter khi extract mới. JSON.stringify(x) thay vì null,2 trong reduceKnowledgeChunks",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-23T10:21:38.683Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-04-23T10:21:38.683Z"
       },
       {
         "id": "111",
@@ -465,14 +472,15 @@
         "id": "25",
         "title": "F25: Thread Analysis View",
         "description": "Thêm loại tóm tắt 'Phân tích Thread VOZ' với 8 sections (TỔNG QUAN, USER TIÊU BIỂU, LUỒNG TRANH LUẬN, COMBAT, TIMELINE, COMMENT NỔI BẬT, KẾT LUẬN, KIẾM HIỆP). 2 sub-tab trong Tổng quan, copy plain-text.",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
           "14"
         ],
         "details": "planning: planning/20260415_1948_25-feature-thread-analysis-view.md\n\nAffected modules:\n- lib/types.ts — ThreadAnalysisJSON interface + threadAnalysis? field trong CachedTopic\n- lib/prompts.ts — THREAD_ANALYSIS_PROMPT\n- lib/llm/summarizer.ts — generateThreadAnalysis(summaryJson, meta, config)\n- entrypoints/background/index.ts — handler cho task mới trong START_LLM_TASK\n- entrypoints/sidepanel/composables/useSummarize.ts — threadAnalysis ref + handleGenerateAnalysis()\n- entrypoints/sidepanel/components/ThreadAnalysisContent.vue — component mới render 8 sections\n- entrypoints/sidepanel/views/SummaryView.vue — 2 sub-tab 'Tóm tắt' / 'Phân tích'",
         "testStrategy": "Generate analysis sau khi có summary. Verify 8 sections present. Test copy plain-text. Test persist + reload từ cache. Test với news vs regular topic.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:25:22.788Z"
       },
       {
         "id": "26",
@@ -490,25 +498,27 @@
         "id": "27",
         "title": "Refactor: ConfirmInline Common Component",
         "description": "Tạo ConfirmInline.vue dùng chung, thay 2 inline confirm pattern ở SummaryView (confirmingAutoSummarize) và KnowledgeView (confirmingExtract).",
-        "status": "pending",
+        "status": "done",
         "priority": "low",
         "dependencies": [],
         "details": "planning: planning/20260418_1131_refactor-confirm-dialog-common.md\n\nAffected modules:\n- entrypoints/sidepanel/components/ConfirmInline.vue — tạo mới, props: message, confirmLabel, cancelLabel\n- entrypoints/sidepanel/views/SummaryView.vue — thay inline confirm\n- entrypoints/sidepanel/views/KnowledgeView.vue — thay inline confirm\n\nDesign: block layout, dùng design tokens (btn, card). Không dùng modal overlay.",
         "testStrategy": "Verify behavior giống hệt inline confirm cũ. Test ở cả 2 views. Test keyboard/click cancel vs confirm.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:25:22.804Z"
       },
       {
         "id": "28",
         "title": "Fix: Knowledge Reduce Output Overflow Prevention",
         "description": "runReducePhase không kiểm tra output budget. Chia thành nhiều call nhỏ nếu finalCap quá lớn cho 1 call, rồi client-side dedup.",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
           "24"
         ],
         "details": "planning: planning/20260417_1608_fix-knowledge-output-overflow.md\n\nVấn đề: finalCap = min(150, max(20, chunks×3)) không check output budget. 81 entries × ~100 tokens = ~8.1K output → dễ tràn 16K context.\n\nAffected modules:\n- entrypoints/sidepanel/views/KnowledgeView.vue — runReducePhase (thay đổi chính)\n- lib/constants.ts — TOKENS_PER_KNOWLEDGE_ENTRY = 100, REDUCE_OUTPUT_FRACTION = 0.35\n\nImplementation:\n- maxOutputTokens = contextWindow × REDUCE_OUTPUT_FRACTION\n- maxEntriesPerCall = floor(maxOutputTokens / TOKENS_PER_KNOWLEDGE_ENTRY)\n- Chia input thành batches → concat + dedup by title+source\n- guard finalEntries.length === 0 → throw error",
         "testStrategy": "Test với topic 27+ chunks → verify không tràn context. Verify dedup loại entries trùng title. Verify guard throw khi empty.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:25:22.821Z"
       },
       {
         "id": "113",
@@ -607,13 +617,116 @@
         "priority": "low",
         "subtasks": [],
         "updatedAt": "2026-04-22T11:29:17.830Z"
+      },
+      {
+        "id": "120",
+        "title": "Thêm computed `newPostsMap` vào TopicHubView để track live post count",
+        "description": "Extract inline `v-if` logic (lines 355-360) thành computed `newPostsMap` để Vue reactivity tracking tường minh, fix bug indicator không cập nhật khi `activeTabDetect` thay đổi",
+        "details": "**File:** `entrypoints/sidepanel/views/TopicHubView.vue`\n\n**Root cause:** Inline `v-if` với function call `isSameTopicUrl(...)` trong `v-for` không trigger re-render đúng khi `store.activeTabDetect.value` thay đổi do Vue 3's block tree optimization.\n\n**Implementation:**\n\n1. Thêm computed `newPostsMap` sau `activeTabInList` (line 93):\n```typescript\nconst newPostsMap = computed<Record<string, number>>(() => {\n  if (!store.activeTabDetect.value || !store.activeTabUrl.value) return {};\n  const liveCount = store.activeTabDetect.value.postCount;\n  const activeUrl = normalizeUrl(store.activeTabUrl.value);\n  const result: Record<string, number> = {};\n  for (const topic of allTopics.value) {\n    if (normalizeUrl(topic.url) === activeUrl) {\n      const delta = liveCount - topic.totalPosts;\n      if (delta > 0) result[topic.url] = delta;\n      break;\n    }\n  }\n  return result;\n});\n```\n\n2. Replace template (lines 355-360):\n```vue\n<!-- Thay complex v-if condition -->\n<span v-if=\"newPostsMap[topic.url]\" class=\"text-(--color-accent-text) ml-0.5\">\n  (+{{ newPostsMap[topic.url] }} mới)\n</span>\n```\n\n**Pseudo-code:**\n```\nCOMPUTED newPostsMap:\n  IF no activeTabDetect OR no activeTabUrl → return empty map\n  liveCount = activeTabDetect.postCount\n  activeUrl = normalize(activeTabUrl)\n  FOR EACH topic IN allTopics:\n    IF normalize(topic.url) === activeUrl:\n      delta = liveCount - topic.totalPosts\n      IF delta > 0: add { topic.url: delta } to result\n      BREAK (only 1 topic matches)\n  RETURN result\n\nTEMPLATE:\n  IF newPostsMap has entry for topic.url:\n    SHOW \"(+{delta} mới)\"\n```\n\n**Edge cases:**\n- `liveCount < totalPosts` (detect sai) → delta < 0 → không add entry → no indicator ✓\n- Active tab không phải forum → `activeTabDetect = null` → map rỗng → no indicator ✓\n- Topic không có trong `allTopics` → loop không tìm thấy → map rỗng ✓",
+        "testStrategy": "1. **Setup:** Mở forum tab có 50 bài (cached topic có `totalPosts = 45`)\n2. **Test reactive update:** Mở sidepanel → verify hub card hiện \"(+5 mới)\"\n3. **Test hide:** Chuyển sang tab khác (không phải forum) → verify indicator ẩn\n4. **Test show again:** Chuyển lại forum tab → verify indicator hiện lại\n5. **Test không leak:** Check hub card của topic KHÁC không có indicator\n6. **Test delta = 0:** Mock `activeTabDetect.postCount = 45` → verify không có indicator",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "121",
+        "title": "Cập nhật `topicSummaryStatus` để nhận optional `livePostCount` và fix status badge",
+        "description": "Thêm param `livePostCount?: number` vào function `topicSummaryStatus` để badge phản ánh đúng trạng thái khi có bài mới chưa tóm tắt (partial), và cập nhật TopicHubView để truyền live count từ `newPostsMap`",
+        "details": "**Files:** `lib/topic-utils.ts`, `entrypoints/sidepanel/views/TopicHubView.vue`\n\n**Root cause:** `topicSummaryStatus` so sánh `summarizedPostCount < totalPosts` (cả hai đều cached), không biết về live count → khi có 5 bài mới, function trả `'done'` → badge hiện \"✓ Đã tóm tắt\" (sai).\n\n**Implementation:**\n\n1. **Update `lib/topic-utils.ts`** (function signature line 5):\n```typescript\nexport function topicSummaryStatus(\n  topic: CachedTopic,\n  isSummarizing: boolean,\n  livePostCount?: number,\n): TopicSummaryStatus {\n  if (isSummarizing) return 'in-progress';\n  const hasSummary = !!(topic.summary || topic.segments?.some(s => s?.summary));\n  if (!hasSummary) return 'none';\n  const summarized = topic.summarizedPostCount ?? topic.totalPosts ?? 0;\n  // Use livePostCount if available and > cached totalPosts\n  const effectiveTotalPosts = (livePostCount != null && livePostCount > (topic.totalPosts ?? 0))\n    ? livePostCount\n    : (topic.totalPosts ?? 0);\n  if (summarized < effectiveTotalPosts) return 'partial';\n  return 'done';\n}\n```\n\n2. **Update `TopicHubView.vue`** template (lines 324, 330):\n```vue\n<!-- Thay: topicSummaryStatus(topic, false) -->\n<!-- Thành: -->\n<span\n  v-else-if=\"topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'done'\"\n  class=\"badge badge-success\"\n>\n  ✓ Đã tóm tắt\n</span>\n<span\n  v-else-if=\"topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'\"\n  class=\"badge bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400\"\n>\n  ~ Một phần\n</span>\n```\n\n**Pseudo-code:**\n```\nFUNCTION topicSummaryStatus(topic, isSummarizing, livePostCount?):\n  IF isSummarizing → 'in-progress'\n  hasSummary = topic has summary OR segments with summary\n  IF NOT hasSummary → 'none'\n  summarized = topic.summarizedPostCount ?? topic.totalPosts\n  effectiveTotal = MAX(livePostCount ?? 0, topic.totalPosts)\n  IF summarized < effectiveTotal → 'partial'\n  ELSE → 'done'\n\nCALLER (TopicHubView template):\n  effectiveLiveCount = topic.totalPosts + (newPostsMap[topic.url] ?? 0)\n  status = topicSummaryStatus(topic, isSummarizing, effectiveLiveCount)\n```\n\n**Edge cases:**\n- `livePostCount` undefined → dùng `topic.totalPosts` → backward compatible ✓\n- `livePostCount < totalPosts` → dùng `totalPosts` → không xử lý detect sai ✓\n- `livePostCount == totalPosts` → `summarized < effectiveTotal` false → 'done' ✓\n- Topic không match active tab → `newPostsMap[topic.url]` undefined → truyền `totalPosts + 0` ✓",
+        "testStrategy": "1. **Test badge partial:** Topic cached 45 bài, live 50 bài, summarized 45 → verify badge \"~ Một phần\"\n2. **Test badge done:** Live 50, summarized 50 → verify badge \"✓ Đã tóm tắt\"\n3. **Test badge none:** Topic chưa có summary → verify badge \"○ Chưa tóm tắt\"\n4. **Test backward compat:** Topic không phải active tab → `livePostCount = undefined` → verify badge theo cached data\n5. **Test in-progress:** `isSummarizing = true` → verify badge \"⟳ Đang tóm tắt...\" (priority cao hơn livePostCount)\n6. **Integration test:** Mở topic 50 bài (cached 45), summarize 45 bài → verify indicator \"(+5 mới)\" + badge \"~ Một phần\"",
+        "priority": "high",
+        "dependencies": [
+          "120"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "122",
+        "title": "Thêm `totalPosts` vào `selectedTopicKey` để sync đúng khi totalPosts thay đổi",
+        "description": "Include `totalPosts` trong computed `selectedTopicKey` để watcher fire khi field này thay đổi (ví dụ sau re-summarize), đảm bảo `allTopics[idx]` sync đúng với `selectedTopic`",
+        "details": "**File:** `entrypoints/sidepanel/views/TopicHubView.vue`\n\n**Root cause:** `selectedTopicKey` (line 111) không track `totalPosts`. Khi chỉ `totalPosts` thay đổi (sau summarize + IDB update), watcher (line 114) không fire → `allTopics[idx].totalPosts` không sync.\n\n**Implementation:**\n\n1. **Update line 111:**\n```typescript\nreturn `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}|${t.totalPosts ?? 0}`;\n```\n\n**Pseudo-code:**\n```\nCOMPUTED selectedTopicKey:\n  t = store.selectedTopic\n  IF t is null → return null\n  RETURN concatenate:\n    - t.url\n    - t.summary (first 20 chars)\n    - t.segments.length\n    - t.bookmarked\n    - t.knowledgeEntries.length\n    - t.totalPosts  ← NEW\n  with \"|\" separator\n\nWATCH selectedTopicKey:\n  WHEN key changes:\n    Find topic in allTopics with same URL\n    IF found → merge selectedTopic fields into allTopics[idx]\n```\n\n**Why this matters:**\n- Khi summarize xong, background script update `totalPosts` trong IDB\n- `store.selectedTopic` được reload từ IDB → `totalPosts` mới\n- Nếu không có trong key → watcher không fire → hub card vẫn hiện totalPosts cũ\n- Thêm vào key → watcher fire → sync đúng\n\n**Edge cases:**\n- `totalPosts` undefined → `?? 0` → key = \"...||0\" ✓\n- Topic chưa có trong `allTopics` → watcher add vào danh sách (line 132-140) ✓\n- Key thay đổi nhiều lần (nhiều fields đổi cùng lúc) → watcher fire 1 lần (Vue batch) ✓",
+        "testStrategy": "1. **Setup:** Topic cached có `totalPosts = 45`, `summarizedPostCount = 40`\n2. **Test sync:** Mở summary view → trigger summarize toàn bộ → sau khi xong, verify:\n   - IDB có `totalPosts = 50` (mocked)\n   - `allTopics[idx].totalPosts = 50` (synced từ selectedTopic)\n   - Hub card hiện \"50 bài\" đúng\n3. **Test không leak:** Thay đổi field KHÁC (ví dụ `bookmarked`) → verify watcher fire, `totalPosts` không bị ghi đè\n4. **Test new topic:** Summarize topic chưa có trong cache → verify watcher add vào `allTopics` với `totalPosts` đúng\n5. **Regression test:** Verify các field khác vẫn trigger watcher (summary, segments, bookmarked, knowledgeEntries)",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "123",
+        "title": "Tạo utility function formatNumber trong lib/format.ts",
+        "description": "Tạo file lib/format.ts chứa hàm formatNumber(n: number): string dùng toLocaleString('en-US') để format số với dấu phẩy phân cách hàng nghìn",
+        "details": "1. Tạo file mới `lib/format.ts`\n2. Implement function:\n```typescript\nexport function formatNumber(n: number): string {\n  return n.toLocaleString('en-US');\n}\n```\n3. Export function để các component có thể import\n4. Locale 'en-US' sẽ format với dấu phẩy (4,656) thay vì dấu chấm của vi-VN (4.656) để tránh nhầm lẫn với dấu thập phân\n5. Function chỉ nhận số nguyên, không áp dụng cho phần trăm hay số thập phân",
+        "testStrategy": "1. Build project với `npm run build` phải pass\n2. Type check với `npx vue-tsc --noEmit` phải clean\n3. Test manual: gọi formatNumber(4656) phải return '4,656'\n4. Test với số nhỏ: formatNumber(999) return '999' (không có dấu phẩy)\n5. Test với số lớn: formatNumber(1234567) return '1,234,567'",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:21:38.699Z"
+      },
+      {
+        "id": "124",
+        "title": "Áp dụng formatNumber trong TopicMeta.vue",
+        "description": "Import và sử dụng formatNumber cho tất cả số hiển thị trong TopicMeta component (totalPosts, totalPages, summarizedPostCount, newPostCount)",
+        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Áp dụng format tại các vị trí:\n   - Line 72: `{{ topic.totalPosts }}` → `{{ formatNumber(topic.totalPosts) }}`\n   - Line 73: `{{ newPostCount }}` → `{{ formatNumber(newPostCount) }}`\n   - Line 75: `{{ topic.totalPages }}` → `{{ formatNumber(topic.totalPages) }}`\n   - Line 87: `{{ summarizedPostCount }}/{{ topic.totalPosts }}` → `{{ formatNumber(summarizedPostCount) }}/{{ formatNumber(topic.totalPosts) }}`\n   - Line 91: `{{ summarizedPostCount }}` → `{{ formatNumber(summarizedPostCount) }}`\n3. Không cần thay đổi logic, chỉ wrap số trong formatNumber()",
+        "testStrategy": "1. Build và type check pass\n2. Mở sidepanel với topic có > 999 bài viết\n3. Verify tất cả số hiển thị đúng format với dấu phẩy\n4. Kiểm tra UI không bị break (text truncation, alignment)\n5. Test với topic nhỏ (< 1000 bài) xem format có làm ảnh hưởng không",
+        "priority": "high",
+        "dependencies": [
+          "123"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:21:38.714Z"
+      },
+      {
+        "id": "125",
+        "title": "Áp dụng formatNumber trong TopicHubView.vue",
+        "description": "Import và sử dụng formatNumber cho số bài viết hiển thị trong TopicHubView (active tab detect, topic list)",
+        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Áp dụng format tại các vị trí:\n   - Line ~299: `{{ store.activeTabDetect.value.postCount }}` → `{{ formatNumber(store.activeTabDetect.value.postCount) }}`\n   - Line ~368: `{{ topic.summarizedPostCount ?? topic.totalPosts }}/{{ topic.totalPosts }}` → `{{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }}/{{ formatNumber(topic.totalPosts) }}`\n   - Line ~370: `{{ topic.totalPosts }}` → `{{ formatNumber(topic.totalPosts) }}`\n   - Line ~373-374: `{{ newPostsMap[topic.url] }}` → `{{ formatNumber(newPostsMap[topic.url]) }}`\n3. Cẩn thận với null/undefined checks, đảm bảo chỉ format khi có giá trị",
+        "testStrategy": "1. Build và type check pass\n2. Mở TopicHubView với danh sách topics\n3. Verify số bài viết ở active tab detect được format đúng\n4. Verify số bài viết trong topic cards được format đúng\n5. Test với topics có new posts để verify format của newPostsMap\n6. Kiểm tra responsive layout không bị break",
+        "priority": "high",
+        "dependencies": [
+          "123"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:21:38.730Z"
+      },
+      {
+        "id": "126",
+        "title": "Áp dụng formatNumber trong SummaryView.vue",
+        "description": "Import và sử dụng formatNumber cho số bài viết hiển thị trong SummaryView (segment post counts)",
+        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Áp dụng format tại các vị trí:\n   - Line ~343: `{{ segmentSummaries[0].postCount }}` → `{{ formatNumber(segmentSummaries[0].postCount) }}`\n   - Line ~486: `{{ segmentSummaries[activeSegmentIndex].postCount }}` → `{{ formatNumber(segmentSummaries[activeSegmentIndex].postCount) }}`\n3. Đảm bảo array index safety khi access segmentSummaries",
+        "testStrategy": "1. Build và type check pass\n2. Mở SummaryView với topic đã tóm tắt\n3. Verify số bài viết trong single segment view được format\n4. Verify số bài viết trong individual segment view được format\n5. Test với topics có nhiều segments\n6. Kiểm tra không có lỗi khi segmentSummaries chưa load hoặc empty",
+        "priority": "high",
+        "dependencies": [
+          "123"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:21:38.745Z"
+      },
+      {
+        "id": "127",
+        "title": "Áp dụng formatNumber trong ProgressIndicator.vue computed message",
+        "description": "Import và sử dụng formatNumber cho số bài viết trong string template của computed message trong ProgressIndicator component",
+        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Tìm computed `displayMessage` (line ~90-100)\n3. Tại line ~97, update string template:\n   - Từ: `Đang đọc trang ${p.currentPage}/${p.totalPages} (${p.postsScraped} bài)...`\n   - Thành: `Đang đọc trang ${p.currentPage}/${p.totalPages} (${formatNumber(p.postsScraped)} bài)...`\n4. Chỉ format `postsScraped`, không format `currentPage` và `totalPages` vì đây là số trang (thường nhỏ)\n5. Lưu ý: đây là string template trong TypeScript computed, không phải Vue template",
+        "testStrategy": "1. Build và type check pass\n2. Trigger scraping process để hiện ProgressIndicator\n3. Verify message hiển thị số bài viết với format đúng trong quá trình scrape\n4. Test với scraping nhiều trang để verify số lớn được format\n5. Kiểm tra không có lỗi runtime khi postsScraped undefined/null",
+        "priority": "medium",
+        "dependencies": [
+          "123"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:21:38.759Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-04-22T11:29:17.831Z",
-      "taskCount": 46,
-      "completedCount": 40,
+      "lastModified": "2026-04-23T10:25:22.821Z",
+      "taskCount": 54,
+      "completedCount": 54,
       "tags": [
         "master"
       ]

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
+import { formatNumber } from '@/lib/format';
 import { useLLM } from '../composables/useLLM';
 
 const MSG_ALMOST_DONE = "Sắp xong...";
@@ -94,7 +95,7 @@ const displayMessage = computed(() => {
   if (props.message) return props.message;
   if (props.scrapeProgress) {
     const p = props.scrapeProgress;
-    return `Đang đọc trang ${p.currentPage}/${p.totalPages} (${p.postsScraped} bài)...`;
+    return `Đang đọc trang ${formatNumber(p.currentPage)}/${formatNumber(p.totalPages)} (${formatNumber(p.postsScraped)} bài)...`;
   }
   return task.value?.progress?.message || props.fallbackMessage || 'Đang xử lý...';
 });

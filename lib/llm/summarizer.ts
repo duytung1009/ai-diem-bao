@@ -172,7 +172,15 @@ export async function summarizeTopic(
     // Use map-reduce for large topics
     const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
     onProgress?.(`Đang tóm tắt phần 1/${contextCheck.chunksNeeded}...`, 1, total);
-    const rawResult = await summarizeWithMapReduce(posts, config, onProgress, contextCheck.chunksNeeded, systemPrompt, signal);
+    const rawResult = await summarizeWithMapReduce(
+      posts,
+      config,
+      onProgress,
+      contextCheck.chunksNeeded,
+      customPrompts?.chunkSummaryPrompt,
+      customPrompts?.reduceSummaryPrompt ?? systemPrompt,
+      signal,
+    );
     const json = parseSummaryJSON(rawResult);
     return json ? JSON.stringify(json) : rawResult;
   }
@@ -209,7 +217,15 @@ export async function updateSummary(
   const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
-    const rawResult = await summarizeWithMapReduce(postsWithContext, config, onProgress, contextCheck.chunksNeeded, systemPrompt, signal);
+    const rawResult = await summarizeWithMapReduce(
+      postsWithContext,
+      config,
+      onProgress,
+      contextCheck.chunksNeeded,
+      customPrompts?.chunkSummaryPrompt,
+      customPrompts?.reduceSummaryPrompt ?? systemPrompt,
+      signal,
+    );
     const json = parseSummaryJSON(rawResult);
     return json ? JSON.stringify(json) : rawResult;
   }
@@ -794,9 +810,10 @@ async function summarizeWithMapReduce(
   config: LLMConfig,
   onProgress?: (message: string, step?: number, totalSteps?: number) => void,
   suggestedChunks?: number,
+  mapPrompt?: string,
   finalPrompt?: string,
   signal?: AbortSignal,
 ): Promise<string> {
-  const combined = await summaryChunks(posts, config, onProgress, suggestedChunks, undefined, finalPrompt, signal);
+  const combined = await summaryChunks(posts, config, onProgress, suggestedChunks, mapPrompt, finalPrompt, signal);
   return combined;
 }

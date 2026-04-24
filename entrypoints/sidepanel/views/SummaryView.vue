@@ -221,6 +221,13 @@ onActivated(async () => {
               Cập nhật
               <template v-if="newPostCount > 0">(+{{ formatNumber(newPostCount) }})</template>
             </button>
+            <CacheIndicator
+              v-if="cacheFreshness && cachedTopic"
+              :freshness="cacheFreshness"
+              :cached-at="cachedTopic.cachedAt"
+              :cached-posts="cachedTopic.totalPosts"
+              :current-posts="livePostCount"
+            />
           </div>
 
           <!-- Row 2+3: Progress bar + pill grid (chỉ hiển thị khi > 1 segment) -->
@@ -336,30 +343,20 @@ onActivated(async () => {
             <!-- Single segment: hiển thị summary trực tiếp -->
             <template v-if="segments.length === 1">
               <div v-if="segmentSummaries[0]?.summary" class="space-y-3">
-                <div class="flex items-center justify-between gap-2">
-                  <div class="flex items-center justify-start gap-2">
-                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(segmentSummaries[0].postCount) }} bài viết</span>
-                  </div>
-                  <CacheIndicator
-                    v-if="cacheFreshness && cachedTopic"
-                    :freshness="cacheFreshness"
-                    :cached-at="cachedTopic.cachedAt"
-                    :cached-posts="cachedTopic.totalPosts"
-                    :current-posts="livePostCount"
-                    @update="handleSegmentUpdate"
-                  />
-                </div>
-                <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" />
-                <button
-                  class="w-full btn btn-secondary text-sm"
-                  :disabled="isProcessing"
-                  @click="handleSummarizeSegment(0)"
-                >
-                  Tóm tắt lại
-                </button>
+                <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
+                  <template #actions>
+                    <button
+                      class="btn text-xs flex items-center gap-1"
+                      :disabled="isProcessing"
+                      @click="handleSummarizeSegment(0)"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Tóm tắt lại
+                    </button>
+                  </template>
+                </SummaryContent>
               </div>
               <div v-else class="flex flex-col items-center gap-3 py-8">
                 <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
@@ -376,24 +373,6 @@ onActivated(async () => {
             <!-- Multi-segment: overall summary flow -->
             <template v-else>
               <div v-if="summary" class="space-y-3">
-                <div class="flex items-center justify-between gap-2">
-                  <div class="flex items-center justify-start gap-2">
-                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span class="text-xs text-(--color-text-secondary)">
-                      Tóm tắt tổng quan {{ formatNumber(segments.length) }} phần
-                    </span>
-                  </div>
-                  <CacheIndicator
-                    v-if="cacheFreshness && cachedTopic"
-                    :freshness="cacheFreshness"
-                    :cached-at="cachedTopic.cachedAt"
-                    :cached-posts="cachedTopic.totalPosts"
-                    :current-posts="livePostCount"
-                    @update="handleSegmentUpdate"
-                  />
-                </div>
                 <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
                   <template #actions>
                     <template v-if="segments.length > 1">

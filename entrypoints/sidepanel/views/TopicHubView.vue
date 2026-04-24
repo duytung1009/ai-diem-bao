@@ -282,7 +282,7 @@ async function toggleBookmark(topic: CachedTopic) {
         @click="handleActiveTabTopic"
       >
         <div class="flex items-center gap-2">
-          <span class="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">Tab hiện tại</span>
+          <span class="text-xs font-medium text-blue-600 dark:text-blue-400">Tab hiện tại</span>
         </div>
         <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2">
           {{ store.activeTabDetect.value.title }}
@@ -291,11 +291,11 @@ async function toggleBookmark(topic: CachedTopic) {
           <div class="flex items-center gap-2 flex-wrap">
             <span
               v-if="store.summarizingUrl.value && store.activeTabUrl.value && isSameTopicUrl(store.summarizingUrl.value, store.activeTabUrl.value)"
-              class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
+              class="text-blue-700 dark:text-blue-400 animate-pulse font-medium"
             >
               ⟳ Đang tóm tắt...
             </span>
-            <span v-else class="badge badge-neutral">
+            <span v-else class="text-(--color-text-muted) font-medium">
               ○ Chưa tóm tắt
             </span>
           </div>
@@ -337,31 +337,31 @@ async function toggleBookmark(topic: CachedTopic) {
                       <!-- Status badge -->
                       <span
                         v-if="isSameTopicUrl(store.summarizingUrl.value, topic.url)"
-                        class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse"
+                        class="text-blue-700 dark:text-blue-400 animate-pulse font-medium"
                       >
                         ⟳ Đang tóm tắt...
                       </span>
                       <span
                         v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'done'"
-                        class="badge badge-success"
+                        class="text-(--color-success-text) font-medium"
                       >
                         ✓ Đã tóm tắt
                       </span>
                       <span
                         v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'"
-                        class="badge bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
+                        class="text-yellow-700 dark:text-yellow-400 font-medium"
                       >
                         ~ Một phần
                       </span>
                       <span
                         v-else
-                        class="badge badge-neutral"
+                        class="text-(--color-text-muted) font-medium"
                       >
                         ○ Chưa tóm tắt
                       </span>
                       <!-- News badge -->
                       <span v-if="topic.topicType === 'news'"
-                        class="badge bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400"
+                        class="text-purple-700 dark:text-purple-400 font-medium"
                       >
                         Tin tức
                       </span>

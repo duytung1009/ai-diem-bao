@@ -66,21 +66,21 @@ async function navigateToTopic() {
 
     <!-- Row 2: Summary status -->
     <div class="flex items-center gap-2 mt-2 text-xs">
-      <span v-if="summaryStatus === 'none'" class="badge badge-neutral">
+      <span v-if="summaryStatus === 'none'" class="text-(--color-text-muted) font-medium">
         ○ Chưa tóm tắt
       </span>
-      <span v-else-if="summaryStatus === 'in-progress'" class="badge bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 animate-pulse">
+      <span v-else-if="summaryStatus === 'in-progress'" class="text-blue-700 dark:text-blue-400 animate-pulse font-medium">
         ⟳ Đang tóm tắt...
       </span>
-      <span v-else-if="summaryStatus === 'partial'" class="badge bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">
+      <span v-else-if="summaryStatus === 'partial'" class="text-yellow-700 dark:text-yellow-400 font-medium">
         ~ Một phần
       </span>
-      <span v-else class="badge badge-success">
+      <span v-else class="text-(--color-success-text) font-medium">
         ✓ Đã tóm tắt {{ formatNumber(summarizedPostCount) }} bài
       </span>
       <!-- News badge -->
       <span v-if="topic.topicType === 'news'"
-        class="badge bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400"
+        class="text-purple-700 dark:text-purple-400 font-medium"
       >
         Tin tức
       </span>

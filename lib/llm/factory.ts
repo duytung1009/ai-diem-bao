@@ -12,6 +12,7 @@ export function createProvider(config: LLMConfig): LLMProvider {
     case 'claude':
       return new ClaudeAdapter(config);
     case 'gemini':
+    case 'gemini-free':
       return new GeminiAdapter(config);
     default:
       throw new Error(`Unknown provider: ${config.provider}`);

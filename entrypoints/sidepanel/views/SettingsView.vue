@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS, MAX_CACHE_DISPLAY_BYTES } from '@/lib/constants';
+import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { buildCacheExport } from '@/lib/exporter';
 import {
@@ -25,6 +25,7 @@ const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; bas
   custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
   claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
   gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
+  'gemini-free': { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
 };
 
 function syncCurrentProvider() {
@@ -42,7 +43,7 @@ function syncCurrentProvider() {
 const testResult = ref<'success' | 'fail' | ''>('');
 const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
-const MAX_CACHE_BYTES = MAX_CACHE_DISPLAY_BYTES;
+const storageQuotaBytes = ref(0);
 const showClearConfirm = ref(false);
 const exporting = ref(false);
 
@@ -98,6 +99,12 @@ const geminiModels = [
   'gemini-3-flash-preview',
   'gemini-3.1-flash-lite-preview',
   'gemini-3.1-pro-preview',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemma-3-1b-it',
+  'gemma-3-4b-it',
+  'gemma-3-12b-it',
+  'gemma-3-27b-it',
 ];
 
 const showModelDropdown = ref(false);
@@ -112,14 +119,19 @@ function closeModelDropdown() {
 }
 
 const cacheSizeMB = computed(() => (cacheSizeBytes.value / (1024 * 1024)).toFixed(1));
-const cacheUsagePercent = computed(() => Math.round((cacheSizeBytes.value / MAX_CACHE_BYTES) * 100));
-const cacheNearFull = computed(() => cacheUsagePercent.value >= 80);
+const cacheQuotaMB = computed(() => storageQuotaBytes.value > 0 ? (storageQuotaBytes.value / (1024 * 1024)).toFixed(0) : '?');
+const cacheUsagePercent = computed(() => storageQuotaBytes.value > 0 ? Math.round((cacheSizeBytes.value / storageQuotaBytes.value) * 100) : 0);
+const cacheNearFull = computed(() => cacheUsagePercent.value >= 90);
 const isClaude = computed(() => config.value.provider === 'claude');
-const isGemini = computed(() => config.value.provider === 'gemini');
+const isGemini = computed(() => config.value.provider === 'gemini' || config.value.provider === 'gemini-free');
 
 async function refreshCacheSize() {
   const sizeResult = await sendMessage<{ bytes: number }>('GET_CACHE_SIZE').catch(() => null);
   if (sizeResult) cacheSizeBytes.value = sizeResult.bytes;
+  try {
+    const estimate = await navigator.storage.estimate();
+    if (estimate.quota) storageQuotaBytes.value = estimate.quota;
+  } catch { /* navigator.storage.estimate() not supported */ }
 }
 
 onMounted(async () => {
@@ -292,6 +304,7 @@ async function exportCache() {
         <option value="custom">Custom (OpenAI-compatible)</option>
         <option value="claude">Anthropic Claude</option>
         <option value="gemini">Google Gemini</option>
+        <option value="gemini-free">Google Gemini (Free Tier)</option>
       </select>
     </div>
 
@@ -618,7 +631,7 @@ async function exportCache() {
       <div class="flex items-center justify-between text-xs">
         <span class="font-medium text-(--color-text-primary)">Cache local</span>
         <span :class="cacheNearFull ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-(--color-text-secondary)'">
-          {{ cacheSizeMB }} MB / 50 MB ({{ cacheUsagePercent }}%)
+          {{ cacheSizeMB }} MB / {{ cacheQuotaMB }} MB ({{ cacheUsagePercent }}%)
         </span>
       </div>
       <div class="w-full bg-(--color-bg-muted) rounded-full h-1.5">
@@ -629,7 +642,7 @@ async function exportCache() {
         />
       </div>
       <p v-if="cacheNearFull" class="text-xs text-orange-600 dark:text-orange-400">
-        ⚠ Cache gần đầy. Các cache cũ sẽ tự động bị xoá khi lưu mới.
+        ⚠ Cache đang sử dụng {{ cacheUsagePercent }}% dung lượng lưu trữ. Cân nhắc xoá bớt cache cũ.
       </p>
       <button
         v-if="!showClearConfirm"

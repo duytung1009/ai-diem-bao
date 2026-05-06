@@ -9,7 +9,7 @@ import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { estimateTokens, calculateSegmentBudget, willExceedContext } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import { estimateSummarizeSegmentCalls } from '@/lib/llm/cost-estimator';
-import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
+import { LLM_WARN_THRESHOLD_CALLS, RESPONSE_BUFFER_TOKENS } from '@/lib/constants';
 import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 
@@ -775,9 +775,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   async function computeDynamicBudget(): Promise<number> {
     const model = currentConfig.value?.model ?? 'gpt-4o-mini';
     const contextWindowOverride = currentConfig.value?.contextWindow;
+    const maxTokens = currentConfig.value?.maxTokens ?? 0;
+    const responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, maxTokens);
     const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
     const systemPromptText = customPromptsData?.summary || SUMMARY_PROMPT;
-    return calculateSegmentBudget(model, estimateTokens(systemPromptText), undefined, contextWindowOverride);
+    return calculateSegmentBudget(model, estimateTokens(systemPromptText), responseBuffer, contextWindowOverride);
   }
 
   /**
@@ -951,68 +953,75 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
    * In dynamic mode: scrapes page by page, splits on token budget, summarizes each chunk.
    * In fixed mode: summarizes all existing fixed segments sequentially.
    */
-  async function handleAutoSummarizeAll() {
-    const topic = store.selectedTopic.value;
-    if (!topic || !topicInfo.value) return;
-
-    const totalPages = topicInfo.value.pageCount;
-    const isDynamic = currentConfig.value?.dynamicSegments ?? true;
-
-    error.value = '';
-    scrapingWarnings.value = [];
-    scrapingInfo.value = [];
-    const thisId = ++activeSummarizeId;
-    store.setSummarizing(topic.url);
-
-    try {
-      if (isDynamic) {
-        const budget = await computeDynamicBudget();
-
-        // Resume from partial results if any, otherwise start fresh
-        const resume = computeResumeState();
-        if (!resume) {
-          // Fresh run: clear any stale state from a previous run
-          dynamicSegmentBoundaries.value = [];
-          segmentSummaries.value = [];
-        }
-        // When resuming: keep existing state so already-summarized segments are not redone
-
-        if (!resume || resume.fromPage <= totalPages) {
-          await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume ?? undefined);
-        }
-      } else {
-        // Fixed mode: summarize all segments sequentially
-        for (let i = 0; i < segments.value.length; i++) {
-          if (thisId !== activeSummarizeId) return;
-          await handleSummarizeSegment(i);
-          if (error.value) return;
-        }
-      }
-
-      // Generate overall summary
-      if (thisId === activeSummarizeId && !error.value) {
-        const completed = segmentSummaries.value.filter(s => s?.summary).length;
-        if (completed >= 1) {
-          simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-          await generateOverallSummary();
-        }
-      }
-    } catch (err) {
-      isScraping.value = false;
-      scrapeProgress.value = null;
-      if (thisId !== activeSummarizeId) return;
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      error.value = err instanceof Error ? err.message : String(err);
-    } finally {
-      store.setSummarizing(null);
-      if (thisId === activeSummarizeId) {
-        simpleLoadingText.value = '';
-        llmTaskId.value = null;
-        isScraping.value = false;
-        scrapeProgress.value = null;
-      }
-    }
-  }
+   async function handleAutoSummarizeAll(forceRegenerate: boolean = false) {
+     const topic = store.selectedTopic.value;
+     if (!topic || !topicInfo.value) return;
+ 
+     const totalPages = topicInfo.value.pageCount;
+     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
+ 
+     error.value = '';
+     scrapingWarnings.value = [];
+     scrapingInfo.value = [];
+     const thisId = ++activeSummarizeId;
+     store.setSummarizing(topic.url);
+ 
+     try {
+       if (isDynamic) {
+         const budget = await computeDynamicBudget();
+ 
+         if (forceRegenerate) {
+           // Force regenerate: clear all existing state, start fresh
+           dynamicSegmentBoundaries.value = [];
+           segmentSummaries.value = [];
+           await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+         } else {
+           // Resume from partial results if any, otherwise start fresh
+           const resume = computeResumeState();
+           if (!resume) {
+             dynamicSegmentBoundaries.value = [];
+             segmentSummaries.value = [];
+           }
+           if (!resume || resume.fromPage <= totalPages) {
+             await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume ?? undefined);
+           }
+         }
+       } else {
+         // Fixed mode: summarize all segments sequentially
+         if (forceRegenerate) {
+           segmentSummaries.value = [];
+         }
+         for (let i = 0; i < segments.value.length; i++) {
+           if (thisId !== activeSummarizeId) return;
+           await handleSummarizeSegment(i);
+           if (error.value) return;
+         }
+       }
+ 
+       // Generate overall summary
+       if (thisId === activeSummarizeId && !error.value) {
+         const completed = segmentSummaries.value.filter(s => s?.summary).length;
+         if (completed >= 1) {
+           simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
+           await generateOverallSummary();
+         }
+       }
+     } catch (err) {
+       isScraping.value = false;
+       scrapeProgress.value = null;
+       if (thisId !== activeSummarizeId) return;
+       if (err instanceof DOMException && err.name === 'AbortError') return;
+       error.value = err instanceof Error ? err.message : String(err);
+     } finally {
+       store.setSummarizing(null);
+       if (thisId === activeSummarizeId) {
+         simpleLoadingText.value = '';
+         llmTaskId.value = null;
+         isScraping.value = false;
+         scrapeProgress.value = null;
+       }
+     }
+   }
 
   async function handleGenerateAnalysis(): Promise<void> {
     const topic = store.selectedTopic.value;

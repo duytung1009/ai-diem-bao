@@ -12,7 +12,6 @@ import { formatNumber } from '@/lib/format';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
-import ConfirmInline from '../components/ConfirmInline.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import CacheIndicator from '../components/CacheIndicator.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
@@ -386,13 +385,23 @@ onActivated(async () => {
                         </svg>
                         Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{ formatNumber(segments.length) }} phần)</template>
                       </button>
-                      <ConfirmInline
-                        v-else
-                        :message="`Tóm tắt ${formatNumber(segments.length)} phần, không thể hủy. Tiếp tục?`"
-                        :warning="showAutoSummarizeCostWarning ? `⚠️ Ước tính ~${estimatedAutoSummarizeCalls} API calls. Chi phí có thể cao.` : undefined"
-                        @confirm="confirmingAutoSummarize = false; handleAutoSummarizeAll()"
-                        @cancel="confirmingAutoSummarize = false"
-                      />
+                      <div v-else class="space-y-2">
+                        <p class="text-xs text-(--color-text-secondary)">Tóm tắt {{ formatNumber(segments.length) }} phần</p>
+                        <p v-if="showAutoSummarizeCostWarning" class="text-xs text-amber-600 dark:text-amber-400">
+                          ⚠️ Ước tính ~{{ estimatedAutoSummarizeCalls }} API calls. Chi phí có thể cao.
+                        </p>
+                        <div class="flex flex-col gap-1.5">
+                          <button class="btn btn-primary text-xs" @click="confirmingAutoSummarize = false; handleAutoSummarizeAll(false)">
+                            Tiếp tục từ nơi đã dừng
+                          </button>
+                          <button class="btn btn-danger text-xs" @click="confirmingAutoSummarize = false; handleAutoSummarizeAll(true)">
+                            Tóm tắt lại từ đầu
+                          </button>
+                          <button class="btn btn-secondary text-xs" @click="confirmingAutoSummarize = false">
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
                     </template>
                     <button
                       class="btn text-xs flex items-center gap-1"

@@ -42,7 +42,7 @@ export interface SummaryJSON {
   conclusion: string;
 }
 
-export type LLMProvider = 'openai' | 'claude' | 'gemini' | 'custom';
+export type LLMProvider = 'openai' | 'claude' | 'gemini' | 'gemini-free' | 'custom';
 
 export interface ProviderSpecificConfig {
   model: string;

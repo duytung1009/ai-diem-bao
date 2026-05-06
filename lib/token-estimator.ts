@@ -18,6 +18,20 @@ const PRICING_TABLE: Record<
   'claude-opus-4-6': { inputPrice: 15, outputPrice: 75, contextLimit: 200000 },
   'claude-sonnet-4-6': { inputPrice: 3, outputPrice: 15, contextLimit: 200000 },
   'claude-haiku-4-5-20251001': { inputPrice: 0.8, outputPrice: 4, contextLimit: 200000 },
+  // Gemini models
+  'gemini-2.5-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576 },
+  'gemini-2.5-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576 },
+  'gemini-2.5-pro': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576 },
+  'gemini-3-flash-preview': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576 },
+  'gemini-3.1-flash-lite-preview': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576 },
+  'gemini-3.1-pro-preview': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576 },
+  'gemini-2.0-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576 },
+  'gemini-2.0-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576 },
+  // Gemma models (free tier)
+  'gemma-3-1b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768 },
+  'gemma-3-4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768 },
+  'gemma-3-12b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000 },
+  'gemma-3-27b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000 },
 };
 
 /**

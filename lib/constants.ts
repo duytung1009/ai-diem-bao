@@ -40,8 +40,6 @@ export const LLM_WARN_THRESHOLD_CALLS = 5; // warn if estimated LLM calls > this
 export const FRESHNESS_ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const FRESHNESS_ONE_WEEK_MS = 7 * FRESHNESS_ONE_DAY_MS;
 
-// Cache display
-export const MAX_CACHE_DISPLAY_BYTES = 50 * 1024 * 1024;
 
 // Knowledge reduce — output overflow prevention
 export const TOKENS_PER_KNOWLEDGE_ENTRY = 100;

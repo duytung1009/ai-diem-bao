@@ -15,7 +15,7 @@ import {
   buildKnowledgeReducePrompt,
   THREAD_ANALYSIS_PROMPT,
 } from '../prompts';
-import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget } from '../token-estimator';
+import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget, getThinkingOverhead } from '../token-estimator';
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO } from '../constants';
 import { LLMError, LLMErrorCode } from '../errors';
 
@@ -35,7 +35,7 @@ function computeReduceWordCap(maxTokens: number | undefined): number {
  * Clamped to [5, 20].
  */
 function computeKnowledgeEntryCap(maxTokens: number | undefined): number {
-  return Math.max(5, Math.min(20, Math.floor((maxTokens ?? 2000) / 150)));
+  return Math.max(5, Math.min(50, Math.floor((maxTokens ?? 2000) / 150)));
 }
 
 /**
@@ -167,7 +167,8 @@ export async function summarizeTopic(
 
   // Check if topic will fit in context
   const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
+  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow, thinkingOverhead);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     // Use map-reduce for large topics
     const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
@@ -214,7 +215,8 @@ export async function updateSummary(
 
   // Check if needs chunking
   const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
-  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
+  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
+  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow, thinkingOverhead);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
     const rawResult = await summarizeWithMapReduce(
@@ -247,7 +249,8 @@ export async function analyzeOpinions(
 
   // For opinion analysis, check if we need to chunk
   const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
+  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
+  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow, thinkingOverhead);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Phân tích ý kiến (${contextCheck.chunksNeeded} phần)...`);
     // Use map-reduce to extract opinions
@@ -288,7 +291,8 @@ export async function researchTopic(
 
   // Check if needs chunking
   const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
-  const contextCheck = willExceedContext(allPosts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow);
+  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
+  const contextCheck = willExceedContext(allPosts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow, thinkingOverhead);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Đang tra cứu (${contextCheck.chunksNeeded} phần)...`);
     // Map-reduce: summarize chunks preserving citation info, then answer at reduce
@@ -397,9 +401,12 @@ export function planKnowledgeChunks(
   model: string,
   contextWindowOverride?: number,
   maxTokens?: number,
+  thinkingEnabled?: boolean,
+  thinkingBudget?: number,
 ): { startIndex: number; endIndex: number }[] {
   const responseBuffer = Math.max(2000, maxTokens ?? 0);
-  const budget = calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, responseBuffer, contextWindowOverride);
+  const thinkingOverhead = getThinkingOverhead(model, thinkingEnabled, thinkingBudget);
+  const budget = calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, responseBuffer, contextWindowOverride, thinkingOverhead);
 
   const chunks: { startIndex: number; endIndex: number }[] = [];
   let chunkStart = 0;
@@ -516,9 +523,10 @@ function chunkPosts(
   suggestedChunks?: number,
   contextWindowOverride?: number,
   maxTokensReserve?: number,
+  thinkingOverhead: number = 0,
 ): ScrapedPost[][] {
   const contextLimit = getContextLimit(model, contextWindowOverride);
-  const bufferTokens = estimateTokens(mapPrompt) + Math.max(RESPONSE_BUFFER_TOKENS, maxTokensReserve ?? 0);
+  const bufferTokens = estimateTokens(mapPrompt) + Math.max(RESPONSE_BUFFER_TOKENS, maxTokensReserve ?? 0) + thinkingOverhead;
 
   // If suggestedChunks is provided, size chunks to fill ~N buckets rather than
   // greedily filling and then merging (which can produce oversized chunks).
@@ -576,7 +584,8 @@ async function summaryChunks(
   const wordCap = Math.max(100, Math.min(300, Math.floor((config.maxTokens ?? 2000) / 1.4)));
   const resolvedMapPrompt = mapPrompt ?? buildChunkSummaryPrompt(wordCap);
   const resolvedReducePrompt = reducePrompt ?? buildReduceSummaryPrompt(computeReduceWordCap(config.maxTokens));
-  const chunks = chunkPosts(posts, config.model, resolvedMapPrompt, suggestedChunks, config.contextWindow, config.maxTokens);
+  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
+  const chunks = chunkPosts(posts, config.model, resolvedMapPrompt, suggestedChunks, config.contextWindow, config.maxTokens, thinkingOverhead);
 
   if (chunks.length === 1) {
     // No chunking needed
@@ -607,7 +616,7 @@ async function summaryChunks(
 
   // Recursive reduce: if combinedText itself would exceed context, reduce in stages
   const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
-  const combinedTokens = estimateTokens(combinedText) + estimateTokens(resolvedReducePrompt) + responseBuffer;
+  const combinedTokens = estimateTokens(combinedText) + estimateTokens(resolvedReducePrompt) + responseBuffer + thinkingOverhead;
   const contextLimit = getContextLimit(config.model, config.contextWindow);
   if (combinedTokens > contextLimit && partialSummaries.length > 2) {
     // Convert partials to fake posts and recurse
@@ -707,6 +716,7 @@ async function reduceSegmentSummaries(
   depth: number = 0,
   signal?: AbortSignal,
   maxTokens?: number,
+  thinkingOverhead: number = 0,
 ): Promise<string> {
   // Fast path: nothing to reduce
   if (summaries.length === 1) return summaries[0];
@@ -723,7 +733,7 @@ async function reduceSegmentSummaries(
 
   // Usable content tokens per reduce call (prompt overhead + response buffer + safety margin).
   // Note: cross-reference header adds ~100-300 tokens per call but is covered by the 25% safety margin.
-  const promptOverhead = estimateTokens(reduceSummaryPrompt) + Math.max(RESPONSE_BUFFER_TOKENS, maxTokens ?? 0);
+  const promptOverhead = estimateTokens(reduceSummaryPrompt) + Math.max(RESPONSE_BUFFER_TOKENS, maxTokens ?? 0) + thinkingOverhead;
   const usablePerGroup = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
 
   if (usablePerGroup < 1000) {
@@ -777,7 +787,7 @@ async function reduceSegmentSummaries(
     if (g < groups.length - 1) await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
   }
 
-  return reduceSegmentSummaries(intermediates, provider, contextLimit, onProgress, depth + 1, signal, maxTokens);
+  return reduceSegmentSummaries(intermediates, provider, contextLimit, onProgress, depth + 1, signal, maxTokens, thinkingOverhead);
 }
 
 export async function summarizeSegments(
@@ -788,9 +798,10 @@ export async function summarizeSegments(
 ): Promise<string> {
   const provider = createProvider(config);
   const contextLimit = getContextLimit(config.model, config.contextWindow);
+  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
 
   const resultText = await reduceSegmentSummaries(
-    segmentSummaries, provider, contextLimit, onProgress, 0, signal, config.maxTokens,
+    segmentSummaries, provider, contextLimit, onProgress, 0, signal, config.maxTokens, thinkingOverhead,
   );
 
   // Post-process: programmatic dedup of supporters (safety net)

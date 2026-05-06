@@ -1,96 +1,15 @@
-# AGENTS.md — AI Điểm Báo
+# AGENTS.md
 
-## Quick Commands
+> **All project rules are defined in `CLAUDE.md` — read that file first before taking any action.**
 
-```bash
-npm run dev          # Dev mode (hot reload), output → .output/chrome-mv3/
-npm run build        # Production build
-npm run compile      # Type check only (vue-tsc --noEmit) — no test framework exists
-```
+This file exists so that agents following the AGENTS.md convention (OpenCode, etc.) know where to find the canonical instructions. The single source of truth for this project is `CLAUDE.md`.
 
-**Load into Chrome:** `chrome://extensions/` → Developer mode → Load unpacked → `.output/chrome-mv3/`
+## Critical rules (summary — full detail in CLAUDE.md)
 
-## Project Type
-
-Chrome Extension (Manifest V3) built with **WXT** + **Vue 3** + **TypeScript** + **Tailwind CSS v4**. Not a web app — no server, no tests, no linting beyond `vue-tsc`.
-
-## Architecture Boundaries
-
-| Directory | Role |
-|---|---|
-| `entrypoints/background/` | Service worker — LLM orchestration, Chrome messaging, cache ops |
-| `entrypoints/content/` | Content script — XenForo version detection, scraper dispatch |
-| `entrypoints/sidepanel/` | Vue 3 side panel app (UI) |
-| `lib/llm/` | LLM provider adapters (OpenAI, Claude, Gemini) + summarizer |
-| `lib/scrapers/` | XenForo 1.x/2.x scrapers, article extractor, news detector |
-| `lib/cache-db.ts` | IndexedDB wrapper |
-| `lib/cache-manager.ts` | Cache CRUD with URL normalization |
-| `lib/prompts.ts` | All system prompts for LLM tasks |
-| `lib/token-estimator.ts` | Token counting, context limit checks, cost estimation |
-
-**Entry points:** `entrypoints/background/index.ts` (service worker), `entrypoints/content/index.ts` (content script), `entrypoints/sidepanel/main.ts` (Vue app).
-
-## Critical Patterns
-
-### Fire-and-Forget Messaging
-Background worker responds to `START_LLM_TASK` immediately, then sends progress/results via separate `LLM_PROGRESS` / `LLM_RESULT` messages. This avoids Chrome message channel timeouts during long LLM calls. **Do not change this to synchronous request/response.**
-
-### Service Worker Keepalive
-`setInterval(() => browser.storage.sync.get(''), KEEPALIVE_INTERVAL_MS)` keeps the background worker alive during long LLM operations. **Do not remove.**
-
-### Map-Reduce Pipeline
-`lib/llm/summarizer.ts` splits topics exceeding context limits into chunks, summarizes each, then recursively merges (tree-reduce). Handles deep recursion automatically.
-
-### JSON Repair
-LLM output often has unescaped quotes, raw newlines, backtick fences. `repairUnescapedQuotes()` in summarizer.ts uses a state machine to fix these before `JSON.parse()`. **Do not bypass.**
-
-### Strategy Pattern
-- Scrapers: `xf1-scraper.ts` and `xf2-scraper.ts` implement `TopicScraper` interface
-- LLM providers: `openai-adapter.ts`, `claude-adapter.ts`, `gemini-adapter.ts` implement `LLMProvider` interface
-- Factory: `lib/llm/factory.ts` creates the right adapter from config
-
-## Storage
-
-- **IndexedDB** (`lib/cache-db.ts`) — topic cache (posts, summaries, knowledge, research history)
-- **`chrome.storage.sync`** — user settings (LLM config, custom prompts)
-- **One-time migration** runs on startup: `chrome.storage.local` → IndexedDB with URL normalization
-
-## Styling Conventions (STYLE_GUIDE.md)
-
-- **Always use CSS variables**: `var(--color-*)` — never hard-code Tailwind colors like `text-gray-600`
-- **Border radius**: `rounded-lg` (default) or `rounded-full` (badges) — never `rounded` or `rounded-md`
-- **Buttons**: `btn btn-primary`, `btn btn-secondary`, `btn btn-sm`, `btn btn-danger`
-- **Cards**: `card` (static), `card-interactive` (clickable)
-- **Section spacing**: `space-y-4`, items: `space-y-2`, containers: `p-4`, cards: `p-3`
-
-## Task Management (Task Master)
-
-Uses Task Master for task tracking. Config in `.taskmaster/config.json`. **Do not manually edit `tasks.json` or `config.json`** — use `task-master` CLI or MCP tools.
-
-- `task-master next` — find next task
-- `task-master show <id>` — view task details
-- `task-master set-status --id=<id> --status=done` — mark complete
-- `task-master update-subtask --id=<id> --prompt="..."` — log progress
-- Response language: Vietnamese (configured in `.taskmaster/config.json`)
-
-See `.taskmaster/CLAUDE.md` for full command reference.
-
-## Instruction Files
-
-| File | Purpose |
-|---|---|
-| `CLAUDE.md` | Imports Task Master workflow (auto-loaded) |
-| `.taskmaster/CLAUDE.md` | Task Master commands & workflow guide |
-| `STYLE_GUIDE.md` | UI styling conventions (CSS vars, classes, spacing) |
-| `.github/instructions/dev_workflow.instructions.md` | Task Master workflow patterns |
-| `.github/instructions/taskmaster.instructions.md` | Full Task Master tool/CLI reference |
-
-## Gotchas
-
-- **No test framework** — verify with `npm run compile` (type check) and manual testing in Chrome
-- **WXT generates `.output/`** — not `dist/`. Load `.output/chrome-mv3/` into Chrome
-- **tsconfig extends `.wxt/tsconfig.json`** — generated by WXT, do not modify
-- **`"type": "module"`** in package.json — use ESM imports only
-- **LLM tasks are long-running** — the keepalive interval prevents service worker death
-- **Cache detects new posts** — incremental updates use `lastPostNumber` to skip already-summarized content
-- **News vs discussion** — `lib/scrapers/news-detector.ts` auto-detects article pages and uses `article-extractor.ts` instead of forum scraper
+- **Verify with `npm run compile`** (type check) after every code change — no test framework exists
+- **Never change the fire-and-forget LLM messaging pattern** — background returns `{ started: true }`, results arrive via separate messages
+- **Never remove the service worker keepalive** (`setInterval` with `KEEPALIVE_INTERVAL_MS`)
+- **Never bypass the JSON repair logic** (`repairUnescapedQuotes()` in summarizer.ts)
+- **Never manually edit `tasks.json` or `.taskmaster/config.json`** — use `task-master` CLI or MCP tools
+- **Never commit code unless explicitly asked**
+- **Follow the Development Workflow (Phases 1-4)** in `CLAUDE.md` for all code changes

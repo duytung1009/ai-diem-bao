@@ -52,6 +52,8 @@ export interface ProviderSpecificConfig {
   timeoutMs: number;
   maxTokens?: number;
   contextWindow?: number;
+  thinkingEnabled?: boolean;
+  thinkingBudget?: number;
 }
 
 export interface LLMConfig {
@@ -66,6 +68,8 @@ export interface LLMConfig {
   scrapeDelayMs?: number;
   segmentSize?: number;
   dynamicSegments?: boolean;
+  thinkingEnabled?: boolean;  // Enable/disable thinking mode (Gemini thinking models)
+  thinkingBudget?: number;    // Max tokens for thinking (0..model max, undefined=auto)
   perProvider?: Partial<Record<LLMProvider, ProviderSpecificConfig>>;
 }
 
@@ -148,6 +152,7 @@ export interface CachedTopic {
   cachedAt: number;
   lastPostNumber: number;
   totalPosts: number;
+  forumPostCount?: number;
   summarizedPostCount?: number;
   totalPages: number;
   topicType?: 'discussion' | 'news';
@@ -184,6 +189,7 @@ export interface KnowledgeEntry {
   title: string;
   content: string;
   tags: string[];
+  category?: string;
   source: {
     author: string;
     postNumber: number;

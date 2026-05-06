@@ -4,34 +4,39 @@ import { CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS } from './constants';
 // Token estimation heuristic for mixed Vietnamese/English text
 const TOKEN_RATIO = 3.5; // ~1 token per 3.5 chars for mixed content
 
-// Model pricing (per 1M tokens) in USD
-const PRICING_TABLE: Record<
-  string,
-  { inputPrice: number; outputPrice: number; contextLimit: number }
-> = {
+interface ModelSpec {
+  inputPrice: number;
+  outputPrice: number;
+  contextLimit: number;
+  maxOutputTokens: number;
+  thinkingBudget: number; // 0 = model doesn't support thinking
+}
+
+// Model pricing (per 1M tokens) in USD + output limits + thinking budget
+const PRICING_TABLE: Record<string, ModelSpec> = {
   // OpenAI models
-  'gpt-4o': { inputPrice: 2.5, outputPrice: 10, contextLimit: 128000 },
-  'gpt-4o-mini': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 128000 },
-  'gpt-4-turbo': { inputPrice: 10, outputPrice: 30, contextLimit: 128000 },
-  'gpt-3.5-turbo': { inputPrice: 0.5, outputPrice: 1.5, contextLimit: 16000 },
+  'gpt-4o': { inputPrice: 2.5, outputPrice: 10, contextLimit: 128000, maxOutputTokens: 16384, thinkingBudget: 0 },
+  'gpt-4o-mini': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 128000, maxOutputTokens: 16384, thinkingBudget: 0 },
+  'gpt-4-turbo': { inputPrice: 10, outputPrice: 30, contextLimit: 128000, maxOutputTokens: 4096, thinkingBudget: 0 },
+  'gpt-3.5-turbo': { inputPrice: 0.5, outputPrice: 1.5, contextLimit: 16000, maxOutputTokens: 4096, thinkingBudget: 0 },
   // Claude models
-  'claude-opus-4-6': { inputPrice: 15, outputPrice: 75, contextLimit: 200000 },
-  'claude-sonnet-4-6': { inputPrice: 3, outputPrice: 15, contextLimit: 200000 },
-  'claude-haiku-4-5-20251001': { inputPrice: 0.8, outputPrice: 4, contextLimit: 200000 },
-  // Gemini models
-  'gemini-2.5-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576 },
-  'gemini-2.5-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576 },
-  'gemini-2.5-pro': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576 },
-  'gemini-3-flash-preview': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576 },
-  'gemini-3.1-flash-lite-preview': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576 },
-  'gemini-3.1-pro-preview': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576 },
-  'gemini-2.0-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576 },
-  'gemini-2.0-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576 },
+  'claude-opus-4-6': { inputPrice: 15, outputPrice: 75, contextLimit: 200000, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'claude-sonnet-4-6': { inputPrice: 3, outputPrice: 15, contextLimit: 200000, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'claude-haiku-4-5-20251001': { inputPrice: 0.8, outputPrice: 4, contextLimit: 200000, maxOutputTokens: 8192, thinkingBudget: 0 },
+  // Gemini models (thinking models: maxOutputTokens=65535)
+  'gemini-2.5-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 24576 },
+  'gemini-2.5-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 0 },
+  'gemini-2.5-pro': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 32768 },
+  'gemini-3-flash-preview': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 24576 },
+  'gemini-3.1-flash-lite-preview': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 0 },
+  'gemini-3.1-pro-preview': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 32768 },
+  'gemini-2.0-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemini-2.0-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
   // Gemma models (free tier)
-  'gemma-3-1b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768 },
-  'gemma-3-4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768 },
-  'gemma-3-12b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000 },
-  'gemma-3-27b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000 },
+  'gemma-3-1b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-3-4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-3-12b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-3-27b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000, maxOutputTokens: 8192, thinkingBudget: 0 },
 };
 
 /**
@@ -51,6 +56,46 @@ export function estimateTokens(text: string): number {
 export function getContextLimit(model: string, contextWindowOverride?: number): number {
   if (contextWindowOverride && contextWindowOverride > 0) return contextWindowOverride;
   return PRICING_TABLE[model]?.contextLimit ?? 128000;
+}
+
+/**
+ * Get model's max output tokens (excluding thinking).
+ * Returns from PRICING_TABLE, or 4096 default for unknown models.
+ */
+export function getModelMaxOutput(model: string): number {
+  return PRICING_TABLE[model]?.maxOutputTokens ?? 4096;
+}
+
+/**
+ * Get model's thinking budget (0 = model doesn't support thinking).
+ */
+export function getModelThinkingBudget(model: string): number {
+  return PRICING_TABLE[model]?.thinkingBudget ?? 0;
+}
+
+/**
+ * Whether the model supports thinking (Gemini thinking models).
+ */
+export function modelSupportsThinking(model: string): boolean {
+  return (PRICING_TABLE[model]?.thinkingBudget ?? 0) > 0;
+}
+
+/**
+ * Compute effective thinking overhead for context window calculations.
+ * When thinking is enabled, thinking tokens consume both output budget and context window.
+ *
+ * @returns tokens to reserve for thinking (0 if thinking disabled or model doesn't support it)
+ */
+export function getThinkingOverhead(
+  model: string,
+  thinkingEnabled?: boolean,
+  thinkingBudget?: number,
+): number {
+  if (thinkingEnabled === false) return 0;
+  const modelMax = getModelThinkingBudget(model);
+  if (modelMax === 0) return 0;
+  if (thinkingBudget !== undefined && thinkingBudget >= 0) return Math.min(thinkingBudget, modelMax);
+  return modelMax; // default to model's max thinking budget
 }
 
 /**
@@ -99,6 +144,7 @@ export function willExceedContext(
   systemPromptLength: number = 500,
   responseBuffer: number = 2000,
   contextWindowOverride?: number,
+  thinkingOverhead: number = 0,
 ): {
   exceeds: boolean;
   estimatedTokens: number;
@@ -107,15 +153,15 @@ export function willExceedContext(
 } {
   const contextLimit = getContextLimit(model, contextWindowOverride);
 
-  // Calculate used tokens: system + posts + response buffer
+  // Calculate used tokens: system + posts + response buffer + thinking overhead
   const postsText = posts
     .map((p) => `[${p.author}] (#${p.postNumber}):\n${p.content}`)
     .join('\n\n---\n\n');
   const contentTokens = estimateTokens(postsText) + systemPromptLength;
-  const estimatedTokens = contentTokens + responseBuffer;
+  const estimatedTokens = contentTokens + responseBuffer + thinkingOverhead;
 
-  const usableTokensPerChunk = contextLimit - responseBuffer - systemPromptLength;
-  const chunksNeeded = Math.ceil(contentTokens / usableTokensPerChunk);
+  const usableTokensPerChunk = contextLimit - responseBuffer - systemPromptLength - thinkingOverhead;
+  const chunksNeeded = Math.ceil(contentTokens / Math.max(usableTokensPerChunk, 4000));
 
   return {
     exceeds: estimatedTokens > contextLimit,
@@ -136,21 +182,23 @@ export function formatTokenCount(tokens: number): string {
 
 /**
  * Calculate token budget for each dynamic segment.
- * Budget = contextLimit * CONTEXT_USAGE_RATIO - systemPromptTokens - responseBuffer
+ * Budget = contextLimit * CONTEXT_USAGE_RATIO - systemPromptTokens - responseBuffer - thinkingOverhead
  *
  * systemPromptTokens MUST be calculated from the actual prompt text (default or custom from Settings).
  * Caller should call estimateTokens() on the prompt before passing here.
+ * thinkingOverhead: tokens reserved for model thinking (0 for non-thinking models).
  */
 export function calculateSegmentBudget(
   model: string,
   systemPromptTokens: number,
   responseBuffer?: number,
   contextWindowOverride?: number,
+  thinkingOverhead: number = 0,
 ): number {
   const contextLimit = getContextLimit(model, contextWindowOverride);
   const usable = Math.floor(contextLimit * CONTEXT_USAGE_RATIO);
   const buffer = responseBuffer ?? RESPONSE_BUFFER_TOKENS;
-  return Math.max(usable - systemPromptTokens - buffer, 4000); // floor 4000 tokens
+  return Math.max(usable - systemPromptTokens - buffer - thinkingOverhead, 4000); // floor 4000 tokens
 }
 
 /**

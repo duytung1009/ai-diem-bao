@@ -114,7 +114,8 @@ export default defineBackground(() => {
                 llmConfig: { provider: config.provider, model: config.model },
                 cachedAt: Date.now(),
                 lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
-                totalPosts: partial.totalPosts ?? existing?.totalPosts ?? 0,
+                forumPostCount: partial.forumPostCount ?? existing?.forumPostCount,
+                totalPosts: Math.max(partial.totalPosts ?? 0, existing?.totalPosts ?? 0),
                 summarizedPostCount: partial.summarizedPostCount ?? existing?.summarizedPostCount ?? partial.totalPosts ?? existing?.totalPosts ?? 0,
                 totalPages: partial.totalPages ?? existing?.totalPages ?? 1,
                 topicType: partial.topicType ?? existing?.topicType,
@@ -374,12 +375,14 @@ function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
       .filter((e: unknown): e is Record<string, unknown> =>
         typeof e === 'object' && e !== null && typeof (e as Record<string, unknown>).title === 'string'
       )
-      .slice(0, 20)
       .map((e) => ({
         id: crypto.randomUUID(),
         title: String(e.title ?? ''),
         content: String(e.content ?? ''),
         tags: Array.isArray(e.tags) ? (e.tags as unknown[]).map(String) : [],
+        category: typeof (e as Record<string, unknown>).category === 'string'
+          ? String((e as Record<string, unknown>).category)
+          : undefined,
         source: {
           author: String((e.source as Record<string, unknown>)?.author ?? ''),
           postNumber: Number((e.source as Record<string, unknown>)?.postNumber ?? 0),

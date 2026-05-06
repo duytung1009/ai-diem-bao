@@ -20,8 +20,10 @@ const hasSummary = computed(() =>
   !!(props.topic.summary || props.topic.segments?.some(s => s?.summary)),
 );
 
+const totalRef = computed(() => props.topic.forumPostCount ?? props.topic.totalPosts ?? 0);
+
 const isPartial = computed(() =>
-  hasSummary.value && summarizedPostCount.value < (props.topic.totalPosts ?? 0),
+  hasSummary.value && summarizedPostCount.value < totalRef.value,
 );
 
 const summaryStatus = computed(() => {
@@ -38,8 +40,12 @@ const summaryDateLabel = computed(() => {
 
 const newPostCount = computed(() =>
   props.livePostCount != null
-    ? props.livePostCount - (props.topic.totalPosts ?? 0)
+    ? props.livePostCount - totalRef.value
     : 0,
+);
+
+const hasForumPostCount = computed(() =>
+  !!props.topic.forumPostCount && props.topic.forumPostCount > (props.topic.totalPosts ?? 0),
 );
 
 async function navigateToTopic() {
@@ -89,7 +95,10 @@ async function navigateToTopic() {
     <!-- Row 3: Metadata -->
     <div class="flex flex-wrap gap-3 mt-2 text-xs text-(--color-text-secondary)">
       <span>
-        {{ formatNumber(topic.totalPosts) }} bài
+        <template v-if="hasForumPostCount">
+          {{ formatNumber(topic.totalPosts) }}/{{ formatNumber(topic.forumPostCount!) }} bài
+        </template>
+        <template v-else>{{ formatNumber(topic.totalPosts) }} bài</template>
         <span v-if="newPostCount > 0" class="text-(--color-accent-text)">(+{{ formatNumber(newPostCount) }} mới)</span>
       </span>
       <span>{{ formatNumber(topic.totalPages) }} trang</span>

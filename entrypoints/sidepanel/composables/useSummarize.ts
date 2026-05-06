@@ -6,7 +6,7 @@ import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON } from '@/lib/types';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
-import { estimateTokens, calculateSegmentBudget, willExceedContext } from '@/lib/token-estimator';
+import { estimateTokens, calculateSegmentBudget, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import { estimateSummarizeSegmentCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, RESPONSE_BUFFER_TOKENS } from '@/lib/constants';
@@ -126,7 +126,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   // --- Helpers ---
   function countRealPosts(posts: ScrapedPost[]): number {
-    return posts.filter(p => p.postNumber > 0).length;
+    return posts.filter(p => p.postNumber >= 0).length;
   }
 
   // Auto-detect news type by fetching page 1 silently (fire-and-forget).
@@ -197,7 +197,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const oneDay = 24 * 60 * 60 * 1000;
     const oneWeek = 7 * oneDay;
     if (ageMs > oneWeek) return 'outdated';
-    if (ageMs > oneDay || (currentPostCount !== null && currentPostCount > cached.totalPosts)) return 'stale';
+    const totalRef = cached.forumPostCount ?? cached.totalPosts;
+    if (ageMs > oneDay || (currentPostCount !== null && currentPostCount > totalRef)) return 'stale';
     return 'fresh';
   }
 
@@ -412,12 +413,15 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       segmentSummaries.value = tempUpdated as TopicSegment[];
 
       // Phase A3 (F26): informational cost hint for large segments (non-blocking)
+      const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+      const thinkingOverhead = getThinkingOverhead(model, currentConfig.value?.thinkingEnabled, currentConfig.value?.thinkingBudget);
       const { chunksNeeded } = willExceedContext(
         segPosts,
-        currentConfig.value?.model ?? 'gpt-4o-mini',
+        model,
         estimateTokens(SUMMARY_PROMPT),
         2000,
         currentConfig.value?.contextWindow,
+        thinkingOverhead,
       );
       if (estimateSummarizeSegmentCalls(chunksNeeded) >= LLM_WARN_THRESHOLD_CALLS) {
         simpleLoadingText.value = `Segment lớn — sẽ dùng ~${estimateSummarizeSegmentCalls(chunksNeeded)} API calls...`;
@@ -736,21 +740,28 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const updated = makeDenseBase(segmentIndex);
     updated[segmentIndex] = newSeg;
 
+    const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    const forumCount = store.activeTabDetect.value?.postCount;
+
     if (thisId !== activeSummarizeId) {
       // Stale: still save but don't update UI
-      const totalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-      await saveTopic(topic, { totalPosts, summarizedPostCount: totalPosts, segments: updated }).catch(() => {});
+      await saveTopic(topic, {
+        forumPostCount: forumCount,
+        totalPosts: Math.max(topic.totalPosts, segTotalPosts),
+        summarizedPostCount: segTotalPosts,
+        segments: updated,
+      }).catch(() => {});
       return;
     }
 
     segmentSummaries.value = updated as TopicSegment[];
-    const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topic.title,
       version: topic.version,
       totalPages: topic.totalPages,
-      totalPosts: segTotalPosts,
+      forumPostCount: forumCount,
+      totalPosts: Math.max(topic.totalPosts, segTotalPosts),
       summarizedPostCount: segTotalPosts,
       segments: updated,
     });
@@ -777,9 +788,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const contextWindowOverride = currentConfig.value?.contextWindow;
     const maxTokens = currentConfig.value?.maxTokens ?? 0;
     const responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, maxTokens);
+    const thinkingOverhead = getThinkingOverhead(model, currentConfig.value?.thinkingEnabled, currentConfig.value?.thinkingBudget);
     const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
     const systemPromptText = customPromptsData?.summary || SUMMARY_PROMPT;
-    return calculateSegmentBudget(model, estimateTokens(systemPromptText), responseBuffer, contextWindowOverride);
+    return calculateSegmentBudget(model, estimateTokens(systemPromptText), responseBuffer, contextWindowOverride, thinkingOverhead);
   }
 
   /**
@@ -793,30 +805,42 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const lastSeg = completed[completed.length - 1];
     const lastSegIdx = segmentSummaries.value.lastIndexOf(lastSeg);
 
-    if (lastSeg.complete === false) {
-      // Resume: append new pages to the existing incomplete last segment
-      const pendingPosts = [...lastSeg.posts];
-      const pendingTokens = pendingPosts.reduce(
-        (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-        0,
+    const pendingPosts = [...lastSeg.posts];
+    const pendingTokens = pendingPosts.reduce(
+      (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
+      0,
+    );
+
+    // mergeBase: always start from last segment's state so new pages can be merged
+    const mergeBase = {
+      fromPage: lastSeg.endPage + 1,
+      segmentIndex: lastSegIdx,
+      pendingPosts,
+      pendingTokens,
+      pendingStartPage: lastSeg.startPage,
+    };
+
+    if (lastSeg.complete !== false) {
+      // Segment was marked complete — check if it still has headroom for merging.
+      // If usage is high (>70%), start a fresh segment to avoid constant re-summarization.
+      const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+      const budget = calculateSegmentBudget(
+        model, estimateTokens(SUMMARY_PROMPT), RESPONSE_BUFFER_TOKENS,
+        currentConfig.value?.contextWindow,
       );
-      return {
-        fromPage: lastSeg.endPage + 1,
-        segmentIndex: lastSegIdx,
-        pendingPosts,
-        pendingTokens,
-        pendingStartPage: lastSeg.startPage,
-      };
-    } else {
-      // All previous segments are complete → new segment starts after the last complete one
-      return {
-        fromPage: lastSeg.endPage + 1,
-        segmentIndex: lastSegIdx + 1,
-        pendingPosts: [],
-        pendingTokens: 0,
-        pendingStartPage: lastSeg.endPage + 1,
-      };
+      const usagePct = budget > 0 ? pendingTokens / budget : 0;
+      if (usagePct > 0.7) {
+        return {
+          fromPage: lastSeg.endPage + 1,
+          segmentIndex: lastSegIdx + 1,
+          pendingPosts: [],
+          pendingTokens: 0,
+          pendingStartPage: lastSeg.endPage + 1,
+        };
+      }
+      // Headroom available — merge into existing segment
     }
+    return mergeBase;
   }
 
   /**
@@ -941,10 +965,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       pendingTokens += pageTokens;
     }
 
-    // Summarize remaining posts (last segment — mark incomplete since topic may get new posts)
+    // Summarize remaining posts (last segment — all pages covered, always complete)
     if (pendingPosts.length > 0 && thisId === activeSummarizeId) {
-      const isIncomplete = pendingTokens < budgetTokens; // didn't fill the budget → may grow
-      await summarizeAndSaveSegment(segmentIndex, pendingStartPage, totalPages, pendingPosts, isIncomplete, thisId);
+      await summarizeAndSaveSegment(segmentIndex, pendingStartPage, totalPages, pendingPosts, false, thisId);
     }
   }
 

@@ -50,7 +50,16 @@ const showAutoSummarizeCostWarning = computed(() =>
   estimatedAutoSummarizeCalls.value > LLM_WARN_THRESHOLD_CALLS,
 );
 
-const newPostCount = computed(() => livePostCount.value - (cachedTopic?.value?.totalPosts ?? 0));
+const newPostCount = computed(() => {
+  const totalRef = cachedTopic?.value?.forumPostCount ?? cachedTopic?.value?.totalPosts ?? 0;
+  return livePostCount.value - totalRef;
+});
+
+const modelLabel = computed(() => {
+  const cfg = cachedTopic?.value?.llmConfig;
+  if (!cfg?.provider || !cfg?.model) return null;
+  return `${cfg.provider}: ${cfg.model}`;
+});
 
 // postNumber → page mapping, built from all cached posts (top-level + segments)
 const postPageMap = computed<Record<number, number>>(() => {
@@ -224,7 +233,7 @@ onActivated(async () => {
               v-if="cacheFreshness && cachedTopic"
               :freshness="cacheFreshness"
               :cached-at="cachedTopic.cachedAt"
-              :cached-posts="cachedTopic.totalPosts"
+              :cached-posts="cachedTopic.forumPostCount ?? cachedTopic.totalPosts"
               :current-posts="livePostCount"
             />
           </div>
@@ -342,6 +351,9 @@ onActivated(async () => {
             <!-- Single segment: hiển thị summary trực tiếp -->
             <template v-if="segments.length === 1">
               <div v-if="segmentSummaries[0]?.summary" class="space-y-3">
+                <div v-if="modelLabel" class="text-xs text-(--color-text-muted) italic">
+                  Tóm tắt bởi {{ modelLabel }}
+                </div>
                 <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
                   <template #actions>
                     <button
@@ -372,6 +384,9 @@ onActivated(async () => {
             <!-- Multi-segment: overall summary flow -->
             <template v-else>
               <div v-if="summary" class="space-y-3">
+                <div v-if="modelLabel" class="text-xs text-(--color-text-muted) italic">
+                  Tóm tắt bởi {{ modelLabel }}
+                </div>
                 <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
                   <template #actions>
                     <template v-if="segments.length > 1">

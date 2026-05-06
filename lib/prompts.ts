@@ -188,6 +188,7 @@ BẮT BUỘC:
 - Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
 - Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
 - Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
+- category: phân loại kiến thức vào nhóm ngắn gọn (1-3 từ, vd: "Phương pháp nuôi con", "Dinh dưỡng", "Sức khỏe", "Tài chính", "Kỹ thuật", "Kinh nghiệm cá nhân", v.v.)
 - Tối đa ${cap} entries (ưu tiên chất lượng hơn số lượng)
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
@@ -197,6 +198,7 @@ Trả về JSON array theo đúng format sau:
     "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
     "content": "Nội dung chi tiết 2-5 câu. Phải tự đứng được mà không cần context từ topic.",
     "tags": ["tag1", "tag2"],
+    "category": "Tên nhóm",
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
@@ -217,6 +219,7 @@ BẮT BUỘC:
 - Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
 - Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
 - Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
+- category: phân loại kiến thức vào nhóm ngắn gọn (1-3 từ, vd: "Phương pháp nuôi con", "Dinh dưỡng", "Sức khỏe", "Tài chính", "Kỹ thuật", "Kinh nghiệm cá nhân", v.v.)
 - Tối đa ${cap} entries (ưu tiên chất lượng hơn số lượng)
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
@@ -226,6 +229,7 @@ Trả về JSON array theo đúng format sau:
     "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
     "content": "Nội dung chi tiết 2-5 câu. Phải tự đứng được mà không cần context từ topic.",
     "tags": ["tag1", "tag2"],
+    "category": "Tên nhóm",
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
@@ -242,8 +246,9 @@ BẮT BUỘC:
 - Output PHẢI là JSON array hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
 - Viết bằng tiếng Việt
 - Merge các entry trùng hoặc tương tự — giữ entry chi tiết hơn, bỏ entry trùng lặp
+- Gom các entry cùng category lại gần nhau, chuẩn hóa tên category nếu cần
 - Tối đa ${cap} entries cuối cùng (ưu tiên chất lượng và đa dạng)
-- Giữ nguyên format từng entry: title, content, tags, source
+- Giữ nguyên format từng entry: title, content, tags, category, source
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 
 Trả về JSON array theo đúng format sau:
@@ -252,6 +257,7 @@ Trả về JSON array theo đúng format sau:
     "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
     "content": "Nội dung chi tiết 2-5 câu. Phải tự đứng được mà không cần context từ topic.",
     "tags": ["tag1", "tag2"],
+    "category": "Tên nhóm",
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;

@@ -28,7 +28,11 @@ export async function extractArticle(url: string): Promise<ArticleContent | null
 
     const html = await res.text();
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+    const safeHtml = html
+      .replace(/<head\b[\s\S]*?<\/head>/gi, '')
+      .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+      .replace(/<link\b[^>]*>/gi, '');
+    const doc = parser.parseFromString(safeHtml, 'text/html');
 
     // Remove noise elements
     const removeSelectors = [

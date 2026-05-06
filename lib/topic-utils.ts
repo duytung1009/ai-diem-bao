@@ -10,11 +10,12 @@ export function topicSummaryStatus(
   if (isSummarizing) return 'in-progress';
   const hasSummary = !!(topic.summary || topic.segments?.some(s => s?.summary));
   if (!hasSummary) return 'none';
+  const totalRef = topic.forumPostCount ?? topic.totalPosts ?? 0;
   const summarized = topic.summarizedPostCount ?? topic.totalPosts ?? 0;
-  // Use livePostCount if available and > cached totalPosts
-  const effectiveTotalPosts = (livePostCount != null && livePostCount > (topic.totalPosts ?? 0))
+  // Use livePostCount if available and > cached totalRef
+  const effectiveTotalPosts = (livePostCount != null && livePostCount > totalRef)
     ? livePostCount
-    : (topic.totalPosts ?? 0);
+    : totalRef;
   if (summarized < effectiveTotalPosts) return 'partial';
   return 'done';
 }

@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# Claude Code Instructions
 
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
@@ -71,3 +69,146 @@ Tailwind CSS v4 via Vite plugin. Design tokens as CSS vars `--color-*` in `asset
 ### Path Alias
 
 `@/` maps to the project root (configured by WXT). Use `@/lib/...`, `@/assets/...` etc.
+
+---
+
+## Development Workflow (MANDATORY)
+
+Tuân thủ workflow sau cho **mọi** thay đổi code. AI agent phải tự động áp dụng workflow này, user không cần prompt chi tiết từng step.
+
+### Phase 1 — Planning (User-driven)
+
+User cập nhật `dev_plan.md` với plan tổng quan chia theo phase (1, 2, 3...). Mỗi phase có checklist `- [ ]` các task cần làm.
+
+AI agent: Khi user yêu cầu "tạo PRD cho Phase X" hoặc "bắt đầu Phase X":
+- Đọc `dev_plan.md`, đối chiếu với existing `.taskmaster/docs/*.md`
+- Tạo PRD files mới trong `.taskmaster/docs/` theo đúng template `.taskmaster/templates/example_prd.txt` (hoặc `.md`)
+- Mỗi PRD có cấu trúc `<context>` + `<PRD>` blocks
+
+### Phase 2 — Task Generation (AI-driven)
+
+Sau khi PRD files được tạo/cập nhật xong, CHẠY TUẦN TỰ:
+
+```
+1. task-master parse-prd .taskmaster/docs/<file>.md [--append]
+2. task-master analyze-complexity --research
+3. task-master complexity-report
+4. task-master expand --all --research
+```
+
+**Quy tắc:**
+- PRD mới → `task-master parse-prd` không có `--append`
+- PRD cập nhật (plan thay đổi) → `task-master parse-prd --append`
+- Luôn chạy `analyze-complexity` sau khi parse xong TẤT CẢ PRD
+- `complexity-report` chỉ cần chạy 1 lần, review các task complexity > 5
+- `expand --all --research` để tự động bung subtasks cho complex tasks
+
+### Phase 3 — Implementation (AI-driven)
+
+Khi user yêu cầu "implement task N" hoặc "tiếp tục":
+
+```
+1. task-master set-status --id=N --status=in-progress
+2. task-master show N                       # đọc chi tiết task
+3. Implement code theo task description
+4. Verify: npm run compile
+5. task-master update-subtask --id=N --prompt="ghi chú implementation"
+6. task-master set-status --id=N --status=done
+7. task-master next                          # show task tiếp theo
+```
+
+**Quy tắc implementation:**
+- LUÔN chạy `npm run compile` (type check) sau khi code
+- Sau mỗi task done → `task-master next` → hỏi user có muốn tiếp tục không
+- Không tự commit code
+
+### Phase 4 — Alignment (khi plan thay đổi)
+
+Khi user thay đổi `dev_plan.md` trong quá trình implement:
+
+```
+1. Cập nhật .taskmaster/docs/<prd-file>.md tương ứng
+2. task-master parse-prd .taskmaster/docs/<prd-file>.md --append
+3. Chạy lại từ Phase 2 step 2 nếu thay đổi lớn
+```
+
+### Decision Flow cho AI Agent
+
+```
+User request
+    │
+    ├── "tạo PRD cho Phase X" / "lập plan Phase X"
+    │       → Đọc dev_plan.md
+    │       → Tạo .taskmaster/docs/<prd-file>.md theo template
+    │       → Parse PRDs (Phase 2)
+    │
+    ├── "implement task N"
+    │       → task-master set-status --id=N --status=in-progress
+    │       → Implement code
+    │       → npm run compile verify
+    │       → Log update-subtask + set-status done
+    │       → task-master next → hỏi tiếp tục?
+    │
+    ├── "update plan" / "cập nhật plan"
+    │       → Update dev_plan.md
+    │       → Update PRD files
+    │       → Re-parse + analyze (Phase 2 + Phase 4)
+    │
+    ├── "show status" / "what's next"
+    │       → task-master list
+    │       → task-master next
+    │
+    └── "parse tasks" / "generate tasks"
+            → Phase 2 (parse → analyze → expand)
+```
+
+### Environment Checks Trước Khi Implement
+
+Mỗi lần bắt đầu implement task mới:
+1. `npm run compile` — type check toàn project
+2. Nếu fail → fix trước khi implement task mới
+
+---
+
+## Plan Management & Sync Rules
+
+### Rule 1 — Brainstorm → Plan Update
+
+Khi user brainstorm ý tưởng mới với AI agent:
+
+1. AI agent ghi nhận các actionable items từ cuộc brainstorm
+2. Đề xuất cập nhật `dev_plan.md` — thêm mục mới vào phase phù hợp hoặc tạo phase mới
+3. **KHÔNG tự động sửa plan** — chỉ đề xuất, user confirm rồi mới sửa
+4. Format đề xuất: `[Phase] [Section] [Action] — [Mô tả]`
+
+### Rule 2 — Post-Implementation Sync Check
+
+Sau khi hoàn thành một phase hoặc một nhóm tasks quan trọng:
+
+1. Đọc lại `dev_plan.md` phase đã implement
+2. Đối chiếu với code thực tế (check file structure, entry points, lib modules)
+3. Nếu có discrepancy → báo cáo dạng:
+   ```
+   ⚠️ Plan misalignment detected:
+   - Plan nói [X] nhưng code có [Y]
+   - Đề xuất: [update plan / update code]
+   ```
+4. User quyết định update plan hay sửa code
+
+### Rule 3 — Plan Update Decision Matrix
+
+| Tình huống | Action |
+|---|---|
+| Brainstorm có idea mới → chưa có trong plan | **Đề xuất** thêm vào phase phù hợp, user confirm → sửa plan → tạo PRD nếu cần |
+| Brainstorm có ADR → conflict với plan hiện tại | **Flag** conflict, user chọn giữ plan cũ hay ADR mới |
+| Code đã implement → khác với plan | **Report discrepancy**, user chọn update plan hay sửa code |
+| Phase đã done → plan vẫn ghi `- [ ]` | **Tự động** đánh dấu `- [x]` trong plan |
+
+---
+
+### Communication Rules
+
+- AI agent thông báo step hiện tại đang làm (VD: "Đang parse PRD-01...")
+- Khi hỏi user "có muốn tiếp tục không?" → chỉ hỏi 1 lần, không loop
+- Khi error (`npm run compile` fail) → tự fix trước, chỉ hỏi user nếu không fix được sau 2 attempts
+- Output ngắn gọn, tập trung vào kết quả

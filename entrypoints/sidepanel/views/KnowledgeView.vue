@@ -2,7 +2,7 @@
 import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic, KnowledgeEntry, KnowledgeChunk, LLMConfig, ScrapedPost } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
-import { estimateTokens, calculateSegmentBudget, getContextLimit } from '@/lib/token-estimator';
+import { estimateTokens, calculateSegmentBudget, getContextLimit, getThinkingOverhead } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
 import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION } from '@/lib/constants';
@@ -25,6 +25,7 @@ const error = ref('');
 const llmTaskId = ref<string | null>(null);
 const searchQuery = ref('');
 const selectedTags = ref<string[]>([]);
+const selectedCategory = ref<string | null>(null);
 const expandedIds = ref<Set<string>>(new Set());
 const showSavedOnly = ref(false);
 const confirmingExtract = ref(false);
@@ -40,7 +41,7 @@ const currentConfig = ref<LLMConfig | null>(null);
 const estimatedExtractApiCalls = computed(() => {
   if (!allPosts.value.length || !currentConfig.value || isLoading.value) return 0;
   const model = currentConfig.value.model ?? 'gpt-4o-mini';
-  const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow, currentConfig.value.maxTokens);
+  const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow, currentConfig.value.maxTokens, currentConfig.value.thinkingEnabled, currentConfig.value.thinkingBudget);
   return estimateExtractCalls(chunks.length);
 });
 const showExtractCostWarning = computed(() => estimatedExtractApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
@@ -120,6 +121,12 @@ const progressLabel = computed(() => {
   return 'Đang trích xuất kiến thức...';
 });
 
+const allCategories = computed(() => {
+  const cats = new Set<string>();
+  entries.value.forEach(e => { if (e.category) cats.add(e.category); });
+  return [...cats].sort((a, b) => a.localeCompare(b, 'vi'));
+});
+
 const filteredEntries = computed(() => {
   let result = entries.value;
   if (showSavedOnly.value) result = result.filter(e => e.saved);
@@ -135,7 +142,26 @@ const filteredEntries = computed(() => {
       e.tags.some(t => selectedTags.value.includes(t))
     );
   }
+  if (selectedCategory.value) {
+    result = result.filter(e => e.category === selectedCategory.value);
+  }
   return result;
+});
+
+const groupedEntries = computed(() => {
+  const groups: Record<string, typeof entries.value> = {};
+  for (const e of filteredEntries.value) {
+    const cat = e.category || 'Khác';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(e);
+  }
+  // Sort categories alphabetically, 'Khác' last
+  const keys = Object.keys(groups).sort((a, b) => {
+    if (a === 'Khác') return 1;
+    if (b === 'Khác') return -1;
+    return a.localeCompare(b, 'vi');
+  });
+  return keys.map(key => ({ category: key, entries: groups[key] }));
 });
 
 async function loadTopicData() {
@@ -385,6 +411,8 @@ async function handleExtract() {
       currentConfig.value?.model ?? 'gpt-4o-mini',
       currentConfig.value?.contextWindow,
       currentConfig.value?.maxTokens,
+      currentConfig.value?.thinkingEnabled,
+      currentConfig.value?.thinkingBudget,
     );
     const newChunks: KnowledgeChunk[] = [...resume.existingChunks];
     totalChunks.value = newChunks.length + chunkPlan.length;
@@ -476,8 +504,8 @@ async function runReducePhase(
 ): Promise<void> {
   currentPhase.value = 'reducing';
   const allPartial = chunks.map(c => c.entries);
-  // Dynamic cap: 3 entries per chunk, min 20, max 150
-  const finalCap = Math.min(150, Math.max(20, chunks.length * 3));
+  const dynamicMin = Math.max(chunks.length, 3);
+  const finalCap = Math.min(200, Math.max(dynamicMin, chunks.length * 4));
 
   let finalEntries: KnowledgeEntry[];
   if (allPartial.length === 1) {
@@ -746,11 +774,37 @@ async function handleClearTracking() {
               {{ tag }}
             </button>
           </div>
+          <!-- Category filter pills -->
+          <div v-if="allCategories.length > 0" class="flex flex-wrap gap-1.5">
+            <button
+              v-if="selectedCategory"
+              class="px-2 py-0.5 rounded-full text-xs transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
+              @click="selectedCategory = null"
+            >
+              Tất cả
+            </button>
+            <button
+              v-for="cat in allCategories"
+              :key="cat"
+              class="px-2 py-0.5 rounded-full text-xs transition-colors"
+              :class="selectedCategory === cat
+                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
+                : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+              @click="selectedCategory = selectedCategory === cat ? null : cat"
+            >
+              {{ cat }}
+            </button>
+          </div>
         </div>
 
         <!-- Stats + re-extract -->
         <div class="flex items-center justify-between text-xs text-(--color-text-muted)">
-          <span>{{ filteredEntries.length }}/{{ entries.length }} kiến thức</span>
+          <span>
+            {{ filteredEntries.length }}/{{ entries.length }} kiến thức
+            <span v-if="cachedTopic?.llmConfig?.model" class="ml-2 italic opacity-70">
+              · {{ cachedTopic.llmConfig.provider }}: {{ cachedTopic.llmConfig.model }}
+            </span>
+          </span>
           <button
             v-if="allPosts.length"
             class="text-blue-600 hover:text-blue-700"
@@ -775,13 +829,20 @@ async function handleClearTracking() {
           <p class="text-xs text-(--color-text-muted)">Không tìm thấy kiến thức phù hợp với bộ lọc.</p>
         </div>
 
-        <!-- Entry cards -->
-        <div class="space-y-2">
-          <div
-            v-for="entry in filteredEntries"
-            :key="entry.id"
-            class="card"
-          >
+        <!-- Entry cards grouped by category -->
+        <div class="space-y-4">
+          <template v-for="group in groupedEntries" :key="group.category">
+            <div>
+              <h4 class="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide mb-2">
+                {{ group.category }}
+                <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
+              </h4>
+              <div class="space-y-2">
+                <div
+                  v-for="entry in group.entries"
+                  :key="entry.id"
+                  class="card"
+                >
             <!-- Header: always visible, click to expand -->
             <div class="flex items-start gap-2 cursor-pointer" @click="toggleExpand(entry.id)">
               <!-- Chevron icon -->
@@ -852,8 +913,11 @@ async function handleClearTracking() {
                 </div>
               </div>
             </div>
+            </div>
           </div>
         </div>
+      </template>
+    </div>
       </template>
 
       <!-- Empty state (has posts but no entries extracted) -->

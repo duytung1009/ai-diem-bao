@@ -48,12 +48,7 @@ const filteredTopics = computed(() => {
   }
   switch (sortBy.value) {
     case 'recent':
-      topics.sort((a, b) => {
-        // Bookmarked topics float to top within each domain
-        if (a.bookmarked && !b.bookmarked) return -1;
-        if (!a.bookmarked && b.bookmarked) return 1;
-        return (b.cachedAt || 0) - (a.cachedAt || 0);
-      });
+      topics.sort((a, b) => (b.cachedAt || 0) - (a.cachedAt || 0));
       break;
     case 'posts':
       topics.sort((a, b) => b.totalPosts - a.totalPosts);
@@ -100,7 +95,8 @@ const newPostsMap = computed<Record<string, number>>(() => {
   const result: Record<string, number> = {};
   for (const topic of allTopics.value) {
     if (normalizeUrl(topic.url) === activeUrl) {
-      const delta = liveCount - (topic.totalPosts ?? 0);
+      const totalRef = topic.forumPostCount ?? topic.totalPosts ?? 0;
+      const delta = liveCount - totalRef;
       if (delta > 0) result[topic.url] = delta;
       break;
     }
@@ -369,7 +365,10 @@ async function toggleBookmark(topic: CachedTopic) {
                     <div class="flex items-center gap-2 justify-end">
                       <!-- Post count -->
                       <span class="text-xs text-(--color-text-muted)">
-                        <template v-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'">
+                        <template v-if="topic.forumPostCount && topic.forumPostCount > topic.totalPosts">
+                          {{ formatNumber(topic.totalPosts) }}/{{ formatNumber(topic.forumPostCount) }} bài
+                        </template>
+                        <template v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'">
                           {{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }}/{{ formatNumber(topic.totalPosts) }} bài
                         </template>
                         <template v-else>{{ formatNumber(topic.totalPosts) }} bài</template>

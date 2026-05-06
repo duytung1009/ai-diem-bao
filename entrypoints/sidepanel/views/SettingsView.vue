@@ -4,6 +4,7 @@ import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { buildCacheExport } from '@/lib/exporter';
+import { getModelThinkingBudget, modelSupportsThinking } from '@/lib/token-estimator';
 import {
   SUMMARY_PROMPT,
   CHUNK_SUMMARY_PROMPT,
@@ -20,12 +21,12 @@ const showApiKey = ref(false);
 const saving = ref(false);
 const testing = ref(false);
 
-const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number; maxTokens: number; contextWindow: undefined }> = {
-  openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
-  custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
-  claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
-  gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
-  'gemini-free': { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined },
+const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number; maxTokens: number; contextWindow: undefined; thinkingEnabled: boolean; thinkingBudget: number | undefined }> = {
+  openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
+  custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
+  claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
+  gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: true, thinkingBudget: undefined },
+  'gemini-free': { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: true, thinkingBudget: undefined },
 };
 
 function syncCurrentProvider() {
@@ -38,6 +39,8 @@ function syncCurrentProvider() {
     timeoutMs: config.value.timeoutMs ?? 120000,
     maxTokens: config.value.maxTokens ?? 4096,
     contextWindow: config.value.contextWindow,
+    thinkingEnabled: config.value.thinkingEnabled,
+    thinkingBudget: config.value.thinkingBudget,
   };
 }
 const testResult = ref<'success' | 'fail' | ''>('');
@@ -118,12 +121,46 @@ function closeModelDropdown() {
   setTimeout(() => { showModelDropdown.value = false; }, 150);
 }
 
-const cacheSizeMB = computed(() => (cacheSizeBytes.value / (1024 * 1024)).toFixed(1));
-const cacheQuotaMB = computed(() => storageQuotaBytes.value > 0 ? (storageQuotaBytes.value / (1024 * 1024)).toFixed(0) : '?');
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(1)} TB`;
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
+
+const cacheSizeText = computed(() => formatBytes(cacheSizeBytes.value));
+const cacheQuotaText = computed(() => storageQuotaBytes.value > 0 ? formatBytes(storageQuotaBytes.value) : '?');
 const cacheUsagePercent = computed(() => storageQuotaBytes.value > 0 ? Math.round((cacheSizeBytes.value / storageQuotaBytes.value) * 100) : 0);
 const cacheNearFull = computed(() => cacheUsagePercent.value >= 90);
 const isClaude = computed(() => config.value.provider === 'claude');
 const isGemini = computed(() => config.value.provider === 'gemini' || config.value.provider === 'gemini-free');
+const supportsThinking = computed(() => isGemini.value && modelSupportsThinking(config.value.model));
+const modelMaxThinkingBudget = computed(() => getModelThinkingBudget(config.value.model));
+const thinkingBudgetLabel = computed(() => {
+  if (!supportsThinking.value) return '';
+    if (config.value.thinkingBudget == null) {
+    return `Tự động (tối đa ${modelMaxThinkingBudget.value.toLocaleString()})`;
+  }
+  const budget = config.value.thinkingBudget;
+  return budget === 0 ? 'Tắt (ảnh hưởng chất lượng)' : budget === modelMaxThinkingBudget.value ? budget.toLocaleString() : `${budget.toLocaleString()} / ${modelMaxThinkingBudget.value.toLocaleString()}`;
+});
+
+// Proxy to handle slider value: undefined → modelMax (auto), explicit value → as-is
+const thinkingBudgetSlider = computed({
+  get: () => config.value.thinkingBudget ?? modelMaxThinkingBudget.value,
+  set: (val: number) => { config.value.thinkingBudget = val; },
+});
+const lowMaxTokensWarning = computed(() => {
+  if (!supportsThinking.value || !config.value.thinkingEnabled) return '';
+  const maxT = config.value.maxTokens ?? 4096;
+  const thinkingBudget = config.value.thinkingBudget ?? modelMaxThinkingBudget.value;
+  const minForResponse = 2000;
+  if (maxT < thinkingBudget + minForResponse) {
+    return `Max output (${maxT.toLocaleString()}) quá thấp so với thinking budget (${thinkingBudget.toLocaleString()}). Model dễ gặp lỗi MAX_TOKEN. Khuyến nghị ≥ ${(thinkingBudget + minForResponse).toLocaleString()}.`;
+  }
+  return '';
+});
 
 async function refreshCacheSize() {
   const sizeResult = await sendMessage<{ bytes: number }>('GET_CACHE_SIZE').catch(() => null);
@@ -142,6 +179,8 @@ onMounted(async () => {
       timeoutMs: loaded.timeoutMs ?? 120000,
       maxTokens: loaded.maxTokens ?? 4096,
       contextWindow: loaded.contextWindow,
+      thinkingEnabled: loaded.thinkingEnabled,
+      thinkingBudget: loaded.thinkingBudget,
       scrapeDelayMs: loaded.scrapeDelayMs ?? DEFAULT_SCRAPE_DELAY_MS,
       segmentSize: loaded.segmentSize ?? DEFAULT_SEGMENT_SIZE,
       dynamicSegments: loaded.dynamicSegments ?? DEFAULT_DYNAMIC_SEGMENTS,
@@ -167,6 +206,8 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
     timeoutMs: config.value.timeoutMs ?? 120000,
     maxTokens: config.value.maxTokens ?? 4096,
     contextWindow: config.value.contextWindow,
+    thinkingEnabled: config.value.thinkingEnabled,
+    thinkingBudget: config.value.thinkingBudget,
   };
   // Load new provider's settings (from saved or defaults)
   const saved = config.value.perProvider[newProvider];
@@ -178,8 +219,23 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
   config.value.timeoutMs = saved?.timeoutMs ?? defaults.timeoutMs;
   config.value.maxTokens = saved?.maxTokens ?? defaults.maxTokens;
   config.value.contextWindow = saved?.contextWindow ?? defaults.contextWindow;
+  config.value.thinkingEnabled = saved?.thinkingEnabled ?? defaults.thinkingEnabled;
+  config.value.thinkingBudget = saved?.thinkingBudget ?? defaults.thinkingBudget;
   showApiKey.value = false;
   showModelDropdown.value = false;
+});
+
+watch(() => config.value.model, (newModel) => {
+  if (!isGemini.value) return;
+  if (modelSupportsThinking(newModel)) {
+    if (config.value.thinkingEnabled === undefined) {
+      config.value.thinkingEnabled = true;
+    }
+    config.value.thinkingBudget = undefined; // reset to auto on model change
+  } else {
+    config.value.thinkingEnabled = false;
+    config.value.thinkingBudget = undefined;
+  }
 });
 
 watch(activePromptTab, () => {
@@ -493,6 +549,75 @@ async function exportCache() {
       </div>
     </div>
 
+    <!-- Low maxTokens warning for thinking models -->
+    <div v-if="lowMaxTokensWarning" class="alert alert-error text-xs">
+      {{ lowMaxTokensWarning }}
+    </div>
+
+    <!-- Thinking config (Gemini thinking models only) -->
+    <div v-if="supportsThinking" class="space-y-2">
+      <!-- Thinking toggle -->
+      <div class="flex items-center gap-3">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input
+            v-model="config.thinkingEnabled"
+            type="checkbox"
+            class="sr-only peer"
+          />
+          <div class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+        </label>
+        <div>
+          <p class="text-xs font-medium text-(--color-text-secondary)">Thinking mode</p>
+          <p class="text-[11px] text-(--color-text-muted)">Model suy luận nội bộ trước khi trả lời (tốn token output).</p>
+        </div>
+      </div>
+
+      <!-- Thinking budget (only when thinking enabled) -->
+      <div v-if="config.thinkingEnabled !== false">
+        <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
+          Thinking budget: {{ thinkingBudgetLabel }}
+        </label>
+        <p class="text-[11px] text-(--color-text-muted) mb-1">
+          Giới hạn token dành cho suy luận nội bộ (nằm trong Max output tokens). Kéo về 0 = tắt thinking. Nhấn "Tự động" = model tự quyết định.
+        </p>
+        <input
+          v-model.number="thinkingBudgetSlider"
+          type="range"
+          :min="0"
+          :max="modelMaxThinkingBudget"
+          :step="2048"
+          class="w-full"
+        />
+        <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
+          <span>0 (tắt)</span>
+          <span>{{ modelMaxThinkingBudget.toLocaleString() }} (max)</span>
+        </div>
+        <div class="flex gap-1 mt-1">
+          <button
+            class="btn btn-sm btn-secondary text-[10px]"
+            @click="config.thinkingBudget = undefined"
+            title="Để model tự quyết định"
+          >
+            Tự động
+          </button>
+          <button
+            class="btn btn-sm btn-secondary text-[10px]"
+            @click="config.thinkingBudget = modelMaxThinkingBudget"
+            title="Dùng tối đa thinking budget"
+          >
+            Max
+          </button>
+          <button
+            class="btn btn-sm btn-secondary text-[10px]"
+            @click="config.thinkingBudget = Math.floor(modelMaxThinkingBudget / 2)"
+            title="Dùng 50% thinking budget"
+          >
+            50%
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Context window override (especially useful for custom/local LLMs) -->
     <div>
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
@@ -631,7 +756,7 @@ async function exportCache() {
       <div class="flex items-center justify-between text-xs">
         <span class="font-medium text-(--color-text-primary)">Cache local</span>
         <span :class="cacheNearFull ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-(--color-text-secondary)'">
-          {{ cacheSizeMB }} MB / {{ cacheQuotaMB }} MB ({{ cacheUsagePercent }}%)
+          {{ cacheSizeText }} / {{ cacheQuotaText }} ({{ cacheUsagePercent }}%)
         </span>
       </div>
       <div class="w-full bg-(--color-bg-muted) rounded-full h-1.5">

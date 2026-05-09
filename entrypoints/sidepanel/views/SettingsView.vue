@@ -77,9 +77,9 @@ const promptTabLabels = {
   summary: 'Tóm tắt',
   chunkSummaryPrompt: 'Tóm tắt phần',
   reduceSummaryPrompt: 'Gộp tóm tắt',
+  threadAnalysis: 'Phân tích',
   knowledge: 'Kiến thức',
   research: 'Tra cứu',
-  threadAnalysis: 'Phân tích',
 };
 
 const activePromptValue = computed({

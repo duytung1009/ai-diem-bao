@@ -61,20 +61,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     return cachedTopic.value.summarizedPostCount ?? cachedTopic.value.totalPosts ?? 0;
   });
 
-  const livePostCount = computed(() => {
-    const topic = store.selectedTopic.value;
-    if (!topic) return 0;
-    if (store.activeTabDetect.value && store.activeTabUrl.value &&
-        isSameTopicUrl(store.activeTabUrl.value, topic.url)) {
-      return store.activeTabDetect.value.postCount;
-    }
-    return topic.totalPosts;
-  });
-
-  const hasLivePostCount = computed(() =>
-    !!(store.activeTabDetect.value && store.activeTabUrl.value &&
+  const activeTabPostCount = computed(() =>
+    (store.activeTabDetect.value && store.activeTabUrl.value &&
       store.selectedTopic.value &&
-      isSameTopicUrl(store.activeTabUrl.value, store.selectedTopic.value.url)),
+      isSameTopicUrl(store.activeTabUrl.value, store.selectedTopic.value.url))
+      ? store.activeTabDetect.value.postCount
+      : 0,
   );
 
   const isSegmentMode = computed(() => Boolean(topicInfo.value));
@@ -118,8 +110,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const isNewsTopic = computed(() => cachedTopic.value?.topicType === 'news');
 
   // --- Watch ---
-  watch(livePostCount, (newCount) => {
-    if (cachedTopic.value && hasLivePostCount.value) {
+  watch(activeTabPostCount, (newCount) => {
+    if (cachedTopic.value && newCount > 0) {
       cacheFreshness.value = evaluateFreshness(cachedTopic.value, newCount);
     }
   });
@@ -198,7 +190,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const oneWeek = 7 * oneDay;
     if (ageMs > oneWeek) return 'outdated';
     const totalRef = cached.forumPostCount ?? cached.totalPosts;
-    if (ageMs > oneDay || (currentPostCount !== null && currentPostCount > totalRef)) return 'stale';
+    if (ageMs > oneDay || (currentPostCount !== null && currentPostCount > totalRef)
+        || (cached.summarizedPostCount ?? cached.totalPosts ?? 0) < totalRef) return 'stale';
     return 'fresh';
   }
 
@@ -231,11 +224,26 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
     try {
       const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+
+      // Always update forumPostCount from live tab if active tab matches topic
+      const liveCount = (store.activeTabDetect.value && store.activeTabUrl.value &&
+        isSameTopicUrl(store.activeTabUrl.value, topic.url))
+        ? store.activeTabDetect.value.postCount
+        : null;
+      const effectiveForumPostCount = liveCount ?? fresh?.forumPostCount;
+
+      if (liveCount != null && liveCount > 0 && liveCount !== fresh?.forumPostCount) {
+        sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, forumPostCount: liveCount }).catch(() => {});
+      }
+
       if (fresh) {
-        cachedTopic.value = fresh;
+        cachedTopic.value = effectiveForumPostCount !== fresh.forumPostCount
+          ? { ...fresh, forumPostCount: effectiveForumPostCount }
+          : fresh;
         store.updateSelectedTopic({
           totalPages: fresh.totalPages,
           totalPosts: fresh.totalPosts,
+          forumPostCount: effectiveForumPostCount,
           summarizedPostCount: fresh.summarizedPostCount,
           version: fresh.version,
           title: fresh.title,
@@ -277,10 +285,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
             summarizedAt: fresh.cachedAt ?? Date.now(),
           }];
         }
-        const liveCount = (store.activeTabDetect.value && store.activeTabUrl.value &&
-          isSameTopicUrl(store.activeTabUrl.value, fresh.url))
-          ? store.activeTabDetect.value.postCount
-          : null;
         cacheFreshness.value = evaluateFreshness(fresh, liveCount);
 
         // Auto-detect news type if not yet cached
@@ -288,7 +292,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           detectAndCacheTopicType(fresh);
         }
       } else {
-        // No cache hit: detect from store topic if version is known
+        // No cache hit: update forumPostCount from live tab
+        if (liveCount != null && liveCount > 0) {
+          store.updateSelectedTopic({ forumPostCount: liveCount });
+        }
+        // detect from store topic if version is known
         const storeTopic = store.selectedTopic.value;
         if (storeTopic && storeTopic.version && storeTopic.version !== 'unknown') {
           detectAndCacheTopicType(storeTopic);
@@ -450,6 +458,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // Stale guard
       if (thisId !== activeSummarizeId) {
         await saveTopic(topic, {
+          forumPostCount: store.activeTabDetect.value?.postCount,
           totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           segments: updated,
@@ -466,6 +475,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
+        forumPostCount: store.activeTabDetect.value?.postCount,
         totalPosts: segTotalPosts,
         summarizedPostCount: segTotalPosts,
         segments: updatedDense,
@@ -474,6 +484,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
+        totalPosts: segTotalPosts,
+        forumPostCount: store.activeTabDetect.value?.postCount,
+        summarizedPostCount: segTotalPosts,
         segments: updatedDense,
       } as Partial<CachedTopic>);
 
@@ -487,11 +500,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           title: topic.title,
           version: topic.version,
           totalPages: topic.totalPages,
+          forumPostCount: store.activeTabDetect.value?.postCount,
           summary: newSeg.summary,
           summaryJson: newSeg.summaryJson ?? undefined,
           summarizedPostCount: segTotalPosts,
         });
-        store.updateSelectedTopic({ summary: newSeg.summary });
+        store.updateSelectedTopic({ summary: newSeg.summary, summarizedPostCount: segTotalPosts });
         const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
         if (saved) cachedTopic.value = saved;
         cacheFreshness.value = 'fresh';
@@ -529,11 +543,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
+        forumPostCount: store.activeTabDetect.value?.postCount,
         summary: seg.summary,
         summaryJson: seg.summaryJson ?? undefined,
         summarizedPostCount: seg.postCount,
       });
-      store.updateSelectedTopic({ summary: seg.summary });
+      store.updateSelectedTopic({ summary: seg.summary, summarizedPostCount: seg.postCount });
       const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
       if (saved) cachedTopic.value = saved;
       cacheFreshness.value = 'fresh';
@@ -556,6 +571,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (thisId !== activeSummarizeId) {
         const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
         await saveTopic(topic, {
+          forumPostCount: store.activeTabDetect.value?.postCount,
           summary: overallSummaryText,
           summaryJson: overallSummaryJson ?? undefined,
           summarizedPostCount: totalSummarized,
@@ -573,11 +589,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
+        forumPostCount: store.activeTabDetect.value?.postCount,
         summary: overallSummaryText,
         summaryJson: overallSummaryJson ?? undefined,
         summarizedPostCount: totalSummarized,
       });
-      store.updateSelectedTopic({ summary: overallSummaryText });
+      store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized });
       const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
       if (saved) cachedTopic.value = saved;
       cacheFreshness.value = 'fresh';
@@ -606,7 +623,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const currentSegments = segmentSummaries.value;
     const lastSummarizedSeg = currentSegments.filter(s => s?.summary).slice(-1)[0];
     const coveredEndPage = lastSummarizedSeg?.endPage ?? 0;
-    const newTotalPages = topicInfo.value.pageCount;
+    const newTotalPages = store.activeTabDetect.value?.pageCount ?? topicInfo.value.pageCount;
 
     if (newTotalPages <= coveredEndPage) {
       await generateOverallSummary();
@@ -765,7 +782,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       summarizedPostCount: segTotalPosts,
       segments: updated,
     });
-    store.updateSelectedTopic({ segments: updated } as Partial<CachedTopic>);
+    store.updateSelectedTopic({
+      totalPosts: Math.max(topic.totalPosts, segTotalPosts),
+      forumPostCount: forumCount,
+      summarizedPostCount: segTotalPosts,
+      segments: updated,
+    } as Partial<CachedTopic>);
     activeSegmentIndex.value = segmentIndex;
 
     simpleLoadingText.value = '';
@@ -1113,8 +1135,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     topicInfo,
     isProcessing,
     summarizedPostCount,
-    livePostCount,
-    hasLivePostCount,
+    livePostCount: activeTabPostCount,
     isSegmentMode,
     segments,
     summarizedCount,

@@ -116,7 +116,7 @@ export default defineBackground(() => {
                 lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
                 forumPostCount: partial.forumPostCount ?? existing?.forumPostCount,
                 totalPosts: Math.max(partial.totalPosts ?? 0, existing?.totalPosts ?? 0),
-                summarizedPostCount: partial.summarizedPostCount ?? existing?.summarizedPostCount ?? partial.totalPosts ?? existing?.totalPosts ?? 0,
+                summarizedPostCount: partial.summarizedPostCount ?? existing?.summarizedPostCount,
                 totalPages: partial.totalPages ?? existing?.totalPages ?? 1,
                 topicType: partial.topicType ?? existing?.topicType,
                 segments: partial.segments ?? existing?.segments,

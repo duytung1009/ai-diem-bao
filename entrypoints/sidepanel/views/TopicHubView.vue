@@ -87,19 +87,14 @@ const activeTabInList = computed(() => {
   return allTopics.value.some(t => normalizeUrl(t.url) === normalizeUrl(store.activeTabUrl.value!));
 });
 
-// Track new posts count for active tab topic (live detect vs cached totalPosts)
+// Track unsummarized posts count per topic
 const newPostsMap = computed<Record<string, number>>(() => {
-  if (!store.activeTabDetect.value || !store.activeTabUrl.value) return {};
-  const liveCount = store.activeTabDetect.value.postCount;
-  const activeUrl = normalizeUrl(store.activeTabUrl.value);
   const result: Record<string, number> = {};
   for (const topic of allTopics.value) {
-    if (normalizeUrl(topic.url) === activeUrl) {
-      const totalRef = topic.forumPostCount ?? topic.totalPosts ?? 0;
-      const delta = liveCount - totalRef;
-      if (delta > 0) result[topic.url] = delta;
-      break;
-    }
+    const totalRef = topic.forumPostCount ?? topic.totalPosts ?? 0;
+    const summarized = topic.summarizedPostCount ?? topic.totalPosts ?? 0;
+    const delta = totalRef - summarized;
+    if (delta > 0) result[topic.url] = delta;
   }
   return result;
 });
@@ -289,15 +284,15 @@ async function toggleBookmark(topic: CachedTopic) {
               v-if="store.summarizingUrl.value && store.activeTabUrl.value && isSameTopicUrl(store.summarizingUrl.value, store.activeTabUrl.value)"
               class="text-blue-700 dark:text-blue-400 animate-pulse font-medium"
             >
-              ⟳ Đang tóm tắt...
+              ✨ Đang tóm tắt...
             </span>
             <span v-else class="text-(--color-text-muted) font-medium">
               ○ Chưa tóm tắt
             </span>
           </div>
           <div class="flex items-center gap-2 justify-end">
-            <span class="text-xs text-(--color-text-muted)">{{ store.activeTabDetect.value.postCount }} bài</span>
-            <span class="text-xs text-(--color-text-muted)">{{ store.activeTabDetect.value.pageCount }} trang</span>
+            <span class="text-xs text-(--color-text-secondary)">{{ store.activeTabDetect.value.postCount }} bài</span>
+            <span class="text-xs text-(--color-text-secondary)">{{ store.activeTabDetect.value.pageCount }} trang</span>
           </div>
         </div>
       </button>
@@ -327,24 +322,31 @@ async function toggleBookmark(topic: CachedTopic) {
                   :title="topic.title"
                   @click="selectTopic(topic)"
                 >
-                  <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">{{ topic.title }}</p>
-                  <div class="flex items-center gap-2 justify-between">
+                  <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">{{ topic.title }}
+                    <!-- News badge -->
+                    <span v-if="topic.topicType === 'news'"
+                      class="text-purple-700 dark:text-purple-400 font-regular text-xs ml-1"
+                    >
+                      Tin tức
+                    </span>
+                  </p>
+                  <div class="flex flex-col items-start gap-2">
                     <div class="flex items-center gap-2 flex-wrap">
                       <!-- Status badge -->
                       <span
                         v-if="isSameTopicUrl(store.summarizingUrl.value, topic.url)"
                         class="text-blue-700 dark:text-blue-400 animate-pulse font-medium"
                       >
-                        ⟳ Đang tóm tắt...
+                        ✨ Đang tóm tắt...
                       </span>
                       <span
-                        v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'done'"
+                        v-else-if="topicSummaryStatus(topic, false) === 'done'"
                         class="text-(--color-success-text) font-medium"
                       >
                         ✓ Đã tóm tắt
                       </span>
                       <span
-                        v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'"
+                        v-else-if="topicSummaryStatus(topic, false) === 'partial'"
                         class="text-yellow-700 dark:text-yellow-400 font-medium"
                       >
                         ~ Một phần
@@ -355,31 +357,32 @@ async function toggleBookmark(topic: CachedTopic) {
                       >
                         ○ Chưa tóm tắt
                       </span>
-                      <!-- News badge -->
-                      <span v-if="topic.topicType === 'news'"
-                        class="text-purple-700 dark:text-purple-400 font-medium"
-                      >
-                        Tin tức
-                      </span>
                     </div>
-                    <div class="flex items-center gap-2 justify-end">
+                    
+                    <div class="flex items-center gap-2 justify-start">
                       <!-- Post count -->
-                      <span class="text-xs text-(--color-text-muted)">
+                      <span class="text-xs text-(--color-text-secondary)">
                         <template v-if="topic.forumPostCount && topic.forumPostCount > topic.totalPosts">
-                          {{ formatNumber(topic.totalPosts) }}/{{ formatNumber(topic.forumPostCount) }} bài
+                          {{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }}/{{ formatNumber(topic.forumPostCount) }} bài
                         </template>
-                        <template v-else-if="topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'">
+                        <template v-else-if="topicSummaryStatus(topic, false) === 'partial'">
                           {{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }}/{{ formatNumber(topic.totalPosts) }} bài
                         </template>
-                        <template v-else>{{ formatNumber(topic.totalPosts) }} bài</template>
+                        <template v-else>{{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }} bài</template>
                         <span
                           v-if="newPostsMap[topic.url]"
                           class="text-(--color-accent-text) ml-0.5"
                         >(+{{ formatNumber(newPostsMap[topic.url]) }} mới)</span>
                       </span>
+                      <!-- Page -->
+                      <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(topic.totalPages) }} trang</span>
                       <!-- Time -->
-                      <span v-if="topic.cachedAt" class="text-xs text-(--color-text-muted)">
+                      <span v-if="topic.cachedAt" class="text-xs text-(--color-text-secondary)">
                         {{ formatTopicDate(topic.cachedAt) }}
+                      </span>
+                      <!-- Model -->
+                      <span v-if="topic.llmConfig?.model && (topic.summary || topic.segments?.some(s => s?.summary))" class="text-xs text-(--color-text-secondary) italic truncate max-w-24" :title="`${topic.llmConfig.model}`">
+                        {{ topic.llmConfig.model }}
                       </span>
                     </div>
                   </div>

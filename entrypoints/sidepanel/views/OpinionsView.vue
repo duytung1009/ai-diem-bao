@@ -115,6 +115,7 @@ async function loadTopicData() {
     if (loadedTopicUrl.value !== url) return; // topic switched during await — discard stale result
     if (fresh) {
       cachedTopic.value = fresh;
+      store.updateSelectedTopic(fresh);
       if (fresh.opinions) opinions.value = fresh.opinions;
     }
   } catch { /* no cache */ }
@@ -131,6 +132,7 @@ onActivated(async () => {
       const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
       if (fresh) {
         cachedTopic.value = fresh;
+        store.updateSelectedTopic(fresh);
         if (fresh.opinions) opinions.value = fresh.opinions;
       }
     } catch { /* ignore */ }

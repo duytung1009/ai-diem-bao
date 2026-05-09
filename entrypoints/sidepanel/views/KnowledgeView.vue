@@ -190,6 +190,7 @@ async function loadTopicData() {
     if (loadedTopicUrl.value !== url) return; // topic switched during await — discard stale result
     if (fresh) {
       cachedTopic.value = fresh;
+      store.updateSelectedTopic(fresh);
       if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
     }
   } catch { /* no cache */ }
@@ -211,6 +212,7 @@ onActivated(async () => {
       const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
       if (fresh) {
         cachedTopic.value = fresh;
+        store.updateSelectedTopic(fresh);
         if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
       }
     } catch { /* ignore */ }
@@ -802,7 +804,7 @@ async function handleClearTracking() {
           <span>
             {{ filteredEntries.length }}/{{ entries.length }} kiến thức
             <span v-if="cachedTopic?.llmConfig?.model" class="ml-2 italic opacity-70">
-              · {{ cachedTopic.llmConfig.provider }}: {{ cachedTopic.llmConfig.model }}
+              {{ cachedTopic.llmConfig.model }}
             </span>
           </span>
           <button
@@ -908,7 +910,7 @@ async function handleClearTracking() {
                     — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài <button
                         class="font-mono hover:underline cursor-pointer"
                         @click="openPostLink(entry.source.postNumber)"
-                      >#{{ entry.source.postNumber }}</button></template><span v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp) }}</span>
+                      >#{{ entry.source.postNumber }}</button></template><span v-if="entry.source.timestamp">{{ formatTimestamp(entry.source.timestamp) }}</span>
                   </p>
                 </div>
               </div>

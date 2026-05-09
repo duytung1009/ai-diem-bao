@@ -6,6 +6,7 @@ This file exists so that agents following the AGENTS.md convention (OpenCode, et
 
 ## Critical rules (summary — full detail in CLAUDE.md)
 
+- **Before any code change, ALWAYS check task-master first** — run `task-master list` and `task-master next` to understand current task context
 - **Verify with `npm run compile`** (type check) after every code change — no test framework exists
 - **Never change the fire-and-forget LLM messaging pattern** — background returns `{ started: true }`, results arrive via separate messages
 - **Never remove the service worker keepalive** (`setInterval` with `KEEPALIVE_INTERVAL_MS`)

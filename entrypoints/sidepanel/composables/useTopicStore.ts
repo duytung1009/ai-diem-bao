@@ -23,7 +23,12 @@ export function useTopicStore() {
 
   function updateSelectedTopic(partial: Partial<CachedTopic>) {
     if (!selectedTopic.value) return;
-    selectedTopic.value = { ...selectedTopic.value, ...partial };
+    const merged = { ...selectedTopic.value };
+    for (const key of Object.keys(partial) as (keyof CachedTopic)[]) {
+      const val = partial[key];
+      if (val !== undefined) (merged as any)[key] = val;
+    }
+    selectedTopic.value = merged;
   }
 
   function setSummarizing(url: string | null) {

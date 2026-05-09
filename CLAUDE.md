@@ -6,6 +6,16 @@
 
 ---
 
+## Mandatory: Check Task Master Before Code Changes
+
+**Before implementing ANY code change, ALWAYS run these commands first:**
+1. `task-master list` — understand current task status
+2. `task-master next` — identify the next actionable task
+
+This ensures alignment with the project's Development Workflow and prevents out-of-sync work. Skip this only for informational/non-code questions.
+
+---
+
 ## Build & Dev Commands
 
 ```bash

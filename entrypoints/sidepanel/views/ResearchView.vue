@@ -48,6 +48,7 @@ async function loadTopicData() {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (fresh) {
       cachedTopic.value = fresh;
+      store.updateSelectedTopic(fresh);
       history.value = fresh.researchHistory ?? [];
     }
   } catch { /* no cache */ }

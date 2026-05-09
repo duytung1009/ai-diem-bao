@@ -13,16 +13,6 @@ const emit = defineEmits<{
   update: [];
 }>();
 
-const timeAgo = computed(() => {
-  const diff = Date.now() - props.cachedAt;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes} phút trước`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  const days = Math.floor(hours / 24);
-  return `${days} ngày trước`;
-});
-
 const badgeClass = computed(() => {
   switch (props.freshness) {
     case 'fresh':
@@ -56,6 +46,5 @@ const label = computed(() => {
       }" />
       {{ label }}
     </span>
-    <span class="text-[11px] text-(--color-text-muted)">{{ timeAgo }}</span>
   </div>
 </template>

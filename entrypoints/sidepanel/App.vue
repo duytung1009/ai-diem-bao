@@ -51,19 +51,6 @@ const selectedTopicForMeta = computed<CachedTopic | null>(() =>
   isTopicDetailRoute.value ? store.selectedTopic.value as CachedTopic : null,
 );
 
-const livePostCount = computed(() => {
-  const topic = store.selectedTopic.value;
-  if (!topic) return undefined;
-  if (
-    store.activeTabDetect.value &&
-    store.activeTabUrl.value &&
-    isSameTopicUrl(store.activeTabUrl.value, topic.url)
-  ) {
-    return store.activeTabDetect.value.postCount;
-  }
-  return undefined;
-});
-
 const isSummarizingCurrentTopic = computed(() =>
   !!(store.summarizingUrl.value &&
     store.selectedTopic.value &&
@@ -96,19 +83,21 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     const cached = await getCachedTopic(tabUrl);
     if (!cached) return;
 
-    // Chỉ update title và totalPages — KHÔNG update totalPosts
-    // totalPosts trong cache giữ nguyên giá trị lúc tóm tắt
-    // để evaluateFreshness() so sánh đúng với live count
+    // Cập nhật forumPostCount (không ảnh hưởng incremental logic)
+    // totalPosts, totalPages giữ nguyên giá trị lúc scrape
     const hasChanges =
-      cached.totalPages !== detect.pageCount ||
+      cached.forumPostCount !== detect.postCount ||
       (!!detect.title && cached.title !== detect.title);
 
     if (!hasChanges) return;
 
-    // Chỉ lưu title vào cache — KHÔNG lưu totalPages
-    // totalPages trong cache = số trang đã scrape lần cuối (dùng cho incremental)
-    // totalPages live chỉ cập nhật store để hiển thị, tránh incremental bị lỗi range rỗng
-    if (!!detect.title && cached.title !== detect.title) {
+    if (detect.postCount > 0 && detect.postCount !== cached.forumPostCount) {
+      await saveCachedTopic({
+        ...cached,
+        forumPostCount: detect.postCount,
+        title: detect.title || cached.title,
+      });
+    } else if (!!detect.title && cached.title !== detect.title) {
       await saveCachedTopic({
         ...cached,
         title: detect.title || cached.title,
@@ -120,6 +109,7 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
       store.updateSelectedTopic({
         totalPages: detect.pageCount,
+        forumPostCount: detect.postCount,
         title: detect.title || cached.title,
       });
     }
@@ -186,7 +176,6 @@ function navigateTo(path: string) {
       <div v-if="selectedTopicForMeta" class="px-4 pt-4">
         <TopicMeta
           :topic="selectedTopicForMeta"
-          :live-post-count="livePostCount"
           :is-summarizing="isSummarizingCurrentTopic"
         />
       </div>

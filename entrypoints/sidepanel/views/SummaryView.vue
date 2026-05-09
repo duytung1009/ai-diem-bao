@@ -13,7 +13,6 @@ import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import SummaryContent from '../components/SummaryContent.vue';
-import CacheIndicator from '../components/CacheIndicator.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import ThreadAnalysisContent from '../components/ThreadAnalysisContent.vue';
 
@@ -27,7 +26,7 @@ const {
   cachedTopic, cacheFreshness,
   segmentSize, segmentSummaries, activeSegmentIndex,
   loadedTopicUrl, dynamicSegmentBoundaries,
-  topicInfo, isProcessing, livePostCount,
+  topicInfo, isProcessing,
   isSegmentMode, segments,
   summarizedCount, progressPercent, nextPendingSegmentIndex,
   loadTopicData, handleCancel,
@@ -51,8 +50,11 @@ const showAutoSummarizeCostWarning = computed(() =>
 );
 
 const newPostCount = computed(() => {
-  const totalRef = cachedTopic?.value?.forumPostCount ?? cachedTopic?.value?.totalPosts ?? 0;
-  return livePostCount.value - totalRef;
+  const topic = cachedTopic.value;
+  if (!topic) return 0;
+  const totalRef = topic.forumPostCount ?? topic.totalPosts ?? 0;
+  const summarized = topic.summarizedPostCount ?? topic.totalPosts ?? 0;
+  return Math.max(0, totalRef - summarized);
 });
 
 const modelLabel = computed(() => {
@@ -227,15 +229,8 @@ onActivated(async () => {
               @click="handleSegmentUpdate"
             >
               Cập nhật
-              <template v-if="newPostCount > 0">(+{{ formatNumber(newPostCount) }})</template>
+              <span v-if="newPostCount > 0" class="text-(--color-accent-text)">(+{{ formatNumber(newPostCount) }})</span>
             </button>
-            <CacheIndicator
-              v-if="cacheFreshness && cachedTopic"
-              :freshness="cacheFreshness"
-              :cached-at="cachedTopic.cachedAt"
-              :cached-posts="cachedTopic.forumPostCount ?? cachedTopic.totalPosts"
-              :current-posts="livePostCount"
-            />
           </div>
 
           <!-- Row 2+3: Progress bar + pill grid (chỉ hiển thị khi > 1 segment) -->

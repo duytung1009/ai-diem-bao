@@ -2,7 +2,8 @@
 import { onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { DetectResult, CachedTopic } from '@/lib/types';
-import { normalizeUrl, getCachedTopic, saveCachedTopic, isSameTopicUrl } from '@/lib/cache-manager';
+import { normalizeUrl, isSameTopicUrl } from '@/lib/cache-manager';
+import { sendMessage } from '@/lib/messaging';
 import { useTopicStore } from './composables/useTopicStore';
 import { useTheme } from './composables/useTheme';
 import TopicMeta from './components/TopicMeta.vue';
@@ -80,11 +81,11 @@ async function detectActiveTabTopic() {
 
 async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
   try {
-    const cached = await getCachedTopic(tabUrl);
+    const cached = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', tabUrl);
     if (!cached) return;
 
     if (detect.threadDeleted) {
-      await saveCachedTopic({ ...cached, threadDeleted: true });
+      await sendMessage('SAVE_CACHED_TOPIC', { ...cached, threadDeleted: true });
       const normalizedTabUrl = normalizeUrl(tabUrl);
       const selectedUrl = store.selectedTopic.value?.url;
       if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
@@ -94,7 +95,7 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     }
 
     if (detect.threadLocked) {
-      await saveCachedTopic({ ...cached, threadLocked: true });
+      await sendMessage('SAVE_CACHED_TOPIC', { ...cached, threadLocked: true });
       const normalizedTabUrl = normalizeUrl(tabUrl);
       const selectedUrl = store.selectedTopic.value?.url;
       if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
@@ -111,20 +112,20 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     if (!hasChanges) return;
 
     if (detect.postCount > 0 && detect.postCount !== cached.forumPostCount) {
-      await saveCachedTopic({
+      await sendMessage('SAVE_CACHED_TOPIC', {
         ...cached,
         forumPostCount: detect.postCount,
         totalPages: detect.pageCount,
         title: detect.title || cached.title,
       });
     } else if (cached.totalPages !== detect.pageCount) {
-      await saveCachedTopic({
+      await sendMessage('SAVE_CACHED_TOPIC', {
         ...cached,
         totalPages: detect.pageCount,
         title: detect.title || cached.title,
       });
     } else if (!!detect.title && cached.title !== detect.title) {
-      await saveCachedTopic({
+      await sendMessage('SAVE_CACHED_TOPIC', {
         ...cached,
         title: detect.title || cached.title,
       });

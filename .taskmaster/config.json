@@ -1,21 +1,23 @@
 {
   "models": {
     "main": {
-      "provider": "claude-code",
-      "modelId": "sonnet",
-      "maxTokens": 64000,
-      "temperature": 0.2
+      "provider": "openai-compatible",
+      "modelId": "deepseek-v4-flash",
+      "maxTokens": 1048576,
+      "temperature": 0.2,
+      "baseURL": "https://opencode.ai/zen/go/v1"
     },
     "research": {
-      "provider": "claude-code",
-      "modelId": "haiku",
-      "maxTokens": 200000,
-      "temperature": 0.1
+      "provider": "openai-compatible",
+      "modelId": "deepseek-v4-flash",
+      "maxTokens": 1048576,
+      "temperature": 0.1,
+      "baseURL": "https://opencode.ai/zen/go/v1"
     },
     "fallback": {
-      "provider": "codex-cli",
-      "modelId": "gpt-5.2-codex",
-      "maxTokens": 128000,
+      "provider": "gemini-cli",
+      "modelId": "gemini-3-flash-preview",
+      "maxTokens": 1048576,
       "temperature": 0.2
     }
   },

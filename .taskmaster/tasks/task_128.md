@@ -2,7 +2,7 @@
 
 **Title:** Bug fix: handleAutoSummarizeAll thêm option "Regenerate all"
 
-**Status:** pending
+**Status:** done
 
 **Dependencies:** None
 

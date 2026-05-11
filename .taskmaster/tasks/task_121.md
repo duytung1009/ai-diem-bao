@@ -84,5 +84,5 @@ CALLER (TopicHubView template):
 2. **Test badge done:** Live 50, summarized 50 → verify badge "✓ Đã tóm tắt"
 3. **Test badge none:** Topic chưa có summary → verify badge "○ Chưa tóm tắt"
 4. **Test backward compat:** Topic không phải active tab → `livePostCount = undefined` → verify badge theo cached data
-5. **Test in-progress:** `isSummarizing = true` → verify badge "⟳ Đang tóm tắt..." (priority cao hơn livePostCount)
+5. **Test in-progress:** `isSummarizing = true` → verify badge "✨ Đang tóm tắt..." (priority cao hơn livePostCount)
 6. **Integration test:** Mở topic 50 bài (cached 45), summarize 45 bài → verify indicator "(+5 mới)" + badge "~ Một phần"

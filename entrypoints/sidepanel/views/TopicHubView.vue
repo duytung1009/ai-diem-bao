@@ -5,7 +5,7 @@ import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl, normalizeUrl } from '@/lib/cache-manager';
 import { topicSummaryStatus, formatTopicDate } from '@/lib/topic-utils';
 import { formatNumber } from '@/lib/format';
-import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry, KnowledgeChunk, ThreadAnalysisJSON } from '@/lib/types';
+import type { CachedTopic, TopicSegment, KnowledgeEntry } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -114,31 +114,19 @@ onMounted(() => { refreshTopicList(true); });
 
 onActivated(() => { refreshTopicList(); });
 
-// Watch only fields TopicHubView paginates on (avoids deep-watching large posts array)
-const selectedTopicKey = computed(() => {
-  const t = store.selectedTopic.value;
-  if (!t) return null;
-  return `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}|${t.totalPosts ?? 0}`;
-});
-
-watch(selectedTopicKey, () => {
-  const updated = store.selectedTopic.value;
+// Sync selected topic changes into allTopics list
+watch(() => store.selectedTopic.value, (updated) => {
   if (!updated?.url) return;
   const idx = allTopics.value.findIndex(t => isSameTopicUrl(t.url, updated.url));
   if (idx >= 0) {
-    const topic: CachedTopic = {
+    allTopics.value[idx] = {
       ...allTopics.value[idx],
       ...updated,
       posts: updated.posts ? [...updated.posts] : allTopics.value[idx].posts,
       researchHistory: updated.researchHistory ? [...updated.researchHistory] : allTopics.value[idx].researchHistory,
       segments: updated.segments ? [...updated.segments] as TopicSegment[] : allTopics.value[idx].segments,
-      summaryJson: updated.summaryJson as SummaryJSON | undefined ?? allTopics.value[idx].summaryJson,
       knowledgeEntries: updated.knowledgeEntries ? [...updated.knowledgeEntries] as KnowledgeEntry[] : allTopics.value[idx].knowledgeEntries,
-      knowledgeChunks: updated.knowledgeChunks ? [...updated.knowledgeChunks] as KnowledgeChunk[] : allTopics.value[idx].knowledgeChunks,
-      excludedKnowledgePostNumbers: updated.excludedKnowledgePostNumbers ? [...updated.excludedKnowledgePostNumbers] : allTopics.value[idx].excludedKnowledgePostNumbers,
-      threadAnalysis: updated.threadAnalysis as ThreadAnalysisJSON | undefined ?? allTopics.value[idx].threadAnalysis,
-    };
-    allTopics.value[idx] = topic;
+    } as CachedTopic;
   } else if (updated.summary || updated.posts?.length) {
     const topic: CachedTopic = {
       ...updated,

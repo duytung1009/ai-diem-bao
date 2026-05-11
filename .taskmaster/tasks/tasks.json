@@ -1302,21 +1302,86 @@
         "id": "134",
         "title": "Phase 6: Cleanup TopicHubView Sync",
         "description": "Replace fragile selectedTopicKey computed watch in TopicHubView.vue with simpler URL-based watch. Store is now single source, so only need to sync when topic URL changes.",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
           "133"
         ],
         "details": "**Problem:** TopicHubView uses a fragile computed key string to detect store changes:\n\n```typescript\nconst selectedTopicKey = computed(() => {\n  const t = store.selectedTopic.value;\n  if (!t) return null;\n  return `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}|${t.totalPosts ?? 0}`;\n});\n```\n\nThis watch is brittle (misses deep changes, depends on string slicing) and unnecessary once store is single source.\n\n**Solution:**\n\n1. **File: entrypoints/sidepanel/views/TopicHubView.vue** (line 116-149)\n   - Remove: `selectedTopicKey` computed (lines 116-120)\n   - Remove: `watch(selectedTopicKey, ...)` (lines 122-149)\n   - Add: `watch(() => store.selectedTopic.value?.url, (newUrl) => {...})`\n   - The watch should:\n     a. When a NEW topic is selected (URL changes): add it to allTopics list if not present\n     b. When the SAME topic is updated (URL unchanged): update the existing entry in allTopics\n\n2. **Simplified watch logic:**\n   ```typescript\n   watch(() => store.selectedTopic.value, (updated) => {\n     if (!updated?.url) return;\n     const idx = allTopics.value.findIndex(t => isSameTopicUrl(t.url, updated.url));\n     if (idx >= 0) {\n       // Update existing entry — deep merge\n       allTopics.value[idx] = { ...allTopics.value[idx], ...updated };\n     } else if (updated.summary || updated.posts?.length) {\n       // New topic with content — add to list\n       allTopics.value = [...allTopics.value, { ...updated }];\n     }\n   }, { deep: false }); // Only triggers when selectedTopic reference changes\n   ```\n\n3. **Bookmark sync:** toggleBookmark already updates allTopics directly (line 207), so no change needed there.\n\n**Acceptance Criteria:**\n- selectedTopicKey computed is removed\n- Replaced with watch on store.selectedTopic.value?.url or store.selectedTopic directly\n- Topic list still syncs when a new topic is selected\n- Topic list still syncs when bookmark is toggled\n- Topic list still shows 'Đang tóm tắt...' indicator for summarizing topics\n- npm run compile passes with zero errors",
         "testStrategy": "1. npm run compile — zero errors\n2. Open TopicHubView -> select a topic -> verify it navigates to SummaryView\n3. Go back to TopicHubView -> verify the selected topic shows updated data\n4. Toggle bookmark on a topic -> verify bookmark icon updates in list\n5. Start summarizing a new topic -> verify 'Đang tóm tắt...' indicator shows in list\n6. Delete a topic -> verify it removes from list",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xóa computed selectedTopicKey và watch cũ",
+            "description": "Xóa computed selectedTopicKey (dòng 116-120) và watch(selectedTopicKey, ...) (dòng 122-149) trong TopicHubView.vue.",
+            "dependencies": [],
+            "details": "Mở file entrypoints/sidepanel/views/TopicHubView.vue, xóa đoạn code computed selectedTopicKey và watch tương ứng. Đảm bảo không còn tham chiếu đến selectedTopicKey ở đâu khác.",
+            "status": "done",
+            "testStrategy": "npm run compile không báo lỗi biến không được sử dụng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:39:55.142Z"
+          },
+          {
+            "id": 2,
+            "title": "Thêm watch mới theo store.selectedTopic.value?.url",
+            "description": "Thêm watch(() => store.selectedTopic.value?.url, ...) với logic cập nhật danh sách allTopics khi URL thay đổi.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm watch mới với callback xử lý: nếu topic đã tồn tại trong allTopics thì cập nhật, nếu là mới và có nội dung thì thêm vào. Sử dụng isSameTopicUrl để so sánh.",
+            "status": "done",
+            "testStrategy": "Kiểm tra khi chọn topic mới, topic đó xuất hiện trong danh sách; khi chọn lại topic cũ, dữ liệu được cập nhật.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:40:10.376Z"
+          },
+          {
+            "id": 3,
+            "title": "Đảm bảo đồng bộ bookmark hoạt động",
+            "description": "Kiểm tra toggleBookmark vẫn cập nhật allTopics trực tiếp và không bị ảnh hưởng bởi thay đổi watch.",
+            "dependencies": [
+              2
+            ],
+            "details": "Xác nhận tại dòng 207, toggleBookmark vẫn gọi cập nhật allTopics. Không cần sửa code, chỉ kiểm tra không có xung đột.",
+            "status": "done",
+            "testStrategy": "Bật/tắt bookmark trên một topic, kiểm tra icon bookmark trong danh sách thay đổi đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:40:33.122Z"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm thử chức năng topic list",
+            "description": "Thực hiện kiểm thử thủ công để đảm bảo topic list hiển thị đúng khi chọn topic mới, cập nhật, và khi đang tóm tắt.",
+            "dependencies": [
+              3
+            ],
+            "details": "Mở TopicHubView, chọn topic mới, quay lại xem dữ liệu cập nhật. Chọn topic đang tóm tắt, kiểm tra hiển thị 'Đang tóm tắt...'.",
+            "status": "done",
+            "testStrategy": "Duyệt qua các kịch bản: chọn topic mới, cập nhật topic cũ, chuyển tab, toggle bookmark.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:41:27.191Z"
+          },
+          {
+            "id": 5,
+            "title": "Chạy npm run compile và xác nhận không lỗi",
+            "description": "Chạy lệnh npm run compile để kiểm tra build không lỗi, đảm bảo mã nguồn sạch và đáp ứng acceptance criteria.",
+            "dependencies": [
+              4
+            ],
+            "details": "Thực hiện lệnh npm run compile. Nếu có lỗi, sửa cho đến khi zero errors. Đảm bảo tất cả acceptance criteria đều pass.",
+            "status": "done",
+            "testStrategy": "npm run compile trả về exit code 0, không có lỗi hay cảnh báo.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:41:36.849Z"
+          }
+        ],
+        "updatedAt": "2026-05-11T17:41:36.849Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T17:35:18.028Z",
+      "lastModified": "2026-05-11T17:41:36.850Z",
       "taskCount": 61,
-      "completedCount": 60,
+      "completedCount": 61,
       "tags": [
         "master"
       ]

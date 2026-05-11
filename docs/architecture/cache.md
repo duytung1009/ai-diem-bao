@@ -1,6 +1,6 @@
 # Cơ chế Cache (IndexedDB + Freshness)
 
-> Cập nhật: 2026-04-29
+> Cập nhật: 2026-05-12
 
 ## Tổng quan
 
@@ -72,6 +72,8 @@ Sidepanel                          Background (service worker)
     │ ────────────────────────────────→   │
     │  ←──────────────────────────────── │ {success: true}
 ```
+
+**Important:** All sidepanel components (including App.vue) access IndexedDB exclusively through `sendMessage()` — no component imports `cache-manager.ts` directly. This ensures consistent access through the background service worker and prevents context-boundary race conditions. Pure functions (`normalizeUrl`, `isSameTopicUrl`) may still be imported directly since they have no side effects.
 
 ### Partial Update Pattern
 

@@ -1,6 +1,6 @@
 # Cơ chế Messaging
 
-> Cập nhật: 2026-04-29
+> Cập nhật: 2026-05-12
 
 ## Tổng quan
 
@@ -182,6 +182,52 @@ processLLMTask(taskId, taskType, payload, ctrl.signal)
    - `{ model: string; tokensPerSecond: number; samples: number; lastUpdated: number }`
 2. **Token estimate** — `estimateTokens(text)` tính input tokens
 3. **Fallback** — `inputTokens × FALLBACK_MS_PER_TOKEN` (20ms/token) nếu chưa có stats
+
+## Cache Save Patterns
+
+### Single Source of Truth
+
+After tasks 129–134, topic data flows through a single path:
+
+```
+IndexedDB  →  background  →  sendMessage(GET_CACHED_TOPIC)  →  store.selectedTopic
+                                                                         ↓
+                                                          computed alias `cachedTopic`
+```
+
+All sidepanel components (including App.vue) access IndexedDB exclusively through `sendMessage()`. No component imports `cache-manager.ts` directly.
+
+### Optimistic Update Pattern
+
+For user-triggered actions (bookmark toggle, knowledge save/delete, research history), the store is updated **before** the IDB save for instant UI feedback. The save happens asynchronously with automatic rollback on failure:
+
+```typescript
+// useOptimisticUpdate.ts
+async function optimisticUpdate(partial: Partial<CachedTopic>): Promise<boolean> {
+  const previous = store.selectedTopic.value;
+  store.updateSelectedTopic(partial);       // ← instant UI
+  try {
+    await sendMessage('SAVE_CACHED_TOPIC', { url: previous.url, ...partial });
+    return true;
+  } catch {
+    store.updateSelectedTopic(previous);    // ← rollback
+    return false;
+  }
+}
+```
+
+Used in: `KnowledgeView.vue` (toggleSave, handleDelete, handleClearTracking), `ResearchView.vue` (handleResearch, clearHistory), `TopicHubView.vue` (toggleBookmark).
+
+### LLM-Result Save Pattern (No Optimistic)
+
+LLM results (segment summaries, knowledge chunks) use the reverse order — IDB first, then store — to ensure critical data is never lost:
+
+```typescript
+await sendMessage('SAVE_CACHED_TOPIC', { ... });
+store.updateSelectedTopic({ ... });
+```
+
+This pattern is used in `useSummarize.ts` and `KnowledgeView.vue` extract/reduce flows.
 
 ## Background Handler Map
 

@@ -51,7 +51,53 @@ All cross-context communication goes through typed messages in `lib/messaging.ts
 - **`useTopicStore`** (`composables/useTopicStore.ts`): module-level singleton refs (not Pinia). State: `selectedTopic`, `activeTabDetect`, `activeTabUrl`, `summarizingUrl`. Always exposed as `readonly()` — mutate only via store actions like `updateSelectedTopic()`.
 - **`useSummarize`** (`composables/useSummarize.ts`): heavy composable managing the full summarize lifecycle — scraping, LLM task dispatch, segment state, cache save.
 - **`useLLM`** (`composables/useLLM.ts`): lower-level task manager that sends `START_LLM_TASK` and listens for `LLM_PROGRESS`/`LLM_RESULT`.
+- **`useOptimisticUpdate`** (`composables/useOptimisticUpdate.ts`): wraps `store.updateSelectedTopic + sendMessage(SAVE_CACHED_TOPIC)` with auto-rollback on save failure. Used in KnowledgeView, ResearchView, TopicHubView for user-triggered actions (bookmark, save, delete).
 - **`App.vue`**: mounts `<TopicMeta>` once above `<router-view>` (shared across summary/knowledge/research tabs). Handles tab detection and auto-update of cached topic metadata.
+
+### Data Flow — Single Source of Truth
+
+Topic data now flows as a **single source of truth** through the store:
+
+```
+IndexedDB (persistent)  →  background (cache-manager.ts)  →  sendMessage()
+                                                                    ↓
+                                    store.selectedTopic (reactive singleton)
+                                                                    ↓
+                              computed alias `cachedTopic` in composables/views
+```
+
+Before this refactoring (tasks 129–134), `cachedTopic` existed as a **local `ref()` in 3 places** (`useSummarize`, `KnowledgeView`, `ResearchView`) plus the store — a triple-state pattern causing sync bugs. Now all code reads `store.selectedTopic` via a computed:
+
+- **`useSummarize.ts`**: `const cachedTopic = computed(() => store.selectedTopic.value)`
+- **`KnowledgeView.vue`**: same pattern
+- **`ResearchView.vue`**: same pattern
+
+Zero `cachedTopic.value = {...}` assignments remain — `store.updateSelectedTopic()` is the only mutation path.
+
+### IndexedDB Access — Message-Only
+
+All sidepanel IndexedDB operations go through `sendMessage()` to the background worker. `App.vue` previously called `cache-manager.ts` directly; after task 129 it now uses `sendMessage()` consistently with all other components. Pure functions (`normalizeUrl`, `isSameTopicUrl`) remain imported directly since they have no side effects.
+
+### Optimistic Update Pattern
+
+For user-triggered actions (bookmark toggle, knowledge save/delete, research history), the store is updated immediately for instant UI feedback, then the IDB save is attempted in the background. If the save fails, the store is rolled back to the previous state:
+
+```typescript
+async function optimisticUpdate(partial: Partial<CachedTopic>): Promise<boolean> {
+  const previous = store.selectedTopic.value;
+  if (!previous) return false;
+  store.updateSelectedTopic(partial);       // instant UI
+  try {
+    await sendMessage('SAVE_CACHED_TOPIC', { url: previous.url, ...partial });
+    return true;
+  } catch {
+    store.updateSelectedTopic(previous);    // rollback
+    return false;
+  }
+}
+```
+
+This pattern is NOT used for LLM-result saves (segment summaries, knowledge chunks) where the data must persist to IDB before updating the store.
 
 ### LLM Stack (`lib/llm/`)
 

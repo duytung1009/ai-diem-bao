@@ -16,9 +16,9 @@ import { useSummarize } from '../composables/useSummarize';
 const { extractKnowledge: runExtract, extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask } = useLLM();
 const store = useTopicStore();
 const { topicInfo } = useSummarize(store);
+const cachedTopic = computed(() => store.selectedTopic.value);
 
 const entries = ref<KnowledgeEntry[]>([]);
-const cachedTopic = ref<CachedTopic | null>(null);
 const loadedTopicUrl = ref<string | null>(null);
 const isLoading = ref(false);
 const error = ref('');
@@ -91,8 +91,8 @@ function toggleTag(tag: string) {
 // Posts may live in segments[].posts (segment mode) or top-level posts (legacy)
 const allPosts = computed(() => {
   if (!cachedTopic.value) return [];
-  if (cachedTopic.value.posts?.length) return cachedTopic.value.posts;
-  return cachedTopic.value.segments?.flatMap(s => s?.posts ?? []) ?? [];
+  const posts = cachedTopic.value.posts?.length ? cachedTopic.value.posts : cachedTopic.value.segments?.flatMap(s => s?.posts ?? []) ?? [];
+  return [...posts]; // mutable copy for LLM functions
 });
 
 const allTags = computed(() => {
@@ -178,18 +178,15 @@ async function loadTopicData() {
   const url = topic.url;
 
   entries.value = [];
-  cachedTopic.value = null;
   loadedTopicUrl.value = url;
   expandedIds.value = new Set();
   showSavedOnly.value = false;
-  cachedTopic.value = topic as CachedTopic;
   if (topic.knowledgeEntries?.length) entries.value = topic.knowledgeEntries as KnowledgeEntry[];
 
   try {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
     if (loadedTopicUrl.value !== url) return; // topic switched during await — discard stale result
     if (fresh) {
-      cachedTopic.value = fresh;
       store.updateSelectedTopic(fresh);
       if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
     }
@@ -211,7 +208,6 @@ onActivated(async () => {
     try {
       const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
       if (fresh) {
-        cachedTopic.value = fresh;
         store.updateSelectedTopic(fresh);
         if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
       }
@@ -240,7 +236,7 @@ function computeKnowledgeResumeState(): {
   startFromPostNumber: number;
   existingChunks: KnowledgeChunk[];
 } {
-  const chunks = cachedTopic.value?.knowledgeChunks ?? [];
+  const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
   if (chunks.length === 0) return { startFromPostNumber: 0, existingChunks: [] };
 
   const lastChunk = chunks[chunks.length - 1];
@@ -267,13 +263,12 @@ async function persistChunks(chunks: KnowledgeChunk[], guardId: number, topicUrl
   }).catch(() => {});
 
   if (cachedTopic.value?.url === topicUrl) {
-    cachedTopic.value = {
-      ...cachedTopic.value,
+    store.updateSelectedTopic({
       knowledgeChunks: [...chunks],
       lastKnowledgePostNumber: chunks.length > 0
         ? chunks[chunks.length - 1].endPostNumber
         : cachedTopic.value.lastKnowledgePostNumber,
-    };
+    });
   }
 }
 
@@ -323,10 +318,9 @@ async function runDirectExtract(postsToProcess: ScrapedPost[], guardId: number, 
     knowledgeChunks: [chunk],
     lastKnowledgePostNumber: chunk.endPostNumber,
   }).catch(() => {});
-
-  const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topicUrl).catch(() => null);
-  if (fresh && guardId === activeExtractId) cachedTopic.value = fresh;
 }
+
+/** Determine resume state from existing knowledgeChunks */
 
 function onExtractClick() {
   if (showExtractCostWarning.value) {
@@ -605,9 +599,6 @@ async function runReducePhase(
     knowledgeChunks: chunks,
     lastKnowledgePostNumber: chunks[chunks.length - 1].endPostNumber,
   }).catch(() => {});
-
-  const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topicUrl).catch(() => null);
-  if (fresh && guardId === activeExtractId) cachedTopic.value = fresh;
 }
 
 function handleCancel() {
@@ -646,8 +637,6 @@ async function handleDelete(entry: KnowledgeEntry) {
     knowledgeEntries: updated,
     excludedKnowledgePostNumbers: excluded,
   }).catch(() => {});
-  const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', cachedTopic.value!.url).catch(() => null);
-  if (fresh) cachedTopic.value = fresh;
 }
 
 async function handleClearTracking() {
@@ -657,8 +646,11 @@ async function handleClearTracking() {
     lastKnowledgePostNumber: 0,
     knowledgeChunks: [], // F24: clear all chunks so next extract starts fresh
   }).catch(() => {});
-  const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', cachedTopic.value!.url).catch(() => null);
-  if (fresh) cachedTopic.value = fresh;
+  store.updateSelectedTopic({
+    excludedKnowledgePostNumbers: [],
+    lastKnowledgePostNumber: 0,
+    knowledgeChunks: [],
+  });
 }
 </script>
 

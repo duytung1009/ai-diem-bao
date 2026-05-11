@@ -1071,14 +1071,74 @@
         "id": "131",
         "title": "Phase 3: Eliminate Triple-State in KnowledgeView",
         "description": "Remove local cachedTopic ref in KnowledgeView.vue (931 lines). Read from store.selectedTopic via computed. Replace all cachedTopic.value = ... with store.updateSelectedTopic().",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           "130"
         ],
         "details": "**Problem:** KnowledgeView.vue maintains a local cachedTopic ref that duplicates store.selectedTopic. Knowledge entries are written to both places manually.\n\n**Solution:**\n\n1. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (line 21)\n   - Remove: `const cachedTopic = ref<CachedTopic | null>(null);`\n   - Add: `const cachedTopic = computed(() => store.selectedTopic.value);`\n\n2. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (loadTopicData function)\n   - Remove all `cachedTopic.value = ...` assignments\n   - After fetching fresh data from IDB: call `store.updateSelectedTopic(fresh)`\n   - Keep loadedTopicUrl for tracking which topic is loaded\n\n3. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (all knowledge save operations)\n   - After extractKnowledge, reduceKnowledgeChunks, or manual save:\n   - Replace: `cachedTopic.value = {...}` with `store.updateSelectedTopic({...})`\n   - The computed `cachedTopic` will automatically reflect store changes\n\n4. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (allPosts computed)\n   - No change needed — reads from cachedTopic.value which is now computed\n\n5. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (entries ref)\n   - Keep `const entries = ref<KnowledgeEntry[]>([])` — this is UI state, not topic data\n   - On load: `entries.value = [...(store.selectedTopic.value?.knowledgeEntries ?? [])]`\n   - On save: `store.updateSelectedTopic({ knowledgeEntries: entries.value })`\n\n**Acceptance Criteria:**\n- No ref<CachedTopic | null> for cachedTopic in KnowledgeView\n- cachedTopic is a computed: computed(() => store.selectedTopic.value)\n- loadTopicData() fetches fresh from IDB, calls store.updateSelectedTopic(fresh)\n- Knowledge extract, reduce, and save operations all update store via store.updateSelectedTopic()\n- allPosts computed still works (reads from cachedTopic.value.segments or cachedTopic.value.posts)\n- npm run compile passes with zero errors",
         "testStrategy": "1. npm run compile — zero errors\n2. Open KnowledgeView on a topic with posts\n3. Extract knowledge -> verify entries display\n4. Save an entry -> verify it persists\n5. Reload page -> verify entries still present\n6. Switch topics -> verify correct entries load for each topic",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chuyển cachedTopic từ ref sang computed trong KnowledgeView.vue",
+            "description": "Xóa dòng const cachedTopic = ref<CachedTopic | null>(null) và thêm computed(() => store.selectedTopic.value).",
+            "dependencies": [],
+            "details": "Tại dòng 21 của file KnowledgeView.vue, loại bỏ khai báo ref và thay bằng computed tham chiếu đến store.selectedTopic.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật hàm loadTopicData để dùng store.updateSelectedTopic",
+            "description": "Loại bỏ gán cachedTopic.value trong loadTopicData và gọi store.updateSelectedTopic sau khi fetch dữ liệu từ IDB.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong hàm loadTopicData, xóa tất cả các dòng gán cachedTopic.value = ..., giữ lại loadedTopicUrl, và thêm store.updateSelectedTopic(topicFresh) ở cuối.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật thao tác extract knowledge dùng store.updateSelectedTopic",
+            "description": "Trong hàm extractKnowledge, thay thế gán cachedTopic.value bằng store.updateSelectedTopic.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sau khi xử lý extractKnowledge, gán store.updateSelectedTopic với dữ liệu mới thay vì gán cachedTopic.value.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Cập nhật thao tác reduce và lưu manual dùng store.updateSelectedTopic",
+            "description": "Trong reduceKnowledgeChunks và các hàm lưu manual, thay gán cachedTopic.value bằng store.updateSelectedTopic.",
+            "dependencies": [
+              3
+            ],
+            "details": "Cập nhật reduceKnowledgeChunks và hàm lưu manual để chỉ gọi store.updateSelectedTopic, loại bỏ gán cachedTopic.value.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Đồng bộ entries ref với store.selectedTopic",
+            "description": "Cập nhật entries ref khi load và lưu để đồng bộ với store.selectedTopic.knowledgeEntries.",
+            "dependencies": [
+              4
+            ],
+            "details": "Khi load, gán entries.value từ store.selectedTopic.value?.knowledgeEntries, khi lưu gọi store.updateSelectedTopic({ knowledgeEntries: entries.value }).",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-11T17:14:24.889Z"
       },
       {
         "id": "132",
@@ -1122,9 +1182,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T17:08:00.543Z",
+      "lastModified": "2026-05-11T17:14:24.890Z",
       "taskCount": 61,
-      "completedCount": 57,
+      "completedCount": 58,
       "tags": [
         "master"
       ]

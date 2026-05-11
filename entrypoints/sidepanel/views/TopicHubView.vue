@@ -7,10 +7,12 @@ import { topicSummaryStatus, formatTopicDate } from '@/lib/topic-utils';
 import { formatNumber } from '@/lib/format';
 import type { CachedTopic, TopicSegment, SummaryJSON, KnowledgeEntry, KnowledgeChunk, ThreadAnalysisJSON } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
+import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
 const router = useRouter();
 const store = useTopicStore();
+const { optimisticUpdate } = useOptimisticUpdate(store);
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
 const pendingDeleteUrl = ref<string | null>(null);
@@ -206,9 +208,10 @@ async function toggleBookmark(topic: CachedTopic) {
   const idx = allTopics.value.findIndex(t => t.url === topic.url);
   if (idx !== -1) allTopics.value[idx] = updated;
   if (store.selectedTopic.value?.url === topic.url) {
-    store.updateSelectedTopic({ bookmarked: updated.bookmarked });
+    await optimisticUpdate({ bookmarked: updated.bookmarked });
+  } else {
+    await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, bookmarked: updated.bookmarked }).catch(() => {});
   }
-  await sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, bookmarked: updated.bookmarked }).catch(() => {});
 }
 </script>
 

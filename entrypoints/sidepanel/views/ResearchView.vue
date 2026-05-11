@@ -7,8 +7,10 @@ import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
+import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 
 const store = useTopicStore();
+const { optimisticUpdate } = useOptimisticUpdate(store);
 const cachedTopic = computed(() => store.selectedTopic.value);
 
 // Posts may live in segments (F20 Unified Segment Mode) rather than top-level posts
@@ -80,11 +82,7 @@ async function handleResearch() {
     question.value = '';
 
     // Persist to cache
-    await sendMessage('SAVE_CACHED_TOPIC', {
-      url: cachedTopic.value!.url,
-      researchHistory: history.value,
-    }).catch(() => { });
-    store.updateSelectedTopic({ researchHistory: history.value });
+    await optimisticUpdate({ researchHistory: history.value });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -100,11 +98,7 @@ function useSuggestion(q: string) {
 function clearHistory() {
   if (!cachedTopic.value) return;
   history.value = [];
-  sendMessage('SAVE_CACHED_TOPIC', {
-    url: cachedTopic.value!.url,
-    researchHistory: [],
-  }).catch(() => { });
-  store.updateSelectedTopic({ researchHistory: [] });
+  optimisticUpdate({ researchHistory: [] });
 }
 
 function formatDate(ts: number): string {

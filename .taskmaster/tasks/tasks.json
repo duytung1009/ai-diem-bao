@@ -1224,14 +1224,79 @@
         "id": "133",
         "title": "Phase 5: Add Optimistic Update with Rollback",
         "description": "Create useOptimisticUpdate composable. Replace dual-write patterns (store.updateSelectedTopic + sendMessage SAVE_CACHED_TOPIC) with optimisticUpdate(). Auto-rollback on save failure.",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
           "132"
         ],
         "details": "**Problem:** Store updates and IndexedDB saves are not atomic. If IDB save fails, store is already updated with data that won't persist. No rollback mechanism.\n\n**New File: entrypoints/sidepanel/composables/useOptimisticUpdate.ts**\n\n```typescript\nimport type { CachedTopic } from '@/lib/types';\nimport { sendMessage } from '@/lib/messaging';\nimport type { useTopicStore } from './useTopicStore';\n\nexport function useOptimisticUpdate(store: ReturnType<typeof useTopicStore>) {\n  async function optimisticUpdate(partial: Partial<CachedTopic>): Promise<boolean> {\n    const previous = store.selectedTopic.value;\n    if (!previous) return false;\n\n    // 1. Optimistic: update store immediately\n    store.updateSelectedTopic(partial);\n\n    // 2. Persist to IndexedDB\n    try {\n      await sendMessage('SAVE_CACHED_TOPIC', { url: previous.url, ...partial });\n      return true;\n    } catch (err) {\n      // 3. Rollback: restore previous state\n      store.updateSelectedTopic(previous);\n      console.error('[OptimisticUpdate] Failed to save, rolled back:', err);\n      return false;\n    }\n  }\n\n  return { optimisticUpdate };\n}\n```\n\n**Files to Update:**\n\n1. **useSummarize.ts:** Replace patterns like:\n   ```\n   store.updateSelectedTopic({ field: value });\n   await sendMessage('SAVE_CACHED_TOPIC', { url, field: value });\n   ```\n   With:\n   ```\n   await optimisticUpdate({ field: value });\n   ```\n\n2. **KnowledgeView.vue:** Same replacement for knowledge entries save\n\n3. **ResearchView.vue:** Same replacement for research history save\n\n4. **TopicHubView.vue (toggleBookmark, line 204-212):** Replace manual dual-write\n\n5. **App.vue (autoUpdateCachedTopic):** Replace manual dual-write\n\n**Important:** Do NOT apply rollback for append-only operations (e.g., adding new segment summaries) where rollback could lose user-entered data. Only apply for field updates (topicType, bookmarked, summary, knowledgeEntries, researchHistory).\n\n**Acceptance Criteria:**\n- useOptimisticUpdate.ts exports optimisticUpdate(partial): Promise<boolean>\n- Returns true on success, false on failure (after rollback)\n- Logs error to console on rollback\n- Existing dual-write patterns replaced with optimisticUpdate()\n- npm run compile passes with zero errors",
         "testStrategy": "1. npm run compile — zero errors\n2. Toggle bookmark on a topic -> verify instant UI update\n3. Simulate network failure (devtools offline) -> toggle bookmark -> verify rollback (UI reverts)\n4. Test knowledge entry save with network failure -> verify rollback\n5. Test research history save with network failure -> verify rollback\n6. Verify console shows error message on rollback",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create useOptimisticUpdate composable file",
+            "description": "Create the useOptimisticUpdate composable that provides an optimisticUpdate function for atomic store updates and IndexedDB persistence with automatic rollback on failure.",
+            "dependencies": [],
+            "details": "Create file entrypoints/sidepanel/composables/useOptimisticUpdate.ts with the optimisticUpdate function as specified: store.updateSelectedTopic immediately, then sendMessage('SAVE_CACHED_TOPIC', ...); on error, restore previous state and log error.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:29:58.966Z"
+          },
+          {
+            "id": 2,
+            "title": "Update useSummarize.ts to replace dual-write with optimisticUpdate",
+            "description": "Replace all dual-write patterns in useSummarize.ts where store.updateSelectedTopic is followed by sendMessage SAVE_CACHED_TOPIC with calls to optimisticUpdate for field updates.",
+            "dependencies": [
+              1
+            ],
+            "details": "Locate patterns like store.updateSelectedTopic(...); await sendMessage('SAVE_CACHED_TOPIC', ...) and replace with await optimisticUpdate({...}). Avoid replacing append-only operations like adding new segment summaries.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:33:53.937Z"
+          },
+          {
+            "id": 3,
+            "title": "Update KnowledgeView.vue to use optimisticUpdate for knowledge entries",
+            "description": "Replace the manual dual-write pattern in KnowledgeView.vue when saving knowledge entries with optimisticUpdate.",
+            "dependencies": [
+              1
+            ],
+            "details": "Locate code that updates store and sends SAVE_CACHED_TOPIC for knowledgeEntries; replace with optimisticUpdate({ knowledgeEntries: ... }). Ensure rollback is only applied for field updates.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:31:49.066Z"
+          },
+          {
+            "id": 4,
+            "title": "Update ResearchView.vue to use optimisticUpdate for research history",
+            "description": "Replace the manual dual-write pattern in ResearchView.vue when saving research history with optimisticUpdate.",
+            "dependencies": [
+              1
+            ],
+            "details": "Locate code that updates store and sends SAVE_CACHED_TOPIC for researchHistory; replace with optimisticUpdate({ researchHistory: ... }).",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:32:57.347Z"
+          },
+          {
+            "id": 5,
+            "title": "Update TopicHubView.vue and App.vue to use optimisticUpdate",
+            "description": "Replace manual dual-write patterns in TopicHubView.vue (toggleBookmark) and App.vue (autoUpdateCachedTopic) with calls to optimisticUpdate.",
+            "dependencies": [
+              1
+            ],
+            "details": "In TopicHubView.vue (lines 204-212), replace the bookmark toggle dual-write; in App.vue, replace the autoUpdateCachedTopic function dual-write. Ensure proper rollback is applied.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:35:18.027Z"
+          }
+        ],
+        "updatedAt": "2026-05-11T17:35:18.027Z"
       },
       {
         "id": "134",
@@ -1249,9 +1314,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T17:24:43.846Z",
+      "lastModified": "2026-05-11T17:35:18.028Z",
       "taskCount": 61,
-      "completedCount": 59,
+      "completedCount": 60,
       "tags": [
         "master"
       ]

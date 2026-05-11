@@ -12,10 +12,12 @@ import ConfirmInline from '../components/ConfirmInline.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
+import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 
 const { extractKnowledge: runExtract, extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask } = useLLM();
 const store = useTopicStore();
 const { topicInfo } = useSummarize(store);
+const { optimisticUpdate } = useOptimisticUpdate(store);
 const cachedTopic = computed(() => store.selectedTopic.value);
 
 const entries = ref<KnowledgeEntry[]>([]);
@@ -617,11 +619,7 @@ async function toggleSave(entry: KnowledgeEntry) {
     e.id === entry.id ? { ...e, saved: !e.saved } : e
   ) as KnowledgeEntry[];
   entries.value = updated;
-  store.updateSelectedTopic({ knowledgeEntries: updated });
-  await sendMessage('SAVE_CACHED_TOPIC', {
-    url: cachedTopic.value!.url,
-    knowledgeEntries: updated,
-  }).catch(() => {});
+  await optimisticUpdate({ knowledgeEntries: updated });
 }
 
 async function handleDelete(entry: KnowledgeEntry) {
@@ -631,22 +629,11 @@ async function handleDelete(entry: KnowledgeEntry) {
     entry.source.postNumber,
   ];
   entries.value = updated;
-  store.updateSelectedTopic({ knowledgeEntries: updated });
-  await sendMessage('SAVE_CACHED_TOPIC', {
-    url: cachedTopic.value!.url,
-    knowledgeEntries: updated,
-    excludedKnowledgePostNumbers: excluded,
-  }).catch(() => {});
+  await optimisticUpdate({ knowledgeEntries: updated, excludedKnowledgePostNumbers: excluded });
 }
 
 async function handleClearTracking() {
-  await sendMessage('SAVE_CACHED_TOPIC', {
-    url: cachedTopic.value!.url,
-    excludedKnowledgePostNumbers: [],
-    lastKnowledgePostNumber: 0,
-    knowledgeChunks: [], // F24: clear all chunks so next extract starts fresh
-  }).catch(() => {});
-  store.updateSelectedTopic({
+  await optimisticUpdate({
     excludedKnowledgePostNumbers: [],
     lastKnowledgePostNumber: 0,
     knowledgeChunks: [],

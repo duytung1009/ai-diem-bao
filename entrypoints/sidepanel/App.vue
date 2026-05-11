@@ -83,10 +83,29 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     const cached = await getCachedTopic(tabUrl);
     if (!cached) return;
 
-    // Cập nhật forumPostCount (không ảnh hưởng incremental logic)
-    // totalPosts, totalPages giữ nguyên giá trị lúc scrape
+    if (detect.threadDeleted) {
+      await saveCachedTopic({ ...cached, threadDeleted: true });
+      const normalizedTabUrl = normalizeUrl(tabUrl);
+      const selectedUrl = store.selectedTopic.value?.url;
+      if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
+        store.updateSelectedTopic({ threadDeleted: true });
+      }
+      return;
+    }
+
+    if (detect.threadLocked) {
+      await saveCachedTopic({ ...cached, threadLocked: true });
+      const normalizedTabUrl = normalizeUrl(tabUrl);
+      const selectedUrl = store.selectedTopic.value?.url;
+      if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
+        store.updateSelectedTopic({ threadLocked: true });
+      }
+    }
+
+    // Always update totalPages and forumPostCount from live detect
     const hasChanges =
       cached.forumPostCount !== detect.postCount ||
+      cached.totalPages !== detect.pageCount ||
       (!!detect.title && cached.title !== detect.title);
 
     if (!hasChanges) return;
@@ -95,6 +114,13 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
       await saveCachedTopic({
         ...cached,
         forumPostCount: detect.postCount,
+        totalPages: detect.pageCount,
+        title: detect.title || cached.title,
+      });
+    } else if (cached.totalPages !== detect.pageCount) {
+      await saveCachedTopic({
+        ...cached,
+        totalPages: detect.pageCount,
         title: detect.title || cached.title,
       });
     } else if (!!detect.title && cached.title !== detect.title) {

@@ -135,10 +135,17 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
   // Sanitize invalid JSON escape sequences (e.g. \N, \T produced by LLMs)
   text = text.replace(/\\([^"\\\/bfnrtu])/g, (_, ch) => ch);
 
-  const isValidSummaryJSON = (parsed: unknown): parsed is SummaryJSON =>
-    typeof (parsed as SummaryJSON)?.summary === 'string' &&
-    Array.isArray((parsed as SummaryJSON)?.opinions) &&
-    typeof (parsed as SummaryJSON)?.conclusion === 'string';
+  const isValidSummaryJSON = (parsed: unknown): parsed is SummaryJSON => {
+    const obj = parsed as SummaryJSON;
+    return (
+      typeof obj?.summary === 'string' &&
+      Array.isArray(obj?.opinions) &&
+      obj.opinions.every(
+        op => typeof op?.title === 'string' && Array.isArray(op?.supporters) && Array.isArray(op?.quotes),
+      ) &&
+      typeof obj?.conclusion === 'string'
+    );
+  };
 
   try {
     const parsed = JSON.parse(text);
@@ -653,6 +660,7 @@ function buildAuthorCrossReference(segmentJsons: (SummaryJSON | null)[]): string
   segmentJsons.forEach((json, i) => {
     if (!json?.opinions) return;
     for (const op of json.opinions) {
+      if (!Array.isArray(op.supporters)) continue;
       for (const name of op.supporters) {
         const key = name.toLowerCase();
         if (!authorMap.has(key)) authorMap.set(key, []);
@@ -686,7 +694,8 @@ export function deduplicateSupporters(json: SummaryJSON): SummaryJSON {
     ...json,
     opinions: json.opinions.map(op => {
       const seen = new Set<string>();
-      const unique = op.supporters.filter(name => {
+      const supporters = Array.isArray(op.supporters) ? op.supporters : [];
+      const unique = supporters.filter(name => {
         const key = name.toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);

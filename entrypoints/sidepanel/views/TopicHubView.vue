@@ -352,6 +352,18 @@ async function toggleBookmark(topic: CachedTopic) {
                         ~ Một phần
                       </span>
                       <span
+                        v-else-if="topicSummaryStatus(topic, false) === 'locked'"
+                        class="text-red-700 dark:text-red-400 font-medium"
+                      >
+                        🔒 Đã khóa
+                      </span>
+                      <span
+                        v-else-if="topicSummaryStatus(topic, false) === 'deleted'"
+                        class="text-gray-700 dark:text-gray-400 font-medium"
+                      >
+                        ❌ Đã ốp
+                      </span>
+                      <span
                         v-else
                         class="text-(--color-text-muted) font-medium"
                       >

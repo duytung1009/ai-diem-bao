@@ -14,8 +14,22 @@ export class XF2Scraper implements TopicScraper {
   }
 
   getPostCount(doc: Document = document): number {
+    // Primary: standard XF2 replies counter
     const dd = doc.querySelector('dl.count--replies dd');
-    return Number.parseInt(dd?.textContent?.trim()?.replaceAll(',', '') ?? '0', 10);
+    const primary = Number.parseInt(dd?.textContent?.trim()?.replaceAll(',', '') ?? '', 10);
+    if (!isNaN(primary) && primary > 0) return primary;
+
+    // Fallback 1: JSON-LD structured data (always available on thread page)
+    const jsonLd = this.parseJsonLd(doc);
+    if (jsonLd !== null) return jsonLd;
+
+    // Fallback 2: Last post number — only if on the last page
+    if (this.isLastPage(doc)) {
+      const lastPostNum = this.getLastPostNumber(doc);
+      if (lastPostNum > 0) return lastPostNum;
+    }
+
+    return 0;
   }
 
   getPageCount(doc: Document = document): number {
@@ -121,6 +135,37 @@ export class XF2Scraper implements TopicScraper {
       if (textMatch) return parseInt(textMatch[1].replace(/,/g, ''), 10);
     }
     return 0;
+  }
+
+  private parseJsonLd(doc: Document): number | null {
+    const el = doc.querySelector('script[type="application/ld+json"]');
+    if (!el?.textContent) return null;
+    try {
+      const data = JSON.parse(el.textContent);
+      const replies = data.interactionStatistic?.userInteractionCount;
+      if (typeof replies === 'number') return replies + 1; // +1 for OP
+    } catch {}
+    return null;
+  }
+
+  private isLastPage(doc: Document): boolean {
+    // "336 of 336" — current equals total
+    const currentEl = doc.querySelector('.pageNavSimple-el--current');
+    const text = currentEl?.textContent?.trim() || '';
+    const m = text.match(/(\d+)\s+of\s+(\d+)/);
+    if (m) return m[1] === m[2];
+
+    // No "Next" button means last page
+    return !doc.querySelector('.pageNav-jump--next');
+  }
+
+  private getLastPostNumber(doc: Document): number {
+    const lastArticle = doc.querySelector('article.message--post:last-of-type');
+    if (!lastArticle) return 0;
+    const link = lastArticle.querySelector('.message-attribution-opposite a');
+    const text = link?.textContent?.trim() || '';
+    const m = text.match(/#?([\d,]+)/);
+    return m ? parseInt(m[1].replace(/,/g, ''), 10) : 0;
   }
 
   normalizeUrl(url: string): string {

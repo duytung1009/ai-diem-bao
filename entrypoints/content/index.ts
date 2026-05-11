@@ -1,6 +1,7 @@
 import { detectXenForoVersion } from '@/lib/detector';
 import { XF2Scraper } from '@/lib/scrapers/xf2-scraper';
 import { XF1Scraper } from '@/lib/scrapers/xf1-scraper';
+import { isThreadDeleted, isThreadLocked } from '@/lib/scrapers/thread-status';
 import type { DetectResult, Message } from '@/lib/types';
 
 function isThreadPage(v: 'xf1' | 'xf2'): boolean {
@@ -26,8 +27,11 @@ export default defineContentScript({
         }
 
         if (message.type === 'DETECT_XF') {
-          // Only respond for individual thread pages, not forum/list pages
-          if (!isThreadPage(version)) {
+          // Check for deleted/locked thread first — these pages may lack article.message
+          // so the normal isThreadPage check would incorrectly reject them.
+          const isDeleted = isThreadDeleted(document);
+          const isLocked = isThreadLocked(document);
+          if (!isDeleted && !isLocked && !isThreadPage(version)) {
             sendResponse(undefined);
             return false;
           }
@@ -37,6 +41,8 @@ export default defineContentScript({
             title: document.title,
             postCount: scraper?.getPostCount() ?? 0,
             pageCount: scraper?.getPageCount() ?? 1,
+            threadDeleted: isDeleted,
+            threadLocked: isLocked,
           };
           // Try to get a better title from the page
           const titleEl = document.querySelector('h1.p-title-value, .titleBar h1');

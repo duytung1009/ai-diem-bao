@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { CachedTopic } from '@/lib/types';
-import { formatTopicDate } from '@/lib/topic-utils';
+import { topicSummaryStatus, formatTopicDate } from '@/lib/topic-utils';
 import { formatNumber } from '@/lib/format';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { useTopicStore } from '../composables/useTopicStore';
@@ -39,12 +39,9 @@ const isPartial = computed(() =>
   hasSummary.value && summarizedPostCount.value < effectiveTotal.value,
 );
 
-const summaryStatus = computed(() => {
-  if (props.isSummarizing) return 'in-progress';
-  if (!hasSummary.value) return 'none';
-  if (isPartial.value) return 'partial';
-  return 'done';
-});
+const summaryStatus = computed(() =>
+  topicSummaryStatus(props.topic, props.isSummarizing ?? false),
+);
 
 const summaryDateLabel = computed(() => {
   if (!hasSummary.value || !props.topic.cachedAt) return null;
@@ -103,6 +100,12 @@ async function navigateToTopic() {
       </span>
       <span v-else-if="summaryStatus === 'partial'" class="text-yellow-700 dark:text-yellow-400 font-medium">
         ~ Một phần
+      </span>
+      <span v-else-if="summaryStatus === 'locked'" class="text-red-700 dark:text-red-400 font-medium">
+        🔒 Đã khóa
+      </span>
+      <span v-else-if="summaryStatus === 'deleted'" class="text-gray-700 dark:text-gray-400 font-medium">
+        ❌ Đã ốp
       </span>
       <span v-else class="text-(--color-success-text) font-medium">
         ✓ Đã tóm tắt

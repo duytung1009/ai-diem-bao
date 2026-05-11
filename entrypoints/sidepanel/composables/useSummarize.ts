@@ -125,7 +125,19 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   // Only persists to cache if the topic already has a summary (i.e. has been summarized before).
   async function detectAndCacheTopicType(topic: DeepReadonly<CachedTopic>): Promise<void> {
     try {
-      const { posts } = await scrapePageRange(topic.version, topic.url, 1, 1);
+      const { posts, threadDeleted, threadLocked } = await scrapePageRange(topic.version, topic.url, 1, 1);
+      if (threadDeleted) {
+        if (cachedTopic.value) {
+          await saveTopic(cachedTopic.value, { threadDeleted: true });
+        }
+        return;
+      }
+      if (threadLocked) {
+        if (cachedTopic.value) {
+          await saveTopic(cachedTopic.value, { threadLocked: true });
+        }
+        return;
+      }
       if (!posts.length) return;
       const forumDomain = new URL(topic.url).hostname;
       const { isNews } = detectNewsThread(posts, forumDomain);
@@ -236,10 +248,25 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, forumPostCount: liveCount }).catch(() => {});
       }
 
+      // Update threadLocked/threadDeleted immediately from live detect (before any scraping)
+      const liveDetect = store.activeTabDetect.value;
+      const liveDetectMatches = liveDetect && store.activeTabUrl.value &&
+        isSameTopicUrl(store.activeTabUrl.value, topic.url);
+      const threadStatusUpdates: Partial<CachedTopic> = {};
+      if (liveDetectMatches) {
+        if (liveDetect.threadDeleted) threadStatusUpdates.threadDeleted = true;
+        if (liveDetect.threadLocked) threadStatusUpdates.threadLocked = true;
+      }
+
+      // Persist thread status to cache immediately
+      if (Object.keys(threadStatusUpdates).length > 0) {
+        sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, ...threadStatusUpdates }).catch(() => {});
+      }
+
       if (fresh) {
         cachedTopic.value = effectiveForumPostCount !== fresh.forumPostCount
-          ? { ...fresh, forumPostCount: effectiveForumPostCount }
-          : fresh;
+          ? { ...fresh, forumPostCount: effectiveForumPostCount, ...threadStatusUpdates }
+          : { ...fresh, ...threadStatusUpdates };
         store.updateSelectedTopic({
           totalPages: fresh.totalPages,
           totalPosts: fresh.totalPosts,
@@ -248,6 +275,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           version: fresh.version,
           title: fresh.title,
           posts: fresh.posts,
+          ...threadStatusUpdates,
         });
         if (fresh.summary) {
           summary.value = fresh.summary;
@@ -321,7 +349,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     startPage: number,
     endPage: number,
     delayMs: number = 2000,
-  ): Promise<{ posts: ScrapedPost[]; errors: string[] }> {
+  ): Promise<{ posts: ScrapedPost[]; errors: string[]; threadDeleted?: boolean; threadLocked?: boolean }> {
     const version = topicInfo.value?.version;
     if (!version || version === 'unknown') {
       throw new Error('Không xác định được phiên bản diễn đàn.');
@@ -345,7 +373,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         delayMs,
       );
       if (signal.aborted) throw new DOMException('Scraping cancelled', 'AbortError');
-      return { posts: result.posts, errors: result.errors };
+      return { posts: result.posts, errors: result.errors, threadDeleted: result.threadDeleted, threadLocked: result.threadLocked };
     } finally {
       scrapeAbortCtrl = null;
     }
@@ -384,9 +412,16 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       } else {
         isScraping.value = true;
         // Let scrapeProgress's default message drive the display during scrape.
-        const { posts: scraped, errors } = await scrapeRange(topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
+        const { posts: scraped, errors, threadDeleted, threadLocked } = await scrapeRange(topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
         isScraping.value = false;
         scrapeProgress.value = null;
+        if (threadDeleted) {
+          await saveTopic(topic, { threadDeleted: true });
+          throw new Error('Thread đã bị xóa.');
+        }
+        if (threadLocked) {
+          await saveTopic(topic, { threadLocked: true });
+        }
         segPosts = scraped;
         if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
         if (errors.length > 0) scrapingWarnings.value = errors;
@@ -625,7 +660,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const coveredEndPage = lastSummarizedSeg?.endPage ?? 0;
     const newTotalPages = store.activeTabDetect.value?.pageCount ?? topicInfo.value.pageCount;
 
-    if (newTotalPages <= coveredEndPage) {
+    // Use forumPostCount (live) to detect new posts, not just pageCount
+    const currentSummarizedPosts = currentSegments.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    const livePostCount = store.activeTabDetect.value?.postCount ?? 0;
+    const hasNewPosts = livePostCount > currentSummarizedPosts;
+
+    // Skip only if no new pages AND no new posts within existing pages
+    if (newTotalPages <= coveredEndPage && !hasNewPosts) {
       await generateOverallSummary();
       return;
     }
@@ -921,6 +962,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const signal = scrapeAbortCtrl.signal;
       let pagePosts: ScrapedPost[];
       let pageErrors: string[];
+      let pageThreadDeleted = false;
+      let pageThreadLocked = false;
       try {
         const result = await scrapePageRange(
           version as XenForoVersion,
@@ -934,10 +977,27 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         if (signal.aborted) throw new DOMException('Scraping cancelled', 'AbortError');
         pagePosts = result.posts;
         pageErrors = result.errors;
+        pageThreadDeleted = result.threadDeleted ?? false;
+        pageThreadLocked = result.threadLocked ?? false;
       } finally {
         scrapeAbortCtrl = null;
       }
       isScraping.value = false;
+
+      if (pageThreadDeleted) {
+        if (cachedTopic.value) {
+          await saveTopic(cachedTopic.value, { threadDeleted: true });
+        }
+        error.value = 'Thread đã bị xóa.';
+        scrapeProgress.value = null;
+        return;
+      }
+
+      if (pageThreadLocked) {
+        if (cachedTopic.value) {
+          await saveTopic(cachedTopic.value, { threadLocked: true });
+        }
+      }
 
       if (pageErrors.length) scrapingWarnings.value.push(...pageErrors);
       if (thisId !== activeSummarizeId) return;

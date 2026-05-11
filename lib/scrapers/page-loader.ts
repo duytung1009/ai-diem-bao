@@ -2,12 +2,15 @@ import type { ScrapedPost, XenForoVersion } from '../types';
 import type { TopicScraper } from './types';
 import { XF2Scraper } from './xf2-scraper';
 import { XF1Scraper } from './xf1-scraper';
+import { isThreadDeleted, isThreadLocked } from './thread-status';
 
 export interface MultiPageResult {
   posts: ScrapedPost[];
   totalPages: number;
   pagesScraped: number;
   errors: string[];
+  threadDeleted?: boolean;
+  threadLocked?: boolean;
 }
 
 export type ProgressCallback = (currentPage: number, totalPages: number, postsScraped: number) => void;
@@ -85,6 +88,14 @@ export async function scrapePageRange(
         continue;
       }
 
+      if (isThreadDeleted(doc)) {
+        return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors, threadDeleted: true, threadLocked: false };
+      }
+
+      if (isThreadLocked(doc)) {
+        return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors, threadDeleted: false, threadLocked: true };
+      }
+
       const pageData = scraper.scrape(doc, pageUrl);
       allPosts.push(...pageData.posts.map(p => ({ ...p, page })));
       pagesScraped++;
@@ -99,5 +110,5 @@ export async function scrapePageRange(
     }
   }
 
-  return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors };
+  return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors, threadDeleted: false, threadLocked: false };
 }

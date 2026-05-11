@@ -66,7 +66,7 @@ const isStructured = computed(() =>
 
 // Total supporters for JSON mode progress bars
 const totalJsonSupporters = computed(() =>
-  props.json?.opinions.reduce((s, o) => s + (o.supporters?.length ?? 0), 0) ?? 0,
+  props.json?.opinions.reduce((s, o) => s + (Array.isArray(o.supporters) ? o.supporters.length : 0), 0) ?? 0,
 );
 
 // Copy
@@ -82,7 +82,7 @@ function formatSummaryAsText(): string {
       lines.push('## Quan điểm nổi bật');
       for (const op of props.json.opinions) {
         lines.push(`### ${op.title}`);
-        if (op.supporters?.length) lines.push(`Ủng hộ: ${op.supporters.join(', ')}`);
+        if (Array.isArray(op.supporters) && op.supporters.length) lines.push(`Ủng hộ: ${op.supporters.join(', ')}`);
         lines.push(op.description);
         if (op.quotes?.length) {
           for (const q of op.quotes) {
@@ -148,14 +148,14 @@ async function handleCopy() {
                   <div class="flex items-center justify-between mb-1">
                     <span class="font-medium text-sm">{{ op.title }}</span>
                     <span
-                      v-if="op.supporters?.length"
+                      v-if="Array.isArray(op.supporters) && op.supporters.length"
                       class="text-xs text-(--color-text-secondary) ml-2 shrink-0"
                     >
                       {{ op.supporters.length }} người
                     </span>
                   </div>
                   <div
-                    v-if="op.supporters?.length && totalJsonSupporters > 0"
+                    v-if="Array.isArray(op.supporters) && op.supporters.length && totalJsonSupporters > 0"
                     class="w-full h-1.5 bg-(--color-bg-muted) rounded-full overflow-hidden"
                   >
                     <div

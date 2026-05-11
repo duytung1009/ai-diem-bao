@@ -103,6 +103,7 @@ export default defineBackground(() => {
               const config = await getSettings();
               // Load existing so a partial update (e.g. opinions only) doesn't wipe other fields
               const existing = await getCachedTopic(url);
+              console.log('SAVE_CACHED_TOPIC', { url, partial, existing });
               const topic: CachedTopic = {
                 url: normalizeUrl(url),
                 title: partial.title ?? existing?.title ?? '',

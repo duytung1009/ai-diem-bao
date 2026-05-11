@@ -136,6 +136,8 @@ export interface DetectResult {
   title: string;
   postCount: number;
   pageCount: number;
+  threadDeleted?: boolean;
+  threadLocked?: boolean;
 }
 
 export type CacheFreshness = 'fresh' | 'stale' | 'outdated';
@@ -165,6 +167,8 @@ export interface CachedTopic {
   lastKnowledgePostNumber?: number;
   excludedKnowledgePostNumbers?: number[];
   threadAnalysis?: ThreadAnalysisJSON;
+  threadLocked?: boolean;
+  threadDeleted?: boolean;
 }
 
 export interface TopicSegment {

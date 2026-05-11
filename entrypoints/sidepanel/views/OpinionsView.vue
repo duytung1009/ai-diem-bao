@@ -245,7 +245,7 @@ function getSentimentColor(sentiment: string): string {
               </template>
               <div class="space-y-2 text-sm">
                 <p class="text-xs text-(--color-text-secondary)">
-                  <strong>Ủng hộ bởi:</strong> {{ opinion.supporters.join(', ') }}
+                  <strong>Ủng hộ bởi:</strong> {{ (opinion.supporters ?? []).join(', ') }}
                 </p>
                 <p>{{ opinion.description }}</p>
                 <div class="bg-(--color-bg-muted) border border-(--color-border) rounded-lg p-2">

@@ -1,11 +1,13 @@
 import type { CachedTopic } from './types';
 
-export type TopicSummaryStatus = 'none' | 'in-progress' | 'partial' | 'done';
+export type TopicSummaryStatus = 'none' | 'in-progress' | 'partial' | 'done' | 'locked' | 'deleted';
 
 export function topicSummaryStatus(
   topic: CachedTopic,
   isSummarizing: boolean,
 ): TopicSummaryStatus {
+  if (topic.threadLocked) return 'locked';
+  if (topic.threadDeleted) return 'deleted';
   if (isSummarizing) return 'in-progress';
   const hasSummary = !!(topic.summary || topic.segments?.some(s => s?.summary));
   if (!hasSummary) return 'none';

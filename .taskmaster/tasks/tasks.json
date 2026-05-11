@@ -996,14 +996,76 @@
         "id": "130",
         "title": "Phase 2: Eliminate Triple-State in ResearchView",
         "description": "Remove local cachedTopic ref in ResearchView.vue. Read from store.selectedTopic via computed. Update loadTopicData() to use store.updateSelectedTopic().",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           "129"
         ],
         "details": "**Problem:** ResearchView.vue maintains a local cachedTopic ref that duplicates store.selectedTopic.\n\n**Solution:**\n\n1. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 10)\n   - Remove: `const cachedTopic = ref<CachedTopic | null>(null);`\n   - Add: `const cachedTopic = computed(() => store.selectedTopic.value);`\n\n2. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 41-55: loadTopicData function)\n   - Remove: `cachedTopic.value = topic as CachedTopic;` (line 45)\n   - Remove: `cachedTopic.value = fresh;` (line 50)\n   - Keep: `store.updateSelectedTopic(fresh);` (line 51)\n   - After fetch: data flows from store -> computed -> template\n\n3. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 29-30: suggestedQuestions computed)\n   - Change: `cachedTopic.value?.title` -> `store.selectedTopic.value?.title` (or use computed alias)\n\n4. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 13-18: allPosts computed)\n   - No change needed — reads from cachedTopic.value which is now a computed pointing to store\n\n**Acceptance Criteria:**\n- No ref<CachedTopic | null> for cachedTopic in ResearchView\n- cachedTopic is a computed: computed(() => store.selectedTopic.value)\n- loadTopicData() fetches fresh from IDB via sendMessage(), then calls store.updateSelectedTopic(fresh)\n- Research history still saves correctly via sendMessage('SAVE_CACHED_TOPIC')\n- npm run compile passes with zero errors",
         "testStrategy": "1. npm run compile — zero errors\n2. Select a topic -> navigate to ResearchView -> verify posts load\n3. Ask a research question -> verify answer displays\n4. Verify research history persists after page reload\n5. Switch to another topic and back -> verify history loads correctly",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thay thế khai báo ref cachedTopic bằng computed từ store.selectedTopic",
+            "description": "Xóa dòng `const cachedTopic = ref<CachedTopic | null>(null);` và thêm `const cachedTopic = computed(() => store.selectedTopic.value);` trong ResearchView.vue (dòng 10)",
+            "dependencies": [],
+            "details": "Sửa file entrypoints/sidepanel/views/ResearchView.vue, thay thế khai báo biến cachedTopic từ ref sang computed để đọc dữ liệu từ store. Đảm bảo kiểu dữ liệu tương thích.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật hàm loadTopicData để xóa các gán cachedTopic và chỉ dùng store.updateSelectedTopic",
+            "description": "Trong hàm loadTopicData (dòng 41-55), xóa các lệnh gán `cachedTopic.value = topic as CachedTopic;` (dòng 45) và `cachedTopic.value = fresh;` (dòng 50), giữ lại `store.updateSelectedTopic(fresh);` (dòng 51). Đảm bảo dữ liệu sau khi fetch sẽ tự động cập nhật qua computed.",
+            "dependencies": [
+              1
+            ],
+            "details": "Chỉnh sửa file entrypoints/sidepanel/views/ResearchView.vue, loại bỏ các dòng gán trực tiếp vào cachedTopic, chỉ để store cập nhật.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật computed suggestedQuestions để sử dụng store.selectedTopic",
+            "description": "Thay đổi `cachedTopic.value?.title` thành `store.selectedTopic.value?.title` trong computed suggestedQuestions (dòng 29-30) để đồng bộ với nguồn dữ liệu mới.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sửa file entrypoints/sidepanel/views/ResearchView.vue, đảm bảo suggestedQuestions sử dụng store.selectedTopic thay vì cachedTopic.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra và cập nhật các tham chiếu còn lại đến cachedTopic trong template và computed",
+            "description": "Rà soát toàn bộ file ResearchView.vue, bao gồm template và các computed khác (ví dụ allPosts) để đảm bảo không còn tham chiếu trực tiếp đến ref cachedTopic, nếu có thì chuyển sang dùng computed hoặc store. Kiểm tra allPosts không cần thay đổi vì đã đọc từ cachedTopic (giờ là computed).",
+            "dependencies": [
+              1
+            ],
+            "details": "Xác nhận rằng cachedTopic (now computed) hoạt động tốt với template và các computed khác. Sửa nếu cần.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Biên dịch và chạy kiểm tra chấp nhận",
+            "description": "Chạy npm run compile để đảm bảo không có lỗi. Thực hiện các kiểm tra chức năng: chọn chủ đề, kiểm tra bài đăng, trả lời nghiên cứu, lịch sử nghiên cứu sau tải lại, chuyển chủ đề và quay lại.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Đảm bảo không lỗi biên dịch, chức năng hoạt động đúng. Sửa lỗi nếu có.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-11T17:08:00.542Z"
       },
       {
         "id": "131",
@@ -1060,9 +1122,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T17:03:30.308Z",
+      "lastModified": "2026-05-11T17:08:00.543Z",
       "taskCount": 61,
-      "completedCount": 56,
+      "completedCount": 57,
       "tags": [
         "master"
       ]

@@ -7,14 +7,16 @@ import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
-const cachedTopic = ref<CachedTopic | null>(null);
+
+const store = useTopicStore();
+const cachedTopic = computed(() => store.selectedTopic.value);
 
 // Posts may live in segments (F20 Unified Segment Mode) rather than top-level posts
 const allPosts = computed(() => {
   const t = cachedTopic.value;
   if (!t) return [];
-  if (t.posts?.length) return t.posts;
-  return t.segments?.flatMap(s => s.posts ?? []) ?? [];
+  const posts = t.posts?.length ? t.posts : t.segments?.flatMap(s => s.posts ?? []) ?? [];
+  return [...posts]; // mutable copy for runResearch
 });
 const question = ref('');
 const isLoading = ref(false);
@@ -22,7 +24,6 @@ const error = ref<string | null>(null);
 const history = ref<ResearchEntry[]>([]);
 const llmTaskId = ref<string | null>(null);
 const { researchTopic: runResearch } = useLLM();
-const store = useTopicStore();
 
 // Suggested questions derived from the topic title
 const suggestedQuestions = computed(() => {
@@ -42,12 +43,10 @@ async function loadTopicData() {
   const topic = store.selectedTopic.value;
   if (!topic) return;
   loadedTopicUrl.value = topic.url;
-  cachedTopic.value = topic as CachedTopic;
   history.value = [...(topic.researchHistory ?? [])];
   try {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (fresh) {
-      cachedTopic.value = fresh;
       store.updateSelectedTopic(fresh);
       history.value = fresh.researchHistory ?? [];
     }

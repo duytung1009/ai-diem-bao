@@ -29,7 +29,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const scrapingWarnings = ref<string[]>([]);
   const scrapingInfo = ref<string[]>([]);
   const currentConfig = ref<LLMConfig | null>(null);
-  const cachedTopic = ref<CachedTopic | null>(null);
+  const cachedTopic = computed(() => store.selectedTopic.value);
   const cacheFreshness = ref<CacheFreshness | null>(null);
   const segmentSize = ref(20);
   const segmentSummaries = ref<TopicSegment[]>([]);
@@ -112,7 +112,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   // --- Watch ---
   watch(activeTabPostCount, (newCount) => {
     if (cachedTopic.value && newCount > 0) {
-      cacheFreshness.value = evaluateFreshness(cachedTopic.value, newCount);
+      cacheFreshness.value = evaluateFreshness(cachedTopic.value as unknown as CachedTopic, newCount);
     }
   });
 
@@ -127,15 +127,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     try {
       const { posts, threadDeleted, threadLocked } = await scrapePageRange(topic.version, topic.url, 1, 1);
       if (threadDeleted) {
-        if (cachedTopic.value) {
-          await saveTopic(cachedTopic.value, { threadDeleted: true });
-        }
+        await saveTopic(topic, { threadDeleted: true });
         return;
       }
       if (threadLocked) {
-        if (cachedTopic.value) {
-          await saveTopic(cachedTopic.value, { threadLocked: true });
-        }
+        await saveTopic(topic, { threadLocked: true });
         return;
       }
       if (!posts.length) return;
@@ -143,9 +139,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const { isNews } = detectNewsThread(posts, forumDomain);
       const topicType: 'news' | 'discussion' = isNews ? 'news' : 'discussion';
       // Guard: topic must still be the one we detected for
-      if (!cachedTopic.value?.url || !isSameTopicUrl(cachedTopic.value.url, topic.url) || cachedTopic.value.topicType) return;
+      const currentUrl = store.selectedTopic.value?.url;
+      if (!currentUrl || !isSameTopicUrl(currentUrl, topic.url) || store.selectedTopic.value?.topicType) return;
       // Update in-memory so badge shows immediately, sync store so App.vue TopicMeta reacts
-      cachedTopic.value = { ...cachedTopic.value, topicType };
       store.updateSelectedTopic({ topicType });
       // Only persist if the topic has already been summarized
       if (topic.summary) {
@@ -223,14 +219,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     isScraping.value = false;
     scrapingWarnings.value = [];
     scrapingInfo.value = [];
-    cachedTopic.value = null;
     cacheFreshness.value = null;
     segmentSummaries.value = [];
     activeSegmentIndex.value = null;
     dynamicSegmentBoundaries.value = [];
 
     loadedTopicUrl.value = topic.url;
-    cachedTopic.value = topic as CachedTopic;
     if (topic.summary) {
       summary.value = topic.summary;
     }
@@ -264,9 +258,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       if (fresh) {
-        cachedTopic.value = effectiveForumPostCount !== fresh.forumPostCount
-          ? { ...fresh, forumPostCount: effectiveForumPostCount, ...threadStatusUpdates }
-          : { ...fresh, ...threadStatusUpdates };
         store.updateSelectedTopic({
           totalPages: fresh.totalPages,
           totalPosts: fresh.totalPosts,
@@ -438,7 +429,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
       const isNewsThread = segPosts.some(p => p.postNumber < 0);
       if (isNewsThread && cachedTopic.value) {
-        cachedTopic.value = { ...cachedTopic.value, topicType: 'news' };
         store.updateSelectedTopic({ topicType: 'news' });
       }
 
@@ -541,8 +531,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           summarizedPostCount: segTotalPosts,
         });
         store.updateSelectedTopic({ summary: newSeg.summary, summarizedPostCount: segTotalPosts });
-        const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-        if (saved) cachedTopic.value = saved;
         cacheFreshness.value = 'fresh';
       }
     } catch (err) {
@@ -584,8 +572,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         summarizedPostCount: seg.postCount,
       });
       store.updateSelectedTopic({ summary: seg.summary, summarizedPostCount: seg.postCount });
-      const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-      if (saved) cachedTopic.value = saved;
       cacheFreshness.value = 'fresh';
       return;
     }
@@ -630,8 +616,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         summarizedPostCount: totalSummarized,
       });
       store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized });
-      const saved = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
-      if (saved) cachedTopic.value = saved;
       cacheFreshness.value = 'fresh';
     } catch (err) {
       if (thisId !== activeSummarizeId) return;
@@ -1011,7 +995,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           msg => { scrapingInfo.value = [...scrapingInfo.value, msg]; },
         );
         if (enrichedPosts.some(p => p.postNumber < 0) && cachedTopic.value) {
-          cachedTopic.value = { ...cachedTopic.value, topicType: 'news' };
           store.updateSelectedTopic({ topicType: 'news' });
         }
         simpleLoadingText.value = '';

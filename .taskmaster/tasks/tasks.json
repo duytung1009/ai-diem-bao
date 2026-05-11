@@ -1144,14 +1144,81 @@
         "id": "132",
         "title": "Phase 4: Eliminate Triple-State in useSummarize (Critical)",
         "description": "Remove local cachedTopic ref in useSummarize.ts (1216 lines). Replace with computed pointing to store. Remove ALL cachedTopic.value = {...} assignments — only store.updateSelectedTopic() mutates data.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           "131"
         ],
         "details": "**Problem:** useSummarize.ts is the heaviest composable and source of most sync bugs. Local cachedTopic ref mirrors store.selectedTopic. Every operation performs dual-write.\n\n**Key Dual-Write Locations to Fix:**\n\n| Line | Current Pattern | Fix |\n|------|----------------|-----|\n| 32 | `const cachedTopic = ref<...>(null)` | Replace with `computed(() => store.selectedTopic.value)` |\n| 148-149 | `cachedTopic.value = {...}; store.updateSelectedTopic({topicType})` | Remove cachedTopic assignment, keep only store.updateSelectedTopic() |\n| 233 | `cachedTopic.value = topic as CachedTopic` | Remove — data already in store via selectTopic() |\n| 267-279 | `cachedTopic.value = {...}; store.updateSelectedTopic({...})` | Remove cachedTopic assignment, merge all fields into store.updateSelectedTopic() |\n| 441-442 | `cachedTopic.value = {...}; store.updateSelectedTopic({topicType: 'news'})` | Remove cachedTopic assignment |\n| 543-545 | `store.updateSelectedTopic(...); if (saved) cachedTopic.value = saved` | Remove cachedTopic assignment |\n| 586-588 | `store.updateSelectedTopic(...); if (saved) cachedTopic.value = saved` | Remove cachedTopic assignment |\n| 632-634 | `store.updateSelectedTopic(...); if (saved) cachedTopic.value = saved` | Remove cachedTopic assignment |\n| 1014-1015 | `cachedTopic.value = {...}; store.updateSelectedTopic({topicType: 'news'})` | Remove cachedTopic assignment |\n\n**Detailed Steps:**\n\n1. **Line 32:** Remove `const cachedTopic = ref<CachedTopic | null>(null);`\n   Add: `const cachedTopic = computed(() => store.selectedTopic.value);`\n\n2. **Line 60-61 (summarizedPostCount computed):**\n   Change `cachedTopic.value` references — already works via computed alias\n\n3. **Line 110 (isNewsTopic computed):**\n   Change `cachedTopic.value` references — already works via computed alias\n\n4. **Line 113-117 (watch activeTabPostCount):**\n   Change `cachedTopic.value` to `store.selectedTopic.value` in the watch callback\n\n5. **Line 126-155 (detectAndCacheTopicType):**\n   - Line 130-133: Remove `cachedTopic.value` checks for threadDeleted — use store.selectedTopic.value\n   - Line 136-139: Remove `cachedTopic.value` checks for threadLocked — use store.selectedTopic.value\n   - Line 146: Guard check — change `cachedTopic.value?.url` to `store.selectedTopic.value?.url`\n   - Line 148: Remove `cachedTopic.value = {...}` — keep only `store.updateSelectedTopic({ topicType })`\n\n6. **Line 210-320 (loadTopicData):**\n   - Line 226: Remove `cachedTopic.value = null;` — use `store.clearSelection()` if needed, or just set local vars\n   - Line 233: Remove `cachedTopic.value = topic as CachedTopic;`\n   - Line 267-269: Remove `cachedTopic.value = {...}` — merge all fields into store.updateSelectedTopic()\n   - The store.updateSelectedTopic() call at line 270-279 should include ALL fields from fresh data\n\n7. **Line 441-442, 1014-1015 (news detection during summarize):**\n   - Remove `cachedTopic.value = {...}` — keep only `store.updateSelectedTopic({ topicType: 'news' })`\n\n8. **Line 543-545, 586-588, 632-634 (save operations):**\n   - Remove `if (saved) cachedTopic.value = saved;` lines\n   - The store is already updated via updateSelectedTopic() before the save\n\n9. **Export:** Ensure `cachedTopic` computed is in the return object so SummaryView can destructure it\n\n**Acceptance Criteria:**\n- No ref<CachedTopic | null> for cachedTopic in useSummarize\n- cachedTopic is a computed: computed(() => store.selectedTopic.value)\n- Zero `cachedTopic.value = {...}` assignments remain\n- isNewsTopic, summarizedPostCount, topicInfo computed properties work correctly\n- loadTopicData() updates store via store.updateSelectedTopic() with fresh IDB data\n- All summarize operations update store correctly\n- News type detection updates store correctly\n- npm run compile passes with zero errors",
         "testStrategy": "1. npm run compile — zero errors\n2. Select a topic -> SummaryView loads -> verify posts, summary, segments display\n3. Summarize a single segment -> verify summary shows instantly\n4. Run auto-summarize all -> verify progress and results\n5. Generate overall summary -> verify it displays\n6. Detect news topic -> verify 'Tin tức' badge shows immediately\n7. Reload page -> verify all data persists\n8. Switch between topics -> verify correct data loads each time",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thay thế cachedTopic ref bằng computed và cập nhật các computed khác",
+            "description": "Thay thế khai báo const cachedTopic = ref<CachedTopic | null>(null) bằng computed(() => store.selectedTopic.value). Cập nhật các computed summarizedPostCount và isNewsTopic để hoạt động với cachedTopic mới. Cập nhật watch activeTabPostCount để sử dụng store.selectedTopic.value thay vì cachedTopic.value.",
+            "dependencies": [],
+            "details": "Sửa dòng 32: xóa ref, thêm computed. Dòng 60-61: đảm bảo summarizedPostCount dùng cachedTopic (computed). Dòng 110: isNewsTopic dùng cachedTopic. Dòng 113-117: watch callback dùng store.selectedTopic.value.",
+            "status": "done",
+            "testStrategy": "Kiểm tra kiểu biến cachedTopic là computed, không còn ref. Đảm bảo các computed khác vẫn hoạt động chính xác.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:18:18.218Z"
+          },
+          {
+            "id": 2,
+            "title": "Sửa hàm detectAndCacheTopicType: loại bỏ dual-write",
+            "description": "Trong hàm detectAndCacheTopicType (dòng 126-155), thay thế tất cả tham chiếu cachedTopic.value bằng store.selectedTopic.value. Loại bỏ dòng 148 cachedTopic.value = {...}, chỉ giữ store.updateSelectedTopic({ topicType }).",
+            "dependencies": [
+              1
+            ],
+            "details": "Dòng 130-133, 136-139: dùng store.selectedTopic.value. Dòng 146: đổi cachedTopic.value?.url thành store.selectedTopic.value?.url. Dòng 148: xóa gán cachedTopic.value, giữ nguyên store.updateSelectedTopic.",
+            "status": "done",
+            "testStrategy": "Kiểm tra không còn cachedTopic.value trong hàm. Đảm bảo store.updateSelectedTopic vẫn được gọi đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:19:32.672Z"
+          },
+          {
+            "id": 3,
+            "title": "Sửa hàm loadTopicData: loại bỏ tất cả gán cachedTopic.value",
+            "description": "Trong hàm loadTopicData (dòng 210-320), xóa tất cả các dòng gán cachedTopic.value (dòng 226, 233, 267-269). Thay bằng xóa lựa chọn store hoặc merge dữ liệu vào store.updateSelectedTopic. Đảm bảo store được cập nhật đúng với dữ liệu từ IDB.",
+            "dependencies": [
+              1
+            ],
+            "details": "Dòng 226: xóa cachedTopic.value = null; có thể dùng store.clearSelection(). Dòng 233: xóa gán, topic đã được lưu qua selectTopic(). Dòng 267-269: loại bỏ gán, merge các field vào store.updateSelectedTopic ở dòng 270-279.",
+            "status": "done",
+            "testStrategy": "Kiểm tra không còn gán cachedTopic.value. Đảm bảo store.selectedTopic được cập nhật đúng sau khi load.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:23:03.879Z"
+          },
+          {
+            "id": 4,
+            "title": "Sửa phát hiện news và các thao tác save: loại bỏ dual-write",
+            "description": "Trong các đoạn xử lý news detection (dòng 441-442, 1014-1015) và save operations (dòng 543-545, 586-588, 632-634), xóa tất cả gán cachedTopic.value. Chỉ giữ store.updateSelectedTopic cho news detection, và bỏ dòng if (saved) cachedTopic.value = saved trong save operations.",
+            "dependencies": [
+              1
+            ],
+            "details": "Dòng 441-442, 1014-1015: xóa cachedTopic.value = {...}, giữ store.updateSelectedTopic({ topicType: 'news' }). Dòng 543-545, 586-588, 632-634: xóa if (saved) cachedTopic.value = saved. Store đã được cập nhật trước đó.",
+            "status": "done",
+            "testStrategy": "Kiểm tra không còn gán cachedTopic.value. Đảm bảo các thao tác save không gây lỗi.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:23:25.219Z"
+          },
+          {
+            "id": 5,
+            "title": "Cập nhật export, chạy compile và xác nhận acceptance criteria",
+            "description": "Đảm bảo cachedTopic computed được export trong return object của useSummarize để SummaryView có thể destructure. Chạy npm run compile để xác nhận không lỗi. Kiểm tra tất cả acceptance criteria: không còn ref, không gán cachedTopic.value, các computed hoạt động, loadTopicData, summarize, news detection hoạt động đúng.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Kiểm tra return object của useSummarize có cachedTopic. Chạy npm run compile. Kiểm tra thủ công: chọn topic, load posts, summarize, auto-summarize, generate overall summary, detect news, save. Xác nhận không còn dual-write.",
+            "status": "done",
+            "testStrategy": "npm run compile không lỗi. Kiểm tra chức năng theo acceptance criteria.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T17:24:43.844Z"
+          }
+        ],
+        "updatedAt": "2026-05-11T17:24:43.844Z"
       },
       {
         "id": "133",
@@ -1182,9 +1249,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T17:14:24.890Z",
+      "lastModified": "2026-05-11T17:24:43.846Z",
       "taskCount": 61,
-      "completedCount": 58,
+      "completedCount": 59,
       "tags": [
         "master"
       ]

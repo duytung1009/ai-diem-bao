@@ -191,7 +191,7 @@ function getSentimentColor(sentiment: string): string {
         </button>
       </div>
 
-      <TopicMeta v-if="store.selectedTopic.value" :topic="store.selectedTopic.value" />
+      <TopicMeta v-if="store.selectedTopic.value" :topic="store.selectedTopic.value as CachedTopic" />
 
       <h2 class="font-semibold text-sm text-(--color-text-primary)">Phân tích Ý kiến</h2>
 

@@ -590,12 +590,14 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
       // Stale guard
       if (thisId !== activeSummarizeId) {
-        const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+        const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
+          segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
         await saveTopic(topic, {
           forumPostCount: store.activeTabDetect.value?.postCount,
           summary: overallSummaryText,
           summaryJson: overallSummaryJson ?? undefined,
           summarizedPostCount: totalSummarized,
+          segments: segmentSummaries.value,
         }).catch(() => {});
         return;
       }
@@ -604,7 +606,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       summaryJson.value = overallSummaryJson;
       activeSegmentIndex.value = null;
 
-      const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+      const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
+        segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
       await sendMessage('SAVE_CACHED_TOPIC', {
         url: topic.url,
         title: topic.title,
@@ -614,8 +617,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         summary: overallSummaryText,
         summaryJson: overallSummaryJson ?? undefined,
         summarizedPostCount: totalSummarized,
+        segments: segmentSummaries.value,
       });
-      store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized });
+      store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized, segments: segmentSummaries.value });
       cacheFreshness.value = 'fresh';
     } catch (err) {
       if (thisId !== activeSummarizeId) return;

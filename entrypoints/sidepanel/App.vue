@@ -159,12 +159,12 @@ function navigateTo(path: string) {
 
     <!-- Tab Navigation -->
     <nav class="bg-(--color-bg-surface) border-b border-(--color-border) flex">
-      <router-link to="/" class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'hub'
+      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'hub'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-        ">
+        " @click="navigateTo('/')">
         Chủ đề
-      </router-link>
+      </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'summary'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : hasSelectedTopic
@@ -189,12 +189,18 @@ function navigateTo(path: string) {
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/research')">
         Tra cứu
       </button>
-      <router-link to="/settings" class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
+      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-        ">
+        " @click="navigateTo('/settings')">
         Cài đặt
-      </router-link>
+      </button>
+      <button title="Hướng dẫn sử dụng" class="w-8 text-center py-2.5 text-sm font-bold transition-colors shrink-0" :class="route.name === 'help'
+          ? 'text-blue-600 border-b-2 border-blue-600'
+          : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
+        " @click="navigateTo('/help')">
+        ?
+      </button>
     </nav>
 
     <!-- Content -->

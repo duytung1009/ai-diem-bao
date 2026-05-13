@@ -2,1386 +2,420 @@
   "master": {
     "tasks": [
       {
-        "id": "101",
-        "title": "Phase 1-4: Initial Extension Setup",
-        "description": "Các phase đầu: WXT scaffold, Vue router, XenForo detector, scraper, OpenAI adapter, sidepanel UI, TopicHub, SummaryView, SettingsView.",
-        "status": "done",
+        "id": "135",
+        "title": "Create HelpView.vue component skeleton",
+        "description": "Create the HelpView.vue file with basic container layout using Tailwind CSS, following the app's existing conventions (card, p-4, space-y-4).",
+        "details": "Create `entrypoints/sidepanel/views/HelpView.vue`. Use template with a div `class=\"p-4 space-y-4\"`. Add placeholder sections with headings for the three main sections. Ensure the file exports a default Vue component with a name (e.g., 'HelpView').",
+        "testStrategy": "Open extension sidepanel and navigate to `/help` route (once router is set up) to verify component renders without errors and layout is correct. Also run `npm run compile` to ensure no compilation issues.",
         "priority": "high",
         "dependencies": [],
-        "details": "planning: planning/20260314_2216_phase-1.md\nplanning: planning/20260314_2216_phase-2.md\nplanning: planning/20260314_2216_phase-3.md\nplanning: planning/20260314_2216_phase-4.md\nreview: review/20260317_0915_phase-3.md\nreview: review/20260317_0958_phase-4.md\nreview: review/20260318_1650_final-review.md",
-        "subtasks": []
-      },
-      {
-        "id": "102",
-        "title": "Phase 5: Claude Adapter + Opinions + ResearchView",
-        "description": "ClaudeAdapter, phân tích ý kiến (opinions), ResearchView, TopicMeta component, bug fixes từ final review.",
         "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "101"
-        ],
-        "details": "planning: planning/20260318_1859_phase-5.md\nreview: review/20260318_2033_phase-5.md",
-        "subtasks": []
-      },
-      {
-        "id": "103",
-        "title": "Early Bug Fixes: duplicate URL, hub UI, race condition, hub loading",
-        "description": "4 bug fixes từ initial testing: duplicate topic URL, remove summarize button from hub, opinions empty state style, detect race condition, hub loading stuck.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "102"
-        ],
-        "details": "planning: planning/20260318_2114_fix-duplicate-topic-url.md\nplanning: planning/20260318_2114_fix-hub-remove-summarize-button.md\nplanning: planning/20260318_2114_fix-opinions-empty-state-style.md\nplanning: planning/20260318_2254_fix-detect-race-condition.md\nplanning: planning/20260318_2254_fix-hub-loading-stuck.md",
-        "subtasks": []
-      },
-      {
-        "id": "1",
-        "title": "F01: Delete Topic",
-        "description": "Delete button per topic card + 'Xóa tất cả cache' trong Settings.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "103"
-        ],
-        "details": "planning: planning/20260319_0920_01-feature-delete-topic.md\nreview: review/20260319_1059_features-01-to-06.md",
-        "subtasks": []
-      },
-      {
-        "id": "2",
-        "title": "F02: Default Prompt Display",
-        "description": "Toggle 'Xem prompt mặc định' dưới textarea trong Settings.",
-        "status": "done",
-        "priority": "low",
-        "dependencies": [
-          "103"
-        ],
-        "details": "planning: planning/20260319_0920_02-feature-default-prompt-display.md\nreview: review/20260319_1059_features-01-to-06.md",
-        "subtasks": []
-      },
-      {
-        "id": "3",
-        "title": "F03: Realtime Summary Status",
-        "description": "summarizingUrl ref + temp topic card trong hub khi đang tóm tắt.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "103"
-        ],
-        "details": "planning: planning/20260319_0920_03-feature-realtime-summary-status.md\nreview: review/20260319_1059_features-01-to-06.md",
-        "subtasks": []
-      },
-      {
-        "id": "4",
-        "title": "F04: Design System + Styling Rules",
-        "description": "Design tokens CSS vars, @utility classes (btn, card, badge, alert), STYLE_GUIDE.md.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "103"
-        ],
-        "details": "planning: planning/20260319_0920_04-feature-styling-rules.md\nreview: review/20260319_1059_features-01-to-06.md",
-        "subtasks": []
-      },
-      {
-        "id": "5",
-        "title": "F05: Dark Mode",
-        "description": "useTheme composable, class-based .dark trên <html>, Settings selector.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "4"
-        ],
-        "details": "planning: planning/20260319_0920_05-feature-dark-mode.md\nreview: review/20260319_1059_features-01-to-06.md",
-        "subtasks": []
-      },
-      {
-        "id": "6",
-        "title": "F06: Gemini Provider",
-        "description": "GeminiAdapter, Gemini REST API, 4 model options.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "103"
-        ],
-        "details": "planning: planning/20260319_0920_06-feature-gemini-provider.md\nreview: review/20260319_1059_features-01-to-06.md",
-        "subtasks": []
-      },
-      {
-        "id": "104",
-        "title": "Bug Fixes: cache display, stale summary, message timeout, auto-update",
-        "description": "refreshCacheSize trong onMounted+onActivated; reset state trong loadTopicData(); onActivated skip khi đang summarize; chunked scraping + fire-and-forget LLM; fix auto-update overwrite totalPosts.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "1",
-          "2",
-          "3",
-          "4",
-          "5",
-          "6"
-        ],
-        "details": "planning: planning/20260319_0920_fix-cache-display.md\nplanning: planning/20260319_1327_fix-stale-summary-on-topic-switch.md\nplanning: planning/20260319_2254_fix-auto-update-overwrites-totalPosts.md",
-        "subtasks": []
-      },
-      {
-        "id": "7",
-        "title": "F07: IndexedDB Cache",
-        "description": "cache-db.ts IndexedDB wrapper, rewrite cache-manager.ts, IDB migration từ localStorage.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "104"
-        ],
-        "details": "planning: planning/20260319_1137_07-feature-indexeddb-cache.md\nreview: review/20260319_2320_features-07-to-10.md",
-        "subtasks": []
-      },
-      {
-        "id": "8",
-        "title": "F08: Topic URL Refresh + Auto-Update Cache",
-        "description": "URL navigation detection, auto-update cache khi topic có post mới, remove ExportButton, fix CacheIndicator livePostCount.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "7"
-        ],
-        "details": "planning: planning/20260319_1327_08-feature-topic-url-refresh-cleanup.md\nreview: review/20260319_2320_features-07-to-10.md",
-        "subtasks": []
-      },
-      {
-        "id": "9",
-        "title": "F09: Detect Search + Opinions",
-        "description": "Thread-only detect, hub search+sort, opinion support bars.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "8"
-        ],
-        "details": "planning: planning/20260319_1450_09-feature-detect-search-opinions.md\nreview: review/20260319_2320_features-07-to-10.md",
-        "subtasks": []
-      },
-      {
-        "id": "10",
-        "title": "F10: Smart Scraping",
-        "description": "Incremental scraping, news detection + article fetch, Segment Mode.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "9"
-        ],
-        "details": "planning: planning/20260319_1710_10-feature-smart-scraping.md\nreview: review/20260319_2320_features-07-to-10.md",
-        "subtasks": []
-      },
-      {
-        "id": "105",
-        "title": "Bug Fixes: segment mode, stale summarize guard, post count, save metadata",
-        "description": "Version metadata, normalize URL compare, handleSegmentUpdate; activeSummarizeId invalidation; summarizedPostCount field; đủ metadata trong SAVE_CACHED_TOPIC; segment mode metadata lost on return.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "10"
-        ],
-        "details": "planning: planning/20260320_1148_fix-segment-mode-bugs.md\nplanning: planning/20260320_2227_fix-stale-summarize-guard.md\nplanning: planning/20260320_2323_fix-summarized-post-count.md\nplanning: planning/20260321_0337_fix-stale-save-missing-metadata.md\nplanning: planning/20260321_0500_fix-segment-mode-metadata-lost-on-return.md",
-        "subtasks": []
-      },
-      {
-        "id": "11",
-        "title": "F11: Rate Limiter + UI Fixes",
-        "description": "Rate limiter slider, UI overflow fix, cursor pointer, segment size config.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "10"
-        ],
-        "details": "planning: planning/20260320_1042_11-feature-rate-limiter-and-ui-fix.md",
-        "subtasks": []
-      },
-      {
-        "id": "12",
-        "title": "F12: Scrape Any Tab",
-        "description": "Scrape từ any forum tab (không chỉ active tab), findForumTab().",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "11"
-        ],
-        "details": "planning: planning/20260320_1319_12-feature-scrape-any-tab.md\nreview: review/20260320_2121_feature-12-scrape-any-tab.md",
-        "subtasks": []
-      },
-      {
-        "id": "13",
-        "title": "F13: Fire-and-Forget LLM Progress",
-        "description": "START_LLM_TASK + LLM_RESULT messaging, useLLM task manager, LLMProgress.vue, ETA stats.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "12",
-          "105"
-        ],
-        "details": "planning: planning/20260320_1633_13-feature-fire-and-forget-llm-progress.md\nreview: review/20260321_1500_feature-13-fire-and-forget-llm-progress.md",
-        "subtasks": []
-      },
-      {
-        "id": "14",
-        "title": "F14: Custom Chunk & Reduce Prompt Templates",
-        "description": "Thêm 2 tab mới 'Tóm tắt phần' và 'Gộp tóm tắt' vào Settings → Prompt Templates, cho phép user tùy chỉnh CHUNK_SUMMARY_PROMPT (map) và REDUCE_SUMMARY_PROMPT (reduce).",
-        "status": "done",
-        "priority": "low",
-        "dependencies": [
-          "13"
-        ],
-        "details": "planning: planning/20260321_1450_14-feature-custom-chunk-reduce-prompts.md\n\nAffected modules:\n- lib/types.ts — mở rộng CustomPrompts interface (thêm chunkSummaryPrompt, reduceSummaryPrompt)\n- lib/llm/summarizer.ts — thread custom prompts qua toàn bộ pipeline\n- entrypoints/sidepanel/views/SettingsView.vue — thêm 2 tab UI\n\nBackground index.ts không cần sửa — prompts từ getCustomPrompts() đã pass vào tất cả 4 hàm LLM.",
-        "testStrategy": "Test custom chunk prompt override → verify LLM nhận đúng prompt. Test custom reduce prompt. Test fallback về default khi field rỗng.",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:25:22.767Z"
-      },
-      {
-        "id": "106",
-        "title": "Bug Fix: Wrong Post Count Display",
-        "description": "cachedTopic.posts, posts vào updateSelectedTopic, max(detected, cached) pageCount.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "13"
-        ],
-        "details": "planning: planning/20260325_2143_fix-wrong-post-count-display.md",
-        "subtasks": []
-      },
-      {
-        "id": "15",
-        "title": "F15+F16: JSON Structured Output + Persist Scraping",
-        "description": "SummaryJSON structured output, persist posts trước LLM (early-save).",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "106"
-        ],
-        "details": "planning: planning/20260330_1220_batch_json-output-and-persist-scraping.md",
-        "subtasks": []
-      },
-      {
-        "id": "17",
-        "title": "F17: Unified Progress Indicator",
-        "description": "Unified progress indicator cho scraping + LLM phases.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "15"
-        ],
-        "details": "planning: planning/20260330_1400_17-feature-unified-progress-indicator.md",
-        "subtasks": []
-      },
-      {
-        "id": "18",
-        "title": "F18: Scrape in Sidepanel",
-        "description": "Scrape via scrapePageRange trong sidepanel (bypass content script limitations).",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "17"
-        ],
-        "details": "planning: planning/20260331_2038_18-feature-scrape-in-sidepanel.md\nreview: review/20260331_2110_tier2_feature-18-scrape-in-sidepanel.md",
-        "subtasks": []
-      },
-      {
-        "id": "107",
-        "title": "Bug Fixes: JSON parsing, CSP violations, segment sparse array",
-        "description": "parseSummaryJSON single-backtick; segment retry full-scrape; segment mode JSON output; settings knowledge tab; CSP script violation sidepanel; CSP preload (strip <head>); fix-segment-sparse-array (makeDenseBase(), skip re-scrape nếu posts đã cache).",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "18"
-        ],
-        "details": "planning: planning/20260401_1123_fix-knowledge-extraction-timeout.md\nplanning: planning/20260401_1213_fix-csp-script-violation-sidepanel.md\nplanning: planning/20260401_1400_fix-segment-sparse-array-and-rescrape.md",
-        "subtasks": []
-      },
-      {
-        "id": "108",
-        "title": "Refactor: Technical Debt Batch",
-        "description": "Batch refactor technical debt: typing, unused imports, LLM settings per-provider, miscellaneous cleanup. Commit ecc8559.",
-        "status": "done",
-        "priority": "low",
-        "dependencies": [
-          "18"
-        ],
-        "details": "planning: planning/20260401_1330_batch_refactor-technical-debt.md",
-        "subtasks": []
-      },
-      {
-        "id": "19",
-        "title": "F19: Cross-Segment Author Deduplication",
-        "description": "Phân tách trách nhiệm: LLM làm semantic grouping, code làm exact dedup (đếm tác giả duy nhất cross-segment, xây bảng thống kê).",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "20"
-        ],
-        "details": "planning: planning/20260402_1409_19-feature-cross-segment-author-dedup.md\n\nVấn đề: LLM không dedup chính xác tác giả xuất hiện ở nhiều segment. Nghiêm trọng hơn khi segment count > 20.\n\nAffected modules:\n- lib/llm/summarizer.ts — buildAuthorCrossReference(), deduplicateSupporters(), sửa summarizeSegments()\n- lib/prompts.ts — cập nhật REDUCE_SUMMARY_PROMPT với instruction bảng tác giả",
-        "testStrategy": "Test với topic có tác giả xuất hiện ở nhiều segment. Verify supporter count không bị inflate. Verify giảm LLM hallucination ở opinion grouping.",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:22:31.902Z"
-      },
-      {
-        "id": "20",
-        "title": "F20: Unified Segment Mode",
-        "description": "Unify Normal+Segment Mode → always Segment; isSegmentMode=Boolean(topicInfo); backward compat legacy topics; single-segment fast path.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "107",
-          "108"
-        ],
-        "details": "planning: planning/20260402_1600_20-feature-segment-ui-progress.md\nCommits: d9dbdca, 934f329",
-        "subtasks": []
-      },
-      {
-        "id": "21",
-        "title": "F21: News Topic Badge + CacheIndicator Refactor",
-        "description": "Auto-detect news thread (detectAndCacheTopicType fire-and-forget), badge 'Tin tức', CacheIndicator refactor, countRealPosts fix, DeepReadonly<CachedTopic> type safety.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "20"
-        ],
-        "details": "Không có planning file riêng — implemented directly.\ntask: .taskmaster/tasks/20260407_1500_task_21-feature-news-topic-badge.md",
-        "subtasks": []
-      },
-      {
-        "id": "22",
-        "title": "F22: Knowledge Tab Improvements",
-        "description": "Collapse/expand entries (CSS Grid animation), timestamp display, save/unsave (bookmark), delete + excludedKnowledgePostNumbers, 'Saved only' filter, incremental re-extract, clear tracking.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "21"
-        ],
-        "details": "planning: planning/20260409_1120_22-feature-knowledge-tab-improvements.md\nreview: review/20260410_0900_tier2_feature-22-knowledge-tab-improvements.md\n\nReview: approve; 3 minor issues open:\n1. Math.max no fallback\n2. Stale URL after async\n3. Filter not reset on clear-tracking re-extract",
-        "subtasks": []
-      },
-      {
-        "id": "109",
-        "title": "Bug Fixes: JSON parsing, tree-reduce, isnewstopic sync",
-        "description": "repairUnescapedQuotes + NBSP + control chars trong parseSummaryJSON; summarizeSegments tree-reduce thực sự (đệ quy); fix-gemini-finish-reason; fix-openai-truncated-json; fix-isnewstopic-store-sync (useSummarize set topicType nhưng không sync store).",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "22"
-        ],
-        "details": "Commits: 8b55a51 (repairUnescapedQuotes), 4b2ab0d (gemini), b34cb2e+894df83 (openai truncated)\nreview: review/20260410_1900_tier3_summarize-segments-tree-reduce.md\nreview: review/20260410_2030_tier3_summarize-tree-reduce-review-fixes.md",
-        "subtasks": []
-      },
-      {
-        "id": "23",
-        "title": "F23: Dynamic Segments Auto-Summarize",
-        "description": "autoSummarizeDynamic: scrape + tóm tắt từng segment theo real-time context window, LLMConfig.contextWindow override, cost estimator.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "22",
-          "109"
-        ],
-        "details": "planning: planning/20260410_1507_23-feature-dynamic-segments-auto-summarize.md\nreview: review/20260410_1530_tier3_feature-23-dynamic-segments-auto-summarize.md\n\nReview (Opus): request-changes; 1 critical, 3 major, 4 minor, 1 nit — đã fix hết.\nFix: .taskmaster/tasks/20260410_1700_bug_23-review-fixes.md",
-        "subtasks": []
-      },
-      {
-        "id": "110",
-        "title": "Bug Fixes: scrape progress, confirm dialog, post links, post URL page, post number sequential",
-        "description": "fix-scrape-progress-overall-task (regression F23); confirm-before-auto-summarize inline; post-number-as-link; fix-post-url-wrong-page-number (thêm page? vào ScrapedPost); fix-post-number-sequential (data-content thay vì text content).",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "23"
-        ],
-        "details": "task: .taskmaster/tasks/20260411_1053_bug_fix-scrape-progress-overall-task.md\ntask: .taskmaster/tasks/20260411_1650_task_confirm-before-auto-summarize.md\ntask: .taskmaster/tasks/20260411_1700_task_post-number-as-link.md\ntask: .taskmaster/tasks/20260411_1705_bug_post-url-wrong-page-number.md\ntask: .taskmaster/tasks/20260411_1715_bug_post-number-sequential-not-id.md",
-        "subtasks": []
-      },
-      {
-        "id": "24",
-        "title": "F24: Dynamic Chunks Knowledge — Fix Critical Issues",
-        "description": "Fix 1 CRITICAL (topic switch mid-extract → data corruption) + 1 major (stale cachedTopic.value sau persistChunks) từ Opus review.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "23"
-        ],
-        "details": "planning: planning/20260410_2316_24-feature-dynamic-chunks-knowledge.md\nreview (Sonnet, degraded): review/20260411_0030_tier3_feature-24-dynamic-chunks-knowledge.md\nreview (Opus verified): review/20260411_0128_tier3_feature-24-opus-verification.md\n\nCRITICAL (Opus phát hiện, Sonnet bỏ sót):\n- KnowledgeView.loadTopicData() thiếu activeExtractId++ → topic switch mid-extract corrupt cache\n- persistChunks đọc cachedTopic.value!.url tại thời điểm persist thay vì snapshot → chunks Topic A → Topic B\n\nFix order:\n1. activeExtractId++ + state reset trong loadTopicData\n2. Capture topicUrl/topicTitle snapshot đầu handleExtract\n3. Update cachedTopic.value trong persistChunks\n4. Minors: reset search/tags on fresh extract, compact JSON (JSON.stringify(x) thay vì null,2 → ~30% savings)",
-        "testStrategy": "Switch topic khi đang extract → verify không data corruption. Cancel+resume → verify restart đúng chunk. Test compact JSON reduce tokens.",
         "subtasks": [
           {
             "id": 1,
-            "title": "Fix activeExtractId invalidation trong loadTopicData",
-            "status": "done",
-            "description": "Thêm activeExtractId++ + full state reset trong KnowledgeView.loadTopicData() theo pattern F23 (useSummarize.ts:203)",
-            "parentId": "undefined",
-            "updatedAt": "2026-04-23T10:18:00.056Z"
-          },
-          {
-            "id": 2,
-            "title": "Capture topicUrl/topicTitle snapshot tại đầu handleExtract",
-            "status": "done",
-            "description": "const topicUrl = cachedTopic.value!.url ở đầu hàm, không đọc lại trong persistChunks",
-            "parentId": "undefined",
-            "updatedAt": "2026-04-23T10:21:38.644Z"
-          },
-          {
-            "id": 3,
-            "title": "Update cachedTopic.value trong persistChunks",
-            "status": "done",
-            "description": "Sau IDB update, sync cachedTopic.value để resume detect đúng lastKnowledgePostNumber",
-            "parentId": "undefined",
-            "updatedAt": "2026-04-23T10:21:38.668Z"
-          },
-          {
-            "id": 4,
-            "title": "Fix minors: search/tags reset, compact JSON",
-            "status": "done",
-            "description": "Reset search+tags filter khi extract mới. JSON.stringify(x) thay vì null,2 trong reduceKnowledgeChunks",
-            "parentId": "undefined",
-            "updatedAt": "2026-04-23T10:21:38.683Z"
-          }
-        ],
-        "updatedAt": "2026-04-23T10:21:38.683Z"
-      },
-      {
-        "id": "111",
-        "title": "Bug Fixes: export cache, simplify F26 cleanup, knowledge reduce bugs",
-        "description": "export-cache-json (lib/exporter.ts); simplify-f26-cleanup (mergeAbortSignals, dead code, type errors); fix-knowledge-reduce-empty-entries; fix-knowledge-dynamic-entry-cap.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "26",
-          "24",
-          "110"
-        ],
-        "details": "task: .taskmaster/tasks/20260413_1430_task_export-cache-json.md\ntask: .taskmaster/tasks/20260416_1400_task_simplify-f26-cleanup.md (commit b7bf166)\ntask: .taskmaster/tasks/20260416_1500_bug_fix-knowledge-reduce-empty-entries.md\ntask: .taskmaster/tasks/20260417_1447_bug_fix-knowledge-dynamic-entry-cap.md",
-        "subtasks": []
-      },
-      {
-        "id": "112",
-        "title": "Bug Fixes: token overflow, reduce summary word cap, topic-meta refactor",
-        "description": "fix-summarize-token-overflow-maxtokens (willExceedContext hardcode buffer 2000 không tính maxTokens; tree-reduce guard; 1.4× token correction); fix-reduce-summary-word-cap (buildReduceSummaryPrompt(wordCap)); refactor-topic-meta-to-app (lift TopicMeta lên App.vue).",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "111"
-        ],
-        "details": "task: .taskmaster/tasks/20260418_1041_bug_fix-summarize-token-overflow-maxtokens.md\ntask: .taskmaster/tasks/20260419_1400_bug_fix-reduce-summary-word-cap.md\nplanning: planning/20260419_1400_fix-reduce-summary-prompt-word-cap.md\ntask: .taskmaster/tasks/20260410_2210_task_refactor-topic-meta-to-app.md",
-        "subtasks": []
-      },
-      {
-        "id": "25",
-        "title": "F25: Thread Analysis View",
-        "description": "Thêm loại tóm tắt 'Phân tích Thread VOZ' với 8 sections (TỔNG QUAN, USER TIÊU BIỂU, LUỒNG TRANH LUẬN, COMBAT, TIMELINE, COMMENT NỔI BẬT, KẾT LUẬN, KIẾM HIỆP). 2 sub-tab trong Tổng quan, copy plain-text.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "14"
-        ],
-        "details": "planning: planning/20260415_1948_25-feature-thread-analysis-view.md\n\nAffected modules:\n- lib/types.ts — ThreadAnalysisJSON interface + threadAnalysis? field trong CachedTopic\n- lib/prompts.ts — THREAD_ANALYSIS_PROMPT\n- lib/llm/summarizer.ts — generateThreadAnalysis(summaryJson, meta, config)\n- entrypoints/background/index.ts — handler cho task mới trong START_LLM_TASK\n- entrypoints/sidepanel/composables/useSummarize.ts — threadAnalysis ref + handleGenerateAnalysis()\n- entrypoints/sidepanel/components/ThreadAnalysisContent.vue — component mới render 8 sections\n- entrypoints/sidepanel/views/SummaryView.vue — 2 sub-tab 'Tóm tắt' / 'Phân tích'",
-        "testStrategy": "Generate analysis sau khi có summary. Verify 8 sections present. Test copy plain-text. Test persist + reload từ cache. Test với news vs regular topic.",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:25:22.788Z"
-      },
-      {
-        "id": "26",
-        "title": "F26: LLM Cost Guard",
-        "description": "estimateAutoSummarizeCalls + estimateExtractCalls trước khi chạy; warning dialog nếu vượt ngưỡng; lib/llm/cost-estimator.ts.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "23"
-        ],
-        "details": "planning: planning/20260416_0110_26-feature-llm-cost-guard.md\ntask: .taskmaster/tasks/20260416_0115_task_26-feature-llm-cost-guard.md",
-        "subtasks": []
-      },
-      {
-        "id": "27",
-        "title": "Refactor: ConfirmInline Common Component",
-        "description": "Tạo ConfirmInline.vue dùng chung, thay 2 inline confirm pattern ở SummaryView (confirmingAutoSummarize) và KnowledgeView (confirmingExtract).",
-        "status": "done",
-        "priority": "low",
-        "dependencies": [],
-        "details": "planning: planning/20260418_1131_refactor-confirm-dialog-common.md\n\nAffected modules:\n- entrypoints/sidepanel/components/ConfirmInline.vue — tạo mới, props: message, confirmLabel, cancelLabel\n- entrypoints/sidepanel/views/SummaryView.vue — thay inline confirm\n- entrypoints/sidepanel/views/KnowledgeView.vue — thay inline confirm\n\nDesign: block layout, dùng design tokens (btn, card). Không dùng modal overlay.",
-        "testStrategy": "Verify behavior giống hệt inline confirm cũ. Test ở cả 2 views. Test keyboard/click cancel vs confirm.",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:25:22.804Z"
-      },
-      {
-        "id": "28",
-        "title": "Fix: Knowledge Reduce Output Overflow Prevention",
-        "description": "runReducePhase không kiểm tra output budget. Chia thành nhiều call nhỏ nếu finalCap quá lớn cho 1 call, rồi client-side dedup.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "24"
-        ],
-        "details": "planning: planning/20260417_1608_fix-knowledge-output-overflow.md\n\nVấn đề: finalCap = min(150, max(20, chunks×3)) không check output budget. 81 entries × ~100 tokens = ~8.1K output → dễ tràn 16K context.\n\nAffected modules:\n- entrypoints/sidepanel/views/KnowledgeView.vue — runReducePhase (thay đổi chính)\n- lib/constants.ts — TOKENS_PER_KNOWLEDGE_ENTRY = 100, REDUCE_OUTPUT_FRACTION = 0.35\n\nImplementation:\n- maxOutputTokens = contextWindow × REDUCE_OUTPUT_FRACTION\n- maxEntriesPerCall = floor(maxOutputTokens / TOKENS_PER_KNOWLEDGE_ENTRY)\n- Chia input thành batches → concat + dedup by title+source\n- guard finalEntries.length === 0 → throw error",
-        "testStrategy": "Test với topic 27+ chunks → verify không tràn context. Verify dedup loại entries trùng title. Verify guard throw khi empty.",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:25:22.821Z"
-      },
-      {
-        "id": "113",
-        "title": "Refactor: TopicMeta + TopicHubView Consistent Display",
-        "description": "Refactor TopicMeta.vue và topic cards trong TopicHubView.vue để hiển thị thông tin nhất quán: tách totalPosts vs summarizedPostCount, thêm trạng thái tóm tắt (none/in-progress/partial/done), thêm cachedAt timestamp, đổi prop info:DetectResult → topic:CachedTopic, extract topicSummaryStatus() shared helper.",
-        "details": "planning: planning/20260422_1706_refactor-topic-meta-fields.md\\nAffected files: lib/topic-utils.ts (new), entrypoints/sidepanel/components/TopicMeta.vue, entrypoints/sidepanel/App.vue, entrypoints/sidepanel/views/OpinionsView.vue, entrypoints/sidepanel/views/TopicHubView.vue",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "112"
-        ],
-        "priority": "medium",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "UI: đổi badge sang text trong TopicMeta + TopicHubView",
-            "description": "Replace badge-style status/news labels with plain text while preserving existing color semantics and animate-pulse on in-progress state.",
-            "details": "",
-            "status": "done",
+            "title": "Tạo file HelpView.vue và cấu trúc cơ bản",
+            "description": "Tạo file `entrypoints/sidepanel/views/HelpView.vue` với template chứa div container sử dụng Tailwind CSS (class \"p-4 space-y-4\") và các phần placeholder với tiêu đề cho ba phần chính.",
             "dependencies": [],
-            "parentTaskId": 113,
-            "parentId": "undefined"
-          }
-        ],
-        "updatedAt": "2026-04-22T10:34:06.830Z"
-      },
-      {
-        "id": "114",
-        "title": "Step 0: Create lib/topic-utils.ts",
-        "description": "Tạo mới lib/topic-utils.ts với 2 pure functions: topicSummaryStatus(topic, isSummarizing) → 'none'|'in-progress'|'partial'|'done' và formatTopicDate(timestampMs) → string (relative < 24h, absolute >= 24h).",
-        "details": "Export: TopicSummaryStatus type, topicSummaryStatus(), formatTopicDate(). TopicHubView đã có formatRelativeTime() local — thay thế bằng formatTopicDate() để nhất quán.",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "112"
-        ],
-        "priority": "medium",
-        "subtasks": [],
-        "updatedAt": "2026-04-22T10:27:33.658Z"
-      },
-      {
-        "id": "115",
-        "title": "Step 1-3: Rewrite TopicMeta.vue",
-        "description": "Đổi props từ info:DetectResult sang topic:CachedTopic + livePostCount? + isSummarizing?. Thêm derived computeds (isNews, summarizedPostCount, hasSummary, isPartial, summaryStatus, summaryDateLabel, newPostCount). Rewrite template với 4 rows: title+badge, metadata, summary status, URL button.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "114"
-        ],
-        "priority": "medium",
-        "subtasks": [],
-        "updatedAt": "2026-04-22T10:33:27.737Z"
-      },
-      {
-        "id": "116",
-        "title": "Step 4: Update App.vue",
-        "description": "Xóa topicInfo computed (trả DetectResult). Thêm selectedTopicForMeta, livePostCount (dùng isSameTopicUrl + activeTabDetect), isSummarizingCurrentTopic. Cập nhật template: thay v-if topicInfo → selectedTopicForMeta, pass topic/live-post-count/is-summarizing props mới. Xóa isNewsTopic và hasSelectedTopic nếu không còn dùng.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "115"
-        ],
-        "priority": "medium",
-        "subtasks": [],
-        "updatedAt": "2026-04-22T10:33:37.572Z"
-      },
-      {
-        "id": "117",
-        "title": "Step 5: Update OpinionsView.vue",
-        "description": "Thay <TopicMeta :info='topicInfo' :url='...' /> thành <TopicMeta :topic='store.selectedTopic.value' />. Xóa import DetectResult nếu không còn dùng. Xóa topicInfo local computed nếu chỉ dùng cho TopicMeta.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "116"
-        ],
-        "priority": "medium",
-        "subtasks": [],
-        "updatedAt": "2026-04-22T10:33:47.245Z"
-      },
-      {
-        "id": "118",
-        "title": "Step 6: Update TopicHubView.vue cards",
-        "description": "Import topicSummaryStatus + formatTopicDate từ lib/topic-utils. Xóa formatRelativeTime() local. Thay status badge block bằng topicSummaryStatus() helper. Fix post count: hiển thị 'X/Y bài' khi partial, 'X bài' khi done/none. Thay formatRelativeTime(topic.cachedAt) → formatTopicDate(topic.cachedAt). Thêm news badge khi topic.topicType === 'news'.",
-        "details": "",
-        "testStrategy": "",
-        "status": "done",
-        "dependencies": [
-          "117"
-        ],
-        "priority": "medium",
-        "subtasks": [],
-        "updatedAt": "2026-04-22T10:33:57.266Z"
-      },
-      {
-        "id": "119",
-        "title": "Bug Fix: Reactive post count indicator không tự cập nhật khi phát hiện bài mới",
-        "description": "Fix reactive indicator '(+X mới)' trong TopicHubView.vue để tự động cập nhật khi store.activeTabDetect.value.postCount thay đổi. Hiện tại indicator đã được thêm nhưng không reactive — cần đảm bảo computed properties hoặc watch triggers khi activeTabDetect updates.",
-        "details": "## Vấn đề hiện tại\n\nFile `entrypoints/sidepanel/views/TopicHubView.vue` đã có inline reactive indicator `(+X mới)` ở lines 355-360:\n\n```vue\n<span\n  v-if=\"store.activeTabDetect.value && store.activeTabUrl.value &&\n        isSameTopicUrl(store.activeTabUrl.value, topic.url) &&\n        store.activeTabDetect.value.postCount > topic.totalPosts\"\n  class=\"text-(--color-accent-text) ml-0.5\"\n>(+{{ store.activeTabDetect.value.postCount - topic.totalPosts }} mới)</span>\n```\n\n**Bug:** Khi `store.activeTabDetect.value.postCount` thay đổi (phát hiện bài mới), UI không tự cập nhật vì:\n- `store.activeTabDetect` là `readonly(ref)` từ `useTopicStore.ts`\n- Vue 3 readonly refs có thể không trigger reactivity khi nested properties thay đổi\n- Template trực tiếp access `.value.postCount` có thể không được track properly\n\n## Root cause analysis\n\nCần verify reactivity chain:\n1. `useTopicStore.ts` line 6: `activeTabDetect = ref<DetectResult | null>(null)`\n2. Line 38: exported as `readonly(activeTabDetect)` \n3. `TopicHubView.vue` line 176: `store.activeTabDetect.value` — readonly ref value access\n4. Template line 358: `store.activeTabDetect.value.postCount` — deep property access\n\nPotential issues:\n- Readonly wrapper might block reactivity signals\n- Deep property access không được tracked nếu không có computed wrapper\n- Object replacement vs mutation — nếu `setActiveTab()` thay thế entire object thì ok, nếu mutate `postCount` property thì ko reactive\n\n## Implementation plan\n\n### Option A: Computed property cho new post count (recommended)\nTạo computed để track delta explicitly:\n\n```typescript\nconst newPostCounts = computed(() => {\n  const result = new Map<string, number>();\n  if (!store.activeTabDetect.value || !store.activeTabUrl.value) return result;\n  \n  const liveCount = store.activeTabDetect.value.postCount;\n  const activeUrl = store.activeTabUrl.value;\n  \n  for (const topic of allTopics.value) {\n    if (isSameTopicUrl(topic.url, activeUrl)) {\n      const delta = liveCount - topic.totalPosts;\n      if (delta > 0) result.set(topic.url, delta);\n      break;\n    }\n  }\n  return result;\n});\n```\n\nTemplate:\n```vue\n<span v-if=\"newPostCounts.get(topic.url)\" class=\"text-(--color-accent-text) ml-0.5\">\n  (+{{ newPostCounts.get(topic.url) }} mới)\n</span>\n```\n\n### Option B: Per-topic computed (alternative)\nNếu Option A không work, wrap logic trong method:\n\n```typescript\nfunction getNewPostCount(topic: CachedTopic): number | null {\n  if (!store.activeTabDetect.value || !store.activeTabUrl.value) return null;\n  if (!isSameTopicUrl(store.activeTabUrl.value, topic.url)) return null;\n  const delta = store.activeTabDetect.value.postCount - topic.totalPosts;\n  return delta > 0 ? delta : null;\n}\n```\n\nTemplate:\n```vue\n<span v-if=\"getNewPostCount(topic)\" class=\"text-(--color-accent-text) ml-0.5\">\n  (+{{ getNewPostCount(topic) }} mới)\n</span>\n```\n\n### Option C: Fix readonly ref (nếu A & B fail)\nNếu readonly wrapper block reactivity, expose writable ref thay readonly trong `useTopicStore.ts`:\n\n```typescript\n// Thay\nactiveTabDetect: readonly(activeTabDetect),\n// Thành\nactiveTabDetect,\n```\n\n**Trade-off:** Mất encapsulation nhưng đảm bảo reactivity.\n\n## Files affected\n- `entrypoints/sidepanel/views/TopicHubView.vue` — thêm computed hoặc method helper\n- `entrypoints/sidepanel/composables/useTopicStore.ts` — (chỉ nếu Option C)\n\n## Edge cases\n- `activeTabDetect.value` null — handled bởi v-if guard\n- `postCount` giảm (user xóa bài) — delta <= 0, không hiển thị indicator\n- Multiple topics từ cùng URL — `isSameTopicUrl` chỉ match đầu tiên\n- Cached topic có `totalPosts` outdated — indicator hiển thị chính xác delta based on stale data (expected behavior)",
-        "testStrategy": "## Verification steps\n\n### 1. Manual testing — reproduce bug\n- Mở topic trong tab (ví dụ: 10 bài)\n- Extension detect và cache topic\n- Verify trong TopicHubView thấy \"10 bài\"\n- **Trigger update:** Mở DevTools → manually call `store.setActiveTab({ postCount: 12, ... }, url)` để simulate phát hiện bài mới\n- **Expected:** Indicator tự động hiện \"(+2 mới)\"\n- **Current bug:** Indicator không xuất hiện hoặc không update\n\n### 2. Verify reactivity fix\n- Sau khi implement computed/method helper\n- Repeat test ở step 1\n- **Pass:** Indicator xuất hiện ngay khi `activeTabDetect.value.postCount` thay đổi\n- Check console không có reactivity warnings\n\n### 3. Test edge cases\n- `postCount` giảm (12 → 8): indicator phải biến mất\n- `activeTabUrl` null: indicator không hiển thị\n- Switch sang tab khác topic: indicator chỉ hiển thị trên card đúng URL\n- Topic có `totalPosts = 0`: indicator hiển thị \"(+12 mới)\" nếu `postCount = 12`\n\n### 4. Performance check\n- Hub view với 20+ topics\n- Update `activeTabDetect` 5 lần liên tiếp\n- **Pass:** Không có lag, computed re-run minimal (chỉ affected topics)\n\n### 5. Regression test — active tab topic card (lines 262-286)\n- Verify card \"Tab hiện tại\" vẫn hiển thị `{{ store.activeTabDetect.value.postCount }} bài viết` correctly\n- Không bị ảnh hưởng bởi refactor",
-        "status": "done",
-        "dependencies": [
-          "118"
-        ],
-        "priority": "low",
-        "subtasks": [],
-        "updatedAt": "2026-04-22T11:29:17.830Z"
-      },
-      {
-        "id": "120",
-        "title": "Thêm computed `newPostsMap` vào TopicHubView để track live post count",
-        "description": "Extract inline `v-if` logic (lines 355-360) thành computed `newPostsMap` để Vue reactivity tracking tường minh, fix bug indicator không cập nhật khi `activeTabDetect` thay đổi",
-        "details": "**File:** `entrypoints/sidepanel/views/TopicHubView.vue`\n\n**Root cause:** Inline `v-if` với function call `isSameTopicUrl(...)` trong `v-for` không trigger re-render đúng khi `store.activeTabDetect.value` thay đổi do Vue 3's block tree optimization.\n\n**Implementation:**\n\n1. Thêm computed `newPostsMap` sau `activeTabInList` (line 93):\n```typescript\nconst newPostsMap = computed<Record<string, number>>(() => {\n  if (!store.activeTabDetect.value || !store.activeTabUrl.value) return {};\n  const liveCount = store.activeTabDetect.value.postCount;\n  const activeUrl = normalizeUrl(store.activeTabUrl.value);\n  const result: Record<string, number> = {};\n  for (const topic of allTopics.value) {\n    if (normalizeUrl(topic.url) === activeUrl) {\n      const delta = liveCount - topic.totalPosts;\n      if (delta > 0) result[topic.url] = delta;\n      break;\n    }\n  }\n  return result;\n});\n```\n\n2. Replace template (lines 355-360):\n```vue\n<!-- Thay complex v-if condition -->\n<span v-if=\"newPostsMap[topic.url]\" class=\"text-(--color-accent-text) ml-0.5\">\n  (+{{ newPostsMap[topic.url] }} mới)\n</span>\n```\n\n**Pseudo-code:**\n```\nCOMPUTED newPostsMap:\n  IF no activeTabDetect OR no activeTabUrl → return empty map\n  liveCount = activeTabDetect.postCount\n  activeUrl = normalize(activeTabUrl)\n  FOR EACH topic IN allTopics:\n    IF normalize(topic.url) === activeUrl:\n      delta = liveCount - topic.totalPosts\n      IF delta > 0: add { topic.url: delta } to result\n      BREAK (only 1 topic matches)\n  RETURN result\n\nTEMPLATE:\n  IF newPostsMap has entry for topic.url:\n    SHOW \"(+{delta} mới)\"\n```\n\n**Edge cases:**\n- `liveCount < totalPosts` (detect sai) → delta < 0 → không add entry → no indicator ✓\n- Active tab không phải forum → `activeTabDetect = null` → map rỗng → no indicator ✓\n- Topic không có trong `allTopics` → loop không tìm thấy → map rỗng ✓",
-        "testStrategy": "1. **Setup:** Mở forum tab có 50 bài (cached topic có `totalPosts = 45`)\n2. **Test reactive update:** Mở sidepanel → verify hub card hiện \"(+5 mới)\"\n3. **Test hide:** Chuyển sang tab khác (không phải forum) → verify indicator ẩn\n4. **Test show again:** Chuyển lại forum tab → verify indicator hiện lại\n5. **Test không leak:** Check hub card của topic KHÁC không có indicator\n6. **Test delta = 0:** Mock `activeTabDetect.postCount = 45` → verify không có indicator",
-        "priority": "high",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "121",
-        "title": "Cập nhật `topicSummaryStatus` để nhận optional `livePostCount` và fix status badge",
-        "description": "Thêm param `livePostCount?: number` vào function `topicSummaryStatus` để badge phản ánh đúng trạng thái khi có bài mới chưa tóm tắt (partial), và cập nhật TopicHubView để truyền live count từ `newPostsMap`",
-        "details": "**Files:** `lib/topic-utils.ts`, `entrypoints/sidepanel/views/TopicHubView.vue`\n\n**Root cause:** `topicSummaryStatus` so sánh `summarizedPostCount < totalPosts` (cả hai đều cached), không biết về live count → khi có 5 bài mới, function trả `'done'` → badge hiện \"✓ Đã tóm tắt\" (sai).\n\n**Implementation:**\n\n1. **Update `lib/topic-utils.ts`** (function signature line 5):\n```typescript\nexport function topicSummaryStatus(\n  topic: CachedTopic,\n  isSummarizing: boolean,\n  livePostCount?: number,\n): TopicSummaryStatus {\n  if (isSummarizing) return 'in-progress';\n  const hasSummary = !!(topic.summary || topic.segments?.some(s => s?.summary));\n  if (!hasSummary) return 'none';\n  const summarized = topic.summarizedPostCount ?? topic.totalPosts ?? 0;\n  // Use livePostCount if available and > cached totalPosts\n  const effectiveTotalPosts = (livePostCount != null && livePostCount > (topic.totalPosts ?? 0))\n    ? livePostCount\n    : (topic.totalPosts ?? 0);\n  if (summarized < effectiveTotalPosts) return 'partial';\n  return 'done';\n}\n```\n\n2. **Update `TopicHubView.vue`** template (lines 324, 330):\n```vue\n<!-- Thay: topicSummaryStatus(topic, false) -->\n<!-- Thành: -->\n<span\n  v-else-if=\"topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'done'\"\n  class=\"badge badge-success\"\n>\n  ✓ Đã tóm tắt\n</span>\n<span\n  v-else-if=\"topicSummaryStatus(topic, false, topic.totalPosts + (newPostsMap[topic.url] ?? 0)) === 'partial'\"\n  class=\"badge bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400\"\n>\n  ~ Một phần\n</span>\n```\n\n**Pseudo-code:**\n```\nFUNCTION topicSummaryStatus(topic, isSummarizing, livePostCount?):\n  IF isSummarizing → 'in-progress'\n  hasSummary = topic has summary OR segments with summary\n  IF NOT hasSummary → 'none'\n  summarized = topic.summarizedPostCount ?? topic.totalPosts\n  effectiveTotal = MAX(livePostCount ?? 0, topic.totalPosts)\n  IF summarized < effectiveTotal → 'partial'\n  ELSE → 'done'\n\nCALLER (TopicHubView template):\n  effectiveLiveCount = topic.totalPosts + (newPostsMap[topic.url] ?? 0)\n  status = topicSummaryStatus(topic, isSummarizing, effectiveLiveCount)\n```\n\n**Edge cases:**\n- `livePostCount` undefined → dùng `topic.totalPosts` → backward compatible ✓\n- `livePostCount < totalPosts` → dùng `totalPosts` → không xử lý detect sai ✓\n- `livePostCount == totalPosts` → `summarized < effectiveTotal` false → 'done' ✓\n- Topic không match active tab → `newPostsMap[topic.url]` undefined → truyền `totalPosts + 0` ✓",
-        "testStrategy": "1. **Test badge partial:** Topic cached 45 bài, live 50 bài, summarized 45 → verify badge \"~ Một phần\"\n2. **Test badge done:** Live 50, summarized 50 → verify badge \"✓ Đã tóm tắt\"\n3. **Test badge none:** Topic chưa có summary → verify badge \"○ Chưa tóm tắt\"\n4. **Test backward compat:** Topic không phải active tab → `livePostCount = undefined` → verify badge theo cached data\n5. **Test in-progress:** `isSummarizing = true` → verify badge \"✨ Đang tóm tắt...\" (priority cao hơn livePostCount)\n6. **Integration test:** Mở topic 50 bài (cached 45), summarize 45 bài → verify indicator \"(+5 mới)\" + badge \"~ Một phần\"",
-        "priority": "high",
-        "dependencies": [
-          "120"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "122",
-        "title": "Thêm `totalPosts` vào `selectedTopicKey` để sync đúng khi totalPosts thay đổi",
-        "description": "Include `totalPosts` trong computed `selectedTopicKey` để watcher fire khi field này thay đổi (ví dụ sau re-summarize), đảm bảo `allTopics[idx]` sync đúng với `selectedTopic`",
-        "details": "**File:** `entrypoints/sidepanel/views/TopicHubView.vue`\n\n**Root cause:** `selectedTopicKey` (line 111) không track `totalPosts`. Khi chỉ `totalPosts` thay đổi (sau summarize + IDB update), watcher (line 114) không fire → `allTopics[idx].totalPosts` không sync.\n\n**Implementation:**\n\n1. **Update line 111:**\n```typescript\nreturn `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}|${t.totalPosts ?? 0}`;\n```\n\n**Pseudo-code:**\n```\nCOMPUTED selectedTopicKey:\n  t = store.selectedTopic\n  IF t is null → return null\n  RETURN concatenate:\n    - t.url\n    - t.summary (first 20 chars)\n    - t.segments.length\n    - t.bookmarked\n    - t.knowledgeEntries.length\n    - t.totalPosts  ← NEW\n  with \"|\" separator\n\nWATCH selectedTopicKey:\n  WHEN key changes:\n    Find topic in allTopics with same URL\n    IF found → merge selectedTopic fields into allTopics[idx]\n```\n\n**Why this matters:**\n- Khi summarize xong, background script update `totalPosts` trong IDB\n- `store.selectedTopic` được reload từ IDB → `totalPosts` mới\n- Nếu không có trong key → watcher không fire → hub card vẫn hiện totalPosts cũ\n- Thêm vào key → watcher fire → sync đúng\n\n**Edge cases:**\n- `totalPosts` undefined → `?? 0` → key = \"...||0\" ✓\n- Topic chưa có trong `allTopics` → watcher add vào danh sách (line 132-140) ✓\n- Key thay đổi nhiều lần (nhiều fields đổi cùng lúc) → watcher fire 1 lần (Vue batch) ✓",
-        "testStrategy": "1. **Setup:** Topic cached có `totalPosts = 45`, `summarizedPostCount = 40`\n2. **Test sync:** Mở summary view → trigger summarize toàn bộ → sau khi xong, verify:\n   - IDB có `totalPosts = 50` (mocked)\n   - `allTopics[idx].totalPosts = 50` (synced từ selectedTopic)\n   - Hub card hiện \"50 bài\" đúng\n3. **Test không leak:** Thay đổi field KHÁC (ví dụ `bookmarked`) → verify watcher fire, `totalPosts` không bị ghi đè\n4. **Test new topic:** Summarize topic chưa có trong cache → verify watcher add vào `allTopics` với `totalPosts` đúng\n5. **Regression test:** Verify các field khác vẫn trigger watcher (summary, segments, bookmarked, knowledgeEntries)",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "123",
-        "title": "Tạo utility function formatNumber trong lib/format.ts",
-        "description": "Tạo file lib/format.ts chứa hàm formatNumber(n: number): string dùng toLocaleString('en-US') để format số với dấu phẩy phân cách hàng nghìn",
-        "details": "1. Tạo file mới `lib/format.ts`\n2. Implement function:\n```typescript\nexport function formatNumber(n: number): string {\n  return n.toLocaleString('en-US');\n}\n```\n3. Export function để các component có thể import\n4. Locale 'en-US' sẽ format với dấu phẩy (4,656) thay vì dấu chấm của vi-VN (4.656) để tránh nhầm lẫn với dấu thập phân\n5. Function chỉ nhận số nguyên, không áp dụng cho phần trăm hay số thập phân",
-        "testStrategy": "1. Build project với `npm run build` phải pass\n2. Type check với `npx vue-tsc --noEmit` phải clean\n3. Test manual: gọi formatNumber(4656) phải return '4,656'\n4. Test với số nhỏ: formatNumber(999) return '999' (không có dấu phẩy)\n5. Test với số lớn: formatNumber(1234567) return '1,234,567'",
-        "priority": "high",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:21:38.699Z"
-      },
-      {
-        "id": "124",
-        "title": "Áp dụng formatNumber trong TopicMeta.vue",
-        "description": "Import và sử dụng formatNumber cho tất cả số hiển thị trong TopicMeta component (totalPosts, totalPages, summarizedPostCount, newPostCount)",
-        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Áp dụng format tại các vị trí:\n   - Line 72: `{{ topic.totalPosts }}` → `{{ formatNumber(topic.totalPosts) }}`\n   - Line 73: `{{ newPostCount }}` → `{{ formatNumber(newPostCount) }}`\n   - Line 75: `{{ topic.totalPages }}` → `{{ formatNumber(topic.totalPages) }}`\n   - Line 87: `{{ summarizedPostCount }}/{{ topic.totalPosts }}` → `{{ formatNumber(summarizedPostCount) }}/{{ formatNumber(topic.totalPosts) }}`\n   - Line 91: `{{ summarizedPostCount }}` → `{{ formatNumber(summarizedPostCount) }}`\n3. Không cần thay đổi logic, chỉ wrap số trong formatNumber()",
-        "testStrategy": "1. Build và type check pass\n2. Mở sidepanel với topic có > 999 bài viết\n3. Verify tất cả số hiển thị đúng format với dấu phẩy\n4. Kiểm tra UI không bị break (text truncation, alignment)\n5. Test với topic nhỏ (< 1000 bài) xem format có làm ảnh hưởng không",
-        "priority": "high",
-        "dependencies": [
-          "123"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:21:38.714Z"
-      },
-      {
-        "id": "125",
-        "title": "Áp dụng formatNumber trong TopicHubView.vue",
-        "description": "Import và sử dụng formatNumber cho số bài viết hiển thị trong TopicHubView (active tab detect, topic list)",
-        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Áp dụng format tại các vị trí:\n   - Line ~299: `{{ store.activeTabDetect.value.postCount }}` → `{{ formatNumber(store.activeTabDetect.value.postCount) }}`\n   - Line ~368: `{{ topic.summarizedPostCount ?? topic.totalPosts }}/{{ topic.totalPosts }}` → `{{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }}/{{ formatNumber(topic.totalPosts) }}`\n   - Line ~370: `{{ topic.totalPosts }}` → `{{ formatNumber(topic.totalPosts) }}`\n   - Line ~373-374: `{{ newPostsMap[topic.url] }}` → `{{ formatNumber(newPostsMap[topic.url]) }}`\n3. Cẩn thận với null/undefined checks, đảm bảo chỉ format khi có giá trị",
-        "testStrategy": "1. Build và type check pass\n2. Mở TopicHubView với danh sách topics\n3. Verify số bài viết ở active tab detect được format đúng\n4. Verify số bài viết trong topic cards được format đúng\n5. Test với topics có new posts để verify format của newPostsMap\n6. Kiểm tra responsive layout không bị break",
-        "priority": "high",
-        "dependencies": [
-          "123"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:21:38.730Z"
-      },
-      {
-        "id": "126",
-        "title": "Áp dụng formatNumber trong SummaryView.vue",
-        "description": "Import và sử dụng formatNumber cho số bài viết hiển thị trong SummaryView (segment post counts)",
-        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Áp dụng format tại các vị trí:\n   - Line ~343: `{{ segmentSummaries[0].postCount }}` → `{{ formatNumber(segmentSummaries[0].postCount) }}`\n   - Line ~486: `{{ segmentSummaries[activeSegmentIndex].postCount }}` → `{{ formatNumber(segmentSummaries[activeSegmentIndex].postCount) }}`\n3. Đảm bảo array index safety khi access segmentSummaries",
-        "testStrategy": "1. Build và type check pass\n2. Mở SummaryView với topic đã tóm tắt\n3. Verify số bài viết trong single segment view được format\n4. Verify số bài viết trong individual segment view được format\n5. Test với topics có nhiều segments\n6. Kiểm tra không có lỗi khi segmentSummaries chưa load hoặc empty",
-        "priority": "high",
-        "dependencies": [
-          "123"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:21:38.745Z"
-      },
-      {
-        "id": "127",
-        "title": "Áp dụng formatNumber trong ProgressIndicator.vue computed message",
-        "description": "Import và sử dụng formatNumber cho số bài viết trong string template của computed message trong ProgressIndicator component",
-        "details": "1. Import formatNumber từ lib/format.ts trong `<script setup>`:\n```typescript\nimport { formatNumber } from '@/lib/format';\n```\n2. Tìm computed `displayMessage` (line ~90-100)\n3. Tại line ~97, update string template:\n   - Từ: `Đang đọc trang ${p.currentPage}/${p.totalPages} (${p.postsScraped} bài)...`\n   - Thành: `Đang đọc trang ${p.currentPage}/${p.totalPages} (${formatNumber(p.postsScraped)} bài)...`\n4. Chỉ format `postsScraped`, không format `currentPage` và `totalPages` vì đây là số trang (thường nhỏ)\n5. Lưu ý: đây là string template trong TypeScript computed, không phải Vue template",
-        "testStrategy": "1. Build và type check pass\n2. Trigger scraping process để hiện ProgressIndicator\n3. Verify message hiển thị số bài viết với format đúng trong quá trình scrape\n4. Test với scraping nhiều trang để verify số lớn được format\n5. Kiểm tra không có lỗi runtime khi postsScraped undefined/null",
-        "priority": "medium",
-        "dependencies": [
-          "123"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-04-23T10:21:38.759Z"
-      },
-      {
-        "id": "128",
-        "title": "Bug fix: handleAutoSummarizeAll thêm option \"Regenerate all\"",
-        "description": "Thêm tham số forceRegenerate vào handleAutoSummarizeAll để user có thể chọn scrape và summarize lại toàn bộ từ đầu thay vì resume từ kết quả cũ. Cập nhật UI confirm dialog trong SummaryView.vue để có 2 lựa chọn: \"Tiếp tục từ nơi đã dừng\" (mặc định) và \"Tóm tắt lại từ đầu\".",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [],
-        "details": "**Vấn đề:** Hiện tại khi user bấm \"Tóm tắt toàn bộ\" lần 2 trên cùng topic, code sẽ resume từ các segment đã summarize trước đó (qua computeResumeState) thay vì scrape và summarize lại từ đầu. User không có cách nào để regenerate toàn bộ.\n\n**Giải pháp:**\n\n1. **File: entrypoints/sidepanel/composables/useSummarize.ts** (line 954: handleAutoSummarizeAll)\n   - Sửa signature: `async function handleAutoSummarizeAll(forceRegenerate: boolean = false)`\n   - Khi forceRegenerate === true:\n     - Luôn clear `dynamicSegmentBoundaries.value = []` và `segmentSummaries.value = []`\n     - Bỏ qua `computeResumeState()`, gọi `autoSummarizeDynamic` với `resume = undefined`\n   - Khi forceRegenerate === false (mặc định): giữ nguyên logic resume hiện tại\n   - Áp dụng tương tự cho fixed mode (non-dynamic): nếu forceRegenerate thì clear segmentSummaries trước khi loop\n\n2. **File: entrypoints/sidepanel/views/SummaryView.vue** (line ~393: confirm dialog)\n   - Tìm confirm dialog hiện tại cho auto-summarize (confirmingAutoSummarize)\n   - Thêm 2 lựa chọn trong dialog:\n     a. \"Tiếp tục từ nơi đã dừng\" (resume, forceRegenerate=false) — mặc định\n     b. \"Tóm tắt lại từ đầu\" (forceRegenerate=true)\n   - Hoặc thêm checkbox toggle trong confirm dialog\n   - Update @confirm handler để truyền tham số phù hợp vào handleAutoSummarizeAll\n\n**Lưu ý:**\n- Không thay đổi behavior mặc định (resume vẫn là default)\n- Giữ nguyên stale guard pattern (activeSummarizeId)\n- Tuân thủ STYLE_GUIDE.md cho UI (CSS variables, btn classes, rounded-lg)\n- Verify bằng `npm run compile` (vue-tsc --noEmit)",
-        "testStrategy": "1. Build pass: `npm run compile` không có lỗi\n2. Test resume (mặc định):\n   - Tóm tắt 1 topic với auto-summarize, dừng giữa chừng hoặc để hoàn thành\n   - Bấm lại \"Tóm tắt toàn bộ\" → chọn \"Tiếp tục từ nơi đã dừng\"\n   - Verify: chỉ scrape/summarize các trang chưa làm, không redo segment đã xong\n3. Test regenerate:\n   - Trên topic đã tóm tắt, bấm \"Tóm tắt toàn bộ\" → chọn \"Tóm tắt lại từ đầu\"\n   - Verify: clear toàn bộ segmentSummaries, scrape từ trang 1, summarize lại tất cả\n4. Test fixed mode (dynamicSegments = false):\n   - Tương tự test resume và regenerate\n5. Test stale guard:\n   - Bắt đầu regenerate, cancel giữa chừng → verify không corrupt state\n6. UI test:\n   - Confirm dialog hiển thị đúng 2 lựa chọn\n   - Default selection là \"Tiếp tục từ nơi đã dừng\"",
-        "subtasks": [],
-        "updatedAt": "2026-04-29T10:19:06.451Z"
-      },
-      {
-        "id": "129",
-        "title": "Phase 1: Unify IndexedDB Access in App.vue",
-        "description": "Replace direct cache-manager.ts calls (getCachedTopic, saveCachedTopic) with sendMessage() in App.vue. Keep isSameTopicUrl and normalizeUrl imports (pure functions).",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [],
-        "details": "**Problem:** App.vue is the ONLY component that directly imports and calls cache-manager.ts functions (getCachedTopic, saveCachedTopic). All other components use sendMessage() for IndexedDB access.\n\n**Solution:**\n\n1. **File: entrypoints/sidepanel/App.vue** (line 5)\n   - Remove getCachedTopic, saveCachedTopic from import\n   - Keep: normalizeUrl, isSameTopicUrl (pure functions, no side effects)\n\n2. **File: entrypoints/sidepanel/App.vue** (line 81-145: autoUpdateCachedTopic function)\n   - Line 83: `getCachedTopic(tabUrl)` -> `sendMessage('GET_CACHED_TOPIC', tabUrl)`\n   - Line 87: `saveCachedTopic({...})` -> `sendMessage('SAVE_CACHED_TOPIC', {...})`\n   - Line 97: `saveCachedTopic({...})` -> `sendMessage('SAVE_CACHED_TOPIC', {...})`\n   - Line 114-131: All `saveCachedTopic({...})` calls -> `sendMessage('SAVE_CACHED_TOPIC', {...})`\n\n**Acceptance Criteria:**\n- App.vue no longer imports getCachedTopic or saveCachedTopic from cache-manager.ts\n- autoUpdateCachedTopic() uses sendMessage() for all IDB operations\n- npm run compile passes with zero errors\n- Tab detection still updates totalPages, forumPostCount, threadDeleted, threadLocked correctly",
-        "testStrategy": "1. npm run compile — zero errors\n2. Open sidepanel on a XenForo topic tab\n3. Switch to another tab and back → verify totalPages/forumPostCount update in TopicMeta\n4. Verify no console errors about message passing",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Cập nhật các câu lệnh import trong App.vue",
-            "description": "Loại bỏ việc import trực tiếp các hàm getCachedTopic và saveCachedTopic từ tệp cache-manager.ts.",
-            "dependencies": [],
-            "details": "Chỉnh sửa file entrypoints/sidepanel/App.vue tại dòng 5. Chỉ giữ lại normalizeUrl và isSameTopicUrl vì đây là các hàm thuần túy không gây tác động phụ (side effects).",
+            "details": "Tạo file mới, viết template với div class=\"p-4 space-y-4\", thêm ba placeholder section với thẻ <h2> cho tiêu đề \"Phần 1: Thiết lập LLM Provider\", \"Phần 2: Flow tóm tắt\", \"Phần 3: Sau tóm tắt\". Xuất component mặc định với name 'HelpView'.",
             "status": "pending",
-            "testStrategy": "Đảm bảo mã nguồn không còn tham chiếu trực tiếp đến các hàm DB trong phần import và trình biên dịch sẽ báo lỗi ở những nơi sử dụng cũ.",
+            "testStrategy": "Mở extension sidepanel và điều hướng tới route /help (sau khi thêm route) để kiểm tra component render không lỗi và layout đúng. Chạy npm run compile để đảm bảo không có lỗi biên dịch.",
             "parentId": "undefined"
           },
           {
             "id": 2,
-            "title": "Chuyển đổi logic lấy dữ liệu topic sang sendMessage",
-            "description": "Thay thế lệnh gọi getCachedTopic trực tiếp bằng cơ chế gửi tin nhắn sendMessage('GET_CACHED_TOPIC').",
+            "title": "Triển khai nội dung Phần 1: Thiết lập LLM Provider",
+            "description": "Thay thế placeholder của phần đầu tiên bằng hướng dẫn chi tiết từng bước cho Gemini API Free Tier và Local LLM (LM Studio/Ollama), sử dụng HTML cấu trúc và các class Tailwind phù hợp.",
             "dependencies": [
               1
             ],
-            "details": "Tại dòng 83 trong hàm autoUpdateCachedTopic, thay đổi code từ const topic = getCachedTopic(tabUrl) sang const topic = await sendMessage('GET_CACHED_TOPIC', tabUrl).",
+            "details": "Sử dụng <div class=\"card\"> cho mỗi mục con (Gemini, Local LLM). Dùng <ol> với <li> và <span class=\"badge\"> cho số bước. Bọc thuật ngữ kỹ thuật trong <code class=\"font-mono\">. Dùng <h2> cho tiêu đề phần và <h3> cho tiêu đề mục con. Đảm bảo tất cả các bước được định dạng đúng.",
             "status": "pending",
-            "testStrategy": "Đặt console.log để xác nhận dữ liệu topic nhận được từ background script thông qua sendMessage là chính xác.",
+            "testStrategy": "Tải extension, điều hướng tới help tab, kiểm tra nội dung Phần 1 hiển thị đầy đủ và chính xác theo PRD.",
             "parentId": "undefined"
           },
           {
             "id": 3,
-            "title": "Cập nhật các lệnh lưu cache ban đầu bằng sendMessage",
-            "description": "Thay thế các lệnh saveCachedTopic ở dòng 87 và 97 bằng sendMessage('SAVE_CACHED_TOPIC').",
+            "title": "Triển khai nội dung Phần 2: Flow tóm tắt",
+            "description": "Thêm phần thứ hai với mô tả từng bước của luồng tóm tắt, bao gồm năm bước cụ thể.",
             "dependencies": [
-              2
+              1
             ],
-            "details": "Sửa đổi các lời gọi saveCachedTopic({...}) trong các khối điều kiện kiểm tra tabUrl và khởi tạo metadata ban đầu sang cấu trúc sendMessage('SAVE_CACHED_TOPIC', {...}).",
+            "details": "Thêm phần với <h2> tiêu đề 'Flow tóm tắt' và sử dụng <div class=\"card\"> chứa danh sách có thứ tự năm bước như PRD. Sử dụng <code class=\"font-mono\"> cho tên tab như 'Chủ đề', 'Tóm tắt'.",
             "status": "pending",
-            "testStrategy": "Kiểm tra xem khi truy cập một URL mới, bản ghi cache có được tạo trong IndexedDB thông qua Application tab của DevTools hay không.",
+            "testStrategy": "Điều hướng tới help tab, kiểm tra Phần 2 hiển thị đúng năm bước và định dạng.",
             "parentId": "undefined"
           },
           {
             "id": 4,
-            "title": "Đồng bộ hóa các lệnh saveCachedTopic còn lại trong vòng lặp cập nhật",
-            "description": "Thay thế toàn bộ các lệnh saveCachedTopic từ dòng 114 đến 131 bằng cơ chế sendMessage.",
+            "title": "Triển khai nội dung Phần 3: Sau tóm tắt",
+            "description": "Thêm hai mục con 'Tổng hợp kiến thức' và 'Tra cứu mở rộng' trong phần thứ ba.",
             "dependencies": [
-              3
+              1
             ],
-            "details": "Quét khối code xử lý các trường dữ liệu như totalPages, forumPostCount, threadDeleted, threadLocked và chuyển đổi tất cả các lệnh lưu dữ liệu sang sendMessage('SAVE_CACHED_TOPIC', ...).",
+            "details": "Thêm phần với <h2> tiêu đề 'Sau tóm tắt', sử dụng hai <div class=\"card\"> cho 'Tổng hợp kiến thức (Tab \"Kiến thức\")' và 'Tra cứu mở rộng (Tab \"Tra cứu\")'. Dùng <h3> cho tiêu đề mục con. Bao gồm các gạch đầu dòng và mô tả từ PRD.",
             "status": "pending",
-            "testStrategy": "Kiểm tra thực tế bằng cách mở sidepanel trên một topic XenForo, sau đó chuyển tab và quay lại để xem các chỉ số metadata có tự động cập nhật không.",
+            "testStrategy": "Kiểm tra nội dung Phần 3 khớp chính xác với PRD, cả hai mục con hiển thị đúng.",
             "parentId": "undefined"
           },
           {
             "id": 5,
-            "title": "Kiểm tra biên dịch và xác minh cuối cùng",
-            "description": "Chạy quy trình build để đảm bảo không có lỗi TypeScript và kiểm tra tính toàn vẹn của ứng dụng.",
+            "title": "Đăng ký route /help trong sidepanel router",
+            "description": "Thêm route cho đường dẫn /help trong file main.ts của sidepanel với lazy loading component HelpView.vue.",
             "dependencies": [
-              4
+              1
             ],
-            "details": "Thực hiện lệnh 'npm run compile' để xác nhận không còn lỗi tham chiếu. Kiểm tra lại luồng hoạt động của TopicMeta để đảm bảo không có lỗi console về message passing.",
+            "details": "Trong entrypoints/sidepanel/main.ts, thêm route: { path: '/help', name: 'help', component: () => import('./views/HelpView.vue') }, vào mảng routes hiện có (ví dụ sau settings route). Đảm bảo không lỗi cú pháp.",
             "status": "pending",
-            "testStrategy": "1. npm run compile hoàn tất không lỗi. 2. Verify tab detection vẫn hoạt động chính xác trên trình duyệt thực tế.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 6,
-            "title": "Cập nhật phần Import trong App.vue",
-            "description": "Loại bỏ các hàm getCachedTopic và saveCachedTopic khỏi phần import tại dòng số 5 của file App.vue.",
-            "dependencies": [],
-            "details": "Mở file entrypoints/sidepanel/App.vue, tìm đến dòng import từ cache-manager.ts. Xóa bỏ getCachedTopic và saveCachedTopic, chỉ giữ lại normalizeUrl và isSameTopicUrl vì đây là các hàm thuần túy.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra xem trình biên dịch có báo lỗi thiếu hàm không sau khi xóa import.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 7,
-            "title": "Chuyển đổi lệnh lấy cache sang sendMessage",
-            "description": "Thay thế lệnh gọi trực tiếp getCachedTopic bằng sendMessage('GET_CACHED_TOPIC', tabUrl) trong hàm autoUpdateCachedTopic.",
-            "dependencies": [
-              6
-            ],
-            "details": "Tại dòng 83 trong App.vue, sửa code để sử dụng sendMessage. Cần đảm bảo hàm gọi là bất đồng bộ (await) nếu cần thiết để nhận kết quả từ background script.",
-            "status": "pending",
-            "testStrategy": "Đặt breakpoint hoặc log để xác nhận tabUrl được gửi đi và nhận lại dữ liệu topic từ IndexedDB.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 8,
-            "title": "Thay thế saveCachedTopic cho các tác vụ khởi tạo",
-            "description": "Thay thế các lệnh saveCachedTopic tại dòng 87 và 97 bằng sendMessage('SAVE_CACHED_TOPIC', {...}).",
-            "dependencies": [
-              7
-            ],
-            "details": "Trong khối xử lý logic tại dòng 87 và 97 của App.vue, thay đổi cách lưu dữ liệu topic. Đảm bảo đối tượng payload truyền vào sendMessage chứa đầy đủ thông tin topic cần lưu.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra IndexedDB sau khi mở một tab mới để xem topic có được khởi tạo/cập nhật không.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 9,
-            "title": "Cập nhật sendMessage cho các thay đổi meta dữ liệu",
-            "description": "Thay thế toàn bộ các lời gọi saveCachedTopic từ dòng 114 đến 131 bằng cấu trúc sendMessage('SAVE_CACHED_TOPIC', ...).",
-            "dependencies": [
-              8
-            ],
-            "details": "Duyệt qua các logic cập nhật totalPages, forumPostCount, threadDeleted, và threadLocked. Thay thế việc gọi trực tiếp hàm quản lý cache bằng việc gửi message tương ứng.",
-            "status": "pending",
-            "testStrategy": "Mở một thread XenForo có sự thay đổi về số trang hoặc số bài viết và kiểm tra xem TopicMeta có cập nhật chính xác không.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 10,
-            "title": "Kiểm tra Compile và xác thực chức năng",
-            "description": "Chạy lệnh biên dịch toàn bộ dự án và kiểm tra thực tế tính năng đồng bộ hóa trên sidepanel.",
-            "dependencies": [
-              9
-            ],
-            "details": "Thực hiện 'npm run compile'. Sau đó tải extension lên trình duyệt, mở sidepanel và chuyển đổi giữa các tab XenForo để xác nhận không có lỗi console và dữ liệu được đồng bộ qua message passing.",
-            "status": "pending",
-            "testStrategy": "Xác nhận lệnh compile trả về 0 lỗi; Kiểm tra tab detection vẫn hoạt động trơn tru.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 11,
-            "title": "Cập nhật và làm sạch các import trong App.vue",
-            "description": "Loại bỏ việc import trực tiếp các hàm getCachedTopic và saveCachedTopic từ cache-manager.ts.",
-            "dependencies": [],
-            "details": "Chỉnh sửa file entrypoints/sidepanel/App.vue tại dòng 5. Đảm bảo giữ lại normalizeUrl và isSameTopicUrl vì đây là các hàm thuần túy.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra lỗi biên dịch sau khi xóa import để xác định các vị trí cần sửa đổi.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 12,
-            "title": "Thay thế getCachedTopic bằng sendMessage trong autoUpdateCachedTopic",
-            "description": "Thay đổi cách thức lấy dữ liệu topic từ gọi trực tiếp sang gửi tin nhắn thông qua messaging API.",
-            "dependencies": [
-              11
-            ],
-            "details": "Tìm dòng 83 trong App.vue và thay thế getCachedTopic(tabUrl) bằng sendMessage('GET_CACHED_TOPIC', tabUrl).",
-            "status": "pending",
-            "testStrategy": "Sử dụng console.log để xác nhận dữ liệu nhận được từ sendMessage giống với dữ liệu cũ.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 13,
-            "title": "Chuyển đổi tất cả các lệnh gọi saveCachedTopic sang sendMessage",
-            "description": "Cập nhật logic lưu trữ cache để sử dụng hệ thống messaging đồng bộ với các component khác.",
-            "dependencies": [
-              12
-            ],
-            "details": "Thay thế saveCachedTopic tại dòng 87, 97 và khối lệnh từ 114-131 trong App.vue bằng sendMessage('SAVE_CACHED_TOPIC', topicData).",
-            "status": "pending",
-            "testStrategy": "Kiểm tra IndexedDB sau khi chuyển tab để xác nhận dữ liệu vẫn được lưu đúng cách.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 14,
-            "title": "Kiểm tra tính toàn vẹn của logic cập nhật trạng thái Tab",
-            "description": "Đảm bảo các thuộc tính như totalPages, forumPostCount, threadDeleted vẫn được cập nhật đúng khi dùng sendMessage.",
-            "dependencies": [
-              13
-            ],
-            "details": "Rà soát lại toàn bộ hàm autoUpdateCachedTopic để chắc chắn việc bất đồng bộ của sendMessage không làm sai lệch luồng dữ liệu.",
-            "status": "pending",
-            "testStrategy": "Mở Sidepanel trên một tab XenForo, chuyển tab và quay lại để xác minh các chỉ số TopicMeta cập nhật chính xác.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 15,
-            "title": "Biên dịch dự án và kiểm tra lỗi runtime",
-            "description": "Thực hiện build toàn bộ dự án để đảm bảo không có lỗi TypeScript hoặc lỗi liên lạc giữa các script.",
-            "dependencies": [
-              14
-            ],
-            "details": "Chạy lệnh npm run compile. Kiểm tra tab console của Sidepanel và Background script để đảm bảo không có lỗi Message Passing.",
-            "status": "pending",
-            "testStrategy": "Chạy npm run compile và xác nhận kết quả trả về 0 lỗi (zero errors).",
-            "parentId": "undefined"
-          },
-          {
-            "id": 16,
-            "title": "Update imports in App.vue to remove direct cache-manager calls",
-            "description": "Remove getCachedTopic and saveCachedTopic from import, keep normalizeUrl and isSameTopicUrl, ensure sendMessage is imported.",
-            "dependencies": [],
-            "details": "Modify line 5 of entrypoints/sidepanel/App.vue to only import { normalizeUrl, isSameTopicUrl } from './cache-manager' and ensure sendMessage is imported from messaging utility.",
-            "status": "pending",
-            "testStrategy": null,
-            "parentId": "undefined"
-          },
-          {
-            "id": 17,
-            "title": "Replace getCachedTopic call with sendMessage in autoUpdateCachedTopic",
-            "description": "Change the getCachedTopic(tabUrl) call to sendMessage('GET_CACHED_TOPIC', tabUrl).",
-            "dependencies": [
-              16
-            ],
-            "details": "At line 83 of App.vue, replace 'getCachedTopic(tabUrl)' with 'sendMessage('GET_CACHED_TOPIC', tabUrl)'. Ensure async handling is consistent.",
-            "status": "pending",
-            "testStrategy": null,
-            "parentId": "undefined"
-          },
-          {
-            "id": 18,
-            "title": "Replace all saveCachedTopic calls with sendMessage in autoUpdateCachedTopic",
-            "description": "Replace each saveCachedTopic({...}) with sendMessage('SAVE_CACHED_TOPIC', {...}) in lines 87, 97, 114-131.",
-            "dependencies": [
-              16
-            ],
-            "details": "For each occurrence of saveCachedTopic in autoUpdateCachedTopic, replace with sendMessage('SAVE_CACHED_TOPIC', payload). Payload remains the same.",
-            "status": "pending",
-            "testStrategy": null,
-            "parentId": "undefined"
-          },
-          {
-            "id": 19,
-            "title": "Ensure sendMessage function is properly imported and message handlers exist",
-            "description": "Verify that sendMessage is imported in App.vue and that background script handles 'GET_CACHED_TOPIC' and 'SAVE_CACHED_TOPIC' messages.",
-            "dependencies": [
-              16
-            ],
-            "details": "Check import statement for sendMessage in App.vue. If missing, add import. Also ensure background/service worker has listeners for these message types to perform the respective IDB operations.",
-            "status": "pending",
-            "testStrategy": null,
-            "parentId": "undefined"
-          },
-          {
-            "id": 20,
-            "title": "Compile and verify no errors, test sidepanel functionality",
-            "description": "Run npm run compile and fix any errors, then manually test sidepanel topic tab detection and updates.",
-            "dependencies": [
-              16,
-              17,
-              18,
-              19
-            ],
-            "details": "Execute npm run compile. Open sidepanel on a XenForo topic, switch tabs, verify totalPages/forumPostCount update. Check console for errors.",
-            "status": "pending",
-            "testStrategy": "1. npm run compile — zero errors. 2. Open sidepanel on a XenForo topic tab. 3. Switch to another tab and back → verify totalPages/forumPostCount update in TopicMeta. 4. Verify no console errors about message passing.",
+            "testStrategy": "Chạy npm run compile để kiểm tra không lỗi. Sau đó trong extension, điều hướng tới /help để xác nhận component load.",
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-11T17:03:30.307Z"
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask; nhiệm vụ tự hoàn thành.",
+        "updatedAt": "2026-05-13T10:32:27.128Z"
       },
       {
-        "id": "130",
-        "title": "Phase 2: Eliminate Triple-State in ResearchView",
-        "description": "Remove local cachedTopic ref in ResearchView.vue. Read from store.selectedTopic via computed. Update loadTopicData() to use store.updateSelectedTopic().",
-        "status": "done",
-        "priority": "high",
+        "id": "136",
+        "title": "Implement Section 1: Setup LLM Provider content",
+        "description": "Add the full step-by-step guides for Gemini API Free Tier and Local LLM (LM Studio/Ollama) within the first section of HelpView.vue, using structured HTML and appropriate Tailwind classes for readability.",
+        "details": "In HelpView.vue, replace the placeholder of the first section with the exact text from the PRD. Use `<div class=\"card\">` for each sub-section (Gemini, Local LLM). Use `<ol>` with `<li>` containing `<span class=\"badge\">` for step numbers. Wrap technical terms (URLs, model names) in `<code class=\"font-mono\">`. Use `<h2>` for section title and `<h3>` for sub-section titles. Ensure all Bước (steps) are properly formatted.",
+        "testStrategy": "Load the extension, navigate to help tab, and visually inspect that the full content of Section 1 is displayed correctly. Verify that all steps from the PRD are present and formatted as intended.",
+        "priority": "medium",
         "dependencies": [
-          "129"
+          "135"
         ],
-        "details": "**Problem:** ResearchView.vue maintains a local cachedTopic ref that duplicates store.selectedTopic.\n\n**Solution:**\n\n1. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 10)\n   - Remove: `const cachedTopic = ref<CachedTopic | null>(null);`\n   - Add: `const cachedTopic = computed(() => store.selectedTopic.value);`\n\n2. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 41-55: loadTopicData function)\n   - Remove: `cachedTopic.value = topic as CachedTopic;` (line 45)\n   - Remove: `cachedTopic.value = fresh;` (line 50)\n   - Keep: `store.updateSelectedTopic(fresh);` (line 51)\n   - After fetch: data flows from store -> computed -> template\n\n3. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 29-30: suggestedQuestions computed)\n   - Change: `cachedTopic.value?.title` -> `store.selectedTopic.value?.title` (or use computed alias)\n\n4. **File: entrypoints/sidepanel/views/ResearchView.vue** (line 13-18: allPosts computed)\n   - No change needed — reads from cachedTopic.value which is now a computed pointing to store\n\n**Acceptance Criteria:**\n- No ref<CachedTopic | null> for cachedTopic in ResearchView\n- cachedTopic is a computed: computed(() => store.selectedTopic.value)\n- loadTopicData() fetches fresh from IDB via sendMessage(), then calls store.updateSelectedTopic(fresh)\n- Research history still saves correctly via sendMessage('SAVE_CACHED_TOPIC')\n- npm run compile passes with zero errors",
-        "testStrategy": "1. npm run compile — zero errors\n2. Select a topic -> navigate to ResearchView -> verify posts load\n3. Ask a research question -> verify answer displays\n4. Verify research history persists after page reload\n5. Switch to another topic and back -> verify history loads correctly",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Thay thế khai báo ref cachedTopic bằng computed từ store.selectedTopic",
-            "description": "Xóa dòng `const cachedTopic = ref<CachedTopic | null>(null);` và thêm `const cachedTopic = computed(() => store.selectedTopic.value);` trong ResearchView.vue (dòng 10)",
+            "title": "Add section title and container for Section 1",
+            "description": "Insert <h2> heading 'Thiết lập nhà cung cấp LLM' and a container div in HelpView.vue's first section placeholder.",
             "dependencies": [],
-            "details": "Sửa file entrypoints/sidepanel/views/ResearchView.vue, thay thế khai báo biến cachedTopic từ ref sang computed để đọc dữ liệu từ store. Đảm bảo kiểu dữ liệu tương thích.",
+            "details": "Locate the first placeholder section in HelpView.vue (created in Task 135). Replace it with an opening <div> with appropriate classes and the <h2> for the section title. Keep the container ready for the two sub-sections.",
             "status": "pending",
             "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 2,
-            "title": "Cập nhật hàm loadTopicData để xóa các gán cachedTopic và chỉ dùng store.updateSelectedTopic",
-            "description": "Trong hàm loadTopicData (dòng 41-55), xóa các lệnh gán `cachedTopic.value = topic as CachedTopic;` (dòng 45) và `cachedTopic.value = fresh;` (dòng 50), giữ lại `store.updateSelectedTopic(fresh);` (dòng 51). Đảm bảo dữ liệu sau khi fetch sẽ tự động cập nhật qua computed.",
+            "title": "Implement Gemini API Free Tier guide",
+            "description": "Add the Gemini sub-section with <div class=\"card\">, an <h3> heading, and ordered list of steps exactly as in PRD.",
             "dependencies": [
               1
             ],
-            "details": "Chỉnh sửa file entrypoints/sidepanel/views/ResearchView.vue, loại bỏ các dòng gán trực tiếp vào cachedTopic, chỉ để store cập nhật.",
+            "details": "Within the first section container, create a <div class=\"card\">. Inside, place <h3>Gemini API (Free Tier)</h3> and an <ol> with each step as <li>. Each step must start with <span class=\"badge\"> for the step number. Use <code class=\"font-mono\"> for technical terms like 'Gemini API Key', 'https://aistudio.google.com/app/apikey', and model names.",
             "status": "pending",
             "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 3,
-            "title": "Cập nhật computed suggestedQuestions để sử dụng store.selectedTopic",
-            "description": "Thay đổi `cachedTopic.value?.title` thành `store.selectedTopic.value?.title` trong computed suggestedQuestions (dòng 29-30) để đồng bộ với nguồn dữ liệu mới.",
+            "title": "Implement Local LLM (LM Studio/Ollama) guide",
+            "description": "Add the Local LLM sub-section with <div class=\"card\">, an <h3> heading, and ordered list of steps exactly as in PRD.",
             "dependencies": [
               1
             ],
-            "details": "Sửa file entrypoints/sidepanel/views/ResearchView.vue, đảm bảo suggestedQuestions sử dụng store.selectedTopic thay vì cachedTopic.",
+            "details": "After the Gemini card, create another <div class=\"card\">. Inside, place <h3>Local LLM (LM Studio / Ollama)</h3> and an <ol> with each step as <li>. Each step must start with <span class=\"badge\">. Use <code class=\"font-mono\"> for technical terms like 'lm-studio', 'Ollama', and URLs (e.g., 'http://localhost:1234/v1/chat/completions').",
             "status": "pending",
             "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 4,
-            "title": "Kiểm tra và cập nhật các tham chiếu còn lại đến cachedTopic trong template và computed",
-            "description": "Rà soát toàn bộ file ResearchView.vue, bao gồm template và các computed khác (ví dụ allPosts) để đảm bảo không còn tham chiếu trực tiếp đến ref cachedTopic, nếu có thì chuyển sang dùng computed hoặc store. Kiểm tra allPosts không cần thay đổi vì đã đọc từ cachedTopic (giờ là computed).",
-            "dependencies": [
-              1
-            ],
-            "details": "Xác nhận rằng cachedTopic (now computed) hoạt động tốt với template và các computed khác. Sửa nếu cần.",
-            "status": "pending",
-            "testStrategy": null,
-            "parentId": "undefined"
-          },
-          {
-            "id": 5,
-            "title": "Biên dịch và chạy kiểm tra chấp nhận",
-            "description": "Chạy npm run compile để đảm bảo không có lỗi. Thực hiện các kiểm tra chức năng: chọn chủ đề, kiểm tra bài đăng, trả lời nghiên cứu, lịch sử nghiên cứu sau tải lại, chuyển chủ đề và quay lại.",
+            "title": "Apply Tailwind classes for readability",
+            "description": "Ensure all elements use appropriate Tailwind classes: p-4, space-y-4, font-mono for codes, etc. Adjust margins and spacing for visual consistency.",
             "dependencies": [
               2,
-              3,
-              4
+              3
             ],
-            "details": "Đảm bảo không lỗi biên dịch, chức năng hoạt động đúng. Sửa lỗi nếu có.",
+            "details": "Review the entire Section 1 markup. Add classes like 'space-y-4' to the main container, 'p-4' to cards if not already present, and ensure <span class=\"badge\"> and <code class=\"font-mono\"> are correctly applied. Check that the layout matches the existing style of other sections in the app.",
             "status": "pending",
             "testStrategy": null,
             "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Verify Section 1 content and formatting",
+            "description": "Load the extension sidepanel, navigate to the help tab, and visually inspect the complete Section 1. Confirm all steps from the PRD are present and formatted as intended.",
+            "dependencies": [
+              4
+            ],
+            "details": "Open the extension, go to /help route, and scroll to Section 1. Check that both Gemini and Local LLM sub-sections display correctly: headings, badges, inline code, and proper ordering of steps. Compare with PRD to ensure no missing content.",
+            "status": "pending",
+            "testStrategy": "Visual inspection. If there are automated tests, run them to confirm no markup errors.",
+            "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-11T17:08:00.542Z"
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask; nhiệm vụ đã được định nghĩa rõ ràng.",
+        "updatedAt": "2026-05-13T10:32:27.720Z"
       },
       {
-        "id": "131",
-        "title": "Phase 3: Eliminate Triple-State in KnowledgeView",
-        "description": "Remove local cachedTopic ref in KnowledgeView.vue (931 lines). Read from store.selectedTopic via computed. Replace all cachedTopic.value = ... with store.updateSelectedTopic().",
-        "status": "done",
-        "priority": "high",
+        "id": "137",
+        "title": "Implement Section 2: Flow tóm tắt content",
+        "description": "Add the step-by-step description of the summarization flow within the second section of HelpView.vue.",
+        "details": "Add the second section with `<h2>` heading 'Flow tóm tắt'. Use a `<div class=\"card\">` containing an ordered list of the five steps exactly as described in the PRD. Use `<code class=\"font-mono\">` for tab names like 'Chủ đề', 'Tóm tắt'. Ensure the text is clear and matches the PRD.",
+        "testStrategy": "Navigate to the help tab and check that Section 2 is rendered exactly as specified, with all five Bước present and properly numbered.",
+        "priority": "medium",
         "dependencies": [
-          "130"
+          "135"
         ],
-        "details": "**Problem:** KnowledgeView.vue maintains a local cachedTopic ref that duplicates store.selectedTopic. Knowledge entries are written to both places manually.\n\n**Solution:**\n\n1. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (line 21)\n   - Remove: `const cachedTopic = ref<CachedTopic | null>(null);`\n   - Add: `const cachedTopic = computed(() => store.selectedTopic.value);`\n\n2. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (loadTopicData function)\n   - Remove all `cachedTopic.value = ...` assignments\n   - After fetching fresh data from IDB: call `store.updateSelectedTopic(fresh)`\n   - Keep loadedTopicUrl for tracking which topic is loaded\n\n3. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (all knowledge save operations)\n   - After extractKnowledge, reduceKnowledgeChunks, or manual save:\n   - Replace: `cachedTopic.value = {...}` with `store.updateSelectedTopic({...})`\n   - The computed `cachedTopic` will automatically reflect store changes\n\n4. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (allPosts computed)\n   - No change needed — reads from cachedTopic.value which is now computed\n\n5. **File: entrypoints/sidepanel/views/KnowledgeView.vue** (entries ref)\n   - Keep `const entries = ref<KnowledgeEntry[]>([])` — this is UI state, not topic data\n   - On load: `entries.value = [...(store.selectedTopic.value?.knowledgeEntries ?? [])]`\n   - On save: `store.updateSelectedTopic({ knowledgeEntries: entries.value })`\n\n**Acceptance Criteria:**\n- No ref<CachedTopic | null> for cachedTopic in KnowledgeView\n- cachedTopic is a computed: computed(() => store.selectedTopic.value)\n- loadTopicData() fetches fresh from IDB, calls store.updateSelectedTopic(fresh)\n- Knowledge extract, reduce, and save operations all update store via store.updateSelectedTopic()\n- allPosts computed still works (reads from cachedTopic.value.segments or cachedTopic.value.posts)\n- npm run compile passes with zero errors",
-        "testStrategy": "1. npm run compile — zero errors\n2. Open KnowledgeView on a topic with posts\n3. Extract knowledge -> verify entries display\n4. Save an entry -> verify it persists\n5. Reload page -> verify entries still present\n6. Switch topics -> verify correct entries load for each topic",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Chuyển cachedTopic từ ref sang computed trong KnowledgeView.vue",
-            "description": "Xóa dòng const cachedTopic = ref<CachedTopic | null>(null) và thêm computed(() => store.selectedTopic.value).",
+            "title": "Add section heading and card container",
+            "description": "Thêm thẻ <h2> với heading 'Flow tóm tắt' và <div class='card'> làm container cho danh sách có thứ tự.",
             "dependencies": [],
-            "details": "Tại dòng 21 của file KnowledgeView.vue, loại bỏ khai báo ref và thay bằng computed tham chiếu đến store.selectedTopic.",
+            "details": "Chèn heading và thẻ div vào HelpView.vue, ngay sau phần đầu tiên. Đảm bảo sử dụng đúng class Tailwind để giữ nhất quán giao diện.",
             "status": "pending",
-            "testStrategy": null,
+            "testStrategy": "Kiểm tra trực quan khi render: phần heading và card phải hiển thị đúng vị trí.",
             "parentId": "undefined"
           },
           {
             "id": 2,
-            "title": "Cập nhật hàm loadTopicData để dùng store.updateSelectedTopic",
-            "description": "Loại bỏ gán cachedTopic.value trong loadTopicData và gọi store.updateSelectedTopic sau khi fetch dữ liệu từ IDB.",
+            "title": "Tạo cấu trúc danh sách có thứ tự với năm bước",
+            "description": "Tạo thẻ <ol> và năm thẻ <li> cho năm bước của luồng tóm tắt, mỗi bước là một mục trong danh sách.",
             "dependencies": [
               1
             ],
-            "details": "Trong hàm loadTopicData, xóa tất cả các dòng gán cachedTopic.value = ..., giữ lại loadedTopicUrl, và thêm store.updateSelectedTopic(topicFresh) ở cuối.",
+            "details": "Mỗi <li> sẽ chứa nội dung mô tả bước. Các tên tab như 'Chủ đề', 'Tóm tắt' được bọc trong <code class='font-mono'>.",
             "status": "pending",
-            "testStrategy": null,
+            "testStrategy": "Xác nhận có đúng năm mục danh sách và chúng được đánh số thứ tự tự động.",
             "parentId": "undefined"
           },
           {
             "id": 3,
-            "title": "Cập nhật thao tác extract knowledge dùng store.updateSelectedTopic",
-            "description": "Trong hàm extractKnowledge, thay thế gán cachedTopic.value bằng store.updateSelectedTopic.",
+            "title": "Chèn nội dung mô tả từng bước từ PRD",
+            "description": "Viết chính xác nội dung từng bước theo PRD, đảm bảo rõ ràng và khớp với mô tả gốc.",
             "dependencies": [
               2
             ],
-            "details": "Sau khi xử lý extractKnowledge, gán store.updateSelectedTopic với dữ liệu mới thay vì gán cachedTopic.value.",
+            "details": "Thay thế văn bản giữ chỗ (nếu có) bằng nội dung thực tế từ tài liệu PRD. Mỗi bước bắt đầu bằng 'Bước X:' và mô tả ngắn gọn.",
             "status": "pending",
-            "testStrategy": null,
+            "testStrategy": "So sánh nội dung với PRD để đảm bảo khớp từng từ, từng dấu câu.",
             "parentId": "undefined"
           },
           {
             "id": 4,
-            "title": "Cập nhật thao tác reduce và lưu manual dùng store.updateSelectedTopic",
-            "description": "Trong reduceKnowledgeChunks và các hàm lưu manual, thay gán cachedTopic.value bằng store.updateSelectedTopic.",
+            "title": "Áp dụng styling và định dạng",
+            "description": "Đảm bảo sử dụng đúng class Tailwind: code tag cho tên tab, khoảng cách, font chữ, và căn chỉnh nhất quán.",
             "dependencies": [
               3
             ],
-            "details": "Cập nhật reduceKnowledgeChunks và hàm lưu manual để chỉ gọi store.updateSelectedTopic, loại bỏ gán cachedTopic.value.",
+            "details": "Bọc tất cả tên tab (vd: 'Chủ đề', 'Tóm tắt') trong <code class='font-mono'>. Thêm margin và padding phù hợp cho danh sách, căn chỉnh các bước đều đặn.",
             "status": "pending",
-            "testStrategy": null,
+            "testStrategy": "Kiểm tra visual trong trình duyệt: các thẻ code hiển thị đúng font monospace, khoảng cách đồng đều.",
             "parentId": "undefined"
           },
           {
             "id": 5,
-            "title": "Đồng bộ entries ref với store.selectedTopic",
-            "description": "Cập nhật entries ref khi load và lưu để đồng bộ với store.selectedTopic.knowledgeEntries.",
+            "title": "Kiểm tra end-to-end phần Section 2",
+            "description": "Tải extension, vào tab Help, và xác nhận Section 2 hiển thị đúng với đầy đủ năm bước như PRD.",
             "dependencies": [
               4
             ],
-            "details": "Khi load, gán entries.value từ store.selectedTopic.value?.knowledgeEntries, khi lưu gọi store.updateSelectedTopic({ knowledgeEntries: entries.value }).",
+            "details": "Mở extension, chuyển đến phần Help, kiểm tra nội dung Section 2: heading, card, danh sách có thứ tự, và từng bước. Ghi nhận bất kỳ lỗi nào.",
             "status": "pending",
-            "testStrategy": null,
+            "testStrategy": "Kiểm tra thủ công: xác nhận nội dung khớp PRD, hiển thị trên nhiều kích thước màn hình nếu cần.",
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-11T17:14:24.889Z"
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:32:28.740Z"
       },
       {
-        "id": "132",
-        "title": "Phase 4: Eliminate Triple-State in useSummarize (Critical)",
-        "description": "Remove local cachedTopic ref in useSummarize.ts (1216 lines). Replace with computed pointing to store. Remove ALL cachedTopic.value = {...} assignments — only store.updateSelectedTopic() mutates data.",
-        "status": "done",
-        "priority": "high",
+        "id": "138",
+        "title": "Implement Section 3: Sau tóm tắt content",
+        "description": "Add the two sub-sections 'Tổng hợp kiến thức' and 'Tra cứu mở rộng' within the third section of HelpView.vue.",
+        "details": "Add the third section with `<h2>` heading 'Sau tóm tắt'. Use two `<div class=\"card\">` blocks for 'Tổng hợp kiến thức (Tab \"Kiến thức\")' and 'Tra cứu mở rộng (Tab \"Tra cứu\")'. Use `<h3>` for sub-headings. Include the bullet points and descriptions verbatim from the PRD.",
+        "testStrategy": "Verify Section 3 content matches the PRD exactly. Ensure both sub-sections are properly displayed and the text is readable.",
+        "priority": "medium",
         "dependencies": [
-          "131"
+          "135"
         ],
-        "details": "**Problem:** useSummarize.ts is the heaviest composable and source of most sync bugs. Local cachedTopic ref mirrors store.selectedTopic. Every operation performs dual-write.\n\n**Key Dual-Write Locations to Fix:**\n\n| Line | Current Pattern | Fix |\n|------|----------------|-----|\n| 32 | `const cachedTopic = ref<...>(null)` | Replace with `computed(() => store.selectedTopic.value)` |\n| 148-149 | `cachedTopic.value = {...}; store.updateSelectedTopic({topicType})` | Remove cachedTopic assignment, keep only store.updateSelectedTopic() |\n| 233 | `cachedTopic.value = topic as CachedTopic` | Remove — data already in store via selectTopic() |\n| 267-279 | `cachedTopic.value = {...}; store.updateSelectedTopic({...})` | Remove cachedTopic assignment, merge all fields into store.updateSelectedTopic() |\n| 441-442 | `cachedTopic.value = {...}; store.updateSelectedTopic({topicType: 'news'})` | Remove cachedTopic assignment |\n| 543-545 | `store.updateSelectedTopic(...); if (saved) cachedTopic.value = saved` | Remove cachedTopic assignment |\n| 586-588 | `store.updateSelectedTopic(...); if (saved) cachedTopic.value = saved` | Remove cachedTopic assignment |\n| 632-634 | `store.updateSelectedTopic(...); if (saved) cachedTopic.value = saved` | Remove cachedTopic assignment |\n| 1014-1015 | `cachedTopic.value = {...}; store.updateSelectedTopic({topicType: 'news'})` | Remove cachedTopic assignment |\n\n**Detailed Steps:**\n\n1. **Line 32:** Remove `const cachedTopic = ref<CachedTopic | null>(null);`\n   Add: `const cachedTopic = computed(() => store.selectedTopic.value);`\n\n2. **Line 60-61 (summarizedPostCount computed):**\n   Change `cachedTopic.value` references — already works via computed alias\n\n3. **Line 110 (isNewsTopic computed):**\n   Change `cachedTopic.value` references — already works via computed alias\n\n4. **Line 113-117 (watch activeTabPostCount):**\n   Change `cachedTopic.value` to `store.selectedTopic.value` in the watch callback\n\n5. **Line 126-155 (detectAndCacheTopicType):**\n   - Line 130-133: Remove `cachedTopic.value` checks for threadDeleted — use store.selectedTopic.value\n   - Line 136-139: Remove `cachedTopic.value` checks for threadLocked — use store.selectedTopic.value\n   - Line 146: Guard check — change `cachedTopic.value?.url` to `store.selectedTopic.value?.url`\n   - Line 148: Remove `cachedTopic.value = {...}` — keep only `store.updateSelectedTopic({ topicType })`\n\n6. **Line 210-320 (loadTopicData):**\n   - Line 226: Remove `cachedTopic.value = null;` — use `store.clearSelection()` if needed, or just set local vars\n   - Line 233: Remove `cachedTopic.value = topic as CachedTopic;`\n   - Line 267-269: Remove `cachedTopic.value = {...}` — merge all fields into store.updateSelectedTopic()\n   - The store.updateSelectedTopic() call at line 270-279 should include ALL fields from fresh data\n\n7. **Line 441-442, 1014-1015 (news detection during summarize):**\n   - Remove `cachedTopic.value = {...}` — keep only `store.updateSelectedTopic({ topicType: 'news' })`\n\n8. **Line 543-545, 586-588, 632-634 (save operations):**\n   - Remove `if (saved) cachedTopic.value = saved;` lines\n   - The store is already updated via updateSelectedTopic() before the save\n\n9. **Export:** Ensure `cachedTopic` computed is in the return object so SummaryView can destructure it\n\n**Acceptance Criteria:**\n- No ref<CachedTopic | null> for cachedTopic in useSummarize\n- cachedTopic is a computed: computed(() => store.selectedTopic.value)\n- Zero `cachedTopic.value = {...}` assignments remain\n- isNewsTopic, summarizedPostCount, topicInfo computed properties work correctly\n- loadTopicData() updates store via store.updateSelectedTopic() with fresh IDB data\n- All summarize operations update store correctly\n- News type detection updates store correctly\n- npm run compile passes with zero errors",
-        "testStrategy": "1. npm run compile — zero errors\n2. Select a topic -> SummaryView loads -> verify posts, summary, segments display\n3. Summarize a single segment -> verify summary shows instantly\n4. Run auto-summarize all -> verify progress and results\n5. Generate overall summary -> verify it displays\n6. Detect news topic -> verify 'Tin tức' badge shows immediately\n7. Reload page -> verify all data persists\n8. Switch between topics -> verify correct data loads each time",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Thay thế cachedTopic ref bằng computed và cập nhật các computed khác",
-            "description": "Thay thế khai báo const cachedTopic = ref<CachedTopic | null>(null) bằng computed(() => store.selectedTopic.value). Cập nhật các computed summarizedPostCount và isNewsTopic để hoạt động với cachedTopic mới. Cập nhật watch activeTabPostCount để sử dụng store.selectedTopic.value thay vì cachedTopic.value.",
+            "title": "Tạo cấu trúc phần 3 với thẻ h2 'Sau tóm tắt'",
+            "description": "Thêm phần tử HTML chứa nội dung Section 3, bao gồm thẻ h2 với tiêu đề 'Sau tóm tắt' vào HelpView.vue.",
             "dependencies": [],
-            "details": "Sửa dòng 32: xóa ref, thêm computed. Dòng 60-61: đảm bảo summarizedPostCount dùng cachedTopic (computed). Dòng 110: isNewsTopic dùng cachedTopic. Dòng 113-117: watch callback dùng store.selectedTopic.value.",
-            "status": "done",
-            "testStrategy": "Kiểm tra kiểu biến cachedTopic là computed, không còn ref. Đảm bảo các computed khác vẫn hoạt động chính xác.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:18:18.218Z"
+            "details": "Trong HelpView.vue, thêm một section mới với id hoặc class phù hợp, chứa thẻ h2 có nội dung 'Sau tóm tắt'. Sử dụng Tailwind CSS để căn chỉnh bố cục.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra sự tồn tại của thẻ h2 với nội dung chính xác trong DOM.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
-            "title": "Sửa hàm detectAndCacheTopicType: loại bỏ dual-write",
-            "description": "Trong hàm detectAndCacheTopicType (dòng 126-155), thay thế tất cả tham chiếu cachedTopic.value bằng store.selectedTopic.value. Loại bỏ dòng 148 cachedTopic.value = {...}, chỉ giữ store.updateSelectedTopic({ topicType }).",
+            "title": "Thêm mục 'Tổng hợp kiến thức' dạng thẻ card",
+            "description": "Tạo một div.card cho 'Tổng hợp kiến thức (Tab \"Kiến thức\")' với thẻ h3 tiêu đề.",
             "dependencies": [
               1
             ],
-            "details": "Dòng 130-133, 136-139: dùng store.selectedTopic.value. Dòng 146: đổi cachedTopic.value?.url thành store.selectedTopic.value?.url. Dòng 148: xóa gán cachedTopic.value, giữ nguyên store.updateSelectedTopic.",
-            "status": "done",
-            "testStrategy": "Kiểm tra không còn cachedTopic.value trong hàm. Đảm bảo store.updateSelectedTopic vẫn được gọi đúng.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:19:32.672Z"
+            "details": "Thêm div có class 'card' chứa thẻ h3 'Tổng hợp kiến thức (Tab \"Kiến thức\")' và danh sách các dấu đầu dòng theo đúng PRD. Sử dụng thẻ ul/li.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra sự hiện diện của thẻ h3 và các bullet point trong card đầu tiên.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
-            "title": "Sửa hàm loadTopicData: loại bỏ tất cả gán cachedTopic.value",
-            "description": "Trong hàm loadTopicData (dòng 210-320), xóa tất cả các dòng gán cachedTopic.value (dòng 226, 233, 267-269). Thay bằng xóa lựa chọn store hoặc merge dữ liệu vào store.updateSelectedTopic. Đảm bảo store được cập nhật đúng với dữ liệu từ IDB.",
+            "title": "Thêm mục 'Tra cứu mở rộng' dạng thẻ card",
+            "description": "Tạo một div.card cho 'Tra cứu mở rộng (Tab \"Tra cứu\")' với thẻ h3 tiêu đề.",
             "dependencies": [
               1
             ],
-            "details": "Dòng 226: xóa cachedTopic.value = null; có thể dùng store.clearSelection(). Dòng 233: xóa gán, topic đã được lưu qua selectTopic(). Dòng 267-269: loại bỏ gán, merge các field vào store.updateSelectedTopic ở dòng 270-279.",
-            "status": "done",
-            "testStrategy": "Kiểm tra không còn gán cachedTopic.value. Đảm bảo store.selectedTopic được cập nhật đúng sau khi load.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:23:03.879Z"
+            "details": "Thêm div có class 'card' chứa thẻ h3 'Tra cứu mở rộng (Tab \"Tra cứu\")' và danh sách các dấu đầu dòng theo đúng PRD. Sử dụng thẻ ul/li.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra sự hiện diện của thẻ h3 và các bullet point trong card thứ hai.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
-            "title": "Sửa phát hiện news và các thao tác save: loại bỏ dual-write",
-            "description": "Trong các đoạn xử lý news detection (dòng 441-442, 1014-1015) và save operations (dòng 543-545, 586-588, 632-634), xóa tất cả gán cachedTopic.value. Chỉ giữ store.updateSelectedTopic cho news detection, và bỏ dòng if (saved) cachedTopic.value = saved trong save operations.",
-            "dependencies": [
-              1
-            ],
-            "details": "Dòng 441-442, 1014-1015: xóa cachedTopic.value = {...}, giữ store.updateSelectedTopic({ topicType: 'news' }). Dòng 543-545, 586-588, 632-634: xóa if (saved) cachedTopic.value = saved. Store đã được cập nhật trước đó.",
-            "status": "done",
-            "testStrategy": "Kiểm tra không còn gán cachedTopic.value. Đảm bảo các thao tác save không gây lỗi.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:23:25.219Z"
-          },
-          {
-            "id": 5,
-            "title": "Cập nhật export, chạy compile và xác nhận acceptance criteria",
-            "description": "Đảm bảo cachedTopic computed được export trong return object của useSummarize để SummaryView có thể destructure. Chạy npm run compile để xác nhận không lỗi. Kiểm tra tất cả acceptance criteria: không còn ref, không gán cachedTopic.value, các computed hoạt động, loadTopicData, summarize, news detection hoạt động đúng.",
+            "title": "Nhập nội dung chi tiết từ PRD vào hai mục",
+            "description": "Chèn chính xác nội dung mô tả và bullet points từ PRD vào cả hai card, đảm bảo văn bản không sai lệch.",
             "dependencies": [
               2,
-              3,
-              4
-            ],
-            "details": "Kiểm tra return object của useSummarize có cachedTopic. Chạy npm run compile. Kiểm tra thủ công: chọn topic, load posts, summarize, auto-summarize, generate overall summary, detect news, save. Xác nhận không còn dual-write.",
-            "status": "done",
-            "testStrategy": "npm run compile không lỗi. Kiểm tra chức năng theo acceptance criteria.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:24:43.844Z"
-          }
-        ],
-        "updatedAt": "2026-05-11T17:24:43.844Z"
-      },
-      {
-        "id": "133",
-        "title": "Phase 5: Add Optimistic Update with Rollback",
-        "description": "Create useOptimisticUpdate composable. Replace dual-write patterns (store.updateSelectedTopic + sendMessage SAVE_CACHED_TOPIC) with optimisticUpdate(). Auto-rollback on save failure.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "132"
-        ],
-        "details": "**Problem:** Store updates and IndexedDB saves are not atomic. If IDB save fails, store is already updated with data that won't persist. No rollback mechanism.\n\n**New File: entrypoints/sidepanel/composables/useOptimisticUpdate.ts**\n\n```typescript\nimport type { CachedTopic } from '@/lib/types';\nimport { sendMessage } from '@/lib/messaging';\nimport type { useTopicStore } from './useTopicStore';\n\nexport function useOptimisticUpdate(store: ReturnType<typeof useTopicStore>) {\n  async function optimisticUpdate(partial: Partial<CachedTopic>): Promise<boolean> {\n    const previous = store.selectedTopic.value;\n    if (!previous) return false;\n\n    // 1. Optimistic: update store immediately\n    store.updateSelectedTopic(partial);\n\n    // 2. Persist to IndexedDB\n    try {\n      await sendMessage('SAVE_CACHED_TOPIC', { url: previous.url, ...partial });\n      return true;\n    } catch (err) {\n      // 3. Rollback: restore previous state\n      store.updateSelectedTopic(previous);\n      console.error('[OptimisticUpdate] Failed to save, rolled back:', err);\n      return false;\n    }\n  }\n\n  return { optimisticUpdate };\n}\n```\n\n**Files to Update:**\n\n1. **useSummarize.ts:** Replace patterns like:\n   ```\n   store.updateSelectedTopic({ field: value });\n   await sendMessage('SAVE_CACHED_TOPIC', { url, field: value });\n   ```\n   With:\n   ```\n   await optimisticUpdate({ field: value });\n   ```\n\n2. **KnowledgeView.vue:** Same replacement for knowledge entries save\n\n3. **ResearchView.vue:** Same replacement for research history save\n\n4. **TopicHubView.vue (toggleBookmark, line 204-212):** Replace manual dual-write\n\n5. **App.vue (autoUpdateCachedTopic):** Replace manual dual-write\n\n**Important:** Do NOT apply rollback for append-only operations (e.g., adding new segment summaries) where rollback could lose user-entered data. Only apply for field updates (topicType, bookmarked, summary, knowledgeEntries, researchHistory).\n\n**Acceptance Criteria:**\n- useOptimisticUpdate.ts exports optimisticUpdate(partial): Promise<boolean>\n- Returns true on success, false on failure (after rollback)\n- Logs error to console on rollback\n- Existing dual-write patterns replaced with optimisticUpdate()\n- npm run compile passes with zero errors",
-        "testStrategy": "1. npm run compile — zero errors\n2. Toggle bookmark on a topic -> verify instant UI update\n3. Simulate network failure (devtools offline) -> toggle bookmark -> verify rollback (UI reverts)\n4. Test knowledge entry save with network failure -> verify rollback\n5. Test research history save with network failure -> verify rollback\n6. Verify console shows error message on rollback",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Create useOptimisticUpdate composable file",
-            "description": "Create the useOptimisticUpdate composable that provides an optimisticUpdate function for atomic store updates and IndexedDB persistence with automatic rollback on failure.",
-            "dependencies": [],
-            "details": "Create file entrypoints/sidepanel/composables/useOptimisticUpdate.ts with the optimisticUpdate function as specified: store.updateSelectedTopic immediately, then sendMessage('SAVE_CACHED_TOPIC', ...); on error, restore previous state and log error.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:29:58.966Z"
-          },
-          {
-            "id": 2,
-            "title": "Update useSummarize.ts to replace dual-write with optimisticUpdate",
-            "description": "Replace all dual-write patterns in useSummarize.ts where store.updateSelectedTopic is followed by sendMessage SAVE_CACHED_TOPIC with calls to optimisticUpdate for field updates.",
-            "dependencies": [
-              1
-            ],
-            "details": "Locate patterns like store.updateSelectedTopic(...); await sendMessage('SAVE_CACHED_TOPIC', ...) and replace with await optimisticUpdate({...}). Avoid replacing append-only operations like adding new segment summaries.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:33:53.937Z"
-          },
-          {
-            "id": 3,
-            "title": "Update KnowledgeView.vue to use optimisticUpdate for knowledge entries",
-            "description": "Replace the manual dual-write pattern in KnowledgeView.vue when saving knowledge entries with optimisticUpdate.",
-            "dependencies": [
-              1
-            ],
-            "details": "Locate code that updates store and sends SAVE_CACHED_TOPIC for knowledgeEntries; replace with optimisticUpdate({ knowledgeEntries: ... }). Ensure rollback is only applied for field updates.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:31:49.066Z"
-          },
-          {
-            "id": 4,
-            "title": "Update ResearchView.vue to use optimisticUpdate for research history",
-            "description": "Replace the manual dual-write pattern in ResearchView.vue when saving research history with optimisticUpdate.",
-            "dependencies": [
-              1
-            ],
-            "details": "Locate code that updates store and sends SAVE_CACHED_TOPIC for researchHistory; replace with optimisticUpdate({ researchHistory: ... }).",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:32:57.347Z"
-          },
-          {
-            "id": 5,
-            "title": "Update TopicHubView.vue and App.vue to use optimisticUpdate",
-            "description": "Replace manual dual-write patterns in TopicHubView.vue (toggleBookmark) and App.vue (autoUpdateCachedTopic) with calls to optimisticUpdate.",
-            "dependencies": [
-              1
-            ],
-            "details": "In TopicHubView.vue (lines 204-212), replace the bookmark toggle dual-write; in App.vue, replace the autoUpdateCachedTopic function dual-write. Ensure proper rollback is applied.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:35:18.027Z"
-          }
-        ],
-        "updatedAt": "2026-05-11T17:35:18.027Z"
-      },
-      {
-        "id": "134",
-        "title": "Phase 6: Cleanup TopicHubView Sync",
-        "description": "Replace fragile selectedTopicKey computed watch in TopicHubView.vue with simpler URL-based watch. Store is now single source, so only need to sync when topic URL changes.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [
-          "133"
-        ],
-        "details": "**Problem:** TopicHubView uses a fragile computed key string to detect store changes:\n\n```typescript\nconst selectedTopicKey = computed(() => {\n  const t = store.selectedTopic.value;\n  if (!t) return null;\n  return `${t.url}|${t.summary?.slice(0, 20) ?? ''}|${t.segments?.length ?? 0}|${t.bookmarked ?? false}|${t.knowledgeEntries?.length ?? 0}|${t.totalPosts ?? 0}`;\n});\n```\n\nThis watch is brittle (misses deep changes, depends on string slicing) and unnecessary once store is single source.\n\n**Solution:**\n\n1. **File: entrypoints/sidepanel/views/TopicHubView.vue** (line 116-149)\n   - Remove: `selectedTopicKey` computed (lines 116-120)\n   - Remove: `watch(selectedTopicKey, ...)` (lines 122-149)\n   - Add: `watch(() => store.selectedTopic.value?.url, (newUrl) => {...})`\n   - The watch should:\n     a. When a NEW topic is selected (URL changes): add it to allTopics list if not present\n     b. When the SAME topic is updated (URL unchanged): update the existing entry in allTopics\n\n2. **Simplified watch logic:**\n   ```typescript\n   watch(() => store.selectedTopic.value, (updated) => {\n     if (!updated?.url) return;\n     const idx = allTopics.value.findIndex(t => isSameTopicUrl(t.url, updated.url));\n     if (idx >= 0) {\n       // Update existing entry — deep merge\n       allTopics.value[idx] = { ...allTopics.value[idx], ...updated };\n     } else if (updated.summary || updated.posts?.length) {\n       // New topic with content — add to list\n       allTopics.value = [...allTopics.value, { ...updated }];\n     }\n   }, { deep: false }); // Only triggers when selectedTopic reference changes\n   ```\n\n3. **Bookmark sync:** toggleBookmark already updates allTopics directly (line 207), so no change needed there.\n\n**Acceptance Criteria:**\n- selectedTopicKey computed is removed\n- Replaced with watch on store.selectedTopic.value?.url or store.selectedTopic directly\n- Topic list still syncs when a new topic is selected\n- Topic list still syncs when bookmark is toggled\n- Topic list still shows 'Đang tóm tắt...' indicator for summarizing topics\n- npm run compile passes with zero errors",
-        "testStrategy": "1. npm run compile — zero errors\n2. Open TopicHubView -> select a topic -> verify it navigates to SummaryView\n3. Go back to TopicHubView -> verify the selected topic shows updated data\n4. Toggle bookmark on a topic -> verify bookmark icon updates in list\n5. Start summarizing a new topic -> verify 'Đang tóm tắt...' indicator shows in list\n6. Delete a topic -> verify it removes from list",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Xóa computed selectedTopicKey và watch cũ",
-            "description": "Xóa computed selectedTopicKey (dòng 116-120) và watch(selectedTopicKey, ...) (dòng 122-149) trong TopicHubView.vue.",
-            "dependencies": [],
-            "details": "Mở file entrypoints/sidepanel/views/TopicHubView.vue, xóa đoạn code computed selectedTopicKey và watch tương ứng. Đảm bảo không còn tham chiếu đến selectedTopicKey ở đâu khác.",
-            "status": "done",
-            "testStrategy": "npm run compile không báo lỗi biến không được sử dụng.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:39:55.142Z"
-          },
-          {
-            "id": 2,
-            "title": "Thêm watch mới theo store.selectedTopic.value?.url",
-            "description": "Thêm watch(() => store.selectedTopic.value?.url, ...) với logic cập nhật danh sách allTopics khi URL thay đổi.",
-            "dependencies": [
-              1
-            ],
-            "details": "Thêm watch mới với callback xử lý: nếu topic đã tồn tại trong allTopics thì cập nhật, nếu là mới và có nội dung thì thêm vào. Sử dụng isSameTopicUrl để so sánh.",
-            "status": "done",
-            "testStrategy": "Kiểm tra khi chọn topic mới, topic đó xuất hiện trong danh sách; khi chọn lại topic cũ, dữ liệu được cập nhật.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:40:10.376Z"
-          },
-          {
-            "id": 3,
-            "title": "Đảm bảo đồng bộ bookmark hoạt động",
-            "description": "Kiểm tra toggleBookmark vẫn cập nhật allTopics trực tiếp và không bị ảnh hưởng bởi thay đổi watch.",
-            "dependencies": [
-              2
-            ],
-            "details": "Xác nhận tại dòng 207, toggleBookmark vẫn gọi cập nhật allTopics. Không cần sửa code, chỉ kiểm tra không có xung đột.",
-            "status": "done",
-            "testStrategy": "Bật/tắt bookmark trên một topic, kiểm tra icon bookmark trong danh sách thay đổi đúng.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:40:33.122Z"
-          },
-          {
-            "id": 4,
-            "title": "Kiểm thử chức năng topic list",
-            "description": "Thực hiện kiểm thử thủ công để đảm bảo topic list hiển thị đúng khi chọn topic mới, cập nhật, và khi đang tóm tắt.",
-            "dependencies": [
               3
             ],
-            "details": "Mở TopicHubView, chọn topic mới, quay lại xem dữ liệu cập nhật. Chọn topic đang tóm tắt, kiểm tra hiển thị 'Đang tóm tắt...'.",
-            "status": "done",
-            "testStrategy": "Duyệt qua các kịch bản: chọn topic mới, cập nhật topic cũ, chuyển tab, toggle bookmark.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:41:27.191Z"
+            "details": "Sao chép nội dung bullet points và mô tả từ PRD phần 'Sau tóm tắt' vào các thẻ li tương ứng. Kiểm tra chính tả và dấu câu. Sử dụng thẻ code nếu cần.",
+            "status": "pending",
+            "testStrategy": "So sánh văn bản trong code với PRD, đảm bảo khớp 100%.",
+            "parentId": "undefined"
           },
           {
             "id": 5,
-            "title": "Chạy npm run compile và xác nhận không lỗi",
-            "description": "Chạy lệnh npm run compile để kiểm tra build không lỗi, đảm bảo mã nguồn sạch và đáp ứng acceptance criteria.",
+            "title": "Kiểm tra hiển thị và đối chiếu với PRD",
+            "description": "Load extension và kiểm tra giao diện Section 3 có hiển thị đúng với PRD không.",
             "dependencies": [
               4
             ],
-            "details": "Thực hiện lệnh npm run compile. Nếu có lỗi, sửa cho đến khi zero errors. Đảm bảo tất cả acceptance criteria đều pass.",
-            "status": "done",
-            "testStrategy": "npm run compile trả về exit code 0, không có lỗi hay cảnh báo.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-11T17:41:36.849Z"
+            "details": "Chạy extension, vào tab Help, quan sát Section 3. Đảm bảo tiêu đề h2, hai thẻ card, bullet points và mô tả hiển thị đẹp, dễ đọc.",
+            "status": "pending",
+            "testStrategy": "Thực hiện visual inspection, so sánh với ảnh mockup nếu có; kiểm tra responsive.",
+            "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-11T17:41:36.849Z"
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:32:28.866Z"
+      },
+      {
+        "id": "139",
+        "title": "Add route /help to Vue Router",
+        "description": "Register the /help route in the sidepanel router (main.ts) with lazy loading of HelpView.vue.",
+        "details": "In `entrypoints/sidepanel/main.ts`, import `HelpView.vue` lazily: `{ path: '/help', name: 'help', component: () => import('./views/HelpView.vue') },`. Add this route to the existing routes array (e.g., after the settings route). Ensure no syntax errors.",
+        "testStrategy": "Run `npm run compile` to verify no compilation errors. Then in the running extension, navigate to `/help` by typing the URL or clicking the button (once added) to confirm the component loads.",
+        "priority": "high",
+        "dependencies": [
+          "135"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:32:29.182Z"
+      },
+      {
+        "id": "140",
+        "title": "Add navigation button '?' in App.vue",
+        "description": "Insert a router-link button with '?' icon adjacent to the Settings link in the sidepanel navigation bar, with tooltip 'Hướng dẫn sử dụng' and active state handling.",
+        "details": "In `entrypoints/sidepanel/App.vue`, after the `<router-link to=\"/settings\">`, add a new `<router-link to=\"/help\">` with `class=\"nav-item\"` and an inner `span` with the '?' character. Add `title=\"Hướng dẫn sử dụng\"` for tooltip. Use the same active class logic as other nav items (e.g., `router-link-active` highlighting). Ensure the button does not cause layout overflow.",
+        "testStrategy": "Check the sidepanel navigation bar displays the '?' button. Click it and verify it navigates to the help view. Also verify that the button is highlighted when the help tab is active.",
+        "priority": "high",
+        "dependencies": [
+          "139"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:32:29.654Z"
+      },
+      {
+        "id": "141",
+        "title": "Apply consistent styling and verify responsiveness",
+        "description": "Ensure all help content uses the correct typography, colors (CSS variables), spacing, and that the navigation bar remains responsive with the new button.",
+        "details": "Review the entire HelpView.vue and the App.vue modification for adherence to the app's design system. Use Tailwind classes like `text-xs`, `text-sm`, `font-semibold`, `text-[var(--color-text-*)]`, `bg-[var(--color-accent)]` for badges. Ensure that on narrow sidepanel widths, the nav buttons still fit without overflow (add responsive classes if needed). Test in different sidepanel widths.",
+        "testStrategy": "Resize the sidepanel and verify the layout adjusts correctly. Check that all text, badges, and code snippets are styled consistently with other parts of the extension.",
+        "priority": "medium",
+        "dependencies": [
+          "136",
+          "137",
+          "138",
+          "140"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:34:13.070Z"
+      },
+      {
+        "id": "142",
+        "title": "Run npm run compile and fix any errors",
+        "description": "Execute the compilation command and resolve any TypeScript, Vue, or bundling errors that arise.",
+        "details": "Run `npm run compile` from the project root. Address any errors such as missing imports, incorrect type annotations, or linting issues. This may involve minor edits to ensure the code compiles cleanly with zero errors and zero warnings.",
+        "testStrategy": "Run `npm run compile` and confirm exit code 0 with no errors.",
+        "priority": "medium",
+        "dependencies": [
+          "141"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:34:13.244Z"
+      },
+      {
+        "id": "143",
+        "title": "Perform manual verification tests",
+        "description": "Execute the manual test cases defined in the PRD to validate the new help tab functionality.",
+        "details": "Manually test: (1) Click '?' button navigates to help tab. (2) Help tab displays three sections with correct content. (3) Steps from the guide can be copy-pasted. (4) Navigation between tabs works and help content persists. (5) `npm run compile` still passes after any final adjustments.",
+        "testStrategy": "Follow the verification table in the PRD. Document results and fix any failures.",
+        "priority": "medium",
+        "dependencies": [
+          "142"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:34:43.441Z"
+      },
+      {
+        "id": "144",
+        "title": "Final code review and cleanup",
+        "description": "Review the entire code changes for consistency, naming conventions, and alignment with existing codebase patterns.",
+        "details": "Inspect the new files and modifications for correct naming, proper use of existing utils/composables, no leftover placeholder code. Ensure that the component structure follows the same conventions as other views (e.g., SummaryView, SettingsView). Remove any console.log or debug statements.",
+        "testStrategy": "Cross-check with existing views, verify that the code is clean and maintainable.",
+        "priority": "low",
+        "dependencies": [
+          "143"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng subtask.",
+        "updatedAt": "2026-05-13T10:35:30.478Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T17:41:36.850Z",
-      "taskCount": 61,
-      "completedCount": 61,
+      "lastModified": "2026-05-13T10:35:30.479Z",
+      "taskCount": 10,
+      "completedCount": 10,
       "tags": [
         "master"
       ]

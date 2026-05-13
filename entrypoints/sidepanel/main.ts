@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/opinions', redirect: '/knowledge' },
     { path: '/research', name: 'research', component: () => import('./views/ResearchView.vue') },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue') },
+    { path: '/help', name: 'help', component: () => import('./views/HelpView.vue') },
   ],
 });
 

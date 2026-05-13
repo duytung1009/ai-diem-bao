@@ -224,3 +224,11 @@ Side Panel (Vue): render summary, opinions, research
 - Error handling, retry logic
 - Custom prompt templates
 - README cho GitHub
+
+**Phase 5 — Help Tab + Onboarding Guide**
+- Tab "Hướng dẫn" với nội dung text-only, chia sections:
+  + Setup BYOK LLM (Gemini API Free Tier, Local LLM qua LM Studio/Ollama)
+  + Flow tóm tắt (xem chủ đề → chọn → tóm tắt)
+  + Sau tóm tắt (tổng hợp kiến thức, tra cứu)
+- Button `?` cạnh tab Cài đặt để truy cập
+- Route `/help` + `HelpView.vue`

@@ -75,9 +75,13 @@ export async function scrapePageRange(
       // then strip any stray <script> in <body>. DOMParser in extension page context triggers
       // CSP checks for resource-loading elements even in inert parsed documents.
       const safeHtml = html
-        .replace(/<head\b[\s\S]*?<\/head>/gi, '')
-        .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-        .replace(/<link\b[^>]*>/gi, '');  // Strip <link> in <body> (e.g. preload as="script")
+        .replace(/<head\b[\s\S]*?(?=<body\b|<\/body\b)/gi, '')  // Strip <head> to <body> (handles missing </head>)
+        .replace(/<script\b[\s\S]*?<\/script>/gi, '')            // Strip stray <script> in <body>
+        .replace(/<link\b[^>]*>/gi, '')                          // Strip <link> in <body> (e.g. preload as="script")
+        .replace(/<iframe\b[\s\S]*?<\/iframe>/gi, '')            // Strip <iframe> elements
+        .replace(/<object\b[\s\S]*?<\/object>/gi, '')            // Strip <object> elements
+        .replace(/<embed\b[^>]*>/gi, '')                         // Strip <embed> elements
+        .replace(/<meta\b[^>]*>/gi, '');                         // Strip <meta> (e.g. http-equiv="refresh")
       const doc = parser.parseFromString(safeHtml, 'text/html');
 
       const isLoginPage =

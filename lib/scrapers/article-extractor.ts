@@ -29,9 +29,13 @@ export async function extractArticle(url: string): Promise<ArticleContent | null
     const html = await res.text();
     const parser = new DOMParser();
     const safeHtml = html
-      .replace(/<head\b[\s\S]*?<\/head>/gi, '')
+      .replace(/<head\b[\s\S]*?(?=<body\b|<\/body\b)/gi, '')
       .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-      .replace(/<link\b[^>]*>/gi, '');
+      .replace(/<link\b[^>]*>/gi, '')
+      .replace(/<iframe\b[\s\S]*?<\/iframe>/gi, '')
+      .replace(/<object\b[\s\S]*?<\/object>/gi, '')
+      .replace(/<embed\b[^>]*>/gi, '')
+      .replace(/<meta\b[^>]*>/gi, '');
     const doc = parser.parseFromString(safeHtml, 'text/html');
 
     // Remove noise elements

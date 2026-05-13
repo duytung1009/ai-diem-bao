@@ -20,7 +20,7 @@ export default defineBackground(() => {
 
   browser.runtime?.onMessage.addListener(
     (message: Message, _sender, sendResponse) => {
-      console.log('[BG] onMessage:', message.type, message.payload);
+      console.info('[BG] onMessage:', message.type, message.payload);
       switch (message.type) {
         case 'GET_SETTINGS':
           getSettings().then(sendResponse);
@@ -119,7 +119,6 @@ export default defineBackground(() => {
               const config = await getSettings();
               // Load existing so a partial update (e.g. opinions only) doesn't wipe other fields
               const existing = await getCachedTopic(url);
-              console.log('SAVE_CACHED_TOPIC', { url, partial, existing });
               const topic: CachedTopic = {
                 url: normalizeUrl(url),
                 title: partial.title ?? existing?.title ?? '',

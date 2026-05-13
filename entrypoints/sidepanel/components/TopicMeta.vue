@@ -14,7 +14,6 @@ const props = defineProps<{
 const store = useTopicStore();
 
 const summarizedPostCount = computed(() => {
-  console.log('Calculating summarizedPostCount for topic', props.topic);
   return props.topic.summarizedPostCount ?? props.topic.totalPosts ?? 0;
 });
 

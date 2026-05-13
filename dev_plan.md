@@ -227,7 +227,7 @@ Side Panel (Vue): render summary, opinions, research
 
 **Phase 5 — Help Tab + Onboarding Guide**
 - Tab "Hướng dẫn" với nội dung text-only, chia sections:
-  + Setup BYOK LLM (Gemini API Free Tier, Local LLM qua LM Studio/Ollama)
+  + Setup LLM Provider: 1.1 Local LLM (khuyến nghị), 1.2 Gemini Free Tier (có note warning rate limit), 1.3 API Pay-per-request (có note chi phí)
   + Flow tóm tắt (xem chủ đề → chọn → tóm tắt)
   + Sau tóm tắt (tổng hợp kiến thức, tra cứu)
 - Button `?` cạnh tab Cài đặt để truy cập

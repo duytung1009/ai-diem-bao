@@ -7,16 +7,68 @@
     <div>
       <h2 class="font-semibold text-sm text-(--color-text-primary)">1. Thiết lập LLM Provider</h2>
       <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
-        Extension cần một LLM để hoạt động. Bạn có thể dùng API miễn phí của Google hoặc chạy local với LM Studio / Ollama.
+        Extension cần một LLM để hoạt động. Dưới đây là 3 cách thiết lập, xếp theo khuyến nghị giảm dần.
       </p>
+
+      <!-- Local LLM (recommended) -->
+      <div class="card space-y-1.5 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="badge bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">1.1</span>
+          <h3 class="text-xs font-semibold text-(--color-text-primary)">Local LLM (LM Studio / Ollama)</h3>
+          <span class="badge bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
+        </div>
+        <ol class="space-y-1.5 pl-1">
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
+            <span>Cài đặt <strong class="text-(--color-text-primary)">LM Studio</strong> (<code class="font-mono text-(--color-accent-text)">https://lmstudio.ai</code>) hoặc <strong class="text-(--color-text-primary)">Ollama</strong> (<code class="font-mono text-(--color-accent-text)">https://ollama.com</code>)</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
+            <span>Tải model mong muốn (VD: <code class="font-mono text-(--color-accent-text)">llama-3.1-8b</code>, <code class="font-mono text-(--color-accent-text)">qwen3.5-4b</code>, ...)</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
+            <span>Khởi động local server:<br>
+              <strong>LM Studio:</strong> Mở app → chọn model → nhấn "Start Server" (port <code class="font-mono text-(--color-accent-text)">1234</code>)<br>
+              <strong>Ollama:</strong> Chạy terminal → <code class="font-mono text-(--color-accent-text)">ollama serve</code> (port <code class="font-mono text-(--color-accent-text)">11434</code>)
+            </span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">4</span>
+            <span>Mở extension → tab <strong class="text-(--color-text-primary)">Cài đặt</strong> → chọn Provider <strong class="text-(--color-text-primary)">"Custom (OpenAI-compatible)"</strong></span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">5</span>
+            <span>Nhập Base URL:
+              <br>LM Studio: <code class="font-mono text-(--color-accent-text)">http://localhost:1234/v1</code>
+              <br>Ollama: <code class="font-mono text-(--color-accent-text)">http://localhost:11434/v1</code>
+            </span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">6</span>
+            <span>Nhập model name (VD: <code class="font-mono text-(--color-accent-text)">llama-3.1-8b</code>, <code class="font-mono text-(--color-accent-text)">qwen3.5-4b</code>, ...)</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">7</span>
+            <span>API Key có thể để trống (local không cần auth)</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">8</span>
+            <span>Nhấn <strong class="text-(--color-text-primary)">"Test Connection"</strong> → hiện "Kết nối thành công!" là OK</span>
+          </li>
+        </ol>
+      </div>
 
       <!-- Gemini Free Tier -->
       <div class="card space-y-1.5 mb-3">
         <div class="flex items-center gap-2">
-          <span class="badge bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">1.1</span>
+          <span class="badge bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">1.2</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">Gemini API Free Tier (Google AI Studio)</h3>
         </div>
-        <ol class="space-y-1.5 pl-1">
+        <div class="alert alert-warning text-xs">
+          ⚠ Free tier hay gặp lỗi kết nối và giới hạn ~20 lượt gọi API mỗi ngày. Dùng cho mục đích dùng thử, không dùng thường xuyên.
+        </div>
+        <ol class="space-y-1.5 pl-1 mt-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
             <span>Truy cập <code class="font-mono text-(--color-accent-text)">https://aistudio.google.com</code> và đăng nhập tài khoản Google</span>
@@ -39,7 +91,7 @@
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">6</span>
-            <span>Chọn model <code class="font-mono text-(--color-accent-text)">gemini-2.5-flash</code> (nhanh, đủ dùng cho tóm tắt)</span>
+            <span>Chọn model <code class="font-mono text-(--color-accent-text)">gemini-2.5-flash-lite</code> (nhanh,  đủ dùng cho tóm tắt)</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">7</span>
@@ -48,50 +100,31 @@
         </ol>
       </div>
 
-      <!-- Local LLM -->
+      <!-- API Pay-per-request -->
       <div class="card space-y-1.5">
         <div class="flex items-center gap-2">
-          <span class="badge bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">1.2</span>
-          <h3 class="text-xs font-semibold text-(--color-text-primary)">Local LLM (LM Studio / Ollama)</h3>
+          <span class="badge bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">1.3</span>
+          <h3 class="text-xs font-semibold text-(--color-text-primary)">API Pay-per-request (Gemini / OpenAI)</h3>
         </div>
-        <ol class="space-y-1.5 pl-1">
+        <div class="alert alert-warning text-xs">
+          ⚠ Chi phí có thể cao do lượng token input lớn. Mỗi request summarize tốn ~1.000 VNĐ. Một topic khoảng 100 trang sẽ cần 15–20 request → tổng ~15.000–20.000 VNĐ cho một lần tóm tắt. Cân nhắc kỹ trước khi dùng.
+        </div>
+        <ol class="space-y-1.5 pl-1 mt-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
-            <span>Cài đặt <strong class="text-(--color-text-primary)">LM Studio</strong> (<code class="font-mono text-(--color-accent-text)">https://lmstudio.ai</code>) hoặc <strong class="text-(--color-text-primary)">Ollama</strong> (<code class="font-mono text-(--color-accent-text)">https://ollama.com</code>)</span>
+            <span>Chọn provider <strong class="text-(--color-text-primary)">"Google Gemini"</strong> hoặc <strong class="text-(--color-text-primary)">"OpenAI"</strong> trong tab Cài đặt</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
-            <span>Tải model mong muốn (VD: <code class="font-mono text-(--color-accent-text)">llama-3.1-8b</code>, <code class="font-mono text-(--color-accent-text)">qwen2.5-7b</code>, <code class="font-mono text-(--color-accent-text)">mistral-7b</code>)</span>
+            <span>Tạo API key từ <code class="font-mono text-(--color-accent-text)">https://aistudio.google.com</code> (Gemini) hoặc <code class="font-mono text-(--color-accent-text)">https://platform.openai.com</code> (OpenAI)</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
-            <span>Khởi động local server:<br>
-              <strong>LM Studio:</strong> Mở app → chọn model → nhấn "Start Server" (cổng <code class="font-mono text-(--color-accent-text)">1234</code>)<br>
-              <strong>Ollama:</strong> Chạy terminal → <code class="font-mono text-(--color-accent-text)">ollama serve</code> (cổng <code class="font-mono text-(--color-accent-text)">11434</code>)
-            </span>
+            <span>Dán API key, chọn model, nhấn <strong class="text-(--color-text-primary)">"Test Connection"</strong> → hiện "Kết nối thành công!" là OK</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">4</span>
-            <span>Mở extension → tab <strong class="text-(--color-text-primary)">Cài đặt</strong> → chọn Provider <strong class="text-(--color-text-primary)">"Custom (OpenAI-compatible)"</strong></span>
-          </li>
-          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
-            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">5</span>
-            <span>Nhập Base URL:
-              <br>LM Studio: <code class="font-mono text-(--color-accent-text)">http://localhost:1234/v1</code>
-              <br>Ollama: <code class="font-mono text-(--color-accent-text)">http://localhost:11434/v1</code>
-            </span>
-          </li>
-          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
-            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">6</span>
-            <span>Nhập model name (VD: <code class="font-mono text-(--color-accent-text)">llama-3.1-8b</code>, <code class="font-mono text-(--color-accent-text)">qwen2.5-7b-instruct</code>)</span>
-          </li>
-          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
-            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">7</span>
-            <span>API Key có thể để trống (local không cần auth)</span>
-          </li>
-          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
-            <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">8</span>
-            <span>Nhấn <strong class="text-(--color-text-primary)">"Test Connection"</strong> để kiểm tra</span>
+            <span>Nên bật <strong class="text-(--color-text-primary)">"Tự động chia segment theo độ dài nội dung"</strong> trong Settings để tối ưu số request</span>
           </li>
         </ol>
       </div>
@@ -128,7 +161,7 @@
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">5</span>
-            <span>Sau khi hoàn thành, tóm tắt được lưu cache — lần sau mở lại không cần chạy lại</span>
+            <span>Sau khi hoàn thành, tóm tắt được lưu vào IndexedDB — lần sau mở lại không cần chạy lại</span>
           </li>
         </ol>
       </div>
@@ -162,7 +195,7 @@
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">4</span>
-            <span>Kiến thức được lưu cache cùng với topic — truy cập lại bất cứ lúc nào</span>
+            <span>Kiến thức được lưu vào IndexedDB cùng với topic — truy cập lại bất cứ lúc nào</span>
           </li>
         </ul>
       </div>
@@ -192,7 +225,7 @@
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">5</span>
-            <span>Lịch sử câu hỏi được lưu để tham khảo sau</span>
+            <span>Lịch sử câu hỏi được lưu vào IndexedDB để tham khảo sau</span>
           </li>
         </ul>
       </div>

@@ -273,8 +273,6 @@ export interface CustomPrompts {
   research?: string;
   knowledge?: string;
   threadAnalysis?: string;
-  chunkSummaryPrompt?: string;
-  reduceSummaryPrompt?: string;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';

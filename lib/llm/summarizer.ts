@@ -5,15 +5,13 @@ import {
   INCREMENTAL_UPDATE_PROMPT,
   OPINION_ANALYSIS_PROMPT,
   OPINION_CHUNK_PROMPT,
-  buildChunkSummaryPrompt,
-  buildReduceSummaryPrompt,
   RESEARCH_PROMPT,
-  KNOWLEDGE_EXTRACT_PROMPT,
   KNOWLEDGE_CHUNK_PROMPT,
   buildKnowledgeExtractPrompt,
   buildKnowledgeChunkPrompt,
   buildKnowledgeReducePrompt,
   THREAD_ANALYSIS_PROMPT,
+  resolvePrompt,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget, getThinkingOverhead } from '../token-estimator';
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO } from '../constants';
@@ -170,7 +168,11 @@ export async function summarizeTopic(
   signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
-  const systemPrompt = customPrompts?.summary || SUMMARY_PROMPT;
+  const systemPrompt = resolvePrompt(
+    customPrompts?.summary,
+    { prompt: SUMMARY_PROMPT, wordCap: 500 },
+    { mode: 'direct' },
+  );
 
   // Check if topic will fit in context
   const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
@@ -180,13 +182,23 @@ export async function summarizeTopic(
     // Use map-reduce for large topics
     const total = contextCheck.chunksNeeded + 1; // +1 for reduce step
     onProgress?.(`Đang tóm tắt phần 1/${contextCheck.chunksNeeded}...`, 1, total);
+    const mapPrompt = resolvePrompt(
+      customPrompts?.summary,
+      { prompt: SUMMARY_PROMPT, wordCap: 300 },
+      { mode: 'map' },
+    );
+    const reducePrompt = resolvePrompt(
+      customPrompts?.summary,
+      { prompt: SUMMARY_PROMPT, wordCap: 500 },
+      { mode: 'reduce' },
+    );
     const rawResult = await summarizeWithMapReduce(
       posts,
       config,
       onProgress,
       contextCheck.chunksNeeded,
-      customPrompts?.chunkSummaryPrompt,
-      customPrompts?.reduceSummaryPrompt ?? systemPrompt,
+      mapPrompt,
+      reducePrompt,
       signal,
     );
     const json = parseSummaryJSON(rawResult);
@@ -226,13 +238,23 @@ export async function updateSummary(
   const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow, thinkingOverhead);
   if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
     onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
+    const mapPrompt = resolvePrompt(
+      customPrompts?.summary,
+      { prompt: SUMMARY_PROMPT, wordCap: 300 },
+      { mode: 'map' },
+    );
+    const reducePrompt = resolvePrompt(
+      customPrompts?.summary,
+      { prompt: SUMMARY_PROMPT, wordCap: 500 },
+      { mode: 'reduce' },
+    );
     const rawResult = await summarizeWithMapReduce(
       postsWithContext,
       config,
       onProgress,
       contextCheck.chunksNeeded,
-      customPrompts?.chunkSummaryPrompt,
-      customPrompts?.reduceSummaryPrompt ?? systemPrompt,
+      mapPrompt,
+      reducePrompt,
       signal,
     );
     const json = parseSummaryJSON(rawResult);
@@ -329,7 +351,12 @@ export async function extractKnowledge(
   signal?: AbortSignal,
 ): Promise<string> {
   const provider = createProvider(config);
-  const systemPrompt = customPrompts?.knowledge || buildKnowledgeExtractPrompt(computeKnowledgeEntryCap(config.maxTokens));
+  const entryCap = computeKnowledgeEntryCap(config.maxTokens);
+  const systemPrompt = resolvePrompt(
+    customPrompts?.knowledge,
+    { prompt: buildKnowledgeExtractPrompt(entryCap) },
+    { mode: 'direct', entryCap },
+  );
 
   const topicContextPost: ScrapedPost = {
     author: 'CONTEXT',
@@ -356,6 +383,13 @@ export async function extractKnowledgeChunk(
 ): Promise<string> {
   const provider = createProvider(config);
 
+  const entryCap = computeKnowledgeEntryCap(config.maxTokens);
+  const systemPrompt = resolvePrompt(
+    undefined,
+    { prompt: buildKnowledgeChunkPrompt(entryCap) },
+    { mode: 'map', entryCap },
+  );
+
   const topicContextPost: ScrapedPost = {
     author: 'CONTEXT',
     content: `Topic: ${title}`,
@@ -364,7 +398,7 @@ export async function extractKnowledgeChunk(
   };
 
   onProgress?.('Đang trích xuất kiến thức...');
-  const response = await provider.summarize([topicContextPost, ...chunkPosts], buildKnowledgeChunkPrompt(computeKnowledgeEntryCap(config.maxTokens)), signal);
+  const response = await provider.summarize([topicContextPost, ...chunkPosts], systemPrompt, signal);
   return response.content;
 }
 
@@ -383,6 +417,13 @@ export async function reduceKnowledgeChunks(
 
   onProgress?.('Đang gộp kiến thức...');
 
+  const cap = entryCap ?? 20;
+  const systemPrompt = resolvePrompt(
+    undefined,
+    { prompt: buildKnowledgeReducePrompt(cap) },
+    { mode: 'reduce', entryCap: cap },
+  );
+
   const combinedText = partialEntries
     .map((entries, i) => `--- Phần ${i + 1} ---\n${JSON.stringify(entries)}`)
     .join('\n\n');
@@ -394,7 +435,7 @@ export async function reduceKnowledgeChunks(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([combinedPost], buildKnowledgeReducePrompt(entryCap ?? 20), signal);
+  const response = await provider.summarize([combinedPost], systemPrompt, signal);
   return response.content;
 }
 
@@ -589,8 +630,16 @@ async function summaryChunks(
 ): Promise<string> {
   const provider = createProvider(config);
   const wordCap = Math.max(100, Math.min(300, Math.floor((config.maxTokens ?? 2000) / 1.4)));
-  const resolvedMapPrompt = mapPrompt ?? buildChunkSummaryPrompt(wordCap);
-  const resolvedReducePrompt = reducePrompt ?? buildReduceSummaryPrompt(computeReduceWordCap(config.maxTokens));
+  const resolvedMapPrompt = mapPrompt ?? resolvePrompt(
+    undefined,
+    { prompt: SUMMARY_PROMPT, wordCap },
+    { mode: 'map' },
+  );
+  const resolvedReducePrompt = reducePrompt ?? resolvePrompt(
+    undefined,
+    { prompt: SUMMARY_PROMPT, wordCap: computeReduceWordCap(config.maxTokens) },
+    { mode: 'reduce' },
+  );
   const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
   const chunks = chunkPosts(posts, config.model, resolvedMapPrompt, suggestedChunks, config.contextWindow, config.maxTokens, thinkingOverhead);
 
@@ -730,7 +779,11 @@ async function reduceSegmentSummaries(
   // Fast path: nothing to reduce
   if (summaries.length === 1) return summaries[0];
 
-  const reduceSummaryPrompt = buildReduceSummaryPrompt(computeReduceWordCap(maxTokens));
+  const reduceSummaryPrompt = resolvePrompt(
+    undefined,
+    { prompt: SUMMARY_PROMPT, wordCap: computeReduceWordCap(maxTokens) },
+    { mode: 'reduce' },
+  );
 
   // Helper: build combined content with cross-reference header for an LLM call
   function buildReduceContent(group: string[]): string {

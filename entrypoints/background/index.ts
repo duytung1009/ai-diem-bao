@@ -10,9 +10,10 @@ export default defineBackground(() => {
   // Open side panel when clicking the extension icon
   browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
-  // One-time migration: storage.local → IndexedDB, then normalize URLs
+  // One-time migration: storage.local → IndexedDB, then normalize URLs, then migrate prompts
   migrateStorageLocalToIDB()
     .then(() => migrateNormalizedUrls())
+    .then(() => migrateCustomPrompts())
     .catch(console.error);
 
   const activeLLMTasks = new Map<string, AbortController>();
@@ -237,6 +238,40 @@ async function migrateNormalizedUrls(): Promise<void> {
 
     await dbPut({ ...topic, url: normalizedUrl });
   }
+}
+
+async function migrateCustomPrompts(): Promise<void> {
+  const flagKey = 'promptsMigratedV2';
+  const flag = await browser.storage.sync.get(flagKey);
+  if (flag[flagKey]) return;
+
+  const result = await browser.storage.sync.get(STORAGE_KEYS.CUSTOM_PROMPTS);
+  const oldPrompts = result[STORAGE_KEYS.CUSTOM_PROMPTS] as Record<string, string> | undefined;
+  if (!oldPrompts) {
+    await browser.storage.sync.set({ [flagKey]: true });
+    return;
+  }
+
+  const newPrompts: CustomPrompts = {};
+  for (const key of ['summary', 'opinions', 'research', 'knowledge', 'threadAnalysis'] as const) {
+    if (oldPrompts[key]) newPrompts[key] = oldPrompts[key];
+  }
+
+  const hasOldKeys = ('chunkSummaryPrompt' in oldPrompts) || ('reduceSummaryPrompt' in oldPrompts);
+  if (hasOldKeys) {
+    const parts: string[] = [];
+    if (oldPrompts.chunkSummaryPrompt && oldPrompts.chunkSummaryPrompt !== oldPrompts.summary) {
+      parts.push(`[Prompt cũ - Tóm tắt phần]:\n${oldPrompts.chunkSummaryPrompt}`);
+    }
+    if (oldPrompts.reduceSummaryPrompt && oldPrompts.reduceSummaryPrompt !== oldPrompts.summary) {
+      parts.push(`[Prompt cũ - Gộp tóm tắt]:\n${oldPrompts.reduceSummaryPrompt}`);
+    }
+    if (parts.length > 0) {
+      newPrompts.summary = (newPrompts.summary || '') + '\n\n---\n\n' + parts.join('\n\n');
+    }
+  }
+
+  await browser.storage.sync.set({ [STORAGE_KEYS.CUSTOM_PROMPTS]: newPrompts, [flagKey]: true });
 }
 
 async function processLLMTask(taskId: string, taskType: string, payload: unknown, signal?: AbortSignal): Promise<void> {

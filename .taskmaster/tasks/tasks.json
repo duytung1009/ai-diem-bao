@@ -409,13 +409,555 @@
         "recommendedSubtasks": 0,
         "expansionPrompt": "Không cần mở rộng subtask.",
         "updatedAt": "2026-05-13T10:35:30.478Z"
+      },
+      {
+        "id": "145",
+        "title": "Cập nhật interface CustomPrompts trong lib/types.ts",
+        "description": "Loại bỏ 2 keys `chunkSummaryPrompt` và `reduceSummaryPrompt` khỏi interface `CustomPrompts`. Chỉ giữ lại 5 keys: `summary`, `opinions`, `knowledge`, `research`, `threadAnalysis`.",
+        "details": "Mở file `lib/types.ts`, tìm interface `CustomPrompts`. Xóa dòng `chunkSummaryPrompt?: string;` và `reduceSummaryPrompt?: string;`. Đảm bảo không còn tham chiếu cần cập nhật khác trong file này.",
+        "testStrategy": "Kiểm tra compile TypeScript không lỗi. Các file import `CustomPrompts` không báo lỗi type.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Nghiên cứu interface CustomPrompts hiện tại trong lib/types.ts",
+            "description": "Mở file lib/types.ts, xác định vị trí và cấu trúc hiện tại của interface CustomPrompts, ghi chú các keys để biết chính xác nội dung cần xóa.",
+            "dependencies": [],
+            "details": "Đọc file lib/types.ts, tìm interface CustomPrompts. Liệt kê các keys hiện có, đặc biệt là chunkSummaryPrompt và reduceSummaryPrompt.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:17:51.572Z"
+          },
+          {
+            "id": 2,
+            "title": "Xóa key chunkSummaryPrompt khỏi interface CustomPrompts",
+            "description": "Xóa dòng khai báo `chunkSummaryPrompt?: string;` trong interface CustomPrompts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong interface CustomPrompts, tìm dòng có nội dung `chunkSummaryPrompt?: string;` và xóa dòng đó. Đảm bảo không làm ảnh hưởng đến các dòng khác.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:18:03.888Z"
+          },
+          {
+            "id": 3,
+            "title": "Xóa key reduceSummaryPrompt khỏi interface CustomPrompts",
+            "description": "Xóa dòng khai báo `reduceSummaryPrompt?: string;` trong interface CustomPrompts.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong interface CustomPrompts, sau khi xóa key chunkSummaryPrompt, tìm dòng có nội dung `reduceSummaryPrompt?: string;` và xóa dòng đó.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:18:15.402Z"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra file lib/types.ts không còn tham chiếu đến 2 key đã xóa",
+            "description": "Dùng tìm kiếm toàn bộ file lib/types.ts để đảm bảo không còn dòng nào chứa chunkSummaryPrompt hoặc reduceSummaryPrompt (trong interface, type khác, hay comment). Nếu có, cập nhật hoặc xóa.",
+            "dependencies": [
+              3
+            ],
+            "details": "Thực hiện tìm kiếm với từ khóa 'chunkSummaryPrompt' và 'reduceSummaryPrompt' trong toàn bộ file. Loại bỏ hoặc chỉnh sửa các tham chiếu không cần thiết.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:18:28.262Z"
+          },
+          {
+            "id": 5,
+            "title": "Chạy TypeScript compiler kiểm tra lỗi",
+            "description": "Chạy lệnh build TypeScript (ví dụ: npm run compile) để xác nhận không có lỗi type liên quan đến CustomPrompts.",
+            "dependencies": [
+              4
+            ],
+            "details": "Mở terminal, chạy lệnh compile dự án. Nếu phát sinh lỗi, sửa chữa và chạy lại cho đến khi thành công.",
+            "status": "done",
+            "testStrategy": "Kiểm tra bước compile không có lỗi. Đặc biệt xác nhận các file import CustomPrompts không báo lỗi type.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:18:57.385Z"
+          }
+        ],
+        "updatedAt": "2026-05-13T14:18:57.385Z"
+      },
+      {
+        "id": "146",
+        "title": "Thêm default prompt templates cho summary và knowledge trong lib/prompts.ts",
+        "description": "Thêm các hằng số chứa prompt mẫu có sử dụng placeholder cho tab Tóm tắt và Kiến thức, để dùng làm default khi `resolvePrompt` không tìm thấy custom prompt. Các prompt mẫu bao gồm `{wordCap}`, `{entryCap}`, `{isChunk}`, `{authorCrossRef}`.",
+        "details": "Thêm export const `SUMMARY_PROMPT` và `KNOWLEDGE_PROMPT` trong `lib/prompts.ts` dựa trên mẫu trong PRD (Template mẫu cho Tóm tắt và Kiến thức). Sử dụng placeholder theo đúng ký hiệu. Giữ nguyên các prompt default cũ nếu có.",
+        "testStrategy": "Kiểm tra các hằng số được export, không lỗi syntax. Đọc nội dung và đảm bảo các placeholder đúng cú pháp.",
+        "priority": "high",
+        "dependencies": [
+          "145"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Phân tích yêu cầu và thiết kế template mẫu cho summary và knowledge",
+            "description": "Đọc PRD và tài liệu liên quan để xác định cấu trúc chính xác của các template mặc định SUMMARY_PROMPT và KNOWLEDGE_PROMPT, bao gồm các placeholder {wordCap}, {entryCap}, {isChunk}, {authorCrossRef}. Ghi lại nội dung template mẫu.",
+            "dependencies": [],
+            "details": "Xem xét các mẫu trong PRD, ghi chép các đoạn văn bản chính xác, đảm bảo placeholder đúng cú pháp. Xác định xem có cần giữ lại các default cũ không và cách tích hợp.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:20:35.105Z"
+          },
+          {
+            "id": 2,
+            "title": "Thêm hằng số SUMMARY_PROMPT vào lib/prompts.ts",
+            "description": "Tạo export const SUMMARY_PROMPT với nội dung template mẫu dành cho tab Tóm tắt, sử dụng các placeholder đã thiết kế.",
+            "dependencies": [
+              1
+            ],
+            "details": "Mở file lib/prompts.ts, thêm dòng: export const SUMMARY_PROMPT = '...'; với nội dung từ thiết kế. Đảm bảo không xóa các export khác.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:20:46.980Z"
+          },
+          {
+            "id": 3,
+            "title": "Thêm hằng số KNOWLEDGE_PROMPT vào lib/prompts.ts",
+            "description": "Tạo export const KNOWLEDGE_PROMPT với nội dung template mẫu dành cho tab Kiến thức, sử dụng các placeholder đã thiết kế.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tương tự subtask 2, thêm export const KNOWLEDGE_PROMPT = '...'; với nội dung phù hợp.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:20:58.962Z"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra và cập nhật các export, đảm bảo tương thích với code hiện có",
+            "description": "Xác minh rằng file lib/prompts.ts export đúng các hằng số mới và không gây xung đột với các default cũ (nếu có). Cập nhật import/export nếu cần.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Kiểm tra TypeScript compile, xem có bất kỳ file nào import từ prompts.ts cần điều chỉnh không. Đảm bảo tên hằng số không trùng lặp.",
+            "status": "done",
+            "testStrategy": "Chạy lệnh tsc hoặc tsc --noEmit để kiểm tra lỗi compile.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:21:10.406Z"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit test cho các hằng số SUMMARY_PROMPT và KNOWLEDGE_PROMPT",
+            "description": "Tạo test kiểm tra các hằng số được export, nội dung chứa các placeholder đúng cú pháp và không thiếu placeholder bắt buộc.",
+            "dependencies": [
+              4
+            ],
+            "details": "Sử dụng Jest, viết test cases: kiểm tra các hằng số tồn tại, kiểm tra sự hiện diện của {wordCap}, {entryCap}, {isChunk}, {authorCrossRef}. Đảm bảo các placeholder có định dạng đúng.",
+            "status": "done",
+            "testStrategy": "Chạy test suite và xác nhận tất cả pass. Kiểm tra mã nguồn test trong thư mục __tests__.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:21:22.108Z"
+          }
+        ],
+        "updatedAt": "2026-05-13T14:21:22.108Z"
+      },
+      {
+        "id": "147",
+        "title": "Implement hàm resolvePrompt() trong lib/prompts.ts",
+        "description": "Thêm hàm `resolvePrompt(templateKey, customPrompt, options)` xử lý placeholder replacement. Nhận các placeholder `{wordCap}`, `{entryCap}`, `{isChunk}`, `{authorCrossRef}` và giá trị tương ứng từ options. Nếu prompt không chứa placeholder thì trả về nguyên văn.",
+        "details": "Tạo function `resolvePrompt` với signature: `(templateKey: 'summary' | 'knowledge', customPrompt?: string, options?: PromptResolveOptions): string`. Định nghĩa `PromptResolveOptions` interface. Logic: lấy base prompt = customPrompt || DEFAULT_PROMPT[templateKey]; thực hiện thay thế các placeholder theo bảng trong PRD (default values cho wordCap=500, entryCap=20, isChunk phụ thuộc mode, authorCrossRef rỗng). Dùng `replace` để thay. Xử lý trường hợp `{isChunk,select,...}` theo cú pháp ICU? PRD dùng `{isChunk, select, true {...} false {...} other {}}` — cần xử lý dạng đó thay thế bằng giá trị phù hợp. Đơn giản: thay `{isChunk, select, ...}` bằng nội dung tương ứng dựa trên boolean. Có thể dùng regex.",
+        "testStrategy": "Viết unit test cho các trường hợp: prompt đầy đủ placeholder, không có placeholder, chỉ có một phần, test các mode direct/map/reduce, test default values. Đảm bảo kết quả đúng.",
+        "priority": "high",
+        "dependencies": [
+          "145",
+          "146"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa PromptResolveOptions interface và mảng DEFAULT_PROMPT",
+            "description": "Tạo file lib/prompts.ts, định nghĩa interface PromptResolveOptions với các thuộc tính: wordCap (number, mặc định 500), entryCap (number, mặc định 20), isChunk (boolean, mặc định false), authorCrossRef (string, mặc định ''). Khai báo hằng DEFAULT_PROMPT là object với key 'summary' và 'knowledge' chứa các template mẫu có placeholder như trong PRD.",
+            "dependencies": [],
+            "details": "Tạo interface PromptResolveOptions với các thuộc tính optional, có giá trị mặc định khi resolve. Định nghĩa DEFAULT_PROMPT với nội dung mẫu chứa {wordCap}, {entryCap}, {isChunk,select,...}, {authorCrossRef}",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:23:08.374Z"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai hàm resolvePrompt cơ bản - chọn base prompt",
+            "description": "Viết hàm resolvePrompt(templateKey, customPrompt?, options?): string. Logic: nếu customPrompt được cung cấp thì dùng nó, không thì lấy từ DEFAULT_PROMPT[templateKey]. Xử lý lỗi nếu templateKey không hợp lệ. Trả về prompt gốc nếu không có placeholder (kiểm tra nhanh bằng regex /\\{[^}]+\\}/).",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement signature và logic cơ bản: lấy base prompt, kiểm tra placeholder tồn tại, nếu không có thì trả về nguyên văn.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:23:21.166Z"
+          },
+          {
+            "id": 3,
+            "title": "Thay thế placeholder đơn giản: wordCap, entryCap, authorCrossRef",
+            "description": "Trong hàm resolvePrompt, sử dụng options (có giá trị mặc định) để thay thế các placeholder {wordCap}, {entryCap}, {authorCrossRef} bằng cách dùng String.prototype.replace với toàn bộ chuỗi. Đảm bảo xử lý đúng các giá trị số và string.",
+            "dependencies": [
+              2
+            ],
+            "details": "Dùng replace với regex toàn cục cho mỗi placeholder. Options mặc định: wordCap=500, entryCap=20, authorCrossRef=''.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:23:33.301Z"
+          },
+          {
+            "id": 4,
+            "title": "Xử lý placeholder đặc biệt: {isChunk, select, ...} theo cú pháp ICU",
+            "description": "Phân tích và thay thế placeholder dạng {isChunk, select, true {...} false {...} other {...}}. Dùng regex để bắt toàn bộ biểu thức, sau đó dựa vào giá trị options.isChunk (boolean) để chọn nội dung tương ứng. Xử lý các trường hợp lồng nhau? (Đơn giản: chỉ một cấp).",
+            "dependencies": [
+              3
+            ],
+            "details": "Sử dụng regex /\\{isChunk,\\s*select,\\s*true\\s*\\{([^}]*)\\}\\s*false\\s*\\{([^}]*)\\}\\s*(?:other\\s*\\{([^}]*)\\})?\\}/i để bắt các nhóm. Thay thế bằng nội dung tương ứng dựa trên isChunk.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:23:45.231Z"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit test cho resolvePrompt",
+            "description": "Viết test cho các trường hợp: prompt không có placeholder, prompt có đầy đủ placeholder, prompt chỉ có một vài placeholder, các giá trị mặc định khi options undefined, kiểm tra các templateKey khác nhau, kiểm tra isChunk với true/false, kiểm tra customPrompt được ưu tiên hơn default. Dùng framework test (Jest/Vitest).",
+            "dependencies": [
+              4
+            ],
+            "details": "Tạo file tests/prompts.test.ts, import hàm resolvePrompt, viết các test case phủ kín logic. Đảm bảo test cho cả trường hợp edge: options rỗng, placeholder đặc biệt không xuất hiện.",
+            "status": "done",
+            "testStrategy": "Sử dụng mô tả test cụ thể cho từng trường hợp, chạy và xác nhận pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:24:15.848Z"
+          }
+        ],
+        "updatedAt": "2026-05-13T14:24:15.848Z"
+      },
+      {
+        "id": "148",
+        "title": "Viết unit test cho resolvePrompt()",
+        "description": "Viết unit test đầy đủ cho hàm `resolvePrompt()` bao gồm các trường hợp khác nhau: prompt có tất cả placeholder, prompt không có placeholder, prompt rỗng, các mode khác nhau, kiểm tra giá trị mặc định, v.v.",
+        "details": "Tạo file test `lib/__tests__/prompts.test.ts`. Sử dụng Jest (hoặc framework có sẵn). Cover các test case từ PRD và thêm các edge cases. Đảm bảo coverage cao cho hàm resolvePrompt.",
+        "testStrategy": "Chạy test và xác nhận tất cả pass. Xem code coverage để đảm bảo các nhánh logic đều được test.",
+        "priority": "medium",
+        "dependencies": [
+          "147"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết lập test file và viết test cho prompt đầy đủ placeholder",
+            "description": "Tạo file lib/__tests__/prompts.test.ts với cấu trúc Jest basic. Viết test case đầu tiên cho trường hợp custom prompt chứa tất cả các placeholder {wordCap}, {entryCap}, {isChunk}, {authorCrossRef} và kiểm tra kết quả thay thế đúng theo options cung cấp.",
+            "dependencies": [],
+            "details": "Sử dụng describe block 'resolvePrompt', import function. Viết test 'should replace all placeholders correctly' với options đầy đủ, so sánh output với expected string.",
+            "status": "done",
+            "testStrategy": "Chạy jest test, xác nhận pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:25:55.026Z"
+          },
+          {
+            "id": 2,
+            "title": "Viết test cho prompt không có placeholder",
+            "description": "Viết test case cho trường hợp custom prompt không chứa bất kỳ placeholder nào. Kiểm tra rằng output trả về giống hệt input, không bị thay đổi.",
+            "dependencies": [
+              1
+            ],
+            "details": "Test với prompt string không có cặp ngoặc nhọn, ví dụ 'Hello world'. Đảm bảo function trả về đúng string đó.",
+            "status": "done",
+            "testStrategy": "Chạy jest test, xác nhận pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:26:06.217Z"
+          },
+          {
+            "id": 3,
+            "title": "Viết test cho prompt rỗng",
+            "description": "Viết test case cho trường hợp customPrompt là chuỗi rỗng. Kiểm tra xem function có xử lý đúng không, behavior: nếu customPrompt rỗng thì dùng default prompt. Test output là default prompt sau khi replace với defaults.",
+            "dependencies": [
+              1
+            ],
+            "details": "Test với customPrompt='', templateKey='summary', kiểm tra output là SUMMARY_PROMPT đã được resolve với các giá trị mặc định.",
+            "status": "done",
+            "testStrategy": "Chạy jest test, xác nhận pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:26:18.303Z"
+          },
+          {
+            "id": 4,
+            "title": "Viết test cho các mode khác nhau (direct, map, reduce)",
+            "description": "Viết test cases cho từng mode: direct, map, reduce. Kiểm tra rằng placeholder {isChunk} được thay bằng true/false tương ứng: direct=false, map=true, reduce=true.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng option {mode: 'direct'}, {mode: 'map'}, {mode: 'reduce'}. Prompt có chứa {isChunk}. Kiểm tra kết quả output chứa đúng giá trị boolean.",
+            "status": "done",
+            "testStrategy": "Chạy jest test cho từng mode, xác nhận pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:26:29.617Z"
+          },
+          {
+            "id": 5,
+            "title": "Viết test cho giá trị mặc định của placeholder",
+            "description": "Viết test case khi không truyền options hoặc options thiếu một số field. Kiểm tra rằng các giá trị mặc định được sử dụng: wordCap=500, entryCap=20, authorCrossref rỗng. Test cả templateKey 'summary' và 'knowledge'.",
+            "dependencies": [
+              1
+            ],
+            "details": "Test với undefined options, và với options thiếu wordCap, entryCap, etc. So sánh output với expected string chứa default values.",
+            "status": "done",
+            "testStrategy": "Chạy jest test, xác nhận pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:26:42.858Z"
+          }
+        ],
+        "updatedAt": "2026-05-13T14:26:42.858Z"
+      },
+      {
+        "id": "149",
+        "title": "Cập nhật các hàm trong summarizer.ts (tóm tắt) dùng resolvePrompt()",
+        "description": "Sửa các hàm `summarizeTopic`, `updateSummary`, `summaryChunks`, `reduceSegmentSummaries` trong `lib/llm/summarizer.ts` để sử dụng `resolvePrompt('summary', customPrompt, options)` thay vì các prompt riêng lẻ trước đây.",
+        "details": "Thay thế tất cả các lời gọi tạo prompt cũ (ví dụ `buildChunkSummaryPrompt`, `buildReduceSummaryPrompt`) bằng `resolvePrompt('summary', customPrompts?.summary, { mode, wordCap, authorCrossRef })`. Đảm bảo params phù hợp với từng hàm: direct mode dùng wordCap=500, map mode dùng wordCap=300, reduce mode dùng wordCap=500 và authorCrossRef (nếu có). Xóa hoặc comment code cũ để sau cleanup.",
+        "testStrategy": "Kiểm tra compile không lỗi. Chạy manual flow tóm tắt topic nhỏ và lớn, verify output không thay đổi so với trước khi refactor. So sánh prompt được gửi đến LLM (có thể log).",
+        "priority": "high",
+        "dependencies": [
+          "147"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật hàm summarizeTopic sử dụng resolvePrompt",
+            "description": "Thay thế lời gọi tạo prompt cũ trong hàm summarizeTopic bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'direct', wordCap: 500 }).",
+            "dependencies": [
+              147
+            ],
+            "details": "Trong lib/llm/summarizer.ts, tìm hàm summarizeTopic, thay thế buildChunkSummaryPrompt hoặc tương tự bằng resolvePrompt với mode 'direct' và wordCap=500. Đảm bảo customPrompts?.summary được truyền đúng. Comment code cũ.",
+            "status": "done",
+            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt topic nhỏ.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:30:00.348Z"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật hàm updateSummary sử dụng resolvePrompt",
+            "description": "Thay thế lời gọi tạo prompt cũ trong hàm updateSummary bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'map', wordCap: 300 }).",
+            "dependencies": [
+              147
+            ],
+            "details": "Trong lib/llm/summarizer.ts, tìm hàm updateSummary, thay thế prompt cũ bằng resolvePrompt với mode 'map' và wordCap=300. Comment code cũ.",
+            "status": "done",
+            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt với cập nhật.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:30:11.087Z"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật hàm summaryChunks sử dụng resolvePrompt",
+            "description": "Thay thế lời gọi tạo prompt cũ trong hàm summaryChunks bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'map', wordCap: 300, isChunk: true }).",
+            "dependencies": [
+              147
+            ],
+            "details": "Trong lib/llm/summarizer.ts, tìm hàm summaryChunks, sử dụng resolvePrompt với mode 'map', wordCap=300 và isChunk=true (nếu có). Comment code cũ.",
+            "status": "done",
+            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt chunk.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:30:22.242Z"
+          },
+          {
+            "id": 4,
+            "title": "Cập nhật hàm reduceSegmentSummaries sử dụng resolvePrompt",
+            "description": "Thay thế lời gọi tạo prompt cũ trong hàm reduceSegmentSummaries bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'reduce', wordCap: 500, authorCrossRef: ... }).",
+            "dependencies": [
+              147
+            ],
+            "details": "Trong lib/llm/summarizer.ts, tìm hàm reduceSegmentSummaries, sử dụng resolvePrompt với mode 'reduce', wordCap=500 và authorCrossRef nếu có. Comment code cũ.",
+            "status": "done",
+            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt reduce.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:30:32.217Z"
+          },
+          {
+            "id": 5,
+            "title": "Xóa code cũ và kiểm tra tổng thể",
+            "description": "Xóa hoặc comment toàn bộ code cũ (các hàm buildChunkSummaryPrompt, buildReduceSummaryPrompt, ...) và chạy kiểm tra compile thử các flow tóm tắt khác nhau.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Sau khi các hàm đã được cập nhật, xóa các hàm prompt cũ hoặc comment chúng để chuẩn bị cleanup. Chạy toàn bộ test và kiểm tra manual flow tóm tắt topic lớn, verify output không thay đổi.",
+            "status": "done",
+            "testStrategy": "So sánh prompt cũ và mới bằng log, đảm bảo output LLM tương tự.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:30:42.139Z"
+          }
+        ],
+        "updatedAt": "2026-05-13T14:30:42.139Z"
+      },
+      {
+        "id": "150",
+        "title": "Cập nhật các hàm trích xuất kiến thức (extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks) dùng resolvePrompt()",
+        "description": "Sửa các hàm `extractKnowledge`, `extractKnowledgeChunk`, `reduceKnowledgeChunks` trong `lib/llm/summarizer.ts` (hoặc file tương ứng) để dùng `resolvePrompt('knowledge', customPrompt, options)` thay vì prompt cứng trước đây.",
+        "details": "Thay thế các lời gọi tạo prompt cũ cho kiến thức. Dùng `resolvePrompt('knowledge', customPrompts?.knowledge, { mode, entryCap })` với entryCap được tính từ maxTokens hoặc giá trị mặc định. Cập nhật tham số phù hợp.",
+        "testStrategy": "Kiểm tra compile. Chạy manual flow trích xuất kiến thức topic nhỏ và lớn, verify output và so sánh prompt đã gửi.",
+        "priority": "high",
+        "dependencies": [
+          "147"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật hàm extractKnowledge sử dụng resolvePrompt",
+            "description": "Chỉnh sửa hàm extractKnowledge trong lib/llm/summarizer.ts để thay thế prompt cứng bằng lời gọi resolvePrompt('knowledge', customPrompts?.knowledge, { mode, entryCap })",
+            "dependencies": [
+              147
+            ],
+            "details": "Thay đổi bên trong hàm extractKnowledge: tạo biến entryCap dựa trên maxTokens hoặc giá trị mặc định 20; sau đó gọi resolvePrompt với các tham số phù hợp; kết hợp với logic retry có sẵn.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:32:49.034Z"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật hàm extractKnowledgeChunk sử dụng resolvePrompt",
+            "description": "Chỉnh sửa hàm extractKnowledgeChunk trong lib/llm/summarizer.ts để thay thế prompt cứng bằng lời gọi resolvePrompt('knowledge', customPrompts?.knowledge, { mode, entryCap, isChunk: true })",
+            "dependencies": [
+              147
+            ],
+            "details": "Tương tự extractKnowledge nhưng thêm tùy chọn isChunk: true trong options; sử dụng entryCap từ tham số hoặc mặc định.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:32:59.675Z"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật hàm reduceKnowledgeChunks sử dụng resolvePrompt",
+            "description": "Chỉnh sửa hàm reduceKnowledgeChunks trong lib/llm/summarizer.ts để thay thế prompt cứng bằng lời gọi resolvePrompt('knowledge', customPrompts?.knowledge, { mode: 'reduce', entryCap: ... })",
+            "dependencies": [
+              147
+            ],
+            "details": "Gọi resolvePrompt với mode 'reduce', entryCap được tính từ đầu vào chunks hoặc mặc định; đảm bảo hợp nhất các chunk đúng cách.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:33:10.476Z"
+          },
+          {
+            "id": 4,
+            "title": "Viết unit test cho các hàm đã cập nhật",
+            "description": "Thêm test cho extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks để kiểm tra việc dùng resolvePrompt và kết quả trả về.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              147
+            ],
+            "details": "Tạo file test mới hoặc mở rộng file test hiện có (ví dụ: summarizer.test.ts); mock llmCall và resolvePrompt; kiểm tra các trường hợp entryCap khác nhau, mode khác nhau.",
+            "status": "done",
+            "testStrategy": "Chạy unit test, verify việc gọi resolvePrompt đúng tham số và output hợp lý.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:33:20.684Z"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra biên dịch và tích hợp",
+            "description": "Đảm bảo TypeScript compile thành công, không lỗi type, và chạy thử flow trích xuất kiến thức để xác nhận hoạt động.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Chạy TypeScript compiler để kiểm tra lỗi; thực hiện test manual với topic nhỏ và lớn; xác nhận prompt đã gửi đúng định dạng và kết quả chính xác.",
+            "status": "done",
+            "testStrategy": "Kiểm tra compile không lỗi; chạy manual flow và so sánh prompt với kỳ vọng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T14:33:31.564Z"
+          }
+        ],
+        "updatedAt": "2026-05-13T14:33:31.564Z"
+      },
+      {
+        "id": "151",
+        "title": "Xóa các builder functinons và constants cũ không cần thiết",
+        "description": "Xóa hoặc deprecate các hàm builder cũ như `buildChunkSummaryPrompt`, `buildReduceSummaryPrompt`, `buildKnowledgeExtractPrompt`, `buildKnowledgeChunkPrompt`, `buildKnowledgeReducePrompt` và các hằng số `CHUNK_SUMMARY_PROMPT`, `REDUCE_SUMMARY_PROMPT`, `KNOWLEDGE_EXTRACT_PROMPT`, `KNOWLEDGE_CHUNK_PROMPT` không còn được dùng sau khi đã chuyển sang dùng `resolvePrompt`.",
+        "details": "Trong `lib/llm/summarizer.ts` và `lib/prompts.ts`, xóa các export không còn được import bởi các file khác. Kiểm tra tất cả imports. Nếu vẫn có file sử dụng, giữ lại với JSDoc deprecated trước khi xóa hoàn toàn. Mục tiêu là loại bỏ code dead.",
+        "testStrategy": "Kiểm tra compile không lỗi. Dùng tìm kiếm toàn bộ project để đảm bảo không còn tham chiếu đến các hàm/constants này. Chạy build thành công.",
+        "priority": "low",
+        "dependencies": [
+          "149",
+          "150"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-13T14:39:48.462Z"
+      },
+      {
+        "id": "152",
+        "title": "Implement migration tự động cho prompts đã lưu cũ",
+        "description": "Thêm hàm `migratePromptsV2()` trong `entrypoints/background/index.ts` để tự động migrate custom prompts từ format cũ (7 keys) sang format mới (5 keys). Migration chạy một lần khi extension startup nếu chưa có flag `promptsMigratedV2`.",
+        "details": "Viết function như mô tả trong PRD: đọc `custom-prompts` từ storage, merge `chunkSummaryPrompt`/`reduceSummaryPrompt` vào `summary` (append ghi chú), lưu lại và set flag. Đảm bảo idempotent. Thêm call hàm trong startup listener. Backup prompt cũ vào `custom-prompts-backup-v1`.",
+        "testStrategy": "Tạo mock storage với các trường hợp: user có cả 7 prompts, user chỉ có summary, user chưa có prompt, user đã migrate. Chạy migration và kiểm tra kết quả đúng. Manual test với extension thật.",
+        "priority": "medium",
+        "dependencies": [
+          "145"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-13T14:42:07.204Z"
+      },
+      {
+        "id": "153",
+        "title": "Cập nhật SettingsView.vue UI: giảm tabs, thêm template insert button, tooltip, info banner",
+        "description": "Cập nhật giao diện Settings > Prompt Templates: giảm từ 6 tabs xuống 4 tabs (Tóm tắt, Kiến thức, Tra cứu, Phân tích), thêm button 'Chèn template mẫu' cho mỗi tab, thêm tooltip giải thích placeholder, thêm info banner khuyến khích dùng placeholder.",
+        "details": "Sửa file `entrypoints/sidepanel/views/SettingsView.vue`. Cập nhật mảng `tabs` thành 4 tab. Điều chỉnh `promptTabLabels`. Thêm button với handler để chèn template từ hằng số (import từ prompts.ts). Thêm tooltip dùng `title` attribute hoặc component custom. Thêm banner info dạng `v-if` khi prompt không chứa placeholder (kiểm tra bằng regex). Cập nhật `activePromptTab` type.",
+        "testStrategy": "Visual test: mở Settings, kiểm tra chỉ có 4 tabs, button hoạt động, tooltip hiển thị, banner xuất hiện khi prompt không có placeholder. Kiểm tra compile không lỗi.",
+        "priority": "high",
+        "dependencies": [
+          "145",
+          "147"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-13T14:43:26.359Z"
+      },
+      {
+        "id": "154",
+        "title": "Dọn dẹp code tổng thể, fix type errors, build production, test toàn bộ flow",
+        "description": "Xóa các import không dùng, chạy `npm run compile` fix type errors, build production `npm run build`. Chạy test manual các flow chính: tóm tắt topic nhỏ/lớn, cập nhật summary, trích xuất kiến thức topic nhỏ/lớn, migration từ prompt cũ.",
+        "details": "Sử dụng linter và TypeScript compiler để tìm code dead. Sửa tất cả lỗi. Chạy test unit và integration nếu có. Cuối cùng, thực hiện verify manual theo checklist trong PRD Phase 5. Build production và kiểm tra extension hoạt động.",
+        "testStrategy": "Chạy `npm run compile` không lỗi, `npm run build` thành công. Manual test các luồng chính ít nhất 1 lần. Đảm bảo không có regression.",
+        "priority": "medium",
+        "dependencies": [
+          "149",
+          "150",
+          "151",
+          "152",
+          "153"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-13T14:44:41.959Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-13T10:35:30.479Z",
-      "taskCount": 10,
-      "completedCount": 10,
+      "lastModified": "2026-05-13T14:44:41.962Z",
+      "taskCount": 20,
+      "completedCount": 20,
       "tags": [
         "master"
       ]

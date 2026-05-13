@@ -672,6 +672,65 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         const resume = computeResumeState();
         if (resume && resume.fromPage <= newTotalPages) {
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
+        } else if (hasNewPosts && lastSummarizedSeg) {
+          // New posts within existing page range — re-scrape last page only, diff & merge
+          const lastSegIdx = segmentSummaries.value.lastIndexOf(lastSummarizedSeg);
+          if (lastSegIdx < 0) return;
+
+          isScraping.value = true;
+          try {
+            const result = await scrapePageRange(
+              topic.version, topic.url,
+              lastSummarizedSeg.startPage, lastSummarizedSeg.endPage,
+              undefined, undefined,
+              currentConfig.value?.scrapeDelayMs ?? 2000,
+            );
+
+            if (result.threadDeleted) {
+              await saveTopic(topic, { threadDeleted: true });
+              error.value = 'Thread đã bị xóa.';
+              return;
+            }
+            if (result.threadLocked) {
+              await saveTopic(topic, { threadLocked: true });
+            }
+
+            const existingNums = new Set(lastSummarizedSeg.posts.map(p => p.postNumber));
+            const newPosts = result.posts.filter(
+              p => p.postNumber > 0 && !existingNums.has(p.postNumber),
+            );
+
+            if (newPosts.length > 0 && thisId === activeSummarizeId) {
+              const mergedPosts = [...lastSummarizedSeg.posts, ...newPosts]
+                .sort((a, b) => a.postNumber - b.postNumber);
+              const mergedTokens = mergedPosts.reduce(
+                (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
+                0,
+              );
+              if (mergedTokens <= budget) {
+                await summarizeAndSaveSegment(
+                  lastSegIdx,
+                  lastSummarizedSeg.startPage,
+                  lastSummarizedSeg.endPage,
+                  mergedPosts,
+                  false,
+                  thisId,
+                );
+              } else {
+                // Merged segment exceeds token budget — create separate segment for new posts
+                await summarizeAndSaveSegment(
+                  lastSegIdx + 1,
+                  lastSummarizedSeg.endPage,
+                  lastSummarizedSeg.endPage,
+                  newPosts,
+                  false,
+                  thisId,
+                );
+              }
+            }
+          } finally {
+            isScraping.value = false;
+          }
         }
         if (thisId === activeSummarizeId && !error.value) {
           const completed = segmentSummaries.value.filter(s => s?.summary).length;

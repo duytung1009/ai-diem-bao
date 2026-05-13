@@ -3,6 +3,7 @@ import type { TopicScraper } from './types';
 import { XF2Scraper } from './xf2-scraper';
 import { XF1Scraper } from './xf1-scraper';
 import { isThreadDeleted, isThreadLocked } from './thread-status';
+import { sendMessage } from '../messaging';
 
 export interface MultiPageResult {
   posts: ScrapedPost[];
@@ -60,20 +61,17 @@ export async function scrapePageRange(
 
     const pageUrl = buildPageUrl(baseUrl, page);
     try {
-      const res = await fetch(pageUrl, { credentials: 'include' });
-      if (res.status === 401 || res.status === 403) {
+      const fetchResult = await sendMessage<{ ok: boolean; status: number; html: string; finalUrl: string; error?: string }>('FETCH_HTML', { url: pageUrl });
+      if (fetchResult.status === 401 || fetchResult.status === 403) {
         errors.push(`Trang ${page}: Không có quyền truy cập.`);
         continue;
       }
-      if (!res.ok) {
-        errors.push(`Trang ${page}: HTTP ${res.status}`);
+      if (!fetchResult.ok) {
+        errors.push(`Trang ${page}: HTTP ${fetchResult.status}`);
         continue;
       }
-      const html = await res.text();
+      const html = fetchResult.html;
       const parser = new DOMParser();
-      // Strip <head> (removes <script>, <link rel="preload" as="script">, stylesheets, etc.)
-      // then strip any stray <script> in <body>. DOMParser in extension page context triggers
-      // CSP checks for resource-loading elements even in inert parsed documents.
       const safeHtml = html
         .replace(/<head\b[\s\S]*?(?=<body\b|<\/body\b)/gi, '')  // Strip <head> to <body> (handles missing </head>)
         .replace(/<script\b[\s\S]*?<\/script>/gi, '')            // Strip stray <script> in <body>
@@ -85,7 +83,7 @@ export async function scrapePageRange(
       const doc = parser.parseFromString(safeHtml, 'text/html');
 
       const isLoginPage =
-        /login|sign.?in|đăng.nhập/i.test(res.url) ||
+        /login|sign.?in|đăng.nhập/i.test(fetchResult.finalUrl) ||
         doc.querySelector('form[action*="login"], input[name="password"]') !== null;
       if (isLoginPage) {
         errors.push(`Trang ${page}: Chuyển hướng đến trang đăng nhập.`);

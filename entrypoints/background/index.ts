@@ -85,6 +85,21 @@ export default defineBackground(() => {
           return true;
         }
 
+        case 'FETCH_HTML': {
+          const { url } = message.payload as { url: string };
+          fetch(url, { credentials: 'include' })
+            .then(async (res) => {
+              if (!res.ok) {
+                sendResponse({ ok: false, status: res.status, html: '' });
+                return;
+              }
+              const html = await res.text();
+              sendResponse({ ok: true, status: res.status, html, finalUrl: res.url });
+            })
+            .catch((err) => sendResponse({ ok: false, status: 0, html: '', error: String(err) }));
+          return true;
+        }
+
         case 'GET_CACHED_TOPIC': {
           const payloadUrl = message.payload as string | undefined;
           const urlPromise = payloadUrl ? Promise.resolve(payloadUrl) : getActiveTabUrl();

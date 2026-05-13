@@ -128,6 +128,70 @@ Tailwind CSS v4 via Vite plugin. Design tokens as CSS vars `--color-*` in `asset
 
 ---
 
+## Know How
+
+Các bài học từ bug / pattern phức tạp đã debug. Mỗi mục gồm: **triệu chứng** → **root cause** → **fix** → **anti-pattern cần tránh**.
+
+### Agent Guidelines — Khi Nào Thêm Know How Mới
+
+Thêm entry mới khi gặp **cả 3 điều kiện**:
+1. Bug tốn > 2 vòng debug (agent đoán sai root cause ít nhất 1 lần)
+2. Root cause nằm ở hành vi platform/browser/framework, không hiển nhiên từ error message
+3. Fix pattern có thể tái sử dụng
+
+**Format entry mới:**
+
+```markdown
+### KH{n}: {tiêu đề ngắn gọn}
+
+**Triệu chứng:**
+- {dấu hiệu nhận biết}
+
+**Root cause:**
+- {tại sao xảy ra, sai lầm phổ biến khi debug}
+
+**Fix:**
+- {pattern fix, kèm code before/after nếu cần}
+
+**Anti-pattern:**
+- {pattern code không được dùng}
+```
+
+Đặt entry mới ở **cuối** section Know How, đánh số tăng dần.
+
+---
+
+### KH1: CSP `script-src 'self'` Violation Khi `fetch()` HTML Từ Extension Page
+
+**Triệu chứng:**
+- Sidepanel console báo CSP violation: `Loading the script 'https://...' violates script-src 'self'`
+- Lỗi xuất hiện tại dòng `await fetch(url)`, ngay cả khi chưa gọi `DOMParser.parseFromString()`
+- URL trong error là external script từ trang đích (vd `voz.vn/js/...`)
+
+**Root cause:**
+- Chrome MV3 áp `script-src 'self'` lên **response body** của `fetch()` gọi từ extension page context (sidepanel, popup, options)
+- CSP engine quét resource URL trong raw HTML response, không cần parse DOM
+- Background service worker **không** bị kiểm tra này vì chạy không có renderer
+
+**Fix:**
+- Luôn route `fetch()` HTML qua background service worker bằng message `FETCH_HTML`
+- Sidepanel nhận raw text, tự xử lý `DOMParser` + `safeHtml` sanitize
+
+```typescript
+// ❌ Sidepanel: CSP violation
+const res = await fetch(pageUrl, { credentials: 'include' });
+
+// ✅ Sidepanel gọi background
+const { ok, status, html, finalUrl } = await sendMessage<FetchHtmlResult>(
+  'FETCH_HTML', { url: pageUrl }
+);
+```
+
+**Anti-pattern:**
+- `fetch()` external HTML trực tiếp từ **bất kỳ** extension page context nào (sidepanel, popup, options)
+
+---
+
 ## Development Workflow (MANDATORY)
 
 Tuân thủ workflow sau cho **mọi** thay đổi code. AI agent phải tự động áp dụng workflow này, user không cần prompt chi tiết từng step.

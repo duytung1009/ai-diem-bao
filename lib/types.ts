@@ -76,6 +76,7 @@ export interface LLMConfig {
 export type MessageType =
   | 'DETECT_XF'
   | 'SCRAPE_ARTICLE'
+  | 'FETCH_HTML'
   | 'START_LLM_TASK'
   | 'CANCEL_LLM_TASK'
   | 'LLM_PROGRESS'

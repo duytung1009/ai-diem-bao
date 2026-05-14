@@ -224,7 +224,7 @@ Side Panel (Vue): render summary, opinions, research
 - Custom prompt templates
 - README cho GitHub
 
-**Phase 7 — Timeline Loading Indicator**
+**Phase 7 — Timeline Loading Indicator** [x]
 - Thay thế ProgressIndicator bằng StepTimeline dạng vertical timeline
 - Hiển thị toàn bộ các step cần thực hiện ngay từ đầu
 - 3 trạng thái: ✓ done (xanh), ⏳ running (loading + ETA), ○ pending (xám)

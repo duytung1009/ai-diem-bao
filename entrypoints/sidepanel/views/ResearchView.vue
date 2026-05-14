@@ -8,6 +8,7 @@ import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 import type { PipelineDefinition } from '@/lib/types';
+import { buildResearchPipeline } from '@/lib/pipeline-builder';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 
@@ -73,10 +74,14 @@ async function handleResearch() {
 
   isLoading.value = true;
   error.value = null;
+  const pipeline = buildResearchPipeline();
 
   try {
     const { taskId, result } = runResearch(allPosts.value, q);
     llmTaskId.value = taskId;
+    // Set detailed pipeline in task state for timeline display
+    const st = getTaskState(taskId);
+    if (st) st.pipeline = JSON.parse(JSON.stringify(pipeline));
     const llmResult = await result;
     const answer = (llmResult.data as { answer: string }).answer;
 

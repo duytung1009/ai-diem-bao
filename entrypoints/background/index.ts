@@ -1,6 +1,6 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
 import { summarizeTopic, updateSummary, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
-import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
+import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
@@ -110,49 +110,15 @@ export default defineBackground(() => {
           return true;
         }
 
-        case 'SAVE_CACHED_TOPIC': {
+case 'SAVE_CACHED_TOPIC': {
           const partial = message.payload as Partial<CachedTopic> & { url?: string };
           const urlPromise = partial.url ? Promise.resolve(partial.url) : getActiveTabUrl();
           urlPromise
             .then(async (url) => {
               if (!url) throw new Error('No URL');
               const config = await getSettings();
-              // Load existing so a partial update (e.g. opinions only) doesn't wipe other fields
               const existing = await getCachedTopic(url);
-              const topic: CachedTopic = {
-                url: normalizeUrl(url),
-                title: partial.title ?? existing?.title ?? '',
-                version: partial.version ?? existing?.version ?? 'unknown',
-                posts: partial.posts ?? existing?.posts ?? [],
-                summary: partial.summary ?? existing?.summary ?? '',
-                opinions: partial.opinions ?? existing?.opinions,
-                researchHistory: partial.researchHistory ?? existing?.researchHistory,
-                llmConfig: { provider: config.provider, model: config.model },
-                cachedAt: Date.now(),
-                lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
-                forumPostCount: partial.forumPostCount ?? existing?.forumPostCount,
-                totalPosts: Math.max(partial.totalPosts ?? 0, existing?.totalPosts ?? 0),
-                summarizedPostCount: partial.summarizedPostCount ?? existing?.summarizedPostCount,
-                totalPages: partial.totalPages ?? existing?.totalPages ?? 1,
-                topicType: partial.topicType ?? existing?.topicType,
-                segments: partial.segments ?? existing?.segments,
-                overallSummary: partial.overallSummary ?? existing?.overallSummary,
-                summaryJson: partial.summaryJson ?? existing?.summaryJson,
-                bookmarked: partial.bookmarked ?? existing?.bookmarked,
-                knowledgeEntries: partial.knowledgeEntries ?? existing?.knowledgeEntries,
-                knowledgeChunks: partial.knowledgeChunks !== undefined
-                  ? partial.knowledgeChunks
-                  : existing?.knowledgeChunks,
-                lastKnowledgePostNumber: partial.lastKnowledgePostNumber !== undefined
-                  ? partial.lastKnowledgePostNumber
-                  : existing?.lastKnowledgePostNumber,
-                excludedKnowledgePostNumbers: partial.excludedKnowledgePostNumbers !== undefined
-                  ? partial.excludedKnowledgePostNumbers
-                  : existing?.excludedKnowledgePostNumbers,
-                threadAnalysis: partial.threadAnalysis !== undefined
-                  ? partial.threadAnalysis
-                  : existing?.threadAnalysis,
-              };
+              const topic = mergePartialTopic(partial, existing, url, { provider: config.provider, model: config.model });
               await saveCachedTopic(topic);
               sendResponse({ success: true });
             })
@@ -292,11 +258,11 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
   const pendingStep = (id: string, label: string): PipelineStep => ({ id, label, status: 'pending' });
   switch (taskType) {
     case 'summarize':
-      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Tạo Segment tóm tắt')] };
+    case 'summarize_segments':
+      // Caller (useSummarize) đã build detailed pipeline → không cần generic
+      return null;
     case 'summarize_incremental':
       return { workflow: 'summarize', steps: [pendingStep('summarize', 'Cập nhật Segment tóm tắt')] };
-    case 'summarize_segments':
-      return { workflow: 'summarize', steps: [pendingStep('overall', 'Tạo tóm tắt tổng quan')] };
     case 'research':
       return { workflow: 'research', steps: [pendingStep('research', 'Tra cứu và phân tích')] };
     case 'extract_knowledge':

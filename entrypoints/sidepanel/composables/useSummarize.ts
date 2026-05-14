@@ -123,6 +123,14 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     return posts.filter(p => p.postNumber >= 0).length;
   }
 
+  /** Get best available forum post count, avoiding stale activeTabDetect data
+   *  when the user is not on the forum tab. */
+  function getLiveForumPostCount(): number {
+    const detect = store.activeTabDetect.value?.postCount ?? 0;
+    const cached = cachedTopic.value?.forumPostCount ?? 0;
+    return Math.max(detect, cached);
+  }
+
   // Auto-detect news type by fetching page 1 silently (fire-and-forget).
   // Only persists to cache if the topic already has a summary (i.e. has been summarized before).
   async function detectAndCacheTopicType(topic: DeepReadonly<CachedTopic>): Promise<void> {
@@ -507,7 +515,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // Stale guard
       if (thisId !== activeSummarizeId) {
         await saveTopic(topic, {
-          forumPostCount: store.activeTabDetect.value?.postCount,
+          forumPostCount: getLiveForumPostCount(),
           totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           segments: updated,
@@ -519,42 +527,40 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       activeSegmentIndex.value = segmentIndex;
 
       const segTotalPosts = updatedDense.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+      const isSingleSegment = segments.value.length === 1;
+
       await sendMessage('SAVE_CACHED_TOPIC', {
         url: topic.url,
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
-        forumPostCount: store.activeTabDetect.value?.postCount,
+        forumPostCount: getLiveForumPostCount(),
         totalPosts: segTotalPosts,
         summarizedPostCount: segTotalPosts,
         segments: updatedDense,
+        ...(isSingleSegment ? {
+          summary: newSeg.summary,
+          summaryJson: newSeg.summaryJson ?? undefined,
+        } : {}),
       });
       store.updateSelectedTopic({
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
         totalPosts: segTotalPosts,
-        forumPostCount: store.activeTabDetect.value?.postCount,
+        forumPostCount: getLiveForumPostCount(),
         summarizedPostCount: segTotalPosts,
         segments: updatedDense,
+        ...(isSingleSegment ? {
+          summary: newSeg.summary,
+          summaryJson: newSeg.summaryJson ?? undefined,
+        } : {}),
       } as Partial<CachedTopic>);
 
-      // Single-segment: promote summary to top-level so TopicHubView shows "Đã tóm tắt"
-      if (segments.value.length === 1) {
+      if (isSingleSegment) {
         summary.value = newSeg.summary;
         summaryJson.value = newSeg.summaryJson ?? null;
         activeSegmentIndex.value = null;
-        await sendMessage('SAVE_CACHED_TOPIC', {
-          url: topic.url,
-          title: topic.title,
-          version: topic.version,
-          totalPages: topic.totalPages,
-          forumPostCount: store.activeTabDetect.value?.postCount,
-          summary: newSeg.summary,
-          summaryJson: newSeg.summaryJson ?? undefined,
-          summarizedPostCount: segTotalPosts,
-        });
-        store.updateSelectedTopic({ summary: newSeg.summary, summarizedPostCount: segTotalPosts });
         cacheFreshness.value = 'fresh';
       }
     } catch (err) {
@@ -601,7 +607,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
-        forumPostCount: store.activeTabDetect.value?.postCount,
+        forumPostCount: getLiveForumPostCount(),
         summary: seg.summary,
         summaryJson: seg.summaryJson ?? undefined,
         summarizedPostCount: seg.postCount,
@@ -635,7 +641,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
           segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
         await saveTopic(topic, {
-          forumPostCount: store.activeTabDetect.value?.postCount,
+          forumPostCount: getLiveForumPostCount(),
           summary: overallSummaryText,
           summaryJson: overallSummaryJson ?? undefined,
           summarizedPostCount: totalSummarized,
@@ -655,7 +661,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
-        forumPostCount: store.activeTabDetect.value?.postCount,
+        forumPostCount: getLiveForumPostCount(),
         summary: overallSummaryText,
         summaryJson: overallSummaryJson ?? undefined,
         summarizedPostCount: totalSummarized,
@@ -690,9 +696,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const coveredEndPage = lastSummarizedSeg?.endPage ?? 0;
     const newTotalPages = store.activeTabDetect.value?.pageCount ?? topicInfo.value.pageCount;
 
-    // Use forumPostCount (live) to detect new posts, not just pageCount
+    // Use forumPostCount (live) to detect new posts, not just pageCount.
+    // Prefer cached forumPostCount over activeTabDetect: the latter may be stale
+    // when the user clicks "Cập nhật" from a non-forum tab.
     const currentSummarizedPosts = currentSegments.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-    const livePostCount = store.activeTabDetect.value?.postCount ?? 0;
+    const livePostCount = getLiveForumPostCount();
     const hasNewPosts = livePostCount > currentSummarizedPosts;
 
     // Skip only if no new pages AND no new posts within existing pages
@@ -723,65 +731,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         const resume = computeResumeState();
         if (resume && resume.fromPage <= newTotalPages) {
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
-        } else if (hasNewPosts && lastSummarizedSeg) {
-          // New posts within existing page range — re-scrape last page only, diff & merge
-          const lastSegIdx = segmentSummaries.value.lastIndexOf(lastSummarizedSeg);
-          if (lastSegIdx < 0) return;
-
-          isScraping.value = true;
-          try {
-            const result = await scrapePageRange(
-              topic.version, topic.url,
-              lastSummarizedSeg.endPage, lastSummarizedSeg.endPage,
-              undefined, undefined,
-              currentConfig.value?.scrapeDelayMs ?? 2000,
-            );
-
-            if (result.threadDeleted) {
-              await saveTopic(topic, { threadDeleted: true });
-              error.value = 'Thread đã bị xóa.';
-              return;
-            }
-            if (result.threadLocked) {
-              await saveTopic(topic, { threadLocked: true });
-            }
-
-            const existingNums = new Set(lastSummarizedSeg.posts.map(p => p.postNumber));
-            const newPosts = result.posts.filter(
-              p => p.postNumber > 0 && !existingNums.has(p.postNumber),
-            );
-
-            if (newPosts.length > 0 && thisId === activeSummarizeId) {
-              const mergedPosts = [...lastSummarizedSeg.posts, ...newPosts]
-                .sort((a, b) => a.postNumber - b.postNumber);
-              const mergedTokens = mergedPosts.reduce(
-                (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-                0,
-              );
-              if (mergedTokens <= budget) {
-                await summarizeAndSaveSegment(
-                  lastSegIdx,
-                  lastSummarizedSeg.startPage,
-                  lastSummarizedSeg.endPage,
-                  mergedPosts,
-                  false,
-                  thisId,
-                );
-              } else {
-                // Merged segment exceeds token budget — create separate segment for new posts
-                await summarizeAndSaveSegment(
-                  lastSegIdx + 1,
-                  lastSummarizedSeg.endPage,
-                  lastSummarizedSeg.endPage,
-                  newPosts,
-                  false,
-                  thisId,
-                );
-              }
-            }
-          } finally {
-            isScraping.value = false;
-          }
+        } else if (hasNewPosts) {
+          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId);
         }
         if (thisId === activeSummarizeId && !error.value) {
           const completed = segmentSummaries.value.filter(s => s?.summary).length;
@@ -914,7 +865,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     updated[segmentIndex] = newSeg;
 
     const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-    const forumCount = store.activeTabDetect.value?.postCount;
+    const forumCount = getLiveForumPostCount();
 
     if (thisId !== activeSummarizeId) {
       // Stale: still save but don't update UI
@@ -1159,6 +1110,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
       pendingPosts.push(...enrichedPosts);
       pendingTokens += pageTokens;
+
+      if (page < totalPages && thisId === activeSummarizeId) {
+        const jitter = Math.random() * Math.min(delayMs * 0.3, 500);
+        await new Promise((r) => setTimeout(r, delayMs + jitter));
+      }
     }
 
     // Summarize remaining posts (last segment — all pages covered, always complete)

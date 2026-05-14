@@ -7,6 +7,7 @@ import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/su
 import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION } from '@/lib/constants';
 import { buildKnowledgeReducePrompt } from '@/lib/prompts';
+import { buildKnowledgePipeline } from '@/lib/pipeline-builder';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import ConfirmInline from '../components/ConfirmInline.vue';
@@ -283,8 +284,11 @@ async function persistChunks(chunks: KnowledgeChunk[], guardId: number, topicUrl
 /** Direct path: single LLM call for small topics that fit in context */
 async function runDirectExtract(postsToProcess: ScrapedPost[], guardId: number, topicUrl: string, topicTitle: string): Promise<void> {
   currentPhase.value = 'extracting';
+  const pipeline = buildKnowledgePipeline(1);
   const { taskId, result } = runExtract(postsToProcess, topicTitle);
   llmTaskId.value = taskId;
+  const st = getTaskState(taskId);
+  if (st) st.pipeline = JSON.parse(JSON.stringify(pipeline));
   const llmResult = await result;
   if (guardId !== activeExtractId) return;
 
@@ -433,6 +437,10 @@ async function handleExtract() {
 
       const { taskId, result } = extractKnowledgeChunkTask(chunkPosts, topicTitle);
       llmTaskId.value = taskId;
+      // Set detailed pipeline in task state for timeline display
+      const totalExtractSteps = newChunks.length + chunkPlan.length;
+      const st = getTaskState(taskId);
+      if (st) st.pipeline = JSON.parse(JSON.stringify(buildKnowledgePipeline(totalExtractSteps)));
       const llmResult = await result;
       if (thisId !== activeExtractId) return;
 
@@ -537,6 +545,8 @@ async function runReducePhase(
         const group = allPartial.slice(g, g + groupSize);
         const { taskId, result } = reduceKnowledgeChunksTask(group);
         llmTaskId.value = taskId;
+        const st = getTaskState(taskId);
+        if (st) st.pipeline = JSON.parse(JSON.stringify(buildKnowledgePipeline(1)));
         const groupResult = await result;
         if (guardId !== activeExtractId) return;
         groupResults.push(
@@ -559,6 +569,8 @@ async function runReducePhase(
       // Fit in one call — existing path
       const { taskId, result } = reduceKnowledgeChunksTask(entriesToReduce, finalCap);
       llmTaskId.value = taskId;
+      const st = getTaskState(taskId);
+      if (st) st.pipeline = JSON.parse(JSON.stringify(buildKnowledgePipeline(1)));
       const reduceResult = await result;
       if (guardId !== activeExtractId) return;
       rawFinalEntries = ((reduceResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [];
@@ -573,6 +585,8 @@ async function runReducePhase(
         const group = entriesToReduce.slice(g, g + groupSize);
         const { taskId, result } = reduceKnowledgeChunksTask(group, maxPerCall);
         llmTaskId.value = taskId;
+        const st = getTaskState(taskId);
+        if (st) st.pipeline = JSON.parse(JSON.stringify(buildKnowledgePipeline(1)));
         const groupResult = await result;
         if (guardId !== activeExtractId) return;
         allRaw.push(

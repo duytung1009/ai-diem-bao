@@ -1,6 +1,48 @@
 import { dbGet, dbPut, dbDelete, dbGetAll } from './cache-db';
 import type { CachedTopic } from './types';
 
+export function mergePartialTopic(
+  partial: Partial<CachedTopic> & { url?: string },
+  existing: CachedTopic | null,
+  url: string,
+  llmConfig: { provider: string; model: string },
+): CachedTopic {
+  return {
+    url: normalizeUrl(url),
+    title: partial.title ?? existing?.title ?? '',
+    version: partial.version ?? existing?.version ?? 'unknown',
+    posts: partial.posts ?? existing?.posts ?? [],
+    summary: partial.summary ?? existing?.summary ?? '',
+    opinions: partial.opinions ?? existing?.opinions,
+    researchHistory: partial.researchHistory ?? existing?.researchHistory,
+    llmConfig,
+    cachedAt: Date.now(),
+    lastPostNumber: partial.lastPostNumber ?? existing?.lastPostNumber ?? 0,
+    forumPostCount: partial.forumPostCount ?? existing?.forumPostCount,
+    totalPosts: Math.max(partial.totalPosts ?? 0, existing?.totalPosts ?? 0),
+    summarizedPostCount: partial.summarizedPostCount ?? existing?.summarizedPostCount,
+    totalPages: partial.totalPages ?? existing?.totalPages ?? 1,
+    topicType: partial.topicType ?? existing?.topicType,
+    segments: partial.segments ?? existing?.segments,
+    overallSummary: partial.overallSummary ?? existing?.overallSummary,
+    summaryJson: partial.summaryJson ?? existing?.summaryJson,
+    bookmarked: partial.bookmarked ?? existing?.bookmarked,
+    knowledgeEntries: partial.knowledgeEntries ?? existing?.knowledgeEntries,
+    knowledgeChunks: partial.knowledgeChunks !== undefined
+      ? partial.knowledgeChunks
+      : existing?.knowledgeChunks,
+    lastKnowledgePostNumber: partial.lastKnowledgePostNumber !== undefined
+      ? partial.lastKnowledgePostNumber
+      : existing?.lastKnowledgePostNumber,
+    excludedKnowledgePostNumbers: partial.excludedKnowledgePostNumbers !== undefined
+      ? partial.excludedKnowledgePostNumbers
+      : existing?.excludedKnowledgePostNumbers,
+    threadAnalysis: partial.threadAnalysis !== undefined
+      ? partial.threadAnalysis
+      : existing?.threadAnalysis,
+  };
+}
+
 export function normalizeUrl(url: string): string {
   try {
     const u = new URL(url);

@@ -20,19 +20,15 @@ function formatETA(ms: number): string {
   <div class="space-y-0">
     <div class="relative">
       <!-- Vertical line -->
-      <div class="absolute left-[11px] top-3 bottom-3 w-0.5 bg-(--color-border)" />
+      <div class="absolute left-2.75 top-3 bottom-3 w-0.5 bg-(--color-border) z-0" />
 
       <div
         v-for="(step, idx) in pipeline.steps"
         :key="step.id"
         class="relative flex items-start gap-3 py-2 pl-0"
-        :class="{
-          'opacity-70': step.status === 'done',
-          'opacity-50': step.status === 'pending',
-        }"
       >
         <!-- Icon column -->
-        <div class="relative z-10 flex-shrink-0 w-6 h-6 flex items-center justify-center">
+        <div class="relative z-10 shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-(--color-bg-surface)">
           <!-- Done -->
           <svg
             v-if="step.status === 'done'"
@@ -71,7 +67,7 @@ function formatETA(ms: number): string {
           <!-- Pending -->
           <div
             v-else
-            class="w-[14px] h-[14px] rounded-full border-2 border-(--color-text-muted)"
+            class="w-3.5 h-3.5 rounded-full border-2 border-(--color-text-muted)"
           />
         </div>
 
@@ -85,6 +81,7 @@ function formatETA(ms: number): string {
                 'text-(--color-accent)': step.status === 'running',
                 'text-(--color-error-text)': step.status === 'error',
                 'text-(--color-text-muted)': step.status === 'pending',
+                'animate-pulse': step.status === 'running',
               }"
             >
               {{ step.label }}

@@ -38,14 +38,13 @@ const {
 } = useSummarize(store);
 const { getTaskState } = useLLM();
 
-// Determine pipeline to display: prefer detailed pipeline from builder, fallback to background task state
+// Determine pipeline to display: prefer task state (auto-updated), fallback to static builder
 const activePipeline = computed<PipelineDefinition | null>(() => {
-  if (summarizePipeline.value) return summarizePipeline.value;
   if (llmTaskId.value) {
     const task = getTaskState(llmTaskId.value);
     if (task?.pipeline) return task.pipeline;
   }
-  return null;
+  return summarizePipeline.value;
 });
 
 const segmentGridExpanded = ref(false);

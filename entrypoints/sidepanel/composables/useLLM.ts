@@ -44,10 +44,14 @@ function handleProgress(payload: LLMProgressMessage) {
     const total = payload.totalSteps;
     // Only update if we have enough info
     if (total > 0) {
+      const pipelineSteps = task.pipeline.steps.length;
+      // Clamp to pipeline's last step — background progress steps can exceed pipeline step count
+      // (e.g. map-reduce summarize sends 4 progress steps for a single "summarize" pipeline step)
+      const pipelineIdx = Math.min(currentStep, pipelineSteps - 1);
       task.pipeline.steps.forEach((s, idx) => {
-        if (idx < currentStep) {
+        if (idx < pipelineIdx) {
           s.status = 'done';
-        } else if (idx === currentStep) {
+        } else if (idx === pipelineIdx) {
           s.status = 'running';
           s.etaMs = task.estimatedTotalMs > 0
             ? Math.max(0, (task.estimatedTotalMs - payload.elapsedMs) / (total - currentStep))
@@ -68,6 +72,18 @@ function handleResult(payload: LLMResultMessage) {
   task.error = payload.error ?? null;
   task.stats = payload.stats;
   task.elapsedMs = payload.stats.elapsedMs;
+  // Mark all pipeline steps as done on success, or mark current running as error
+  if (task.pipeline) {
+    task.pipeline.steps.forEach(s => {
+      if (payload.success) {
+        s.status = 'done';
+        s.etaMs = undefined;
+      } else if (s.status === 'running') {
+        s.status = 'error';
+        s.error = payload.error ?? undefined;
+      }
+    });
+  }
   task.onComplete?.(payload);
   // Cleanup after 5s so progress display fades naturally
   setTimeout(() => activeTasks.value.delete(payload.taskId), LLM_TASK_CLEANUP_DELAY_MS);

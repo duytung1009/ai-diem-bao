@@ -153,12 +153,6 @@ export default defineBackground(() => {
                   ? partial.threadAnalysis
                   : existing?.threadAnalysis,
               };
-              const seg0 = topic.segments?.[0];
-              console.log('[BG SAVE_CACHED_TOPIC] partial.hasSegments:', !!partial.segments,
-                'topic.summarizedPostCount:', topic.summarizedPostCount,
-                'topic.segments?.length:', topic.segments?.length,
-                'seg[0].posts?.length:', seg0?.posts?.length,
-                'seg[0].postCount:', seg0?.postCount);
               await saveCachedTopic(topic);
               sendResponse({ success: true });
             })
@@ -298,9 +292,9 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
   const pendingStep = (id: string, label: string): PipelineStep => ({ id, label, status: 'pending' });
   switch (taskType) {
     case 'summarize':
-      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Tóm tắt bằng AI')] };
+      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Tạo Segment tóm tắt')] };
     case 'summarize_incremental':
-      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Cập nhật tóm tắt')] };
+      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Cập nhật Segment tóm tắt')] };
     case 'summarize_segments':
       return { workflow: 'summarize', steps: [pendingStep('overall', 'Tạo tóm tắt tổng quan')] };
     case 'analyze_opinions':
@@ -310,9 +304,9 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
     case 'extract_knowledge':
       return { workflow: 'knowledge', steps: [pendingStep('extract', 'Trích xuất kiến thức')] };
     case 'extract_knowledge_chunk':
-      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Trích xuất kiến thức')] };
+      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Tổng hợp Segment kiến thức')] };
     case 'reduce_knowledge_chunks':
-      return { workflow: 'knowledge', steps: [pendingStep('reduce', 'Gộp kiến thức')] };
+      return { workflow: 'knowledge', steps: [pendingStep('reduce', 'Tổng hợp kiến thức')] };
     case 'thread_analysis':
       return { workflow: 'knowledge', steps: [pendingStep('analyze', 'Phân tích chủ đề')] };
     default:

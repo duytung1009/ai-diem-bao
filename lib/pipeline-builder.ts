@@ -13,11 +13,17 @@ export function buildSummarizePipeline(segments: { start: number; end: number }[
   const steps: PipelineStep[] = [];
 
   if (segments.length <= 1) {
-    steps.push(pending('Tóm tắt bằng AI', 'summarize'));
+    if (segments.length === 1) {
+      const s = segments[0];
+      const label = s.start === s.end ? `Scrape trang ${s.start}` : `Scrape trang ${s.start}–${s.end}`;
+      steps.push(pending(label, 'scrape'));
+    }
+    steps.push(pending('Tạo tóm tắt tổng quan', 'summarize'));
   } else {
     segments.forEach((seg, i) => {
-      steps.push(pending(`Scrape trang ${seg.start}–${seg.end}`, `scrape_${i}`));
-      steps.push(pending(`Tóm tắt phần ${i + 1}/${segments.length}`, `summarize_${i}`));
+      const label = seg.start === seg.end ? `Scrape trang ${seg.start}` : `Scrape trang ${seg.start}–${seg.end}`;
+      steps.push(pending(label, `scrape_${i}`));
+      steps.push(pending(`Tạo tóm tắt Segment ${i + 1}/${segments.length}`, `summarize_${i}`));
     });
     steps.push(pending('Tạo tóm tắt tổng quan', 'overall'));
   }
@@ -33,7 +39,7 @@ export function buildKnowledgePipeline(chunkCount: number): PipelineDefinition {
   const steps: PipelineStep[] = [];
 
   for (let i = 0; i < chunkCount; i++) {
-    steps.push(pending(`Trích xuất phần ${i + 1}/${chunkCount}`, `extract_${i}`));
+    steps.push(pending(`Trích xuất Segment ${i + 1}/${chunkCount}`, `extract_${i}`));
   }
   steps.push(pending('Gộp kiến thức', 'reduce'));
 

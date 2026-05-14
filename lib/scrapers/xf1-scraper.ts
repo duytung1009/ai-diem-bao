@@ -15,7 +15,7 @@ export class XF1Scraper implements TopicScraper {
 
   getPostCount(doc: Document = document): number {
     const dd = doc.querySelector('.count--replies dd');
-    return Number.parseInt(dd?.textContent?.trim()?.replaceAll(',', '') ?? '0', 10);
+    return Number.parseInt(dd?.textContent?.trim()?.replaceAll(',', '') ?? '0', 10) + 1; // +1 for OP
   }
 
   getPageCount(doc: Document = document): number {

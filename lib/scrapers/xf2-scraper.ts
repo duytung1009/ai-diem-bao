@@ -16,7 +16,7 @@ export class XF2Scraper implements TopicScraper {
   getPostCount(doc: Document = document): number {
     // Primary: standard XF2 replies counter
     const dd = doc.querySelector('dl.count--replies dd');
-    const primary = Number.parseInt(dd?.textContent?.trim()?.replaceAll(',', '') ?? '', 10);
+    const primary = Number.parseInt(dd?.textContent?.trim()?.replaceAll(',', '') ?? '', 10) + 1; // +1 for OP
     if (!isNaN(primary) && primary > 0) return primary;
 
     // Fallback 1: JSON-LD structured data (always available on thread page)

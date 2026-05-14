@@ -56,16 +56,6 @@ export function buildResearchPipeline(): PipelineDefinition {
   };
 }
 
-/**
- * Build pipeline for opinions analysis workflow.
- */
-export function buildOpinionsPipeline(): PipelineDefinition {
-  return {
-    workflow: 'opinions',
-    steps: [pending('Phân tích luồng ý kiến', 'analyze')],
-  };
-}
-
 /** Mark a step as done by its id */
 export function markStepDone(pipeline: PipelineDefinition, stepId: string): void {
   const step = pipeline.steps.find(s => s.id === stepId);

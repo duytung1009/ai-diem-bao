@@ -3,8 +3,6 @@ import { createProvider } from './factory';
 import {
   SUMMARY_PROMPT,
   INCREMENTAL_UPDATE_PROMPT,
-  OPINION_ANALYSIS_PROMPT,
-  OPINION_CHUNK_PROMPT,
   RESEARCH_PROMPT,
   KNOWLEDGE_CHUNK_PROMPT,
   buildKnowledgeExtractPrompt,
@@ -264,37 +262,6 @@ export async function updateSummary(
   const response = await provider.summarize(postsWithContext, systemPrompt, signal);
   const json = parseSummaryJSON(response.content);
   return json ? JSON.stringify(json) : response.content;
-}
-
-export async function analyzeOpinions(
-  posts: ScrapedPost[],
-  config: LLMConfig,
-  onProgress?: LLMProgressCallback,
-  customPrompts?: CustomPrompts,
-  signal?: AbortSignal,
-): Promise<string> {
-  const provider = createProvider(config);
-  const systemPrompt = customPrompts?.opinions || OPINION_ANALYSIS_PROMPT;
-
-  // For opinion analysis, check if we need to chunk
-  const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
-  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
-  const contextCheck = willExceedContext(posts, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow, thinkingOverhead);
-  if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
-    onProgress?.(`Phân tích ý kiến (${contextCheck.chunksNeeded} phần)...`);
-    // Use map-reduce to extract opinions
-    const mapResult = await summaryChunks(posts, config, onProgress, contextCheck.chunksNeeded, OPINION_CHUNK_PROMPT, undefined, signal);
-    // Then analyze the combined summary
-    const opinionResponse = await provider.summarize(
-      [{ author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 } as ScrapedPost],
-      systemPrompt,
-      signal,
-    );
-    return opinionResponse.content;
-  }
-
-  const response = await provider.summarize(posts, systemPrompt, signal);
-  return response.content;
 }
 
 export async function researchTopic(

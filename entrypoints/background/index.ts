@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
-import { summarizeTopic, updateSummary, analyzeOpinions, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
+import { summarizeTopic, updateSummary, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
@@ -297,8 +297,6 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
       return { workflow: 'summarize', steps: [pendingStep('summarize', 'Cập nhật Segment tóm tắt')] };
     case 'summarize_segments':
       return { workflow: 'summarize', steps: [pendingStep('overall', 'Tạo tóm tắt tổng quan')] };
-    case 'analyze_opinions':
-      return { workflow: 'opinions', steps: [pendingStep('analyze', 'Phân tích luồng ý kiến')] };
     case 'research':
       return { workflow: 'research', steps: [pendingStep('research', 'Tra cứu và phân tích')] };
     case 'extract_knowledge':
@@ -355,12 +353,6 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         const { previousSummary, newPosts } = payload as { previousSummary: string; newPosts: ScrapedPost[] };
         inputTokens = estimateTokens(previousSummary + newPosts.map(p => p.content).join(''));
         result = { summary: await updateSummary(previousSummary, newPosts, config, onProgress, prompts, signal) };
-        break;
-      }
-      case 'analyze_opinions': {
-        const posts = payload as ScrapedPost[];
-        inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        result = { opinions: await analyzeOpinions(posts, config, onProgress, prompts, signal) };
         break;
       }
       case 'research': {

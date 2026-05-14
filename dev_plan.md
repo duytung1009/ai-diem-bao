@@ -69,7 +69,6 @@ ai-diem-bao/
 │   │   ├── main.ts
 │   │   ├── views/
 │   │   │   ├── SummaryView.vue       # Tóm tắt chính
-│   │   │   ├── OpinionsView.vue      # Phân tích luồng ý kiến
 │   │   │   ├── ResearchView.vue      # Tra cứu mở rộng
 │   │   │   └── SettingsView.vue      # Cấu hình API
 │   │   ├── components/

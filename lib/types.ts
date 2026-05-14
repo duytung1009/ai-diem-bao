@@ -284,7 +284,7 @@ export type LLMProgressCallback = (message: string, step?: number, totalSteps?: 
 // --- Pipeline types (Phase 7: Timeline Loading Indicator) ---
 
 export type PipelineStepStatus = 'pending' | 'running' | 'done' | 'error';
-export type PipelineWorkflow = 'summarize' | 'knowledge' | 'research' | 'opinions';
+export type PipelineWorkflow = 'summarize' | 'knowledge' | 'research';
 
 export interface PipelineStep {
   id: string;

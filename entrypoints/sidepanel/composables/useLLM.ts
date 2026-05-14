@@ -182,8 +182,6 @@ function summarizeIncremental(previousSummary: string, newPosts: ScrapedPost[]) 
   return createTask('summarize_incremental', { previousSummary, newPosts });
 }
 
-function analyzeOpinions(posts: ScrapedPost[]) { return createTask('analyze_opinions', posts); }
-
 function researchTopic(posts: ScrapedPost[], question: string) {
   return createTask('research', { posts, question });
 }
@@ -233,7 +231,6 @@ export function useLLM() {
     summarize,
     summarizeIncremental,
     summarizeSegmentsTask,
-    analyzeOpinions,
     researchTopic,
     extractKnowledge,
     extractKnowledgeChunkTask,

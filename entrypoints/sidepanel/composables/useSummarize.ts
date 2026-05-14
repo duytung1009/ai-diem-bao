@@ -599,6 +599,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     // Single segment: copy trực tiếp, không gọi LLM
     if (completedSegments.length === 1) {
       const seg = completedSegments[0];
+      const totalSummarized = seg.postCount;
       summary.value = seg.summary;
       summaryJson.value = seg.summaryJson ?? null;
       activeSegmentIndex.value = null;
@@ -608,11 +609,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         version: topic.version,
         totalPages: topic.totalPages,
         forumPostCount: getLiveForumPostCount(),
+        totalPosts: Math.max(topic.totalPosts, totalSummarized),
+        summarizedPostCount: totalSummarized,
+        segments: segmentSummaries.value,
         summary: seg.summary,
         summaryJson: seg.summaryJson ?? undefined,
-        summarizedPostCount: seg.postCount,
       });
-      store.updateSelectedTopic({ summary: seg.summary, summarizedPostCount: seg.postCount });
+      store.updateSelectedTopic({
+        summary: seg.summary,
+        summarizedPostCount: totalSummarized,
+        totalPosts: Math.max(topic.totalPosts, totalSummarized),
+        segments: segmentSummaries.value,
+      } as Partial<CachedTopic>);
       cacheFreshness.value = 'fresh';
       return;
     }
@@ -731,6 +739,17 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         const resume = computeResumeState();
         if (resume && resume.fromPage <= newTotalPages) {
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
+        } else if (resume && hasNewPosts) {
+          // New posts on existing pages — re-scrape from last segment's start
+          // to capture updated content without re-scraping ALL pages from page 1
+          const reResume: DynamicResumeState = {
+            fromPage: resume.pendingStartPage,
+            segmentIndex: resume.segmentIndex,
+            pendingPosts: [],
+            pendingTokens: 0,
+            pendingStartPage: resume.pendingStartPage,
+          };
+          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, reResume);
         } else if (hasNewPosts) {
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId);
         }
@@ -1151,17 +1170,21 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
            dynamicSegmentBoundaries.value = [];
            segmentSummaries.value = [];
            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
-         } else {
-           // Resume from partial results if any, otherwise start fresh
-           const resume = computeResumeState();
-           if (!resume) {
-             dynamicSegmentBoundaries.value = [];
-             segmentSummaries.value = [];
-           }
-           if (!resume || resume.fromPage <= totalPages) {
-             await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume ?? undefined);
-           }
-         }
+} else {
+            // Resume from partial results if any, otherwise start fresh
+            const resume = computeResumeState();
+            if (!resume) {
+              dynamicSegmentBoundaries.value = [];
+              segmentSummaries.value = [];
+            }
+            if (resume && resume.fromPage <= totalPages) {
+              await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume);
+            } else if (!resume) {
+              await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+            }
+            // When resume.fromPage > totalPages, all pages are already summarized —
+            // just proceed to generateOverallSummary below
+          }
        } else {
          // Fixed mode: summarize all segments sequentially
          if (forceRegenerate) {

@@ -8,13 +8,14 @@ import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION } from '@/lib/constants';
 import { buildKnowledgeReducePrompt } from '@/lib/prompts';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
+import StepTimeline from '../components/StepTimeline.vue';
 import ConfirmInline from '../components/ConfirmInline.vue';
 import { useLLM } from '../composables/useLLM';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 
-const { extractKnowledge: runExtract, extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask } = useLLM();
+const { extractKnowledge: runExtract, extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask, getTaskState } = useLLM();
 const store = useTopicStore();
 const { topicInfo } = useSummarize(store);
 const { optimisticUpdate } = useOptimisticUpdate(store);
@@ -38,6 +39,11 @@ const currentChunkIndex = ref(0);
 const totalChunks = ref(0);
 const currentPhase = ref<'idle' | 'extracting' | 'reducing'>('idle');
 const currentConfig = ref<LLMConfig | null>(null);
+
+const activePipeline = computed(() => {
+  if (!llmTaskId.value) return null;
+  return getTaskState(llmTaskId.value)?.pipeline ?? null;
+});
 
 // Cost estimate for extract — skip during active extraction (warning is hidden then anyway)
 const estimatedExtractApiCalls = computed(() => {
@@ -692,10 +698,18 @@ async function handleClearTracking() {
       </template>
 
       <!-- Progress -->
-      <ProgressIndicator v-if="isLoading" :task-id="llmTaskId" :fallback-message="progressLabel" />
-      <button v-if="isLoading" class="w-full btn btn-secondary mt-2 text-xs" @click="handleCancel">
-        Hủy
-      </button>
+      <StepTimeline
+        v-if="isLoading && activePipeline"
+        :pipeline="activePipeline"
+        :show-cancel="true"
+        @cancel="handleCancel"
+      />
+      <template v-else-if="isLoading">
+        <ProgressIndicator :task-id="llmTaskId" :fallback-message="progressLabel" />
+        <button class="w-full btn btn-secondary mt-2 text-xs" @click="handleCancel">
+          Hủy
+        </button>
+      </template>
 
       <!-- Error -->
       <div v-if="error" class="alert alert-error flex items-start gap-3">

@@ -4,7 +4,7 @@ import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAl
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON } from '@/lib/types';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
@@ -153,6 +153,12 @@ export default defineBackground(() => {
                   ? partial.threadAnalysis
                   : existing?.threadAnalysis,
               };
+              const seg0 = topic.segments?.[0];
+              console.log('[BG SAVE_CACHED_TOPIC] partial.hasSegments:', !!partial.segments,
+                'topic.summarizedPostCount:', topic.summarizedPostCount,
+                'topic.segments?.length:', topic.segments?.length,
+                'seg[0].posts?.length:', seg0?.posts?.length,
+                'seg[0].postCount:', seg0?.postCount);
               await saveCachedTopic(topic);
               sendResponse({ success: true });
             })
@@ -288,6 +294,32 @@ async function migrateCustomPrompts(): Promise<void> {
   await browser.storage.sync.set({ [STORAGE_KEYS.CUSTOM_PROMPTS]: newPrompts, [flagKey]: true });
 }
 
+function buildPipeline(taskType: string): PipelineDefinition | null {
+  const pendingStep = (id: string, label: string): PipelineStep => ({ id, label, status: 'pending' });
+  switch (taskType) {
+    case 'summarize':
+      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Tóm tắt bằng AI')] };
+    case 'summarize_incremental':
+      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Cập nhật tóm tắt')] };
+    case 'summarize_segments':
+      return { workflow: 'summarize', steps: [pendingStep('overall', 'Tạo tóm tắt tổng quan')] };
+    case 'analyze_opinions':
+      return { workflow: 'opinions', steps: [pendingStep('analyze', 'Phân tích luồng ý kiến')] };
+    case 'research':
+      return { workflow: 'research', steps: [pendingStep('research', 'Tra cứu và phân tích')] };
+    case 'extract_knowledge':
+      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Trích xuất kiến thức')] };
+    case 'extract_knowledge_chunk':
+      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Trích xuất kiến thức')] };
+    case 'reduce_knowledge_chunks':
+      return { workflow: 'knowledge', steps: [pendingStep('reduce', 'Gộp kiến thức')] };
+    case 'thread_analysis':
+      return { workflow: 'knowledge', steps: [pendingStep('analyze', 'Phân tích chủ đề')] };
+    default:
+      return null;
+  }
+}
+
 async function processLLMTask(taskId: string, taskType: string, payload: unknown, signal?: AbortSignal): Promise<void> {
   const startTime = Date.now();
   const config = await getSettings();
@@ -295,14 +327,24 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
   let inputTokens = 0;
   let stepCount = 0;
   let totalSteps = 1;
+  let pipelineSent = false;
+
+  // Build pipeline definition for this task type
+  const pipeline = buildPipeline(taskType);
 
   const onProgress = (msg: string, step?: number, total?: number) => {
     if (total !== undefined) totalSteps = total;
     stepCount++;
-    browser.runtime.sendMessage({
-      type: 'LLM_PROGRESS',
-      payload: { taskId, step: step ?? stepCount, totalSteps, message: msg, elapsedMs: Date.now() - startTime },
-    }).catch(() => {}); // sidepanel có thể đã đóng
+    const elapsedMs = Date.now() - startTime;
+    const pl: { taskId: string; step: number; totalSteps: number; message: string; elapsedMs: number; pipeline?: PipelineDefinition } = {
+      taskId, step: step ?? stepCount, totalSteps, message: msg, elapsedMs,
+    };
+    // Send pipeline only on first progress message
+    if (!pipelineSent && pipeline) {
+      pl.pipeline = pipeline;
+      pipelineSent = true;
+    }
+    browser.runtime.sendMessage({ type: 'LLM_PROGRESS', payload: pl }).catch(() => {});
   };
 
   try {

@@ -104,6 +104,7 @@ export interface LLMProgressMessage {
   totalSteps: number;
   message: string;
   elapsedMs: number;
+  pipeline?: PipelineDefinition;
 }
 
 export interface LLMResultMessage {
@@ -279,3 +280,21 @@ export interface CustomPrompts {
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export type LLMProgressCallback = (message: string, step?: number, totalSteps?: number) => void;
+
+// --- Pipeline types (Phase 7: Timeline Loading Indicator) ---
+
+export type PipelineStepStatus = 'pending' | 'running' | 'done' | 'error';
+export type PipelineWorkflow = 'summarize' | 'knowledge' | 'research' | 'opinions';
+
+export interface PipelineStep {
+  id: string;
+  label: string;
+  status: PipelineStepStatus;
+  etaMs?: number;
+  error?: string;
+}
+
+export interface PipelineDefinition {
+  workflow: PipelineWorkflow;
+  steps: PipelineStep[];
+}

@@ -225,6 +225,16 @@ Side Panel (Vue): render summary, opinions, research
 - Custom prompt templates
 - README cho GitHub
 
+**Phase 7 — Timeline Loading Indicator**
+- Thay thế ProgressIndicator bằng StepTimeline dạng vertical timeline
+- Hiển thị toàn bộ các step cần thực hiện ngay từ đầu
+- 3 trạng thái: ✓ done (xanh), ⏳ running (loading + ETA), ○ pending (xám)
+- Pipeline steps cho từng workflow: summarize, knowledge extract, research, opinion analysis
+- Background gửi steps definition cùng với LLM_PROGRESS
+- Cập nhật useLLM, useSummarize, các Views
+
+---
+
 **Phase 5 — Help Tab + Onboarding Guide**
 - Tab "Hướng dẫn" với nội dung text-only, chia sections:
   + Setup LLM Provider: 1.1 Local LLM (khuyến nghị), 1.2 Gemini Free Tier (có note warning rate limit), 1.3 API Pay-per-request (có note chi phí)

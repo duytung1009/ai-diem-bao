@@ -1,3 +1,4 @@
+<!-- @deprecated Use StepTimeline.vue instead for new pipeline-based loading display -->
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
 import { formatNumber } from '@/lib/format';

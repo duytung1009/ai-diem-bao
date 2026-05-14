@@ -4,14 +4,21 @@ import { useRouter } from 'vue-router';
 import type { CachedTopic } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
+import StepTimeline from '../components/StepTimeline.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import AccordionItem from '../components/AccordionItem.vue';
 import { useLLM } from '../composables/useLLM';
+import type { PipelineDefinition } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import TopicMeta from '../components/TopicMeta.vue';
 
-const { analyzeOpinions: runAnalysis } = useLLM();
+const { analyzeOpinions: runAnalysis, getTaskState } = useLLM();
+
+const activePipeline = computed<PipelineDefinition | null>(() => {
+  if (!llmTaskId.value) return null;
+  return getTaskState(llmTaskId.value)?.pipeline ?? null;
+});
 const store = useTopicStore();
 const router = useRouter();
 
@@ -205,7 +212,8 @@ function getSentimentColor(sentiment: string): string {
       </button>
 
       <!-- Progress -->
-      <ProgressIndicator v-if="isLoading" :task-id="llmTaskId" fallback-message="Đang phân tích ý kiến..." />
+      <StepTimeline v-if="isLoading && activePipeline" :pipeline="activePipeline" />
+      <ProgressIndicator v-else-if="isLoading" :task-id="llmTaskId" fallback-message="Đang phân tích ý kiến..." />
 
       <!-- Error -->
       <ErrorDisplay v-if="error" :message="error" action="retry" @retry="handleAnalyze" />

@@ -3,9 +3,11 @@ import { ref, onActivated, computed } from 'vue';
 import type { CachedTopic, ResearchEntry } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
+import StepTimeline from '../components/StepTimeline.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
+import type { PipelineDefinition } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 
@@ -25,7 +27,12 @@ const isLoading = ref(false);
 const error = ref<string | null>(null);
 const history = ref<ResearchEntry[]>([]);
 const llmTaskId = ref<string | null>(null);
-const { researchTopic: runResearch } = useLLM();
+const { researchTopic: runResearch, getTaskState } = useLLM();
+
+const activePipeline = computed<PipelineDefinition | null>(() => {
+  if (!llmTaskId.value) return null;
+  return getTaskState(llmTaskId.value)?.pipeline ?? null;
+});
 
 // Suggested questions derived from the topic title
 const suggestedQuestions = computed(() => {
@@ -155,7 +162,8 @@ function formatDate(ts: number): string {
         </div>
 
         <!-- Loading -->
-        <ProgressIndicator v-if="isLoading" :task-id="llmTaskId" fallback-message="Đang tra cứu câu trả lời..." />
+        <StepTimeline v-if="isLoading && activePipeline" :pipeline="activePipeline" />
+        <ProgressIndicator v-else-if="isLoading" :task-id="llmTaskId" fallback-message="Đang tra cứu câu trả lời..." />
 
         <!-- Error -->
         <ErrorDisplay v-if="error && !isLoading" :message="error" action="retry" @retry="handleResearch" />

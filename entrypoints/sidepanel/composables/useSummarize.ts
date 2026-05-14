@@ -4,7 +4,8 @@ import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON } from '@/lib/types';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON, PipelineDefinition } from '@/lib/types';
+import { buildSummarizePipeline, markStepRunning, markStepDone } from '@/lib/pipeline-builder';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { estimateTokens, calculateSegmentBudget, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
@@ -36,6 +37,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const activeSegmentIndex = ref<number | null>(null);
   const loadedTopicUrl = ref<string | null>(null);
   const dynamicSegmentBoundaries = ref<{ start: number; end: number; label: string }[]>([]);
+  const pipeline = ref<PipelineDefinition | null>(null);
 
   // Non-reactive
   let scrapeAbortCtrl: AbortController | null = null;
@@ -392,6 +394,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     error.value = '';
     scrapingWarnings.value = [];
     scrapingInfo.value = [];
+    // Build pipeline for this summarize operation
+    pipeline.value = buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
     const thisId = ++activeSummarizeId;
     store.setSummarizing(topic.url);
 
@@ -553,6 +557,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (!topic) return;
 
     const completedSegments = segmentSummaries.value.filter(s => s?.summary);
+
+    // Build pipeline for overall summary step
+    pipeline.value = { workflow: 'summarize', steps: [{ id: 'overall', label: 'Tạo tóm tắt tổng quan', status: 'running' }] };
     if (completedSegments.length === 0) return;
 
     // Single segment: copy trực tiếp, không gọi LLM
@@ -665,6 +672,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       error.value = '';
       scrapingWarnings.value = [];
       scrapingInfo.value = [];
+      // Build full pipeline for auto-summarize (all segments + overall)
+      if (topicInfo.value) {
+        const segs = [];
+        if (currentConfig.value?.dynamicSegments && dynamicSegmentBoundaries.value.length > 0) {
+          segs.push(...dynamicSegmentBoundaries.value.map(s => ({ start: s.start, end: s.end })));
+        } else {
+          for (let s = 1; s <= topicInfo.value.pageCount; s += segmentSize.value) {
+            segs.push({ start: s, end: Math.min(s + segmentSize.value - 1, topicInfo.value.pageCount) });
+          }
+        }
+        pipeline.value = buildSummarizePipeline(segs);
+      }
       const thisId = ++activeSummarizeId;
       store.setSummarizing(topic.url);
       try {
@@ -681,7 +700,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           try {
             const result = await scrapePageRange(
               topic.version, topic.url,
-              lastSummarizedSeg.startPage, lastSummarizedSeg.endPage,
+              lastSummarizedSeg.endPage, lastSummarizedSeg.endPage,
               undefined, undefined,
               currentConfig.value?.scrapeDelayMs ?? 2000,
             );
@@ -1232,6 +1251,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     currentConfig,
     cachedTopic,
     cacheFreshness,
+    pipeline,
     segmentSize,
     segmentSummaries,
     activeSegmentIndex,

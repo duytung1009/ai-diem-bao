@@ -1,6 +1,6 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-13T10:24:26.246Z",
+		"generatedAt": "2026-05-14T03:27:46.830Z",
 		"tasksAnalyzed": 10,
 		"totalTasks": 10,
 		"analysisCount": 10,
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 135,
-			"taskTitle": "Create HelpView.vue component skeleton",
+			"taskId": 155,
+			"taskTitle": "Định nghĩa Data Models và Types cho Pipeline",
 			"complexityScore": 2,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask; nhiệm vụ tự hoàn thành.",
-			"reasoning": "Tạo component Vue đơn giản với bố cục cơ bản sử dụng Tailwind. Độ phức tạp thấp."
+			"expansionPrompt": "Chia nhỏ task này thành các bước: tạo file pipeline.ts, định nghĩa interface PipelineStep, định nghĩa interface PipelineDefinition, export các types, chạy type-check.",
+			"reasoning": "Công việc đơn giản chỉ tạo file định nghĩa types, không cần phức tạp."
 		},
 		{
-			"taskId": 136,
-			"taskTitle": "Implement Section 1: Setup LLM Provider content",
-			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask; nhiệm vụ đã được định nghĩa rõ ràng.",
-			"reasoning": "Thêm nội dung hướng dẫn chi tiết từ tài liệu PRD, yêu cầu định dạng HTML và Tailwind. Độ phức tạp trung bình."
-		},
-		{
-			"taskId": 137,
-			"taskTitle": "Implement Section 2: Flow tóm tắt content",
+			"taskId": 156,
+			"taskTitle": "Cập nhật Message Protocol LLM_PROGRESS",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Thêm nội dung mô tả luồng tóm tắt, tương tự task 136 nhưng đơn giản hơn."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Các subtask: Thêm pipeline property vào LLMProgressMessage, cập nhật các hàm tạo message nếu có, viết unit test cho việc đóng gói/gỡ message với và không có pipeline.",
+			"reasoning": "Cần cập nhật cấu trúc message và kiểm tra tương thích ngược, phụ thuộc vào task 155."
 		},
 		{
-			"taskId": 138,
-			"taskTitle": "Implement Section 3: Sau tóm tắt content",
-			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Thêm nội dung phần 3, bao gồm hai mục con. Độ phức tạp tương tự task 137."
-		},
-		{
-			"taskId": 139,
-			"taskTitle": "Add route /help to Vue Router",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Thêm route đơn giản trong Vue Router với lazy loading. Độ phức tạp thấp."
-		},
-		{
-			"taskId": 140,
-			"taskTitle": "Add navigation button '?' in App.vue",
-			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Thêm nút điều hướng '?' trong App.vue, xử lý active state và responsive. Độ phức tạp trung bình thấp."
-		},
-		{
-			"taskId": 141,
-			"taskTitle": "Apply consistent styling and verify responsiveness",
+			"taskId": 157,
+			"taskTitle": "Phát triển Component StepTimeline.vue",
 			"complexityScore": 5,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Rà soát toàn bộ nội dung, đảm bảo tuân thủ design system và responsive. Phụ thuộc vào nhiều task trước. Độ phức tạp trung bình."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Các subtask: Tạo component StepTimeline.vue với props, style cho 4 trạng thái (done, running, pending, error), xử lý hiển thị ETA badge và icon, thêm scroll cho timeline nếu dài, kiểm tra với Storybook.",
+			"reasoning": "Cần thiết kế giao diện và xử lý nhiều trạng thái khác nhau, đòi hỏi kiểm tra kỹ lưỡng."
 		},
 		{
-			"taskId": 142,
-			"taskTitle": "Run npm run compile and fix any errors",
+			"taskId": 158,
+			"taskTitle": "Cập nhật useLLM.ts Composable",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Các subtask: Thêm pipeline vào LLMTaskState, cập nhật handleProgress để xử lý pipeline, sửa startTask để nhận pipeline, kiểm tra state trong DevTools.",
+			"reasoning": "Liên quan đến state management và logic xử lý progress, phụ thuộc vào task 156."
+		},
+		{
+			"taskId": 159,
+			"taskTitle": "Cập nhật Background Logic xử lý Task",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Các subtask: Lấy pipeline từ payload trong processLLMTask, gửi pipeline trong message progress đầu tiên, cập nhật onProgress callback để nhận step index/id và chuyển tiếp, xử lý lỗi cập nhật status error, test với console.log.",
+			"reasoning": "Cần chỉnh sửa logic background phức tạp, đảm bảo luồng gửi thông tin pipeline và cập nhật progress chính xác."
+		},
+		{
+			"taskId": 160,
+			"taskTitle": "Triển khai Pipeline Builder cho Summarize Workflow",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Các subtask: Viết hàm buildSummarizePipeline cho single segment, mở rộng cho multi segment, truyền pipeline vào task LLM, kiểm tra số bước tạo ra.",
+			"reasoning": "Xây dựng pipeline động tùy theo số đoạn, cần xử lý logic lặp và kết hợp steps."
+		},
+		{
+			"taskId": 161,
+			"taskTitle": "Triển khai Pipeline Builder cho Knowledge/Research/Opinions",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Biên dịch và sửa lỗi phát sinh. Độ phức tạp phụ thuộc vào số lỗi, dự kiến thấp."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Các subtask: Cập nhật useKnowledge.ts (extract_i, reduce), useResearch.ts (research, save), useOpinions.ts (analyze, save), kiểm tra cấu trúc pipeline đúng theo PRD.",
+			"reasoning": "Mỗi workflow có pipeline cố định hoặc đơn giản, dễ thực hiện nhưng cần đồng bộ với nhiều file."
 		},
 		{
-			"taskId": 143,
-			"taskTitle": "Perform manual verification tests",
-			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Thực hiện kiểm thử thủ công theo kế hoạch. Độ phức tạp trung bình thấp."
-		},
-		{
-			"taskId": 144,
-			"taskTitle": "Final code review and cleanup",
+			"taskId": 162,
+			"taskTitle": "Tích hợp StepTimeline vào SummaryView.vue",
 			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng subtask.",
-			"reasoning": "Xem xét và dọn dẹp mã nguồn cuối cùng. Độ phức tạp thấp."
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "Các subtask: Import StepTimeline và thay thế ProgressIndicator, thêm logic ẩn hiện dựa trên isLoading, kiểm tra giao diện.",
+			"reasoning": "Thay thế component đã có, ít phức tạp."
+		},
+		{
+			"taskId": 163,
+			"taskTitle": "Tích hợp StepTimeline vào Knowledge/Research/Opinions Views",
+			"complexityScore": 2,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Các subtask: Thay thế trong KnowledgeView, ResearchView, OpinionsView; kiểm tra đồng nhất UI.",
+			"reasoning": "Lặp lại công việc tương tự task 162 trên nhiều view."
+		},
+		{
+			"taskId": 164,
+			"taskTitle": "Kiểm tra Tương thích ngược và Hoàn tất",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Các subtask: Đánh dấu @deprecated ProgressIndicator, kiểm tra fallback khi pipeline null, chạy 'npm run compile' và kiểm tra performance.",
+			"reasoning": "Đảm bảo tương thích ngược và kiểm tra tổng thể, ít thay đổi code."
 		}
 	]
 }

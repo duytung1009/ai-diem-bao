@@ -2,962 +2,436 @@
   "master": {
     "tasks": [
       {
-        "id": "135",
-        "title": "Create HelpView.vue component skeleton",
-        "description": "Create the HelpView.vue file with basic container layout using Tailwind CSS, following the app's existing conventions (card, p-4, space-y-4).",
-        "details": "Create `entrypoints/sidepanel/views/HelpView.vue`. Use template with a div `class=\"p-4 space-y-4\"`. Add placeholder sections with headings for the three main sections. Ensure the file exports a default Vue component with a name (e.g., 'HelpView').",
-        "testStrategy": "Open extension sidepanel and navigate to `/help` route (once router is set up) to verify component renders without errors and layout is correct. Also run `npm run compile` to ensure no compilation issues.",
+        "id": "155",
+        "title": "Định nghĩa Data Models và Types cho Pipeline",
+        "description": "Tạo các interface TypeScript cho PipelineStep và PipelineDefinition để quản lý trạng thái các bước xử lý.",
+        "details": "Tạo file `src/types/pipeline.ts`. Định nghĩa interface PipelineStep với các trường: id (string), label (string), status ('pending' | 'running' | 'done' | 'error'), etaMs (number, optional), và error (string, optional). Định nghĩa PipelineDefinition với workflow ('summarize' | 'knowledge' | 'research' | 'opinions') và mảng các steps. Export các types này để sử dụng trong toàn bộ project.",
+        "testStrategy": "Kiểm tra tính hợp lệ của kiểu dữ liệu bằng lệnh 'npm run type-check' và đảm bảo không có lỗi compile.",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Tạo file HelpView.vue và cấu trúc cơ bản",
-            "description": "Tạo file `entrypoints/sidepanel/views/HelpView.vue` với template chứa div container sử dụng Tailwind CSS (class \"p-4 space-y-4\") và các phần placeholder với tiêu đề cho ba phần chính.",
+            "title": "Tạo file pipeline.ts",
+            "description": "Tạo file src/types/pipeline.ts trong dự án, thiết lập cấu trúc ban đầu cho file định nghĩa types.",
             "dependencies": [],
-            "details": "Tạo file mới, viết template với div class=\"p-4 space-y-4\", thêm ba placeholder section với thẻ <h2> cho tiêu đề \"Phần 1: Thiết lập LLM Provider\", \"Phần 2: Flow tóm tắt\", \"Phần 3: Sau tóm tắt\". Xuất component mặc định với name 'HelpView'.",
+            "details": "Tạo thư mục src/types nếu chưa tồn tại, sau đó tạo file pipeline.ts với nội dung trống hoặc cấu trúc cần thiết để bắt đầu thêm các interface.",
             "status": "pending",
-            "testStrategy": "Mở extension sidepanel và điều hướng tới route /help (sau khi thêm route) để kiểm tra component render không lỗi và layout đúng. Chạy npm run compile để đảm bảo không có lỗi biên dịch.",
+            "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 2,
-            "title": "Triển khai nội dung Phần 1: Thiết lập LLM Provider",
-            "description": "Thay thế placeholder của phần đầu tiên bằng hướng dẫn chi tiết từng bước cho Gemini API Free Tier và Local LLM (LM Studio/Ollama), sử dụng HTML cấu trúc và các class Tailwind phù hợp.",
+            "title": "Định nghĩa interface PipelineStep",
+            "description": "Định nghĩa interface PipelineStep với các trường: id (string), label (string), status (kiểu union 'pending' | 'running' | 'done' | 'error'), etaMs (number optional) và error (string optional).",
             "dependencies": [
               1
             ],
-            "details": "Sử dụng <div class=\"card\"> cho mỗi mục con (Gemini, Local LLM). Dùng <ol> với <li> và <span class=\"badge\"> cho số bước. Bọc thuật ngữ kỹ thuật trong <code class=\"font-mono\">. Dùng <h2> cho tiêu đề phần và <h3> cho tiêu đề mục con. Đảm bảo tất cả các bước được định dạng đúng.",
+            "details": "Viết interface PipelineStep trong file pipeline.ts, sử dụng TypeScript để khai báo các trường với kiểu dữ liệu chính xác như yêu cầu.",
             "status": "pending",
-            "testStrategy": "Tải extension, điều hướng tới help tab, kiểm tra nội dung Phần 1 hiển thị đầy đủ và chính xác theo PRD.",
+            "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 3,
-            "title": "Triển khai nội dung Phần 2: Flow tóm tắt",
-            "description": "Thêm phần thứ hai với mô tả từng bước của luồng tóm tắt, bao gồm năm bước cụ thể.",
+            "title": "Định nghĩa interface PipelineDefinition",
+            "description": "Định nghĩa interface PipelineDefinition với trường workflow (kiểu union 'summarize' | 'knowledge' | 'research' | 'opinions') và steps (mảng PipelineStep).",
             "dependencies": [
-              1
+              2
             ],
-            "details": "Thêm phần với <h2> tiêu đề 'Flow tóm tắt' và sử dụng <div class=\"card\"> chứa danh sách có thứ tự năm bước như PRD. Sử dụng <code class=\"font-mono\"> cho tên tab như 'Chủ đề', 'Tóm tắt'.",
+            "details": "Thêm interface PipelineDefinition vào file pipeline.ts, sử dụng kiểu PipelineStep đã định nghĩa cho trường steps.",
             "status": "pending",
-            "testStrategy": "Điều hướng tới help tab, kiểm tra Phần 2 hiển thị đúng năm bước và định dạng.",
+            "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 4,
-            "title": "Triển khai nội dung Phần 3: Sau tóm tắt",
-            "description": "Thêm hai mục con 'Tổng hợp kiến thức' và 'Tra cứu mở rộng' trong phần thứ ba.",
+            "title": "Export các types PipelineStep và PipelineDefinition",
+            "description": "Xuất (export) cả hai interface để có thể sử dụng trong các module khác của dự án.",
             "dependencies": [
-              1
+              2,
+              3
             ],
-            "details": "Thêm phần với <h2> tiêu đề 'Sau tóm tắt', sử dụng hai <div class=\"card\"> cho 'Tổng hợp kiến thức (Tab \"Kiến thức\")' và 'Tra cứu mở rộng (Tab \"Tra cứu\")'. Dùng <h3> cho tiêu đề mục con. Bao gồm các gạch đầu dòng và mô tả từ PRD.",
+            "details": "Thêm câu lệnh export cho PipelineStep và PipelineDefinition để chúng có sẵn khi import từ file pipeline.ts.",
             "status": "pending",
-            "testStrategy": "Kiểm tra nội dung Phần 3 khớp chính xác với PRD, cả hai mục con hiển thị đúng.",
+            "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 5,
-            "title": "Đăng ký route /help trong sidepanel router",
-            "description": "Thêm route cho đường dẫn /help trong file main.ts của sidepanel với lazy loading component HelpView.vue.",
+            "title": "Chạy type-check để xác nhận không có lỗi",
+            "description": "Thực thi lệnh 'npm run type-check' để kiểm tra tính hợp lệ của các định nghĩa type và đảm bảo không có lỗi TypeScript.",
             "dependencies": [
-              1
+              4
             ],
-            "details": "Trong entrypoints/sidepanel/main.ts, thêm route: { path: '/help', name: 'help', component: () => import('./views/HelpView.vue') }, vào mảng routes hiện có (ví dụ sau settings route). Đảm bảo không lỗi cú pháp.",
+            "details": "Sau khi hoàn thành file types, chạy lệnh kiểm tra type từ terminal. Sửa bất kỳ lỗi nào nếu có.",
             "status": "pending",
-            "testStrategy": "Chạy npm run compile để kiểm tra không lỗi. Sau đó trong extension, điều hướng tới /help để xác nhận component load.",
+            "testStrategy": "Kiểm tra rằng lệnh 'npm run type-check' trả về thành công mà không có lỗi liên quan đến file pipeline.ts.",
             "parentId": "undefined"
           }
         ],
         "complexity": 2,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask; nhiệm vụ tự hoàn thành.",
-        "updatedAt": "2026-05-13T10:32:27.128Z"
+        "expansionPrompt": "Chia nhỏ task này thành các bước: tạo file pipeline.ts, định nghĩa interface PipelineStep, định nghĩa interface PipelineDefinition, export các types, chạy type-check.",
+        "updatedAt": "2026-05-14T03:33:02.351Z"
       },
       {
-        "id": "136",
-        "title": "Implement Section 1: Setup LLM Provider content",
-        "description": "Add the full step-by-step guides for Gemini API Free Tier and Local LLM (LM Studio/Ollama) within the first section of HelpView.vue, using structured HTML and appropriate Tailwind classes for readability.",
-        "details": "In HelpView.vue, replace the placeholder of the first section with the exact text from the PRD. Use `<div class=\"card\">` for each sub-section (Gemini, Local LLM). Use `<ol>` with `<li>` containing `<span class=\"badge\">` for step numbers. Wrap technical terms (URLs, model names) in `<code class=\"font-mono\">`. Use `<h2>` for section title and `<h3>` for sub-section titles. Ensure all Bước (steps) are properly formatted.",
-        "testStrategy": "Load the extension, navigate to help tab, and visually inspect that the full content of Section 1 is displayed correctly. Verify that all steps from the PRD are present and formatted as intended.",
-        "priority": "medium",
+        "id": "156",
+        "title": "Cập nhật Message Protocol LLM_PROGRESS",
+        "description": "Mở rộng cấu trúc message LLMProgressMessage để hỗ trợ gửi thông tin pipeline từ background về sidepanel.",
+        "details": "Tìm định nghĩa LLMProgressMessage trong file protocol. Cập nhật thêm thuộc tính optional 'pipeline' chứa object workflow và mảng các steps (id, label, status). Đảm bảo tính tương thích ngược bằng cách để thuộc tính pipeline là optional. Cập nhật các hàm tiện ích tạo message nếu có.",
+        "testStrategy": "Unit test kiểm tra việc đóng gói và giải mã message LLMProgressMessage có chứa pipeline và không có pipeline.",
+        "priority": "high",
         "dependencies": [
-          "135"
+          "155"
         ],
         "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Add section title and container for Section 1",
-            "description": "Insert <h2> heading 'Thiết lập nhà cung cấp LLM' and a container div in HelpView.vue's first section placeholder.",
-            "dependencies": [],
-            "details": "Locate the first placeholder section in HelpView.vue (created in Task 135). Replace it with an opening <div> with appropriate classes and the <h2> for the section title. Keep the container ready for the two sub-sections.",
+            "title": "Thêm thuộc tính pipeline vào LLMProgressMessage",
+            "description": "Mở rộng định nghĩa LLMProgressMessage trong file protocol để thêm thuộc tính optional 'pipeline' chứa object workflow và mảng các steps.",
+            "dependencies": [
+              155
+            ],
+            "details": "Tìm định nghĩa LLMProgressMessage, thêm trường 'pipeline?: { workflow: string; steps: Array<{ id: string; label: string; status: string }> }'. Đảm bảo backward compatibility.",
             "status": "pending",
             "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 2,
-            "title": "Implement Gemini API Free Tier guide",
-            "description": "Add the Gemini sub-section with <div class=\"card\">, an <h3> heading, and ordered list of steps exactly as in PRD.",
+            "title": "Cập nhật các hàm tiện ích tạo message",
+            "description": "Cập nhật các hàm tạo LLMProgressMessage (ví dụ createLLMProgressMessage) để hỗ trợ pipeline.",
             "dependencies": [
               1
             ],
-            "details": "Within the first section container, create a <div class=\"card\">. Inside, place <h3>Gemini API (Free Tier)</h3> and an <ol> with each step as <li>. Each step must start with <span class=\"badge\"> for the step number. Use <code class=\"font-mono\"> for technical terms like 'Gemini API Key', 'https://aistudio.google.com/app/apikey', and model names.",
+            "details": "Rà soát và cập nhật tất cả các hàm tạo message LLM_PROGRESS để có thể nhận tham số pipeline và gán vào message.",
             "status": "pending",
             "testStrategy": null,
             "parentId": "undefined"
           },
           {
             "id": 3,
-            "title": "Implement Local LLM (LM Studio/Ollama) guide",
-            "description": "Add the Local LLM sub-section with <div class=\"card\">, an <h3> heading, and ordered list of steps exactly as in PRD.",
+            "title": "Viết unit test cho đóng gói/gỡ message với pipeline",
+            "description": "Viết unit test kiểm tra việc serialize và deserialize LLMProgressMessage có và không có pipeline.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Tạo test case: encode message không có pipeline, encode có pipeline, decode lại, assert fields đúng",
+            "status": "pending",
+            "testStrategy": "Unit test với các test case: (1) message không có pipeline, (2) message có pipeline đầy đủ, (3) gửi nhận qua background-sidepanel mock.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Các subtask: Thêm pipeline property vào LLMProgressMessage, cập nhật các hàm tạo message nếu có, viết unit test cho việc đóng gói/gỡ message với và không có pipeline.",
+        "updatedAt": "2026-05-14T03:34:22.177Z"
+      },
+      {
+        "id": "157",
+        "title": "Phát triển Component StepTimeline.vue",
+        "description": "Tạo component hiển thị timeline dọc cho các bước xử lý với các trạng thái khác nhau.",
+        "details": "Sử dụng Tailwind CSS. Props: pipeline (PipelineDefinition), showCancel (boolean), onCancel (callback). Style: Trạng thái 'done' dùng text-green-600 + icon check; 'running' dùng text-blue-600 + spinner icon + ETA badge; 'pending' dùng text-gray-400 + empty circle; 'error' dùng text-red-600 + icon X. Hiển thị danh sách các bước theo chiều dọc, mỗi bước có icon và label tương ứng.",
+        "testStrategy": "Sử dụng Storybook hoặc tạo một trang test dummy để render component với các trạng thái pipeline giả lập khác nhau (đang chạy, lỗi, hoàn thành).",
+        "priority": "high",
+        "dependencies": [
+          "155"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo component StepTimeline.vue với props và cấu trúc cơ bản",
+            "description": "Khởi tạo file StepTimeline.vue, định nghĩa các props: pipeline, showCancel, onCancel. Xây dựng template danh sách dọc với v-for cho các step, sẵn sàng cho việc thêm style và icon sau.",
+            "dependencies": [],
+            "details": "Sử dụng Vue 3 setup script với TypeScript. Định nghĩa interface cho Step và PipelineDefinition. Template gồm thẻ ul với class timeline và v-for lặp qua steps.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra component render được danh sách steps cơ bản với props pipeline giả lập.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Style cho 4 trạng thái (done, running, pending, error)",
+            "description": "Áp dụng Tailwind CSS classes cho từng trạng thái: done (text-green-600), running (text-blue-600), pending (text-gray-400), error (text-red-600). Thêm hiệu ứng chuyển đổi màu sắc và hover.",
             "dependencies": [
               1
             ],
-            "details": "After the Gemini card, create another <div class=\"card\">. Inside, place <h3>Local LLM (LM Studio / Ollama)</h3> and an <ol> with each step as <li>. Each step must start with <span class=\"badge\">. Use <code class=\"font-mono\"> for technical terms like 'lm-studio', 'Ollama', and URLs (e.g., 'http://localhost:1234/v1/chat/completions').",
+            "details": "Sử dụng conditional class binding với v-bind:class. Mỗi li-item có class động dựa trên step.status. Thêm class chung cho timeline.",
             "status": "pending",
-            "testStrategy": null,
+            "testStrategy": "Kiểm tra từng trạng thái hiển thị đúng màu sắc và class qua snapshot testing.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý hiển thị ETA badge và icon cho mỗi step",
+            "description": "Thêm icon trạng thái: check cho done, spinner cho running, empty circle cho pending, X cho error. Hiển thị ETA badge khi step đang running (nếu có thông tin eta).",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng component con hoặc inline SVG. Spinner dùng class animate-spin. ETA hiển thị trong thẻ span badge. Icon và badge được đặt bên cạnh label.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra hiển thị icon và ETA badge đúng theo từng trạng thái.",
             "parentId": "undefined"
           },
           {
             "id": 4,
-            "title": "Apply Tailwind classes for readability",
-            "description": "Ensure all elements use appropriate Tailwind classes: p-4, space-y-4, font-mono for codes, etc. Adjust margins and spacing for visual consistency.",
+            "title": "Thêm scroll cho timeline nếu dài và kiểm tra với Storybook",
+            "description": "Thêm overflow-y: auto với chiều cao tối đa để timeline cuộn được khi danh sách dài. Tạo stories trong Storybook để kiểm tra các trường hợp: ít step, nhiều step, các trạng thái khác nhau.",
             "dependencies": [
-              2,
               3
             ],
-            "details": "Review the entire Section 1 markup. Add classes like 'space-y-4' to the main container, 'p-4' to cards if not already present, and ensure <span class=\"badge\"> and <code class=\"font-mono\"> are correctly applied. Check that the layout matches the existing style of other sections in the app.",
+            "details": "CSS: .timeline { max-height: 400px; overflow-y: auto; }. Viết story cho mỗi trạng thái và kịch bản kết hợp. Đảm bảo scroll smooth.",
+            "status": "pending",
+            "testStrategy": "Chạy Storybook trên nhiều resolution, kiểm tra scroll hoạt động và layout không bị vỡ.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Các subtask: Tạo component StepTimeline.vue với props, style cho 4 trạng thái (done, running, pending, error), xử lý hiển thị ETA badge và icon, thêm scroll cho timeline nếu dài, kiểm tra với Storybook.",
+        "updatedAt": "2026-05-14T03:35:22.655Z"
+      },
+      {
+        "id": "158",
+        "title": "Cập nhật useLLM.ts Composable",
+        "description": "Quản lý trạng thái pipeline trong state toàn cục của LLM task.",
+        "details": "Thêm 'pipeline: PipelineDefinition | null' vào interface LLMTaskState. Cập nhật hàm handleProgress để khi nhận message có pipeline, nó sẽ cập nhật state. Viết logic cập nhật trạng thái của từng step trong pipeline dựa trên step index hoặc id nhận được từ progress message. Hàm startTask cần cho phép nhận pipeline ban đầu từ caller.",
+        "testStrategy": "Kiểm tra state pipeline trong DevTools của Vue sau khi giả lập nhận message LLM_PROGRESS.",
+        "priority": "medium",
+        "dependencies": [
+          "156"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm pipeline vào LLMTaskState",
+            "description": "Bổ sung thuộc tính pipeline vào interface LLMTaskState và khởi tạo giá trị null trong state factory.",
+            "dependencies": [],
+            "details": "Cập nhật file useLLM.ts, thêm pipeline: PipelineDefinition | null vào LLMTaskState, sửa initialState để pipeline = null, đảm bảo type safety.",
             "status": "pending",
             "testStrategy": null,
             "parentId": "undefined"
           },
           {
-            "id": 5,
-            "title": "Verify Section 1 content and formatting",
-            "description": "Load the extension sidepanel, navigate to the help tab, and visually inspect the complete Section 1. Confirm all steps from the PRD are present and formatted as intended.",
+            "id": 2,
+            "title": "Cập nhật handleProgress để xử lý pipeline",
+            "description": "Cập nhật hàm handleProgress để nhận diện và xử lý pipeline từ message LLM_PROGRESS, cập nhật trạng thái step.",
             "dependencies": [
-              4
+              1
             ],
-            "details": "Open the extension, go to /help route, and scroll to Section 1. Check that both Gemini and Local LLM sub-sections display correctly: headings, badges, inline code, and proper ordering of steps. Compare with PRD to ensure no missing content.",
+            "details": "Kiểm tra message có chứa pipeline không, nếu có thì gán vào state.pipeline. Duyệt qua các step trong pipeline, cập nhật status dựa trên stepIndex hoặc stepId từ message.",
             "status": "pending",
-            "testStrategy": "Visual inspection. If there are automated tests, run them to confirm no markup errors.",
+            "testStrategy": "Giả lập emit progress message với pipeline và kiểm tra state thay đổi trong DevTools.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Sửa startTask để nhận pipeline từ caller",
+            "description": "Cập nhật hàm startTask cho phép truyền pipeline definition từ bên ngoài khi bắt đầu task.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Sửa signature của startTask để nhận tham số pipeline?: PipelineDefinition. Khi task bắt đầu, lưu pipeline vào state. Dùng pipeline này làm baseline cho các cập nhật sau.",
+            "status": "pending",
+            "testStrategy": null,
             "parentId": "undefined"
           }
         ],
         "complexity": 4,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask; nhiệm vụ đã được định nghĩa rõ ràng.",
-        "updatedAt": "2026-05-13T10:32:27.720Z"
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Các subtask: Thêm pipeline vào LLMTaskState, cập nhật handleProgress để xử lý pipeline, sửa startTask để nhận pipeline, kiểm tra state trong DevTools.",
+        "updatedAt": "2026-05-14T03:36:26.958Z"
       },
       {
-        "id": "137",
-        "title": "Implement Section 2: Flow tóm tắt content",
-        "description": "Add the step-by-step description of the summarization flow within the second section of HelpView.vue.",
-        "details": "Add the second section with `<h2>` heading 'Flow tóm tắt'. Use a `<div class=\"card\">` containing an ordered list of the five steps exactly as described in the PRD. Use `<code class=\"font-mono\">` for tab names like 'Chủ đề', 'Tóm tắt'. Ensure the text is clear and matches the PRD.",
-        "testStrategy": "Navigate to the help tab and check that Section 2 is rendered exactly as specified, with all five Bước present and properly numbered.",
+        "id": "159",
+        "title": "Cập nhật Background Logic xử lý Task",
+        "description": "Chỉnh sửa logic processLLMTask trong background để gửi pipeline definition và cập nhật progress.",
+        "details": "Chỉnh sửa entrypoints/background/index.ts. Trong processLLMTask, lấy pipeline từ payload và gửi kèm trong message progress đầu tiên. Cập nhật onProgress callback để nhận thông tin về bước hiện tại (index hoặc id) và chuyển tiếp về sidepanel. Đảm bảo luồng xử lý lỗi sẽ cập nhật status của step hiện tại thành 'error'.",
+        "testStrategy": "Đặt console.log trong background và sidepanel để verify pipeline được gửi ở message đầu tiên và các message sau cập nhật đúng step index.",
         "priority": "medium",
         "dependencies": [
-          "135"
+          "158"
         ],
         "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Add section heading and card container",
-            "description": "Thêm thẻ <h2> với heading 'Flow tóm tắt' và <div class='card'> làm container cho danh sách có thứ tự.",
+            "title": "Lấy pipeline từ payload và gửi trong message progress đầu tiên",
+            "description": "Trong processLLMTask, trích xuất pipeline từ payload và gửi kèm trong message progress đầu tiên đến sidepanel.",
             "dependencies": [],
-            "details": "Chèn heading và thẻ div vào HelpView.vue, ngay sau phần đầu tiên. Đảm bảo sử dụng đúng class Tailwind để giữ nhất quán giao diện.",
+            "details": "Sửa entrypoints/background/index.ts: trong processLLMTask, lấy pipeline từ payload.taskConfig.pipeline, gửi message đầu tiên với type 'task-progress' và pipeline trong payload.",
             "status": "pending",
-            "testStrategy": "Kiểm tra trực quan khi render: phần heading và card phải hiển thị đúng vị trí.",
+            "testStrategy": "Đặt console.log trong background để kiểm tra nội dung message progress đầu tiên có chứa pipeline không.",
             "parentId": "undefined"
           },
           {
             "id": 2,
-            "title": "Tạo cấu trúc danh sách có thứ tự với năm bước",
-            "description": "Tạo thẻ <ol> và năm thẻ <li> cho năm bước của luồng tóm tắt, mỗi bước là một mục trong danh sách.",
+            "title": "Cập nhật onProgress callback để nhận step index/id và chuyển tiếp",
+            "description": "Cập nhật onProgress callback trong processLLMTask để nhận thông tin về bước hiện tại (index hoặc id) và chuyển tiếp về sidepanel.",
             "dependencies": [
               1
             ],
-            "details": "Mỗi <li> sẽ chứa nội dung mô tả bước. Các tên tab như 'Chủ đề', 'Tóm tắt' được bọc trong <code class='font-mono'>.",
+            "details": "Sửa onProgress callback để nhận stepIndex hoặc stepId, gửi message 'task-progress' với thông tin step hiện tại đến sidepanel.",
             "status": "pending",
-            "testStrategy": "Xác nhận có đúng năm mục danh sách và chúng được đánh số thứ tự tự động.",
+            "testStrategy": "Kiểm tra console.log ở sidepanel để xác nhận nhận được step index đúng.",
             "parentId": "undefined"
           },
           {
             "id": 3,
-            "title": "Chèn nội dung mô tả từng bước từ PRD",
-            "description": "Viết chính xác nội dung từng bước theo PRD, đảm bảo rõ ràng và khớp với mô tả gốc.",
+            "title": "Xử lý lỗi cập nhật status error và kiểm thử với console.log",
+            "description": "Đảm bảo luồng xử lý lỗi sẽ cập nhật status của step hiện tại thành 'error' và kiểm thử bằng console.log.",
             "dependencies": [
+              1,
               2
             ],
-            "details": "Thay thế văn bản giữ chỗ (nếu có) bằng nội dung thực tế từ tài liệu PRD. Mỗi bước bắt đầu bằng 'Bước X:' và mô tả ngắn gọn.",
+            "details": "Trong processLLMTask, khi có lỗi xảy ra, cập nhật step hiện tại với status 'error' và gửi message progress đến sidepanel, đồng thời đặt console.log để debug.",
             "status": "pending",
-            "testStrategy": "So sánh nội dung với PRD để đảm bảo khớp từng từ, từng dấu câu.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 4,
-            "title": "Áp dụng styling và định dạng",
-            "description": "Đảm bảo sử dụng đúng class Tailwind: code tag cho tên tab, khoảng cách, font chữ, và căn chỉnh nhất quán.",
-            "dependencies": [
-              3
-            ],
-            "details": "Bọc tất cả tên tab (vd: 'Chủ đề', 'Tóm tắt') trong <code class='font-mono'>. Thêm margin và padding phù hợp cho danh sách, căn chỉnh các bước đều đặn.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra visual trong trình duyệt: các thẻ code hiển thị đúng font monospace, khoảng cách đồng đều.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 5,
-            "title": "Kiểm tra end-to-end phần Section 2",
-            "description": "Tải extension, vào tab Help, và xác nhận Section 2 hiển thị đúng với đầy đủ năm bước như PRD.",
-            "dependencies": [
-              4
-            ],
-            "details": "Mở extension, chuyển đến phần Help, kiểm tra nội dung Section 2: heading, card, danh sách có thứ tự, và từng bước. Ghi nhận bất kỳ lỗi nào.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra thủ công: xác nhận nội dung khớp PRD, hiển thị trên nhiều kích thước màn hình nếu cần.",
+            "testStrategy": "Gây lỗi trong quá trình xử lý step và kiểm tra console.log xem status step có được cập nhật thành 'error' không.",
             "parentId": "undefined"
           }
         ],
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:32:28.740Z"
-      },
-      {
-        "id": "138",
-        "title": "Implement Section 3: Sau tóm tắt content",
-        "description": "Add the two sub-sections 'Tổng hợp kiến thức' and 'Tra cứu mở rộng' within the third section of HelpView.vue.",
-        "details": "Add the third section with `<h2>` heading 'Sau tóm tắt'. Use two `<div class=\"card\">` blocks for 'Tổng hợp kiến thức (Tab \"Kiến thức\")' and 'Tra cứu mở rộng (Tab \"Tra cứu\")'. Use `<h3>` for sub-headings. Include the bullet points and descriptions verbatim from the PRD.",
-        "testStrategy": "Verify Section 3 content matches the PRD exactly. Ensure both sub-sections are properly displayed and the text is readable.",
-        "priority": "medium",
-        "dependencies": [
-          "135"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Tạo cấu trúc phần 3 với thẻ h2 'Sau tóm tắt'",
-            "description": "Thêm phần tử HTML chứa nội dung Section 3, bao gồm thẻ h2 với tiêu đề 'Sau tóm tắt' vào HelpView.vue.",
-            "dependencies": [],
-            "details": "Trong HelpView.vue, thêm một section mới với id hoặc class phù hợp, chứa thẻ h2 có nội dung 'Sau tóm tắt'. Sử dụng Tailwind CSS để căn chỉnh bố cục.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra sự tồn tại của thẻ h2 với nội dung chính xác trong DOM.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 2,
-            "title": "Thêm mục 'Tổng hợp kiến thức' dạng thẻ card",
-            "description": "Tạo một div.card cho 'Tổng hợp kiến thức (Tab \"Kiến thức\")' với thẻ h3 tiêu đề.",
-            "dependencies": [
-              1
-            ],
-            "details": "Thêm div có class 'card' chứa thẻ h3 'Tổng hợp kiến thức (Tab \"Kiến thức\")' và danh sách các dấu đầu dòng theo đúng PRD. Sử dụng thẻ ul/li.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra sự hiện diện của thẻ h3 và các bullet point trong card đầu tiên.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 3,
-            "title": "Thêm mục 'Tra cứu mở rộng' dạng thẻ card",
-            "description": "Tạo một div.card cho 'Tra cứu mở rộng (Tab \"Tra cứu\")' với thẻ h3 tiêu đề.",
-            "dependencies": [
-              1
-            ],
-            "details": "Thêm div có class 'card' chứa thẻ h3 'Tra cứu mở rộng (Tab \"Tra cứu\")' và danh sách các dấu đầu dòng theo đúng PRD. Sử dụng thẻ ul/li.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra sự hiện diện của thẻ h3 và các bullet point trong card thứ hai.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 4,
-            "title": "Nhập nội dung chi tiết từ PRD vào hai mục",
-            "description": "Chèn chính xác nội dung mô tả và bullet points từ PRD vào cả hai card, đảm bảo văn bản không sai lệch.",
-            "dependencies": [
-              2,
-              3
-            ],
-            "details": "Sao chép nội dung bullet points và mô tả từ PRD phần 'Sau tóm tắt' vào các thẻ li tương ứng. Kiểm tra chính tả và dấu câu. Sử dụng thẻ code nếu cần.",
-            "status": "pending",
-            "testStrategy": "So sánh văn bản trong code với PRD, đảm bảo khớp 100%.",
-            "parentId": "undefined"
-          },
-          {
-            "id": 5,
-            "title": "Kiểm tra hiển thị và đối chiếu với PRD",
-            "description": "Load extension và kiểm tra giao diện Section 3 có hiển thị đúng với PRD không.",
-            "dependencies": [
-              4
-            ],
-            "details": "Chạy extension, vào tab Help, quan sát Section 3. Đảm bảo tiêu đề h2, hai thẻ card, bullet points và mô tả hiển thị đẹp, dễ đọc.",
-            "status": "pending",
-            "testStrategy": "Thực hiện visual inspection, so sánh với ảnh mockup nếu có; kiểm tra responsive.",
-            "parentId": "undefined"
-          }
-        ],
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:32:28.866Z"
-      },
-      {
-        "id": "139",
-        "title": "Add route /help to Vue Router",
-        "description": "Register the /help route in the sidepanel router (main.ts) with lazy loading of HelpView.vue.",
-        "details": "In `entrypoints/sidepanel/main.ts`, import `HelpView.vue` lazily: `{ path: '/help', name: 'help', component: () => import('./views/HelpView.vue') },`. Add this route to the existing routes array (e.g., after the settings route). Ensure no syntax errors.",
-        "testStrategy": "Run `npm run compile` to verify no compilation errors. Then in the running extension, navigate to `/help` by typing the URL or clicking the button (once added) to confirm the component loads.",
-        "priority": "high",
-        "dependencies": [
-          "135"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "complexity": 2,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:32:29.182Z"
-      },
-      {
-        "id": "140",
-        "title": "Add navigation button '?' in App.vue",
-        "description": "Insert a router-link button with '?' icon adjacent to the Settings link in the sidepanel navigation bar, with tooltip 'Hướng dẫn sử dụng' and active state handling.",
-        "details": "In `entrypoints/sidepanel/App.vue`, after the `<router-link to=\"/settings\">`, add a new `<router-link to=\"/help\">` with `class=\"nav-item\"` and an inner `span` with the '?' character. Add `title=\"Hướng dẫn sử dụng\"` for tooltip. Use the same active class logic as other nav items (e.g., `router-link-active` highlighting). Ensure the button does not cause layout overflow.",
-        "testStrategy": "Check the sidepanel navigation bar displays the '?' button. Click it and verify it navigates to the help view. Also verify that the button is highlighted when the help tab is active.",
-        "priority": "high",
-        "dependencies": [
-          "139"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:32:29.654Z"
-      },
-      {
-        "id": "141",
-        "title": "Apply consistent styling and verify responsiveness",
-        "description": "Ensure all help content uses the correct typography, colors (CSS variables), spacing, and that the navigation bar remains responsive with the new button.",
-        "details": "Review the entire HelpView.vue and the App.vue modification for adherence to the app's design system. Use Tailwind classes like `text-xs`, `text-sm`, `font-semibold`, `text-[var(--color-text-*)]`, `bg-[var(--color-accent)]` for badges. Ensure that on narrow sidepanel widths, the nav buttons still fit without overflow (add responsive classes if needed). Test in different sidepanel widths.",
-        "testStrategy": "Resize the sidepanel and verify the layout adjusts correctly. Check that all text, badges, and code snippets are styled consistently with other parts of the extension.",
-        "priority": "medium",
-        "dependencies": [
-          "136",
-          "137",
-          "138",
-          "140"
-        ],
-        "status": "done",
-        "subtasks": [],
         "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:34:13.070Z"
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Các subtask: Lấy pipeline từ payload trong processLLMTask, gửi pipeline trong message progress đầu tiên, cập nhật onProgress callback để nhận step index/id và chuyển tiếp, xử lý lỗi cập nhật status error, test với console.log.",
+        "updatedAt": "2026-05-14T03:37:57.280Z"
       },
       {
-        "id": "142",
-        "title": "Run npm run compile and fix any errors",
-        "description": "Execute the compilation command and resolve any TypeScript, Vue, or bundling errors that arise.",
-        "details": "Run `npm run compile` from the project root. Address any errors such as missing imports, incorrect type annotations, or linting issues. This may involve minor edits to ensure the code compiles cleanly with zero errors and zero warnings.",
-        "testStrategy": "Run `npm run compile` and confirm exit code 0 with no errors.",
+        "id": "160",
+        "title": "Triển khai Pipeline Builder cho Summarize Workflow",
+        "description": "Tạo logic xây dựng pipeline động cho các kịch bản tóm tắt khác nhau trong useSummarize.ts.",
+        "details": "Trong useSummarize.ts, viết hàm buildSummarizePipeline(segments). Đối với đơn đoạn: [scrape, summarize, save]. Đối với đa đoạn: Lặp qua N đoạn để tạo các step [scrape_seg_i, summarize_seg_i], sau đó thêm [overall, save]. Truyền pipeline này vào hàm gọi task LLM.",
+        "testStrategy": "Trigger tính năng tóm tắt đơn và đa đoạn, kiểm tra xem pipeline object được tạo ra có đúng số lượng bước như mong đợi không.",
         "priority": "medium",
         "dependencies": [
-          "141"
+          "155",
+          "159"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Viết hàm buildSummarizePipeline xử lý đơn đoạn",
+            "description": "Xây dựng hàm buildSummarizePipeline(segments) trong useSummarize.ts. Với segments có độ dài 1, pipeline tạo ra gồm các step: [scrape, summarize, save].",
+            "dependencies": [],
+            "details": "Triển khai cấu trúc pipeline cơ bản với các bước tĩnh cho trường hợp đơn đoạn. Đảm bảo hàm nhận tham số segments và kiểm tra số lượng.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra khi segments.length === 1, pipeline trả về có đúng 3 bước.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Mở rộng buildSummarizePipeline cho đa đoạn",
+            "description": "Bổ sung logic trong buildSummarizePipeline để xử lý khi có nhiều đoạn. Với N đoạn, tạo ra N cặp step [scrape_seg_i, summarize_seg_i] và thêm step [overall, save] ở cuối.",
+            "dependencies": [
+              1
+            ],
+            "details": "Dùng vòng lặp để tạo các step cho từng segment, sau đó gắn thêm step tổng hợp và lưu trữ. Đảm bảo pipeline có độ dài 2N+2.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra với segments.length = 2, pipeline có 6 bước; với 3 segments, có 8 bước.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp pipeline vào task LLM và kiểm thử",
+            "description": "Chỉnh sửa hàm gọi task LLM (executeSummarizeTask) để sử dụng pipeline được sinh ra từ buildSummarizePipeline và truyền vào. Kiểm tra trạng thái tạo pipeline thông qua console/log.",
+            "dependencies": [
+              2
+            ],
+            "details": "Đảm bảo mỗi step có tên, loại hành động và các thuộc tính cần thiết để LLM thực thi. Thêm cơ chế bỏ qua hoặc lỗi nếu pipeline không hợp lệ.",
+            "status": "pending",
+            "testStrategy": "Chạy thử với dữ liệu đơn và đa đoạn, kiểm tra console output hiển thị pipeline object.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Các subtask: Viết hàm buildSummarizePipeline cho single segment, mở rộng cho multi segment, truyền pipeline vào task LLM, kiểm tra số bước tạo ra.",
+        "updatedAt": "2026-05-14T03:46:16.360Z"
+      },
+      {
+        "id": "161",
+        "title": "Triển khai Pipeline Builder cho Knowledge/Research/Opinions",
+        "description": "Xây dựng pipeline cố định hoặc động cho các workflow còn lại.",
+        "details": "Cập nhật useKnowledge.ts (extract_i cho M chunks, reduce), useResearch.ts (research, save), và useOpinions.ts (analyze, save). Đảm bảo mỗi workflow đều khởi tạo pipeline definition đầy đủ trước khi bắt đầu task.",
+        "testStrategy": "Kiểm tra console output của mỗi workflow để xác nhận pipeline cấu trúc đúng theo PRD mục 7.",
+        "priority": "medium",
+        "dependencies": [
+          "155",
+          "159"
         ],
         "status": "done",
         "subtasks": [],
         "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:34:13.244Z"
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Các subtask: Cập nhật useKnowledge.ts (extract_i, reduce), useResearch.ts (research, save), useOpinions.ts (analyze, save), kiểm tra cấu trúc pipeline đúng theo PRD.",
+        "updatedAt": "2026-05-14T03:40:50.130Z"
       },
       {
-        "id": "143",
-        "title": "Perform manual verification tests",
-        "description": "Execute the manual test cases defined in the PRD to validate the new help tab functionality.",
-        "details": "Manually test: (1) Click '?' button navigates to help tab. (2) Help tab displays three sections with correct content. (3) Steps from the guide can be copy-pasted. (4) Navigation between tabs works and help content persists. (5) `npm run compile` still passes after any final adjustments.",
-        "testStrategy": "Follow the verification table in the PRD. Document results and fix any failures.",
-        "priority": "medium",
-        "dependencies": [
-          "142"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:34:43.441Z"
-      },
-      {
-        "id": "144",
-        "title": "Final code review and cleanup",
-        "description": "Review the entire code changes for consistency, naming conventions, and alignment with existing codebase patterns.",
-        "details": "Inspect the new files and modifications for correct naming, proper use of existing utils/composables, no leftover placeholder code. Ensure that the component structure follows the same conventions as other views (e.g., SummaryView, SettingsView). Remove any console.log or debug statements.",
-        "testStrategy": "Cross-check with existing views, verify that the code is clean and maintainable.",
+        "id": "162",
+        "title": "Tích hợp StepTimeline vào SummaryView.vue",
+        "description": "Thay thế ProgressIndicator cũ bằng component StepTimeline mới trong view tóm tắt.",
+        "details": "Import StepTimeline.vue. Thay thế component <ProgressIndicator /> bằng <StepTimeline :pipeline='llmState.pipeline' :onCancel='cancelTask' />. Thêm logic ẩn hiện dựa trên trạng thái llmState.isLoading. Đảm bảo layout không bị vỡ khi danh sách step dài.",
+        "testStrategy": "Thực hiện tóm tắt một bài viết và quan sát timeline hiển thị đúng các bước, status thay đổi realtime.",
         "priority": "low",
         "dependencies": [
-          "143"
+          "157",
+          "160"
         ],
         "status": "done",
         "subtasks": [],
         "complexity": 2,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Không cần mở rộng subtask.",
-        "updatedAt": "2026-05-13T10:35:30.478Z"
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Các subtask: Import StepTimeline và thay thế ProgressIndicator, thêm logic ẩn hiện dựa trên isLoading, kiểm tra giao diện.",
+        "updatedAt": "2026-05-14T03:46:25.892Z"
       },
       {
-        "id": "145",
-        "title": "Cập nhật interface CustomPrompts trong lib/types.ts",
-        "description": "Loại bỏ 2 keys `chunkSummaryPrompt` và `reduceSummaryPrompt` khỏi interface `CustomPrompts`. Chỉ giữ lại 5 keys: `summary`, `opinions`, `knowledge`, `research`, `threadAnalysis`.",
-        "details": "Mở file `lib/types.ts`, tìm interface `CustomPrompts`. Xóa dòng `chunkSummaryPrompt?: string;` và `reduceSummaryPrompt?: string;`. Đảm bảo không còn tham chiếu cần cập nhật khác trong file này.",
-        "testStrategy": "Kiểm tra compile TypeScript không lỗi. Các file import `CustomPrompts` không báo lỗi type.",
-        "priority": "high",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Nghiên cứu interface CustomPrompts hiện tại trong lib/types.ts",
-            "description": "Mở file lib/types.ts, xác định vị trí và cấu trúc hiện tại của interface CustomPrompts, ghi chú các keys để biết chính xác nội dung cần xóa.",
-            "dependencies": [],
-            "details": "Đọc file lib/types.ts, tìm interface CustomPrompts. Liệt kê các keys hiện có, đặc biệt là chunkSummaryPrompt và reduceSummaryPrompt.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:17:51.572Z"
-          },
-          {
-            "id": 2,
-            "title": "Xóa key chunkSummaryPrompt khỏi interface CustomPrompts",
-            "description": "Xóa dòng khai báo `chunkSummaryPrompt?: string;` trong interface CustomPrompts.",
-            "dependencies": [
-              1
-            ],
-            "details": "Trong interface CustomPrompts, tìm dòng có nội dung `chunkSummaryPrompt?: string;` và xóa dòng đó. Đảm bảo không làm ảnh hưởng đến các dòng khác.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:18:03.888Z"
-          },
-          {
-            "id": 3,
-            "title": "Xóa key reduceSummaryPrompt khỏi interface CustomPrompts",
-            "description": "Xóa dòng khai báo `reduceSummaryPrompt?: string;` trong interface CustomPrompts.",
-            "dependencies": [
-              2
-            ],
-            "details": "Trong interface CustomPrompts, sau khi xóa key chunkSummaryPrompt, tìm dòng có nội dung `reduceSummaryPrompt?: string;` và xóa dòng đó.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:18:15.402Z"
-          },
-          {
-            "id": 4,
-            "title": "Kiểm tra file lib/types.ts không còn tham chiếu đến 2 key đã xóa",
-            "description": "Dùng tìm kiếm toàn bộ file lib/types.ts để đảm bảo không còn dòng nào chứa chunkSummaryPrompt hoặc reduceSummaryPrompt (trong interface, type khác, hay comment). Nếu có, cập nhật hoặc xóa.",
-            "dependencies": [
-              3
-            ],
-            "details": "Thực hiện tìm kiếm với từ khóa 'chunkSummaryPrompt' và 'reduceSummaryPrompt' trong toàn bộ file. Loại bỏ hoặc chỉnh sửa các tham chiếu không cần thiết.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:18:28.262Z"
-          },
-          {
-            "id": 5,
-            "title": "Chạy TypeScript compiler kiểm tra lỗi",
-            "description": "Chạy lệnh build TypeScript (ví dụ: npm run compile) để xác nhận không có lỗi type liên quan đến CustomPrompts.",
-            "dependencies": [
-              4
-            ],
-            "details": "Mở terminal, chạy lệnh compile dự án. Nếu phát sinh lỗi, sửa chữa và chạy lại cho đến khi thành công.",
-            "status": "done",
-            "testStrategy": "Kiểm tra bước compile không có lỗi. Đặc biệt xác nhận các file import CustomPrompts không báo lỗi type.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:18:57.385Z"
-          }
-        ],
-        "updatedAt": "2026-05-13T14:18:57.385Z"
-      },
-      {
-        "id": "146",
-        "title": "Thêm default prompt templates cho summary và knowledge trong lib/prompts.ts",
-        "description": "Thêm các hằng số chứa prompt mẫu có sử dụng placeholder cho tab Tóm tắt và Kiến thức, để dùng làm default khi `resolvePrompt` không tìm thấy custom prompt. Các prompt mẫu bao gồm `{wordCap}`, `{entryCap}`, `{isChunk}`, `{authorCrossRef}`.",
-        "details": "Thêm export const `SUMMARY_PROMPT` và `KNOWLEDGE_PROMPT` trong `lib/prompts.ts` dựa trên mẫu trong PRD (Template mẫu cho Tóm tắt và Kiến thức). Sử dụng placeholder theo đúng ký hiệu. Giữ nguyên các prompt default cũ nếu có.",
-        "testStrategy": "Kiểm tra các hằng số được export, không lỗi syntax. Đọc nội dung và đảm bảo các placeholder đúng cú pháp.",
-        "priority": "high",
-        "dependencies": [
-          "145"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Phân tích yêu cầu và thiết kế template mẫu cho summary và knowledge",
-            "description": "Đọc PRD và tài liệu liên quan để xác định cấu trúc chính xác của các template mặc định SUMMARY_PROMPT và KNOWLEDGE_PROMPT, bao gồm các placeholder {wordCap}, {entryCap}, {isChunk}, {authorCrossRef}. Ghi lại nội dung template mẫu.",
-            "dependencies": [],
-            "details": "Xem xét các mẫu trong PRD, ghi chép các đoạn văn bản chính xác, đảm bảo placeholder đúng cú pháp. Xác định xem có cần giữ lại các default cũ không và cách tích hợp.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:20:35.105Z"
-          },
-          {
-            "id": 2,
-            "title": "Thêm hằng số SUMMARY_PROMPT vào lib/prompts.ts",
-            "description": "Tạo export const SUMMARY_PROMPT với nội dung template mẫu dành cho tab Tóm tắt, sử dụng các placeholder đã thiết kế.",
-            "dependencies": [
-              1
-            ],
-            "details": "Mở file lib/prompts.ts, thêm dòng: export const SUMMARY_PROMPT = '...'; với nội dung từ thiết kế. Đảm bảo không xóa các export khác.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:20:46.980Z"
-          },
-          {
-            "id": 3,
-            "title": "Thêm hằng số KNOWLEDGE_PROMPT vào lib/prompts.ts",
-            "description": "Tạo export const KNOWLEDGE_PROMPT với nội dung template mẫu dành cho tab Kiến thức, sử dụng các placeholder đã thiết kế.",
-            "dependencies": [
-              1
-            ],
-            "details": "Tương tự subtask 2, thêm export const KNOWLEDGE_PROMPT = '...'; với nội dung phù hợp.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:20:58.962Z"
-          },
-          {
-            "id": 4,
-            "title": "Kiểm tra và cập nhật các export, đảm bảo tương thích với code hiện có",
-            "description": "Xác minh rằng file lib/prompts.ts export đúng các hằng số mới và không gây xung đột với các default cũ (nếu có). Cập nhật import/export nếu cần.",
-            "dependencies": [
-              2,
-              3
-            ],
-            "details": "Kiểm tra TypeScript compile, xem có bất kỳ file nào import từ prompts.ts cần điều chỉnh không. Đảm bảo tên hằng số không trùng lặp.",
-            "status": "done",
-            "testStrategy": "Chạy lệnh tsc hoặc tsc --noEmit để kiểm tra lỗi compile.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:21:10.406Z"
-          },
-          {
-            "id": 5,
-            "title": "Viết unit test cho các hằng số SUMMARY_PROMPT và KNOWLEDGE_PROMPT",
-            "description": "Tạo test kiểm tra các hằng số được export, nội dung chứa các placeholder đúng cú pháp và không thiếu placeholder bắt buộc.",
-            "dependencies": [
-              4
-            ],
-            "details": "Sử dụng Jest, viết test cases: kiểm tra các hằng số tồn tại, kiểm tra sự hiện diện của {wordCap}, {entryCap}, {isChunk}, {authorCrossRef}. Đảm bảo các placeholder có định dạng đúng.",
-            "status": "done",
-            "testStrategy": "Chạy test suite và xác nhận tất cả pass. Kiểm tra mã nguồn test trong thư mục __tests__.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:21:22.108Z"
-          }
-        ],
-        "updatedAt": "2026-05-13T14:21:22.108Z"
-      },
-      {
-        "id": "147",
-        "title": "Implement hàm resolvePrompt() trong lib/prompts.ts",
-        "description": "Thêm hàm `resolvePrompt(templateKey, customPrompt, options)` xử lý placeholder replacement. Nhận các placeholder `{wordCap}`, `{entryCap}`, `{isChunk}`, `{authorCrossRef}` và giá trị tương ứng từ options. Nếu prompt không chứa placeholder thì trả về nguyên văn.",
-        "details": "Tạo function `resolvePrompt` với signature: `(templateKey: 'summary' | 'knowledge', customPrompt?: string, options?: PromptResolveOptions): string`. Định nghĩa `PromptResolveOptions` interface. Logic: lấy base prompt = customPrompt || DEFAULT_PROMPT[templateKey]; thực hiện thay thế các placeholder theo bảng trong PRD (default values cho wordCap=500, entryCap=20, isChunk phụ thuộc mode, authorCrossRef rỗng). Dùng `replace` để thay. Xử lý trường hợp `{isChunk,select,...}` theo cú pháp ICU? PRD dùng `{isChunk, select, true {...} false {...} other {}}` — cần xử lý dạng đó thay thế bằng giá trị phù hợp. Đơn giản: thay `{isChunk, select, ...}` bằng nội dung tương ứng dựa trên boolean. Có thể dùng regex.",
-        "testStrategy": "Viết unit test cho các trường hợp: prompt đầy đủ placeholder, không có placeholder, chỉ có một phần, test các mode direct/map/reduce, test default values. Đảm bảo kết quả đúng.",
-        "priority": "high",
-        "dependencies": [
-          "145",
-          "146"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Định nghĩa PromptResolveOptions interface và mảng DEFAULT_PROMPT",
-            "description": "Tạo file lib/prompts.ts, định nghĩa interface PromptResolveOptions với các thuộc tính: wordCap (number, mặc định 500), entryCap (number, mặc định 20), isChunk (boolean, mặc định false), authorCrossRef (string, mặc định ''). Khai báo hằng DEFAULT_PROMPT là object với key 'summary' và 'knowledge' chứa các template mẫu có placeholder như trong PRD.",
-            "dependencies": [],
-            "details": "Tạo interface PromptResolveOptions với các thuộc tính optional, có giá trị mặc định khi resolve. Định nghĩa DEFAULT_PROMPT với nội dung mẫu chứa {wordCap}, {entryCap}, {isChunk,select,...}, {authorCrossRef}",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:23:08.374Z"
-          },
-          {
-            "id": 2,
-            "title": "Triển khai hàm resolvePrompt cơ bản - chọn base prompt",
-            "description": "Viết hàm resolvePrompt(templateKey, customPrompt?, options?): string. Logic: nếu customPrompt được cung cấp thì dùng nó, không thì lấy từ DEFAULT_PROMPT[templateKey]. Xử lý lỗi nếu templateKey không hợp lệ. Trả về prompt gốc nếu không có placeholder (kiểm tra nhanh bằng regex /\\{[^}]+\\}/).",
-            "dependencies": [
-              1
-            ],
-            "details": "Implement signature và logic cơ bản: lấy base prompt, kiểm tra placeholder tồn tại, nếu không có thì trả về nguyên văn.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:23:21.166Z"
-          },
-          {
-            "id": 3,
-            "title": "Thay thế placeholder đơn giản: wordCap, entryCap, authorCrossRef",
-            "description": "Trong hàm resolvePrompt, sử dụng options (có giá trị mặc định) để thay thế các placeholder {wordCap}, {entryCap}, {authorCrossRef} bằng cách dùng String.prototype.replace với toàn bộ chuỗi. Đảm bảo xử lý đúng các giá trị số và string.",
-            "dependencies": [
-              2
-            ],
-            "details": "Dùng replace với regex toàn cục cho mỗi placeholder. Options mặc định: wordCap=500, entryCap=20, authorCrossRef=''.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:23:33.301Z"
-          },
-          {
-            "id": 4,
-            "title": "Xử lý placeholder đặc biệt: {isChunk, select, ...} theo cú pháp ICU",
-            "description": "Phân tích và thay thế placeholder dạng {isChunk, select, true {...} false {...} other {...}}. Dùng regex để bắt toàn bộ biểu thức, sau đó dựa vào giá trị options.isChunk (boolean) để chọn nội dung tương ứng. Xử lý các trường hợp lồng nhau? (Đơn giản: chỉ một cấp).",
-            "dependencies": [
-              3
-            ],
-            "details": "Sử dụng regex /\\{isChunk,\\s*select,\\s*true\\s*\\{([^}]*)\\}\\s*false\\s*\\{([^}]*)\\}\\s*(?:other\\s*\\{([^}]*)\\})?\\}/i để bắt các nhóm. Thay thế bằng nội dung tương ứng dựa trên isChunk.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:23:45.231Z"
-          },
-          {
-            "id": 5,
-            "title": "Viết unit test cho resolvePrompt",
-            "description": "Viết test cho các trường hợp: prompt không có placeholder, prompt có đầy đủ placeholder, prompt chỉ có một vài placeholder, các giá trị mặc định khi options undefined, kiểm tra các templateKey khác nhau, kiểm tra isChunk với true/false, kiểm tra customPrompt được ưu tiên hơn default. Dùng framework test (Jest/Vitest).",
-            "dependencies": [
-              4
-            ],
-            "details": "Tạo file tests/prompts.test.ts, import hàm resolvePrompt, viết các test case phủ kín logic. Đảm bảo test cho cả trường hợp edge: options rỗng, placeholder đặc biệt không xuất hiện.",
-            "status": "done",
-            "testStrategy": "Sử dụng mô tả test cụ thể cho từng trường hợp, chạy và xác nhận pass.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:24:15.848Z"
-          }
-        ],
-        "updatedAt": "2026-05-13T14:24:15.848Z"
-      },
-      {
-        "id": "148",
-        "title": "Viết unit test cho resolvePrompt()",
-        "description": "Viết unit test đầy đủ cho hàm `resolvePrompt()` bao gồm các trường hợp khác nhau: prompt có tất cả placeholder, prompt không có placeholder, prompt rỗng, các mode khác nhau, kiểm tra giá trị mặc định, v.v.",
-        "details": "Tạo file test `lib/__tests__/prompts.test.ts`. Sử dụng Jest (hoặc framework có sẵn). Cover các test case từ PRD và thêm các edge cases. Đảm bảo coverage cao cho hàm resolvePrompt.",
-        "testStrategy": "Chạy test và xác nhận tất cả pass. Xem code coverage để đảm bảo các nhánh logic đều được test.",
-        "priority": "medium",
-        "dependencies": [
-          "147"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Thiết lập test file và viết test cho prompt đầy đủ placeholder",
-            "description": "Tạo file lib/__tests__/prompts.test.ts với cấu trúc Jest basic. Viết test case đầu tiên cho trường hợp custom prompt chứa tất cả các placeholder {wordCap}, {entryCap}, {isChunk}, {authorCrossRef} và kiểm tra kết quả thay thế đúng theo options cung cấp.",
-            "dependencies": [],
-            "details": "Sử dụng describe block 'resolvePrompt', import function. Viết test 'should replace all placeholders correctly' với options đầy đủ, so sánh output với expected string.",
-            "status": "done",
-            "testStrategy": "Chạy jest test, xác nhận pass.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:25:55.026Z"
-          },
-          {
-            "id": 2,
-            "title": "Viết test cho prompt không có placeholder",
-            "description": "Viết test case cho trường hợp custom prompt không chứa bất kỳ placeholder nào. Kiểm tra rằng output trả về giống hệt input, không bị thay đổi.",
-            "dependencies": [
-              1
-            ],
-            "details": "Test với prompt string không có cặp ngoặc nhọn, ví dụ 'Hello world'. Đảm bảo function trả về đúng string đó.",
-            "status": "done",
-            "testStrategy": "Chạy jest test, xác nhận pass.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:26:06.217Z"
-          },
-          {
-            "id": 3,
-            "title": "Viết test cho prompt rỗng",
-            "description": "Viết test case cho trường hợp customPrompt là chuỗi rỗng. Kiểm tra xem function có xử lý đúng không, behavior: nếu customPrompt rỗng thì dùng default prompt. Test output là default prompt sau khi replace với defaults.",
-            "dependencies": [
-              1
-            ],
-            "details": "Test với customPrompt='', templateKey='summary', kiểm tra output là SUMMARY_PROMPT đã được resolve với các giá trị mặc định.",
-            "status": "done",
-            "testStrategy": "Chạy jest test, xác nhận pass.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:26:18.303Z"
-          },
-          {
-            "id": 4,
-            "title": "Viết test cho các mode khác nhau (direct, map, reduce)",
-            "description": "Viết test cases cho từng mode: direct, map, reduce. Kiểm tra rằng placeholder {isChunk} được thay bằng true/false tương ứng: direct=false, map=true, reduce=true.",
-            "dependencies": [
-              1
-            ],
-            "details": "Sử dụng option {mode: 'direct'}, {mode: 'map'}, {mode: 'reduce'}. Prompt có chứa {isChunk}. Kiểm tra kết quả output chứa đúng giá trị boolean.",
-            "status": "done",
-            "testStrategy": "Chạy jest test cho từng mode, xác nhận pass.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:26:29.617Z"
-          },
-          {
-            "id": 5,
-            "title": "Viết test cho giá trị mặc định của placeholder",
-            "description": "Viết test case khi không truyền options hoặc options thiếu một số field. Kiểm tra rằng các giá trị mặc định được sử dụng: wordCap=500, entryCap=20, authorCrossref rỗng. Test cả templateKey 'summary' và 'knowledge'.",
-            "dependencies": [
-              1
-            ],
-            "details": "Test với undefined options, và với options thiếu wordCap, entryCap, etc. So sánh output với expected string chứa default values.",
-            "status": "done",
-            "testStrategy": "Chạy jest test, xác nhận pass.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:26:42.858Z"
-          }
-        ],
-        "updatedAt": "2026-05-13T14:26:42.858Z"
-      },
-      {
-        "id": "149",
-        "title": "Cập nhật các hàm trong summarizer.ts (tóm tắt) dùng resolvePrompt()",
-        "description": "Sửa các hàm `summarizeTopic`, `updateSummary`, `summaryChunks`, `reduceSegmentSummaries` trong `lib/llm/summarizer.ts` để sử dụng `resolvePrompt('summary', customPrompt, options)` thay vì các prompt riêng lẻ trước đây.",
-        "details": "Thay thế tất cả các lời gọi tạo prompt cũ (ví dụ `buildChunkSummaryPrompt`, `buildReduceSummaryPrompt`) bằng `resolvePrompt('summary', customPrompts?.summary, { mode, wordCap, authorCrossRef })`. Đảm bảo params phù hợp với từng hàm: direct mode dùng wordCap=500, map mode dùng wordCap=300, reduce mode dùng wordCap=500 và authorCrossRef (nếu có). Xóa hoặc comment code cũ để sau cleanup.",
-        "testStrategy": "Kiểm tra compile không lỗi. Chạy manual flow tóm tắt topic nhỏ và lớn, verify output không thay đổi so với trước khi refactor. So sánh prompt được gửi đến LLM (có thể log).",
-        "priority": "high",
-        "dependencies": [
-          "147"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Cập nhật hàm summarizeTopic sử dụng resolvePrompt",
-            "description": "Thay thế lời gọi tạo prompt cũ trong hàm summarizeTopic bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'direct', wordCap: 500 }).",
-            "dependencies": [
-              147
-            ],
-            "details": "Trong lib/llm/summarizer.ts, tìm hàm summarizeTopic, thay thế buildChunkSummaryPrompt hoặc tương tự bằng resolvePrompt với mode 'direct' và wordCap=500. Đảm bảo customPrompts?.summary được truyền đúng. Comment code cũ.",
-            "status": "done",
-            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt topic nhỏ.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:30:00.348Z"
-          },
-          {
-            "id": 2,
-            "title": "Cập nhật hàm updateSummary sử dụng resolvePrompt",
-            "description": "Thay thế lời gọi tạo prompt cũ trong hàm updateSummary bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'map', wordCap: 300 }).",
-            "dependencies": [
-              147
-            ],
-            "details": "Trong lib/llm/summarizer.ts, tìm hàm updateSummary, thay thế prompt cũ bằng resolvePrompt với mode 'map' và wordCap=300. Comment code cũ.",
-            "status": "done",
-            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt với cập nhật.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:30:11.087Z"
-          },
-          {
-            "id": 3,
-            "title": "Cập nhật hàm summaryChunks sử dụng resolvePrompt",
-            "description": "Thay thế lời gọi tạo prompt cũ trong hàm summaryChunks bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'map', wordCap: 300, isChunk: true }).",
-            "dependencies": [
-              147
-            ],
-            "details": "Trong lib/llm/summarizer.ts, tìm hàm summaryChunks, sử dụng resolvePrompt với mode 'map', wordCap=300 và isChunk=true (nếu có). Comment code cũ.",
-            "status": "done",
-            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt chunk.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:30:22.242Z"
-          },
-          {
-            "id": 4,
-            "title": "Cập nhật hàm reduceSegmentSummaries sử dụng resolvePrompt",
-            "description": "Thay thế lời gọi tạo prompt cũ trong hàm reduceSegmentSummaries bằng resolvePrompt('summary', customPrompts?.summary, { mode: 'reduce', wordCap: 500, authorCrossRef: ... }).",
-            "dependencies": [
-              147
-            ],
-            "details": "Trong lib/llm/summarizer.ts, tìm hàm reduceSegmentSummaries, sử dụng resolvePrompt với mode 'reduce', wordCap=500 và authorCrossRef nếu có. Comment code cũ.",
-            "status": "done",
-            "testStrategy": "Kiểm tra compile và chạy manual flow tóm tắt reduce.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:30:32.217Z"
-          },
-          {
-            "id": 5,
-            "title": "Xóa code cũ và kiểm tra tổng thể",
-            "description": "Xóa hoặc comment toàn bộ code cũ (các hàm buildChunkSummaryPrompt, buildReduceSummaryPrompt, ...) và chạy kiểm tra compile thử các flow tóm tắt khác nhau.",
-            "dependencies": [
-              1,
-              2,
-              3,
-              4
-            ],
-            "details": "Sau khi các hàm đã được cập nhật, xóa các hàm prompt cũ hoặc comment chúng để chuẩn bị cleanup. Chạy toàn bộ test và kiểm tra manual flow tóm tắt topic lớn, verify output không thay đổi.",
-            "status": "done",
-            "testStrategy": "So sánh prompt cũ và mới bằng log, đảm bảo output LLM tương tự.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:30:42.139Z"
-          }
-        ],
-        "updatedAt": "2026-05-13T14:30:42.139Z"
-      },
-      {
-        "id": "150",
-        "title": "Cập nhật các hàm trích xuất kiến thức (extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks) dùng resolvePrompt()",
-        "description": "Sửa các hàm `extractKnowledge`, `extractKnowledgeChunk`, `reduceKnowledgeChunks` trong `lib/llm/summarizer.ts` (hoặc file tương ứng) để dùng `resolvePrompt('knowledge', customPrompt, options)` thay vì prompt cứng trước đây.",
-        "details": "Thay thế các lời gọi tạo prompt cũ cho kiến thức. Dùng `resolvePrompt('knowledge', customPrompts?.knowledge, { mode, entryCap })` với entryCap được tính từ maxTokens hoặc giá trị mặc định. Cập nhật tham số phù hợp.",
-        "testStrategy": "Kiểm tra compile. Chạy manual flow trích xuất kiến thức topic nhỏ và lớn, verify output và so sánh prompt đã gửi.",
-        "priority": "high",
-        "dependencies": [
-          "147"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Cập nhật hàm extractKnowledge sử dụng resolvePrompt",
-            "description": "Chỉnh sửa hàm extractKnowledge trong lib/llm/summarizer.ts để thay thế prompt cứng bằng lời gọi resolvePrompt('knowledge', customPrompts?.knowledge, { mode, entryCap })",
-            "dependencies": [
-              147
-            ],
-            "details": "Thay đổi bên trong hàm extractKnowledge: tạo biến entryCap dựa trên maxTokens hoặc giá trị mặc định 20; sau đó gọi resolvePrompt với các tham số phù hợp; kết hợp với logic retry có sẵn.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:32:49.034Z"
-          },
-          {
-            "id": 2,
-            "title": "Cập nhật hàm extractKnowledgeChunk sử dụng resolvePrompt",
-            "description": "Chỉnh sửa hàm extractKnowledgeChunk trong lib/llm/summarizer.ts để thay thế prompt cứng bằng lời gọi resolvePrompt('knowledge', customPrompts?.knowledge, { mode, entryCap, isChunk: true })",
-            "dependencies": [
-              147
-            ],
-            "details": "Tương tự extractKnowledge nhưng thêm tùy chọn isChunk: true trong options; sử dụng entryCap từ tham số hoặc mặc định.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:32:59.675Z"
-          },
-          {
-            "id": 3,
-            "title": "Cập nhật hàm reduceKnowledgeChunks sử dụng resolvePrompt",
-            "description": "Chỉnh sửa hàm reduceKnowledgeChunks trong lib/llm/summarizer.ts để thay thế prompt cứng bằng lời gọi resolvePrompt('knowledge', customPrompts?.knowledge, { mode: 'reduce', entryCap: ... })",
-            "dependencies": [
-              147
-            ],
-            "details": "Gọi resolvePrompt với mode 'reduce', entryCap được tính từ đầu vào chunks hoặc mặc định; đảm bảo hợp nhất các chunk đúng cách.",
-            "status": "done",
-            "testStrategy": null,
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:33:10.476Z"
-          },
-          {
-            "id": 4,
-            "title": "Viết unit test cho các hàm đã cập nhật",
-            "description": "Thêm test cho extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks để kiểm tra việc dùng resolvePrompt và kết quả trả về.",
-            "dependencies": [
-              1,
-              2,
-              3,
-              147
-            ],
-            "details": "Tạo file test mới hoặc mở rộng file test hiện có (ví dụ: summarizer.test.ts); mock llmCall và resolvePrompt; kiểm tra các trường hợp entryCap khác nhau, mode khác nhau.",
-            "status": "done",
-            "testStrategy": "Chạy unit test, verify việc gọi resolvePrompt đúng tham số và output hợp lý.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:33:20.684Z"
-          },
-          {
-            "id": 5,
-            "title": "Kiểm tra biên dịch và tích hợp",
-            "description": "Đảm bảo TypeScript compile thành công, không lỗi type, và chạy thử flow trích xuất kiến thức để xác nhận hoạt động.",
-            "dependencies": [
-              1,
-              2,
-              3
-            ],
-            "details": "Chạy TypeScript compiler để kiểm tra lỗi; thực hiện test manual với topic nhỏ và lớn; xác nhận prompt đã gửi đúng định dạng và kết quả chính xác.",
-            "status": "done",
-            "testStrategy": "Kiểm tra compile không lỗi; chạy manual flow và so sánh prompt với kỳ vọng.",
-            "parentId": "undefined",
-            "updatedAt": "2026-05-13T14:33:31.564Z"
-          }
-        ],
-        "updatedAt": "2026-05-13T14:33:31.564Z"
-      },
-      {
-        "id": "151",
-        "title": "Xóa các builder functinons và constants cũ không cần thiết",
-        "description": "Xóa hoặc deprecate các hàm builder cũ như `buildChunkSummaryPrompt`, `buildReduceSummaryPrompt`, `buildKnowledgeExtractPrompt`, `buildKnowledgeChunkPrompt`, `buildKnowledgeReducePrompt` và các hằng số `CHUNK_SUMMARY_PROMPT`, `REDUCE_SUMMARY_PROMPT`, `KNOWLEDGE_EXTRACT_PROMPT`, `KNOWLEDGE_CHUNK_PROMPT` không còn được dùng sau khi đã chuyển sang dùng `resolvePrompt`.",
-        "details": "Trong `lib/llm/summarizer.ts` và `lib/prompts.ts`, xóa các export không còn được import bởi các file khác. Kiểm tra tất cả imports. Nếu vẫn có file sử dụng, giữ lại với JSDoc deprecated trước khi xóa hoàn toàn. Mục tiêu là loại bỏ code dead.",
-        "testStrategy": "Kiểm tra compile không lỗi. Dùng tìm kiếm toàn bộ project để đảm bảo không còn tham chiếu đến các hàm/constants này. Chạy build thành công.",
+        "id": "163",
+        "title": "Tích hợp StepTimeline vào Knowledge/Research/Opinions Views",
+        "description": "Thay thế hiển thị loading trong các view còn lại bằng StepTimeline.",
+        "details": "Lặp lại việc thay thế ProgressIndicator bằng StepTimeline trong KnowledgeView.vue, ResearchView.vue và OpinionsView.vue. Truyền pipeline tương ứng từ mỗi composable vào component.",
+        "testStrategy": "Kiểm tra UI của cả 3 view khi đang thực hiện task để đảm bảo tính nhất quán.",
         "priority": "low",
         "dependencies": [
-          "149",
-          "150"
+          "157",
+          "161"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-05-13T14:39:48.462Z"
+        "complexity": 2,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Các subtask: Thay thế trong KnowledgeView, ResearchView, OpinionsView; kiểm tra đồng nhất UI.",
+        "updatedAt": "2026-05-14T03:46:36.380Z"
       },
       {
-        "id": "152",
-        "title": "Implement migration tự động cho prompts đã lưu cũ",
-        "description": "Thêm hàm `migratePromptsV2()` trong `entrypoints/background/index.ts` để tự động migrate custom prompts từ format cũ (7 keys) sang format mới (5 keys). Migration chạy một lần khi extension startup nếu chưa có flag `promptsMigratedV2`.",
-        "details": "Viết function như mô tả trong PRD: đọc `custom-prompts` từ storage, merge `chunkSummaryPrompt`/`reduceSummaryPrompt` vào `summary` (append ghi chú), lưu lại và set flag. Đảm bảo idempotent. Thêm call hàm trong startup listener. Backup prompt cũ vào `custom-prompts-backup-v1`.",
-        "testStrategy": "Tạo mock storage với các trường hợp: user có cả 7 prompts, user chỉ có summary, user chưa có prompt, user đã migrate. Chạy migration và kiểm tra kết quả đúng. Manual test với extension thật.",
-        "priority": "medium",
+        "id": "164",
+        "title": "Kiểm tra Tương thích ngược và Hoàn tất",
+        "description": "Đảm bảo hệ thống vẫn hoạt động nếu pipeline không được cung cấp và dọn dẹp code.",
+        "details": "Đánh dấu @deprecated cho ProgressIndicator.vue. Kiểm tra logic fallback trong useLLM: nếu pipeline null, hiển thị message text cũ. Chạy 'npm run compile' để đảm bảo không có lỗi type hoặc build. Kiểm tra performance khi có nhiều bước trong timeline.",
+        "testStrategy": "Giả lập một task LLM không có pipeline (theo kiểu cũ) và verify UI vẫn hiển thị spinner/text message bình thường. Chạy lệnh build production.",
+        "priority": "low",
         "dependencies": [
-          "145"
+          "162",
+          "163"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-05-13T14:42:07.204Z"
-      },
-      {
-        "id": "153",
-        "title": "Cập nhật SettingsView.vue UI: giảm tabs, thêm template insert button, tooltip, info banner",
-        "description": "Cập nhật giao diện Settings > Prompt Templates: giảm từ 6 tabs xuống 4 tabs (Tóm tắt, Kiến thức, Tra cứu, Phân tích), thêm button 'Chèn template mẫu' cho mỗi tab, thêm tooltip giải thích placeholder, thêm info banner khuyến khích dùng placeholder.",
-        "details": "Sửa file `entrypoints/sidepanel/views/SettingsView.vue`. Cập nhật mảng `tabs` thành 4 tab. Điều chỉnh `promptTabLabels`. Thêm button với handler để chèn template từ hằng số (import từ prompts.ts). Thêm tooltip dùng `title` attribute hoặc component custom. Thêm banner info dạng `v-if` khi prompt không chứa placeholder (kiểm tra bằng regex). Cập nhật `activePromptTab` type.",
-        "testStrategy": "Visual test: mở Settings, kiểm tra chỉ có 4 tabs, button hoạt động, tooltip hiển thị, banner xuất hiện khi prompt không có placeholder. Kiểm tra compile không lỗi.",
-        "priority": "high",
-        "dependencies": [
-          "145",
-          "147"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-05-13T14:43:26.359Z"
-      },
-      {
-        "id": "154",
-        "title": "Dọn dẹp code tổng thể, fix type errors, build production, test toàn bộ flow",
-        "description": "Xóa các import không dùng, chạy `npm run compile` fix type errors, build production `npm run build`. Chạy test manual các flow chính: tóm tắt topic nhỏ/lớn, cập nhật summary, trích xuất kiến thức topic nhỏ/lớn, migration từ prompt cũ.",
-        "details": "Sử dụng linter và TypeScript compiler để tìm code dead. Sửa tất cả lỗi. Chạy test unit và integration nếu có. Cuối cùng, thực hiện verify manual theo checklist trong PRD Phase 5. Build production và kiểm tra extension hoạt động.",
-        "testStrategy": "Chạy `npm run compile` không lỗi, `npm run build` thành công. Manual test các luồng chính ít nhất 1 lần. Đảm bảo không có regression.",
-        "priority": "medium",
-        "dependencies": [
-          "149",
-          "150",
-          "151",
-          "152",
-          "153"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-05-13T14:44:41.959Z"
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Các subtask: Đánh dấu @deprecated ProgressIndicator, kiểm tra fallback khi pipeline null, chạy 'npm run compile' và kiểm tra performance.",
+        "updatedAt": "2026-05-14T03:45:43.801Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-13T14:44:41.962Z",
-      "taskCount": 20,
-      "completedCount": 20,
+      "lastModified": "2026-05-14T03:46:36.381Z",
+      "taskCount": 10,
+      "completedCount": 10,
       "tags": [
         "master"
       ]

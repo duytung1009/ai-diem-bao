@@ -2,7 +2,7 @@ import { ref, readonly } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { estimateTokens } from '@/lib/token-estimator';
 import { STORAGE_KEYS, FALLBACK_MS_PER_TOKEN, LLM_TASK_CLEANUP_DELAY_MS } from '@/lib/constants';
-import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON } from '@/lib/types';
+import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON, PipelineDefinition } from '@/lib/types';
 
 interface LLMTaskState {
   taskId: string;
@@ -14,6 +14,7 @@ interface LLMTaskState {
   result: unknown;
   error: string | null;
   stats: LLMResultMessage['stats'] | null;
+  pipeline: PipelineDefinition | null;
   onComplete?: (result: LLMResultMessage) => void;
 }
 
@@ -33,6 +34,30 @@ function handleProgress(payload: LLMProgressMessage) {
     totalSteps: payload.totalSteps,
     message: payload.message,
   };
+  // Initialize pipeline from first progress message
+  if (payload.pipeline && !task.pipeline) {
+    task.pipeline = payload.pipeline;
+  }
+  // Update step statuses when pipeline is active
+  if (task.pipeline) {
+    const currentStep = payload.step;
+    const total = payload.totalSteps;
+    // Only update if we have enough info
+    if (total > 0) {
+      task.pipeline.steps.forEach((s, idx) => {
+        if (idx < currentStep) {
+          s.status = 'done';
+        } else if (idx === currentStep) {
+          s.status = 'running';
+          s.etaMs = task.estimatedTotalMs > 0
+            ? Math.max(0, (task.estimatedTotalMs - payload.elapsedMs) / (total - currentStep))
+            : undefined;
+        } else {
+          s.status = s.status === 'done' ? 'done' : 'pending';
+        }
+      });
+    }
+  }
 }
 
 function handleResult(payload: LLMResultMessage) {
@@ -96,6 +121,7 @@ function startTask(
     progress: null, elapsedMs: 0,
     estimatedTotalMs: eta,
     result: null, error: null, stats: null,
+    pipeline: null,
     onComplete,
   });
 

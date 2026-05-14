@@ -12,9 +12,12 @@ import { formatNumber } from '@/lib/format';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
+import StepTimeline from '../components/StepTimeline.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import ThreadAnalysisContent from '../components/ThreadAnalysisContent.vue';
+import { useLLM } from '../composables/useLLM';
+import type { PipelineDefinition } from '@/lib/types';
 
 const router = useRouter();
 const store = useTopicStore();
@@ -22,7 +25,7 @@ const {
   summary, summaryJson, threadAnalysis, isAnalyzing,
   error, scrapeProgress, simpleLoadingText, llmTaskId,
   isScraping, scrapingWarnings, scrapingInfo,
-  currentConfig,
+  currentConfig, pipeline: summarizePipeline,
   cachedTopic, cacheFreshness,
   segmentSize, segmentSummaries, activeSegmentIndex,
   loadedTopicUrl, dynamicSegmentBoundaries,
@@ -33,6 +36,17 @@ const {
   handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
   handleGenerateAnalysis,
 } = useSummarize(store);
+const { getTaskState } = useLLM();
+
+// Determine pipeline to display: prefer detailed pipeline from builder, fallback to background task state
+const activePipeline = computed<PipelineDefinition | null>(() => {
+  if (summarizePipeline.value) return summarizePipeline.value;
+  if (llmTaskId.value) {
+    const task = getTaskState(llmTaskId.value);
+    if (task?.pipeline) return task.pipeline;
+  }
+  return null;
+});
 
 const segmentGridExpanded = ref(false);
 const confirmingAutoSummarize = ref(false);
@@ -148,8 +162,14 @@ onActivated(async () => {
       </div>
 
       <!-- Loading + Cancel -->
+      <StepTimeline
+        v-if="isProcessing && activePipeline"
+        :pipeline="activePipeline"
+        :show-cancel="isScraping"
+        @cancel="handleCancel"
+      />
       <ProgressIndicator
-        v-if="isProcessing"
+        v-else-if="isProcessing"
         :task-id="llmTaskId"
         :scrape-progress="scrapeProgress"
         :scrape-delay-ms="currentConfig?.scrapeDelayMs ?? 2000"

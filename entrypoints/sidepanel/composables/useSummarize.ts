@@ -732,19 +732,16 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const thisId = ++activeSummarizeId;
       store.setSummarizing(topic.url);
       try {
-        const budget = await computeDynamicBudget();
+const budget = await computeDynamicBudget();
         const resume = computeResumeState();
-        if (resume && resume.fromPage <= newTotalPages) {
-          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
-        } else if (resume && hasNewPosts) {
-// New posts on existing pages (e.g. more posts on last page) — no new pages.
-          // Re-scrape only from the last page of the last segment, keeping posts from
-          // earlier pages as pendingPosts to avoid re-scraping all pages from page 1.
+        if (resume && hasNewPosts) {
+          // New posts on existing pages (may or may not also have new pages).
+          // Re-scrape from the last page of the last segment to capture new posts,
+          // then continue to any new pages if they exist.
           const lastSeg = segmentSummaries.value[resume.segmentIndex];
           const lastSegEndPage = lastSeg?.endPage ?? resume.pendingStartPage;
-          // Include posts from pages before lastSegEndPage; exclude posts on lastSegEndPage
-          // to avoid duplicates when we re-scrape that page. deduplicateAndSort in
-          // page-loader handles any remaining overlap as a safety net.
+          // Exclude posts on lastSegEndPage from pendingPosts to avoid duplicates
+          // when we re-scrape that page. deduplicateAndSort handles remaining overlap.
           const preservedPosts = (resume.pendingPosts ?? []).filter(p => {
             const page = (p as ScrapedPost).page;
             return page != null && page < lastSegEndPage;
@@ -761,6 +758,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
             pendingStartPage: resume.pendingStartPage,
           };
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, reResume);
+        } else if (resume && resume.fromPage <= newTotalPages) {
+          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
         } else if (hasNewPosts) {
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId);
         }

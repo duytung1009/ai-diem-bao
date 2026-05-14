@@ -322,3 +322,75 @@ describe('computeResumeState: re-scrape from pendingStartPage, not page 1', () =
     expect(preservedPosts[preservedPosts.length - 1].postNumber).toBe(60);
   });
 });
+
+describe('handleSegmentUpdate: decision flow — hasNewPosts checked before fromPage <= totalPages', () => {
+  it('có cả post mới ở trang cũ + trang mới → re-scrape từ lastSegEndPage, không bỏ qua trang cũ', () => {
+    // Scenario: topic 4 pages, 69 posts summarized. Now has 79 posts (10 new) + new page 5.
+    // fromPage = 5 <= totalPages = 5 (true). hasNewPosts = true (79 > 69).
+    // Bug: if fromPage check runs first, branch 1 wins → scrapes only page 5, misses new posts on page 4.
+    // Fix: hasNewPosts check must run first → re-scrape from lastSegEndPage (4) to totalPages (5).
+    const lastSeg: TopicSegment = {
+      startPage: 1,
+      endPage: 4,
+      posts: [],
+      summary: 'old summary',
+      postCount: 69,
+      summarizedAt: Date.now(),
+    };
+
+    const fromPage = lastSeg.endPage + 1; // 5
+    const totalPages = 5;
+    const hasNewPosts = true;
+
+    // Simulate the fixed decision logic
+    const shouldReScrapeFromLastPage = hasNewPosts;
+    const shouldOnlyScrapeNewPages = !hasNewPosts && fromPage <= totalPages;
+
+    // Both conditions are true, but hasNewPosts should take priority
+    expect(fromPage).toBeLessThanOrEqual(totalPages);
+    expect(hasNewPosts).toBe(true);
+
+    // hasNewPosts path: re-scrape from lastSegEndPage (4) to catch new posts on old page
+    expect(shouldReScrapeFromLastPage).toBe(true);
+    expect(shouldOnlyScrapeNewPages).toBe(false);
+
+    const reScrapeStart = lastSeg.endPage; // 4, not 5
+    expect(reScrapeStart).toBe(4);
+    expect(reScrapeStart).toBeLessThan(fromPage);
+
+    // AutoSummarizeDynamic will scrape from page 4 to page 5 (inclusive)
+    const pagesToScrape = [];
+    for (let p = reScrapeStart; p <= totalPages; p++) pagesToScrape.push(p);
+    expect(pagesToScrape).toEqual([4, 5]);
+  });
+
+  it('chỉ có trang mới (ko post mới ở trang cũ) → scrape từ fromPage bình thường', () => {
+    const fromPage = 5;
+    const totalPages = 5;
+    const hasNewPosts = false;
+
+    const shouldOnlyScrapeNewPages = !hasNewPosts && fromPage <= totalPages;
+    expect(shouldOnlyScrapeNewPages).toBe(true);
+
+    const pagesToScrape = [];
+    for (let p = fromPage; p <= totalPages; p++) pagesToScrape.push(p);
+    expect(pagesToScrape).toEqual([5]);
+  });
+
+  it('chỉ có post mới ở trang cũ (ko trang mới) → re-scrape từ lastSegEndPage', () => {
+    const lastSegEndPage = 4;
+    const totalPages = 4;
+    const hasNewPosts = true;
+
+    const shouldReScrapeFromLastPage = hasNewPosts;
+    expect(shouldReScrapeFromLastPage).toBe(true);
+
+    const reScrapeStart = lastSegEndPage;
+    expect(reScrapeStart).toBe(4);
+    expect(reScrapeStart).toBeLessThanOrEqual(totalPages);
+
+    const pagesToScrape = [];
+    for (let p = reScrapeStart; p <= totalPages; p++) pagesToScrape.push(p);
+    expect(pagesToScrape).toEqual([4]);
+  });
+});

@@ -484,3 +484,22 @@ confirmSummarize()
   ├── store.updateSelectedTopic(...)
   └── SAVE_CACHED_TOPIC
 ```
+
+---
+
+## Testing
+
+Toàn bộ luồng summarization được test qua **11 E2E tests** + **18 unit tests**:
+
+| Test file | Coverage |
+|-----------|----------|
+| `tests/e2e/summarize-single-segment.test.ts` | Topic nhỏ → 1 LLM call, không map-reduce |
+| `tests/e2e/summarize-multi-segment.test.ts` | Topic lớn (500-1000 posts) → map-reduce, tree-reduce |
+| `tests/e2e/update-summary-no-segments.test.ts` | Cập nhật từ summary cũ + ít posts mới → direct call |
+| `tests/e2e/update-summary-with-segments.test.ts` | Cập nhật từ multi-segment + nhiều posts mới → có thể map-reduce |
+| `tests/e2e/update-summary-segment-transition.test.ts` | Transition: direct → map-reduce khi posts mới vượt context |
+| `tests/e2e/edge-cases.test.ts` | Abort signal, invalid JSON, empty posts, recursive reduce overflow |
+| `tests/unit/summarizer-parse.test.ts` | parseSummaryJSON: fenced JSON, NBSP, unescaped quotes, raw newlines |
+| `tests/unit/summarizer-dedup.test.ts` | deduplicateSupporters: case-insensitive, Vietnamese names |
+
+Xem chi tiết tại [docs/testing/testing-overview.md](../testing/testing-overview.md).

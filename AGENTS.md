@@ -23,9 +23,11 @@ npm run dev          # Dev server (Chrome)
 npm run build        # Production build → .output/chrome-mv3/
 npm run compile      # TypeScript type-check only (vue-tsc --noEmit)
 npm run zip          # Package for Chrome Web Store
+npm run test         # Run all tests (Vitest)
+npm run test:watch   # Run tests in watch mode
 ```
 
-No test runner is configured. Type-checking (`npm run compile`) is the primary verification step.
+Primary verification: `npm run compile` (type check) + `npm run test` (unit + E2E tests).
 
 ## Architecture Overview
 
@@ -126,6 +128,36 @@ Tailwind CSS v4 via Vite plugin. Design tokens as CSS vars `--color-*` in `asset
 
 `@/` maps to the project root (configured by WXT). Use `@/lib/...`, `@/assets/...` etc.
 
+### Testing
+
+**Framework:** Vitest + jsdom (`vitest.config.ts`, `tests/`)
+
+| Directory | Purpose |
+|-----------|---------|
+| `tests/unit/` | Unit tests for pure functions and utilities |
+| `tests/e2e/` | End-to-end tests for LLM orchestration flows |
+| `tests/fixtures/` | Mock data generators and response fixtures |
+| `tests/mocks/` | Mock providers and factory overrides |
+
+**Mock system:**
+- `MockLLMProvider` (`tests/mocks/mock-provider.ts`) — implements `LLMProvider` interface with configurable: response queue, delay, fail-after-N, abort-after-N, invalid-JSON-before-valid
+- `overrideCreateProvider()` (`tests/mocks/override-factory.ts`) — spies on `createProvider()` to inject mock provider without refactoring production code
+- `postFactory` (`tests/fixtures/post-factory.ts`) — generates `ScrapedPost[]` with presets: `shortThread`, `mediumThread`, `longThread`, `veryLongThread`, `mixedLength`
+- `mockSummaryResponses` (`tests/fixtures/mock-llm-responses.ts`) — collection of valid SummaryJSON fixtures for single-segment, multi-segment, edge cases
+
+**Test patterns:**
+- Always call `restoreCreateProvider()` in `afterEach` to clean up spies
+- Use `willExceedContext()` to predict whether a test should trigger map-reduce vs direct call
+- Assert on `mock.getCallCount()` to verify correct number of LLM invocations
+- Use `vi.fn()` for `onProgress` callbacks to verify map-reduce step reporting
+
+**Running tests:**
+```bash
+npm run test          # Run all tests once
+npm run test:watch    # Watch mode
+npm run test -- path/to/test.ts  # Run specific file
+```
+
 ---
 
 ## Know How
@@ -189,6 +221,44 @@ const { ok, status, html, finalUrl } = await sendMessage<FetchHtmlResult>(
 
 **Anti-pattern:**
 - `fetch()` external HTML trực tiếp từ **bất kỳ** extension page context nào (sidepanel, popup, options)
+
+---
+
+### KH2: Mock `createProvider()` để test LLM orchestration mà không refactor production code
+
+**Triệu chứng:**
+- Cần test `summarizeTopic`, `updateSummary` nhưng không muốn gọi API thật
+- `createProvider()` được gọi trực tiếp trong `summarizer.ts` — không có dependency injection
+- Refactor để inject provider sẽ thay đổi nhiều file production code
+
+**Root cause:**
+- Factory pattern `createProvider()` hard-coded trong orchestrator functions
+- Test cần override behavior nhưng không muốn thay đổi signature của production functions
+
+**Fix:**
+- Dùng `vi.spyOn(factoryModule, 'createProvider')` trong test để intercept calls
+- `MockLLMProvider` implement `LLMProvider` interface — trả về configurable responses
+- `overrideCreateProvider()` và `restoreCreateProvider()` wrapper để manage spy lifecycle
+- Test predict behavior bằng `willExceedContext()` trước khi assert `mock.getCallCount()`
+
+```typescript
+// tests/mocks/override-factory.ts
+export function overrideCreateProvider(provider: LLMProvider): void {
+  vi.spyOn(factoryModule, 'createProvider').mockImplementation(() => provider);
+}
+export function restoreCreateProvider(): void {
+  vi.restoreAllMocks();
+}
+
+// In test:
+const mock = createMockProvider();
+await summarizeTopic(posts, config);
+expect(mock.getCallCount()).toBe(1);
+```
+
+**Anti-pattern:**
+- Refactor production code chỉ để phục vụ testing (thêm DI, inject provider vào mọi function)
+- Mock `fetch`/`browser.runtime` ở level quá thấp — nên mock ở `LLMProvider` interface level
 
 ---
 

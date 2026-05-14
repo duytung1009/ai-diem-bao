@@ -28,7 +28,7 @@ function buildPageUrl(baseUrl: string, page: number): string {
   return page === 1 ? clean : `${clean}/page-${page}`;
 }
 
-function deduplicateAndSort(posts: ScrapedPost[]): ScrapedPost[] {
+export function deduplicateAndSort(posts: ScrapedPost[]): ScrapedPost[] {
   const seen = new Set<number>();
   const unique = posts.filter(p => {
     if (p.postNumber === 0) return true;

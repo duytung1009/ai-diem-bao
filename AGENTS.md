@@ -262,6 +262,37 @@ expect(mock.getCallCount()).toBe(1);
 
 ---
 
+### KH3: Scraper filter `content.trim()` gây mất bài viết khi tóm tắt
+
+**Triệu chứng:**
+- FETCH_HTML trả về số post ít hơn thực tế (thiếu 1 post, thường là post cuối của trang trước)
+- Số post bị thiếu không cố định — phụ thuộc vào nội dung HTML của từng post
+
+**Root cause:**
+- XF1/XF2 scraper filter `if (content.trim())` loại bỏ post có content rỗng sau khi strip quote, signature, media wrapper
+- Một số post chỉ chứa image, emoji, hoặc embed media — sau khi `extractContent()` strip các thẻ HTML thì `content.trim()` trả về `""` → post bị loại hoàn toàn
+- `page-loader.ts` gọi `deduplicateAndSort()` giữ đúng số lượng duy nhất theo `postNumber`, nhưng số lượng đầu vào đã bị giảm bởi filter A/B trước đó
+
+**Fix:**
+- Xóa filter `content.trim()` trong cả `xf1-scraper.ts` và `xf2-scraper.ts` — scrapers phải trả về TẤT CẢ posts, để LLM quyết định nội dung nào quan trọng
+- `deduplicateAndSort()` trong `page-loader.ts` vẫn giữ — chỉ loại trùng `postNumber`, không lọc theo content
+
+```typescript
+// ❌ Trước: filter content rỗng — loại bỏ post image-only, emoji-only
+if (content.trim()) {
+  posts.push({ author, content, timestamp, postNumber });
+}
+
+// ✅ Sau: giữ tất cả posts, để LLM xử lý
+posts.push({ author, content, timestamp, postNumber });
+```
+
+**Anti-pattern:**
+- Bất kỳ filter nào trong scraper loại bỏ post theo content — scraper phải neutral, chỉ thu thập, không quyết định nội dung nào quan trọng
+- Kiểm tra luôn: sau khi thay đổi scraper/filter, verify tổng số post phải khớp với số post trên trang web thật
+
+---
+
 ## Development Workflow (MANDATORY)
 
 Tuân thủ workflow sau cho **mọi** thay đổi code. AI agent phải tự động áp dụng workflow này, user không cần prompt chi tiết từng step.

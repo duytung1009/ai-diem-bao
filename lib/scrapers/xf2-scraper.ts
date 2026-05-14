@@ -1,5 +1,6 @@
 import type { ScrapedPost, TopicData } from '../types';
 import type { TopicScraper } from './types';
+import { normalizeWhitespace } from '../text-utils';
 
 export class XF2Scraper implements TopicScraper {
   scrape(doc: Document = document, url: string = window.location.href): TopicData {
@@ -68,9 +69,7 @@ export class XF2Scraper implements TopicScraper {
       const timestamp = this.extractTimestamp(article);
       const postNumber = this.extractPostNumber(article);
 
-      if (content.trim()) {
-        posts.push({ author, content, timestamp, postNumber });
-      }
+      posts.push({ author, content, timestamp, postNumber });
     });
 
     return posts;
@@ -107,7 +106,7 @@ export class XF2Scraper implements TopicScraper {
       if (url) unfurlUrls.push(url);
     });
 
-    const text = clone.textContent?.trim() || '';
+    const text = normalizeWhitespace(clone.textContent || '');
     return unfurlUrls.length > 0 ? `${text}\n${unfurlUrls.join('\n')}` : text;
   }
 

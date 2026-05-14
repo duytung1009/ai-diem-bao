@@ -1,3 +1,5 @@
+import { normalizeWhitespace } from '../text-utils';
+
 export interface ArticleContent {
   url: string;
   title: string;
@@ -88,7 +90,7 @@ export async function extractArticle(url: string): Promise<ArticleContent | null
       doc.querySelector('title')?.textContent?.trim() ||
       '';
 
-    const rawContent = contentEl.textContent?.trim() || '';
+    const rawContent = normalizeWhitespace(contentEl.textContent || '');
     const content = rawContent.length > 3000 ? rawContent.slice(0, 3000) + '...' : rawContent;
 
     const source = new URL(url).hostname;

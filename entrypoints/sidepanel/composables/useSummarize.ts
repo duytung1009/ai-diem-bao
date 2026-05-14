@@ -176,7 +176,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     onStatus: (msg: string) => void,
     onInfo: (msg: string) => void,
   ): Promise<ScrapedPost[]> {
-    if (posts.some(p => p.postNumber < 0)) return posts; // already has article posts
     try {
       const forumDomain = new URL(topicUrl).hostname;
       const newsCheck = detectNewsThread(posts, forumDomain);
@@ -190,14 +189,22 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       )).filter(Boolean) as ArticleContent[];
 
       if (!articles.length) return posts;
-      const articlePosts: ScrapedPost[] = articles.map((a, i) => ({
-        author: `[BÀI BÁO GỐC — ${a.source}]`,
-        content: `Tiêu đề: ${a.title}\n\nNội dung:\n${a.content}`,
-        timestamp: '',
-        postNumber: -(i + 1),
-      }));
+
+      const firstPostIndex = posts.findIndex(p => p.postNumber > 0);
+      if (firstPostIndex === -1) return posts;
+
+      const articleText = articles.map(a =>
+        `[BÀI BÁO GỐC — ${a.source}]\nTiêu đề: ${a.title}\n\nNội dung:\n${a.content}`,
+      ).join('\n\n---\n\n');
+
+      const updatedPosts = [...posts];
+      updatedPosts[firstPostIndex] = {
+        ...updatedPosts[firstPostIndex],
+        content: `${articleText}\n\n---\n\n${updatedPosts[firstPostIndex].content}`,
+      };
+
       onInfo(`Đã tải ${articles.length} bài báo gốc: ${articles.map(a => a.source).join(', ')}`);
-      return [...articlePosts, ...posts];
+      return updatedPosts;
     } catch { return posts; }
   }
 
@@ -434,6 +441,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       // News enrichment: only for segment 0 (first post may be news OP)
+      const forumDomain = new URL(topic.url).hostname;
+      const newsDetection = detectNewsThread(segPosts, forumDomain);
+      const isNewsThread = newsDetection.isNews && newsDetection.articleUrls.length > 0;
       if (segmentIndex === 0) {
         segPosts = await enrichWithNewsArticles(
           segPosts,
@@ -442,7 +452,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           (msg) => { scrapingInfo.value = [...scrapingInfo.value, msg]; },
         );
       }
-      const isNewsThread = segPosts.some(p => p.postNumber < 0);
       if (isNewsThread && cachedTopic.value) {
         store.updateSelectedTopic({ topicType: 'news' });
       }
@@ -597,30 +606,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
 
     // Single segment: copy trực tiếp, không gọi LLM
+    // summarizeAndSaveSegment already saved with summary/summaryJson at top level
+    // so we only update in-memory state here — no redundant SAVE_CACHED_TOPIC
     if (completedSegments.length === 1) {
       const seg = completedSegments[0];
-      const totalSummarized = seg.postCount;
       summary.value = seg.summary;
       summaryJson.value = seg.summaryJson ?? null;
       activeSegmentIndex.value = null;
-      await sendMessage('SAVE_CACHED_TOPIC', {
-        url: topic.url,
-        title: topic.title,
-        version: topic.version,
-        totalPages: topic.totalPages,
-        forumPostCount: getLiveForumPostCount(),
-        totalPosts: Math.max(topic.totalPosts, totalSummarized),
-        summarizedPostCount: totalSummarized,
-        segments: segmentSummaries.value,
-        summary: seg.summary,
-        summaryJson: seg.summaryJson ?? undefined,
-      });
       store.updateSelectedTopic({
         summary: seg.summary,
-        summarizedPostCount: totalSummarized,
-        totalPosts: Math.max(topic.totalPosts, totalSummarized),
-        segments: segmentSummaries.value,
-      } as Partial<CachedTopic>);
+        summaryJson: seg.summaryJson ?? undefined,
+        summarizedPostCount: seg.postCount,
+      });
       cacheFreshness.value = 'fresh';
       return;
     }
@@ -740,13 +737,27 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         if (resume && resume.fromPage <= newTotalPages) {
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
         } else if (resume && hasNewPosts) {
-          // New posts on existing pages — re-scrape from last segment's start
-          // to capture updated content without re-scraping ALL pages from page 1
+// New posts on existing pages (e.g. more posts on last page) — no new pages.
+          // Re-scrape only from the last page of the last segment, keeping posts from
+          // earlier pages as pendingPosts to avoid re-scraping all pages from page 1.
+          const lastSeg = segmentSummaries.value[resume.segmentIndex];
+          const lastSegEndPage = lastSeg?.endPage ?? resume.pendingStartPage;
+          // Include posts from pages before lastSegEndPage; exclude posts on lastSegEndPage
+          // to avoid duplicates when we re-scrape that page. deduplicateAndSort in
+          // page-loader handles any remaining overlap as a safety net.
+          const preservedPosts = (resume.pendingPosts ?? []).filter(p => {
+            const page = (p as ScrapedPost).page;
+            return page != null && page < lastSegEndPage;
+          });
+          const preservedTokens = preservedPosts.reduce(
+            (sum, p) => sum + estimateTokens(`[${(p as ScrapedPost).author}] (#${(p as ScrapedPost).postNumber}):\n${(p as ScrapedPost).content}`),
+            0,
+          );
           const reResume: DynamicResumeState = {
-            fromPage: resume.pendingStartPage,
+            fromPage: lastSegEndPage,
             segmentIndex: resume.segmentIndex,
-            pendingPosts: [],
-            pendingTokens: 0,
+            pendingPosts: preservedPosts,
+            pendingTokens: preservedTokens,
             pendingStartPage: resume.pendingStartPage,
           };
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, reResume);
@@ -907,12 +918,16 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       totalPosts: Math.max(topic.totalPosts, segTotalPosts),
       summarizedPostCount: segTotalPosts,
       segments: updated,
+      summary: newSeg.summary,
+      summaryJson: newSeg.summaryJson ?? undefined,
     });
     store.updateSelectedTopic({
       totalPosts: Math.max(topic.totalPosts, segTotalPosts),
       forumPostCount: forumCount,
       summarizedPostCount: segTotalPosts,
       segments: updated,
+      summary: newSeg.summary,
+      summaryJson: newSeg.summaryJson ?? undefined,
     } as Partial<CachedTopic>);
     activeSegmentIndex.value = segmentIndex;
 
@@ -1090,12 +1105,15 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // News enrichment for page 1 only
       let enrichedPosts = pagePosts;
       if (page === 1) {
+        const forumDomain = new URL(topicUrl).hostname;
+        const newsDetection = detectNewsThread(pagePosts, forumDomain);
+        const isNewsThread = newsDetection.isNews && newsDetection.articleUrls.length > 0;
         enrichedPosts = await enrichWithNewsArticles(
           pagePosts, topicUrl,
           msg => { simpleLoadingText.value = msg; },
           msg => { scrapingInfo.value = [...scrapingInfo.value, msg]; },
         );
-        if (enrichedPosts.some(p => p.postNumber < 0) && cachedTopic.value) {
+        if (isNewsThread && cachedTopic.value) {
           store.updateSelectedTopic({ topicType: 'news' });
         }
         simpleLoadingText.value = '';

@@ -1,5 +1,6 @@
 import type { ScrapedPost, TopicData } from '../types';
 import type { TopicScraper } from './types';
+import { normalizeWhitespace } from '../text-utils';
 
 export class XF1Scraper implements TopicScraper {
   scrape(doc: Document = document, url: string = window.location.href): TopicData {
@@ -62,9 +63,7 @@ export class XF1Scraper implements TopicScraper {
       const timestamp = this.extractTimestamp(msg);
       const postNumber = this.extractPostNumber(msg);
 
-      if (content.trim()) {
-        posts.push({ author, content, timestamp, postNumber });
-      }
+      posts.push({ author, content, timestamp, postNumber });
     });
 
     return posts;
@@ -97,7 +96,7 @@ export class XF1Scraper implements TopicScraper {
     // Remove embedded media
     clone.querySelectorAll('.bbMediaWrapper').forEach((el) => el.remove());
 
-    return clone.textContent?.trim() || '';
+    return normalizeWhitespace(clone.textContent || '');
   }
 
   private extractTimestamp(msg: Element): string {

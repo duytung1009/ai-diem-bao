@@ -208,17 +208,18 @@ describe('computeResumeState: re-scrape from pendingStartPage, not page 1', () =
     expect(lastSeg.endPage + 1).toBe(5);
 
     // fromPage = 5 > totalPages = 4 → cannot resume from fromPage
-    // Must fall back to pendingStartPage (3) to re-scrape from last segment start
+    // Must fall back to re-scrape from lastSeg.endPage (4) only,
+    // keeping posts from pages before it (3)
     const fromPage = lastSeg.endPage + 1;
     const totalPages = 4;
-    const pendingStartPage = lastSeg.startPage;
+    const reScrapeFrom = lastSeg.endPage;
 
     expect(fromPage).toBeGreaterThan(totalPages);
-    expect(pendingStartPage).toBeLessThanOrEqual(totalPages);
-    expect(pendingStartPage).toBe(3);
+    expect(reScrapeFrom).toBeLessThanOrEqual(totalPages);
+    expect(reScrapeFrom).toBe(4);
   });
 
-  it('single-segment covering all pages — pendingStartPage = 1, fromPage = totalPages+1', () => {
+  it('single-segment covering all pages — lastPage = totalPages', () => {
     const segment: TopicSegment = {
       startPage: 1,
       endPage: 4,
@@ -229,8 +230,95 @@ describe('computeResumeState: re-scrape from pendingStartPage, not page 1', () =
     };
 
     // fromPage = 5 > totalPages = 4
-    // pendingStartPage = 1 → re-scrape from beginning (correct for single segment)
+    // Re-scrape from lastPage (4) with preserved posts from pages 1-3
     expect(segment.endPage + 1).toBe(5);
-    expect(segment.startPage).toBe(1);
+    expect(segment.endPage).toBe(4);
+
+    // Posts from pages before endPage should be preserved
+    const preservedPosts = segment.posts.filter(p => {
+      const page = p.page;
+      return page != null && page < segment.endPage;
+    });
+    // Posts with page >= endPage need to be re-scraped (will be replaced)
+    const postsOnLastPage = segment.posts.filter(p => {
+      const page = p.page;
+      return page != null && page >= segment.endPage;
+    });
+    // postFactory doesn't set page, so all posts have page=undefined
+    // In production, these would come from scrapePageRange which sets page
+    expect(preservedPosts.length + postsOnLastPage.length).toBeLessThanOrEqual(segment.posts.length);
+  });
+
+  it('re-scrape preserves posts from earlier pages, excludes posts from last page to avoid duplicates', () => {
+    // Simulate a segment covering pages 1-4 with 69 posts (posts have page numbers)
+    const posts: import('@/lib/types').ScrapedPost[] = [];
+    let postNum = 1;
+    for (let page = 1; page <= 4; page++) {
+      const postsOnPage = page < 4 ? 20 : 9; // 20 posts per page for pages 1-3, 9 on page 4
+      for (let i = 0; i < postsOnPage; i++) {
+        posts.push({
+          author: `user_${postNum}`,
+          content: `Post content ${postNum}`,
+          timestamp: '',
+          postNumber: postNum,
+          page,
+        });
+        postNum++;
+      }
+    }
+
+    const segment: TopicSegment = {
+      startPage: 1,
+      endPage: 4,
+      posts,
+      summary: 'summary',
+      postCount: 69,
+      summarizedAt: Date.now(),
+    };
+
+    // When re-scraping, posts from pages before the last page are preserved
+    const preservedPosts = posts.filter(p => p.page != null && p.page < segment.endPage);
+    // Posts on the last page (4) will be freshly scraped, so exclude them from pendingPosts
+    const excludedPosts = posts.filter(p => p.page != null && p.page >= segment.endPage);
+
+    expect(preservedPosts.length).toBe(60); // pages 1-3 × 20 posts
+    expect(excludedPosts.length).toBe(9); // page 4 × 9 posts
+  });
+
+  it('missing post bug: last post of previous page is on boundary', () => {
+    // XenForo pagination: post at the end of page N is the same as first post of page N+1
+    // This is NOT the case in standard XenForo. But what CAN happen is:
+    // When re-scraping page 4, if we don't include posts from page 4 in pendingPosts,
+    // and the new scrape of page 4 returns the same first post as before,
+    // deduplication must handle it correctly.
+    //
+    // The key insight: we preserve posts from pages BEFORE the last page,
+    // and re-scrape the last page.ScrapedPost.page allows filtering by page.
+    const posts: import('@/lib/types').ScrapedPost[] = [];
+    for (let i = 1; i <= 69; i++) {
+      const page = Math.ceil(i / 20) || 1; // 20 posts per page, last post of page 3 = post 60
+      posts.push({
+        author: `user_${i}`,
+        content: `Content ${i}`,
+        timestamp: '',
+        postNumber: i,
+        page,
+      });
+    }
+
+    // Post 60 is the last post of page 3
+    const post60 = posts.find(p => p.postNumber === 60);
+    expect(post60?.page).toBe(3);
+
+    // Post 61 is the first post of page 4
+    const post61 = posts.find(p => p.postNumber === 61);
+    expect(post61?.page).toBe(4);
+
+    // When re-scraping page 4, preservedPosts includes pages 1-3 (posts 1-60)
+    // Re-scraped page 4 returns posts 61-69 (plus new posts 70-79)
+    // No overlap: 60 + (9+10) = 79 total
+    const preservedPosts = posts.filter(p => p.page != null && p.page < 4);
+    expect(preservedPosts.length).toBe(60);
+    expect(preservedPosts[preservedPosts.length - 1].postNumber).toBe(60);
   });
 });

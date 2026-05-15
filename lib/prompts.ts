@@ -1,18 +1,18 @@
-export const SUMMARY_PROMPT = `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
+// ─── Summary Prompt — Section Defaults ───────────────────────────
+// Each section is independently editable. Build with buildSummaryPrompt().
 
-Nhiệm vụ: Đọc các bài viết trong topic và tóm tắt thành JSON có cấu trúc.
-
-BẮT BUỘC:
+export const SUMMARY_DEFAULT_RULES = `BẮT BUỘC:
 - Output PHẢI là JSON hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
 - Viết bằng tiếng Việt
-- Giữ bản tóm tắt dưới 500 từ
+- Giữ bản tóm tắt dưới {wordCap} từ
 - Không thêm thông tin ngoài nội dung các bài viết
 - BẮT BUỘC giữ tên tác giả khi đề cập quan điểm
 - Trích dẫn PHẢI là câu nguyên văn từ bài viết (1-2 câu), kèm số bài (#N)
 - Mỗi quan điểm PHẢI có ít nhất 1 trích dẫn
 - TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
+{authorCrossRef}`;
 
-Trả về JSON theo đúng format sau:
+export const SUMMARY_DEFAULT_STRUCTURE = `Trả về JSON theo đúng format sau:
 {
   "summary": "Tóm tắt nội dung chính (2-3 đoạn ngắn)",
   "opinions": [
@@ -28,9 +28,74 @@ Trả về JSON theo đúng format sau:
   "conclusion": "Kết luận hoặc đồng thuận chung (nếu có)"
 }`;
 
+export const SUMMARY_DEFAULT_TASKS: Record<'direct' | 'map' | 'reduce', string> = {
+  direct: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
+
+Nhiệm vụ: Đọc các bài viết trong topic và tóm tắt thành JSON có cấu trúc.
+
+QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
+- KHÔNG chỉ đọc nghĩa đen. Hãy phân tích ý định thực sự của tác giả đằng sau mỗi bài viết.
+- Khi tác giả dùng giọng điệu mỉa mai, châm biếm, hoặc kể lại hành động của người khác — đó thường là PHÊ PHÁN hoặc TỐ CÁO, không phải đồng tình.
+- Ví dụ: "Nó chạy dàn bot trên OFFB. Lấy ảnh Hồng Kông bảo Hà Nội sau này cũng thế" → Ý tác giả là TỐ CÁO có người thao túng thông tin, KHÔNG phải đang so sánh quy hoạch.
+- Phân biệt rõ: (1) Người BỊ tố cáo/làm trò cười vs (2) Người TỐ CÁO/phê phán hành vi đó.
+- Khi một tác giả "kể lại" việc người khác làm gì đó (vd: "thấy nó đăng...", "bọn nó đang..."), thường là đang PHÊ PHÁN hành vi đó.
+- Chú ý các từ khóa暗示: "lại còn", "thảo nào", "hèn gì", "chém gió", "tẩy trắng", "định hướng", "ném đá", "gây war" — báo hiệu giọng điệu không trung lập.`,
+
+  map: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
+
+Nhiệm vụ: Đây là một phần của topic lớn — đọc các bài viết và tóm tắt thành JSON có cấu trúc. Giữ đủ chi tiết để gộp sau.
+
+QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
+- KHÔNG chỉ đọc nghĩa đen. Hãy phân tích ý định thực sự của tác giả đằng sau mỗi bài viết.
+- Khi tác giả dùng giọng điệu mỉa mai, châm biếm, hoặc kể lại hành động của người khác — đó thường là PHÊ PHÁN hoặc TỐ CÁO, không phải đồng tình.
+- Phân biệt rõ: (1) Người BỊ tố cáo/làm trò cười vs (2) Người TỐ CÁO/phê phán hành vi đó.`,
+
+  reduce: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
+
+Nhiệm vụ: Bạn nhận nhiều bản tóm tắt từ các phần khác nhau của cùng một topic. Hãy gộp thành 1 JSON hoàn chỉnh.
+
+QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
+- Khi gộp, nếu cùng một tác giả xuất hiện ở nhiều phần với cùng quan điểm — chỉ đếm 1 lần.
+- Phân biệt rõ: (1) Người BỊ tố cáo/làm trò cười vs (2) Người TỐ CÁO/phê phán hành vi đó.`,
+};
+
+/** Build a complete summary prompt from 3 independently-editable sections.
+ *  Any section that is empty/undefined falls back to the default for the given mode.
+ *  {wordCap} in rules is replaced with the provided wordCap value.
+ *  {authorCrossRef} is appended to rules if provided.
+ */
+export function buildSummaryPrompt(
+  mode: 'direct' | 'map' | 'reduce',
+  parts: { task?: string; rules?: string; structure?: string } = {},
+  wordCap: number = 500,
+  authorCrossRef?: string,
+): string {
+  const task = parts.task?.trim() || SUMMARY_DEFAULT_TASKS[mode];
+  let rules = parts.rules?.trim() || SUMMARY_DEFAULT_RULES;
+  rules = rules.replace(/\{wordCap\}/g, String(wordCap));
+  if (authorCrossRef) {
+    rules = rules.replace(/\{authorCrossRef\}/g, authorCrossRef);
+  } else {
+    rules = rules.replace(/\{authorCrossRef\}/g, '');
+  }
+  const structure = parts.structure?.trim() || SUMMARY_DEFAULT_STRUCTURE;
+
+  return `${task}\n\n${rules}\n\n${structure}`;
+}
+
+/** Convenient default — used for token estimation and fallback in useSummarize.ts */
+export const SUMMARY_PROMPT = buildSummaryPrompt('direct', {}, 500);
+
 export const INCREMENTAL_UPDATE_PROMPT = `Bạn là trợ lý AI chuyên cập nhật tóm tắt các cuộc thảo luận trên diễn đàn.
 
 Nhiệm vụ: Bạn sẽ nhận bản tóm tắt cũ (có thể là JSON hoặc Markdown) và các bài viết MỚI. Hãy tạo bản tóm tắt cập nhật bằng JSON.
+
+QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
+- KHÔNG chỉ đọc nghĩa đen. Phân tích ý định thực sự của tác giả.
+- Giọng điệu mỉa mai, châm biếm, hoặc kể lại hành động người khác thường là PHÊ PHÁN/TỐ CÁO.
+- Ví dụ: "Nó chạy dàn bot. Lấy ảnh Hong Kong bảo Hà Nội sau này cũng thế" → TỐ CÁO thao túng thông tin, KHÔNG phải so sánh quy hoạch.
+- Phân biệt: Người BỊ tố cáo vs Người TỐ CÁO.
+- Khi tác giả "kể lại" việc người khác làm → thường đang PHÊ PHÁN.
 
 BẮT BUỘC:
 - Output PHẢI là JSON hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
@@ -71,22 +136,20 @@ Yêu cầu:
 
 
 
-export function buildKnowledgeExtractPrompt(cap: number): string {
-  return `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
+// ─── Knowledge Prompt — Section Defaults ─────────────────────────
+// Each section is independently editable. Build with buildKnowledgePrompt().
 
-Nhiệm vụ: Đọc các bài viết và trích xuất các kiến thức, mẹo, kinh nghiệm, thông tin quan trọng được chia sẻ.
-
-BẮT BUỘC:
+export const KNOWLEDGE_DEFAULT_RULES = `BẮT BUỘC:
 - Output PHẢI là JSON array hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
 - Viết bằng tiếng Việt
 - Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
 - Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
 - Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
 - category: phân loại kiến thức vào nhóm ngắn gọn (1-3 từ, vd: "Phương pháp nuôi con", "Dinh dưỡng", "Sức khỏe", "Tài chính", "Kỹ thuật", "Kinh nghiệm cá nhân", v.v.)
-- Tối đa ${cap} entries (ưu tiên chất lượng hơn số lượng)
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
+- Tối đa {cap} entries (ưu tiên chất lượng hơn số lượng)
+- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế`;
 
-Trả về JSON array theo đúng format sau:
+export const KNOWLEDGE_DEFAULT_STRUCTURE = `Trả về JSON array theo đúng format sau:
 [
   {
     "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
@@ -96,65 +159,37 @@ Trả về JSON array theo đúng format sau:
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
-}
 
-export const KNOWLEDGE_EXTRACT_PROMPT = buildKnowledgeExtractPrompt(20);
+export const KNOWLEDGE_DEFAULT_TASKS: Record<'extract' | 'chunk' | 'reduce', string> = {
+  extract: `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
 
-export function buildKnowledgeChunkPrompt(cap: number): string {
-  return `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
+Nhiệm vụ: Đọc các bài viết và trích xuất các kiến thức, mẹo, kinh nghiệm, thông tin quan trọng được chia sẻ.`,
+
+  chunk: `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
 
 Nhiệm vụ: Đọc các bài viết và trích xuất các kiến thức, mẹo, kinh nghiệm, thông tin quan trọng được chia sẻ.
 
-Lưu ý: Đây là một phần của topic, có thể có thêm bài viết ở các phần khác.
+Lưu ý: Đây là một phần của topic, có thể có thêm bài viết ở các phần khác.`,
 
-BẮT BUỘC:
-- Output PHẢI là JSON array hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
-- Viết bằng tiếng Việt
-- Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
-- Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
-- Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
-- category: phân loại kiến thức vào nhóm ngắn gọn (1-3 từ, vd: "Phương pháp nuôi con", "Dinh dưỡng", "Sức khỏe", "Tài chính", "Kỹ thuật", "Kinh nghiệm cá nhân", v.v.)
-- Tối đa ${cap} entries (ưu tiên chất lượng hơn số lượng)
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
+  reduce: `Bạn là trợ lý AI chuyên hợp nhất và tổng hợp kiến thức.
 
-Trả về JSON array theo đúng format sau:
-[
-  {
-    "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
-    "content": "Nội dung chi tiết 2-5 câu. Phải tự đứng được mà không cần context từ topic.",
-    "tags": ["tag1", "tag2"],
-    "category": "Tên nhóm",
-    "source": { "author": "Tên tác giả", "postNumber": 5 }
-  }
-]`;
-}
+Nhiệm vụ: Nhận nhiều danh sách kiến thức (JSON arrays) được trích xuất từ các phần khác nhau của cùng một topic, sau đó merge, dedup và chọn lọc thành 1 danh sách cuối cùng.`,
+};
 
-export const KNOWLEDGE_CHUNK_PROMPT = buildKnowledgeChunkPrompt(20);
+/** Build a complete knowledge prompt from 3 independently-editable sections.
+ *  Any section that is empty/undefined falls back to the default for the given mode.
+ *  {cap} in rules is replaced with the provided cap value.
+ */
+export function buildKnowledgePrompt(
+  mode: 'extract' | 'chunk' | 'reduce',
+  parts: { task?: string; rules?: string; structure?: string } = {},
+  cap: number = 20,
+): string {
+  const task = parts.task?.trim() || KNOWLEDGE_DEFAULT_TASKS[mode];
+  const rules = (parts.rules?.trim() || KNOWLEDGE_DEFAULT_RULES).replace(/\{cap\}/g, String(cap));
+  const structure = parts.structure?.trim() || KNOWLEDGE_DEFAULT_STRUCTURE;
 
-export function buildKnowledgeReducePrompt(cap: number): string {
-  return `Bạn là trợ lý AI chuyên hợp nhất và tổng hợp kiến thức.
-
-Nhiệm vụ: Nhận nhiều danh sách kiến thức (JSON arrays) được trích xuất từ các phần khác nhau của cùng một topic, sau đó merge, dedup và chọn lọc thành 1 danh sách cuối cùng.
-
-BẮT BUỘC:
-- Output PHẢI là JSON array hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
-- Viết bằng tiếng Việt
-- Merge các entry trùng hoặc tương tự — giữ entry chi tiết hơn, bỏ entry trùng lặp
-- Gom các entry cùng category lại gần nhau, chuẩn hóa tên category nếu cần
-- Tối đa ${cap} entries cuối cùng (ưu tiên chất lượng và đa dạng)
-- Giữ nguyên format từng entry: title, content, tags, category, source
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
-
-Trả về JSON array theo đúng format sau:
-[
-  {
-    "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
-    "content": "Nội dung chi tiết 2-5 câu. Phải tự đứng được mà không cần context từ topic.",
-    "tags": ["tag1", "tag2"],
-    "category": "Tên nhóm",
-    "source": { "author": "Tên tác giả", "postNumber": 5 }
-  }
-]`;
+  return `${task}\n\n${rules}\n\n${structure}`;
 }
 
 export const THREAD_ANALYSIS_PROMPT = `Bạn là chuyên gia phân tích cộng đồng diễn đàn VOZ, chuyên đọc vị các cuộc tranh luận.
@@ -244,104 +279,3 @@ Trả về JSON theo đúng format sau:
   },
   "wuxia": "Đoạn văn phong kiếm hiệp 10-15 dòng, mô tả cuộc tranh luận như một trận đại chiến võ lâm"
 }`;
-
-/** @deprecated Chỉ giữ lại để tương thích tạm thời. Sẽ xóa ở phase sau. */
-export const CHUNK_SUMMARY_PROMPT = SUMMARY_PROMPT;
-/** @deprecated Chỉ giữ lại để tương thích tạm thời. Sẽ xóa ở phase sau. */
-export const REDUCE_SUMMARY_PROMPT = SUMMARY_PROMPT;
-
-export const SUMMARY_TEMPLATE = `Bạn là công cụ tóm tắt thảo luận diễn đàn. Chỉ trả về JSON.
-
-Nhiệm vụ: Đọc các bài viết và tóm tắt thành JSON có cấu trúc.
-{isChunk, select,
-  true {Đây là một phần của topic lớn — giữ đủ chi tiết để gộp sau.}
-  false {Bạn nhận nhiều bản tóm tắt từ các phần. Hãy gộp thành 1 JSON hoàn chỉnh.}
-  other {}
-}
-
-BẮT BUỘC:
-- Output PHẢI là JSON hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
-- Viết bằng tiếng Việt
-- Giữ bản tóm tắt dưới {wordCap} từ
-- Không thêm thông tin ngoài nội dung các bài viết
-- BẮT BUỘC giữ tên tác giả khi đề cập quan điểm
-- Trích dẫn PHẢI là câu nguyên văn từ bài viết (1-2 câu), kèm số bài (#N)
-- Mỗi quan điểm PHẢI có ít nhất 1 trích dẫn
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
-{authorCrossRef}
-
-Trả về JSON theo đúng format sau:
-{
-  "summary": "Tóm tắt nội dung chính (2-3 đoạn ngắn)",
-  "opinions": [
-    {
-      "title": "Tên/mô tả quan điểm",
-      "description": "Mô tả chi tiết quan điểm (2-3 câu)",
-      "supporters": ["Tên tác giả 1", "Tên tác giả 2"],
-      "quotes": [
-        {"author": "Tên tác giả", "postNumber": 5, "text": "Trích dẫn nguyên văn từ bài viết"}
-      ]
-    }
-  ],
-  "conclusion": "Kết luận hoặc đồng thuận chung (nếu có)"
-}`;
-
-export const KNOWLEDGE_TEMPLATE = `Bạn là trợ lý AI trích xuất kiến thức từ thảo luận diễn đàn.
-
-Nhiệm vụ: Đọc các bài viết và trích xuất kiến thức hữu ích.
-{isChunk, select,
-  true {Đây là một phần của topic — trích xuất tối đa {entryCap} entry.}
-  false {Bạn nhận nhiều danh sách kiến thức từ các phần. Hãy merge, dedup và chọn lọc thành 1 danh sách cuối cùng, tối đa {entryCap} entry.}
-  other {Trích xuất tối đa {entryCap} entry.}
-}
-
-BẮT BUỘC:
-- Output PHẢI là JSON array hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
-- Viết bằng tiếng Việt
-- Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
-- Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
-- Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
-- category: phân loại kiến thức vào nhóm ngắn gọn (1-3 từ, vd: "Phương pháp nuôi con", "Dinh dưỡng", "Sức khỏe", "Tài chính", "Kỹ thuật", "Kinh nghiệm cá nhân", v.v.)
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
-
-Trả về JSON array theo đúng format sau:
-[
-  {
-    "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
-    "content": "Nội dung chi tiết 2-5 câu. Phải tự đứng được mà không cần context từ topic.",
-    "tags": ["tag1", "tag2"],
-    "category": "Tên nhóm",
-    "source": { "author": "Tên tác giả", "postNumber": 5 }
-  }
-]`;
-
-export interface PromptResolveOptions {
-  mode: 'direct' | 'map' | 'reduce';
-  wordCap?: number;
-  entryCap?: number;
-  authorCrossRef?: string;
-}
-
-export function resolvePrompt(
-  customPrompt: string | undefined,
-  defaults: {
-    prompt: string;
-    wordCap?: number;
-    entryCap?: number;
-  },
-  options: PromptResolveOptions,
-): string {
-  let result = customPrompt || defaults.prompt;
-
-  const wordCap = options.wordCap ?? defaults.wordCap ?? 500;
-  const entryCap = options.entryCap ?? defaults.entryCap ?? 20;
-  const isChunk = options.mode === 'map' ? 'true' : 'false';
-  const authorCrossRef = options.authorCrossRef || '';
-
-  result = result.replace(/\{wordCap\}/g, String(wordCap));
-  result = result.replace(/\{entryCap\}/g, String(entryCap));
-  result = result.replace(/\{isChunk\}/g, isChunk);
-  result = result.replace(/\{authorCrossRef\}/g, authorCrossRef);
-
-  return result;
-}

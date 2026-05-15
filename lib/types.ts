@@ -269,11 +269,35 @@ export interface ThreadAnalysisJSON {
   wuxia: string;
 }
 
+export interface SummaryPromptParts {
+  task?: string;
+  rules?: string;
+  structure?: string;
+}
+
+export interface SummaryPromptSections {
+  direct?: SummaryPromptParts;
+  map?: SummaryPromptParts;
+  reduce?: SummaryPromptParts;
+}
+
+export interface KnowledgePromptParts {
+  task?: string;
+  rules?: string;
+  structure?: string;
+}
+
+export interface KnowledgePromptSections {
+  extract?: KnowledgePromptParts;
+  chunk?: KnowledgePromptParts;
+  reduce?: KnowledgePromptParts;
+}
+
 export interface CustomPrompts {
-  summary?: string;
+  summary?: string | SummaryPromptSections;
   opinions?: string;
   research?: string;
-  knowledge?: string;
+  knowledge?: string | KnowledgePromptSections;
   threadAnalysis?: string;
 }
 

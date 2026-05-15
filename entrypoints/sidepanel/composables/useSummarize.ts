@@ -952,8 +952,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, maxTokens);
     const thinkingOverhead = getThinkingOverhead(model, currentConfig.value?.thinkingEnabled, currentConfig.value?.thinkingBudget);
     const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
-    const systemPromptText = customPromptsData?.summary || SUMMARY_PROMPT;
-    return calculateSegmentBudget(model, estimateTokens(systemPromptText), responseBuffer, contextWindowOverride, thinkingOverhead);
+    const summaryPrompt = typeof customPromptsData?.summary === 'string' ? customPromptsData.summary : SUMMARY_PROMPT;
+    return calculateSegmentBudget(model, estimateTokens(summaryPrompt), responseBuffer, contextWindowOverride, thinkingOverhead);
   }
 
   /**

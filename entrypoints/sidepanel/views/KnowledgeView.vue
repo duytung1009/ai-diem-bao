@@ -6,7 +6,7 @@ import { estimateTokens, calculateSegmentBudget, getContextLimit, getThinkingOve
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
 import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION } from '@/lib/constants';
-import { buildKnowledgeReducePrompt } from '@/lib/prompts';
+import { buildKnowledgePrompt } from '@/lib/prompts';
 import { buildKnowledgePipeline } from '@/lib/pipeline-builder';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
@@ -527,7 +527,7 @@ async function runReducePhase(
     // Estimate token budget for a single reduce call
     const model = currentConfig.value?.model ?? 'gpt-4o-mini';
     const contextLimit = getContextLimit(model, currentConfig.value?.contextWindow);
-    const promptOverhead = estimateTokens(buildKnowledgeReducePrompt(finalCap)) + RESPONSE_BUFFER_TOKENS;
+    const promptOverhead = estimateTokens(buildKnowledgePrompt('reduce', {}, finalCap)) + RESPONSE_BUFFER_TOKENS;
     const usableTokens = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
     // Vietnamese/JSON text tokenizes ~1.35–1.40× more than char-based estimate; use 1.4 to keep groups safely within context
     const totalTokens = estimateTokens(JSON.stringify(allPartial)) * 1.4;
@@ -560,7 +560,7 @@ async function runReducePhase(
     }
 
     // Determine if output would overflow context; if so, split into multiple calls
-    const promptTokens = estimateTokens(buildKnowledgeReducePrompt(finalCap));
+    const promptTokens = estimateTokens(buildKnowledgePrompt('reduce', {}, finalCap));
     const inputTokens = estimateTokens(JSON.stringify(entriesToReduce)) * 1.4;
     const maxPerCall = calcMaxOutputEntries(contextLimit, promptTokens, inputTokens);
 

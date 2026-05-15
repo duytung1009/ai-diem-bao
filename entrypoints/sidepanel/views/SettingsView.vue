@@ -6,11 +6,18 @@ import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/t
 import { buildCacheExport } from '@/lib/exporter';
 import { getModelThinkingBudget, modelSupportsThinking } from '@/lib/token-estimator';
 import {
-  SUMMARY_PROMPT,
-  KNOWLEDGE_EXTRACT_PROMPT,
+  SUMMARY_DEFAULT_TASKS,
+  SUMMARY_DEFAULT_RULES,
+  SUMMARY_DEFAULT_STRUCTURE,
+  buildSummaryPrompt,
+  KNOWLEDGE_DEFAULT_TASKS,
+  KNOWLEDGE_DEFAULT_RULES,
+  KNOWLEDGE_DEFAULT_STRUCTURE,
+  buildKnowledgePrompt,
   RESEARCH_PROMPT,
   THREAD_ANALYSIS_PROMPT,
 } from '@/lib/prompts';
+import type { KnowledgePromptSections, SummaryPromptSections } from '@/lib/types';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useTheme } from '../composables/useTheme';
 
@@ -62,9 +69,160 @@ const promptSaveMessage = ref('');
 const promptError = ref('');
 const showDefaultPrompt = ref(false);
 
+// Summary sub-mode tabs
+const activeSummaryMode = ref<'direct' | 'map' | 'reduce'>('direct');
+const summarySections = ref<{
+  direct: { task: string; rules: string; structure: string };
+  map: { task: string; rules: string; structure: string };
+  reduce: { task: string; rules: string; structure: string };
+}>({
+  direct: { task: '', rules: '', structure: '' },
+  map: { task: '', rules: '', structure: '' },
+  reduce: { task: '', rules: '', structure: '' },
+});
+const showSummaryDefault = ref<Record<string, boolean>>({ task: false, rules: false, structure: false });
+
+function getSummaryDefault(mode: 'direct' | 'map' | 'reduce', section: 'task' | 'rules' | 'structure'): string {
+  if (section === 'task') return SUMMARY_DEFAULT_TASKS[mode];
+  if (section === 'rules') return SUMMARY_DEFAULT_RULES;
+  return SUMMARY_DEFAULT_STRUCTURE;
+}
+
+function loadSummarySections() {
+  const sp = customPrompts.value.summary;
+  const modes: ('direct' | 'map' | 'reduce')[] = ['direct', 'map', 'reduce'];
+  for (const mode of modes) {
+    const saved = typeof sp === 'object' && sp ? sp[mode] : undefined;
+    summarySections.value[mode] = {
+      task: saved?.task ?? '',
+      rules: saved?.rules ?? '',
+      structure: saved?.structure ?? '',
+    };
+  }
+}
+
+function getSummarySectionValue(mode: 'direct' | 'map' | 'reduce', section: 'task' | 'rules' | 'structure'): string {
+  const val = summarySections.value[mode][section];
+  return val || getSummaryDefault(mode, section);
+}
+
+function setSummarySectionValue(mode: 'direct' | 'map' | 'reduce', section: 'task' | 'rules' | 'structure', val: string) {
+  summarySections.value[mode][section] = val;
+}
+
+function resetSummarySection(mode: 'direct' | 'map' | 'reduce', section: 'task' | 'rules' | 'structure') {
+  summarySections.value[mode][section] = '';
+}
+
+function resetSummaryMode(mode: 'direct' | 'map' | 'reduce') {
+  summarySections.value[mode] = { task: '', rules: '', structure: '' };
+}
+
+function buildSummarySectionsForSave(): SummaryPromptSections {
+  const result: SummaryPromptSections = {};
+  const modes: ('direct' | 'map' | 'reduce')[] = ['direct', 'map', 'reduce'];
+  for (const mode of modes) {
+    const s = summarySections.value[mode];
+    const parts: { task?: string; rules?: string; structure?: string } = {};
+    if (s.task) parts.task = s.task;
+    if (s.rules) parts.rules = s.rules;
+    if (s.structure) parts.structure = s.structure;
+    if (Object.keys(parts).length > 0) {
+      result[mode] = parts;
+    }
+  }
+  return result;
+}
+
+const isSummaryCustomized = computed(() => {
+  const modes: ('direct' | 'map' | 'reduce')[] = ['direct', 'map', 'reduce'];
+  return modes.some(mode => {
+    const s = summarySections.value[mode];
+    return s.task || s.rules || s.structure;
+  });
+});
+
+// Knowledge sub-mode tabs
+const activeKnowledgeMode = ref<'extract' | 'chunk' | 'reduce'>('extract');
+const knowledgeSections = ref<{
+  extract: { task: string; rules: string; structure: string };
+  chunk: { task: string; rules: string; structure: string };
+  reduce: { task: string; rules: string; structure: string };
+}>({
+  extract: { task: '', rules: '', structure: '' },
+  chunk: { task: '', rules: '', structure: '' },
+  reduce: { task: '', rules: '', structure: '' },
+});
+const showKnowledgeDefault = ref<Record<string, boolean>>({ task: false, rules: false, structure: false });
+const knowledgeSectionDefaults: Record<string, string> = {
+  task: '', // set dynamically per mode
+  rules: KNOWLEDGE_DEFAULT_RULES,
+  structure: KNOWLEDGE_DEFAULT_STRUCTURE,
+};
+
+function getKnowledgeDefault(mode: 'extract' | 'chunk' | 'reduce', section: 'task' | 'rules' | 'structure'): string {
+  if (section === 'task') return KNOWLEDGE_DEFAULT_TASKS[mode];
+  if (section === 'rules') return KNOWLEDGE_DEFAULT_RULES;
+  return KNOWLEDGE_DEFAULT_STRUCTURE;
+}
+
+function loadKnowledgeSections() {
+  const kp = customPrompts.value.knowledge;
+  const modes: ('extract' | 'chunk' | 'reduce')[] = ['extract', 'chunk', 'reduce'];
+  for (const mode of modes) {
+    const saved = typeof kp === 'object' && kp ? kp[mode] : undefined;
+    knowledgeSections.value[mode] = {
+      task: saved?.task ?? '',
+      rules: saved?.rules ?? '',
+      structure: saved?.structure ?? '',
+    };
+  }
+}
+
+function getSectionValue(mode: 'extract' | 'chunk' | 'reduce', section: 'task' | 'rules' | 'structure'): string {
+  const val = knowledgeSections.value[mode][section];
+  return val || getKnowledgeDefault(mode, section);
+}
+
+function setSectionValue(mode: 'extract' | 'chunk' | 'reduce', section: 'task' | 'rules' | 'structure', val: string) {
+  knowledgeSections.value[mode][section] = val;
+}
+
+function resetKnowledgeSection(mode: 'extract' | 'chunk' | 'reduce', section: 'task' | 'rules' | 'structure') {
+  knowledgeSections.value[mode][section] = '';
+}
+
+function resetKnowledgeMode(mode: 'extract' | 'chunk' | 'reduce') {
+  knowledgeSections.value[mode] = { task: '', rules: '', structure: '' };
+}
+
+function buildKnowledgeSectionsForSave(): KnowledgePromptSections {
+  const result: KnowledgePromptSections = {};
+  const modes: ('extract' | 'chunk' | 'reduce')[] = ['extract', 'chunk', 'reduce'];
+  for (const mode of modes) {
+    const s = knowledgeSections.value[mode];
+    const parts: { task?: string; rules?: string; structure?: string } = {};
+    if (s.task) parts.task = s.task;
+    if (s.rules) parts.rules = s.rules;
+    if (s.structure) parts.structure = s.structure;
+    if (Object.keys(parts).length > 0) {
+      result[mode] = parts;
+    }
+  }
+  return result;
+}
+
+const isKnowledgeCustomized = computed(() => {
+  const modes: ('extract' | 'chunk' | 'reduce')[] = ['extract', 'chunk', 'reduce'];
+  return modes.some(mode => {
+    const s = knowledgeSections.value[mode];
+    return s.task || s.rules || s.structure;
+  });
+});
+
 const defaultPrompts = {
-  summary: SUMMARY_PROMPT,
-  knowledge: KNOWLEDGE_EXTRACT_PROMPT,
+  summary: buildSummaryPrompt('direct', {}, 500),
+  knowledge: buildKnowledgePrompt('extract', {}, 20),
   research: RESEARCH_PROMPT,
   threadAnalysis: THREAD_ANALYSIS_PROMPT,
 };
@@ -77,7 +235,10 @@ const promptTabLabels = {
 };
 
 const activePromptValue = computed({
-  get: () => customPrompts.value[activePromptTab.value] ?? '',
+  get: () => {
+    const val = customPrompts.value[activePromptTab.value];
+    return typeof val === 'string' ? val : '';
+  },
   set: (val: string) => {
     customPrompts.value = { ...customPrompts.value, [activePromptTab.value]: val || undefined };
   },
@@ -182,7 +343,11 @@ onMounted(async () => {
   }
   await refreshCacheSize();
   const loadedPrompts = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => ({}));
-  if (loadedPrompts) customPrompts.value = loadedPrompts;
+  if (loadedPrompts) {
+    customPrompts.value = loadedPrompts;
+    loadSummarySections();
+    loadKnowledgeSections();
+  }
 });
 
 onActivated(async () => {
@@ -234,6 +399,13 @@ watch(() => config.value.model, (newModel) => {
 
 watch(activePromptTab, () => {
   showDefaultPrompt.value = false;
+  showKnowledgeDefault.value = { task: false, rules: false, structure: false };
+  showSummaryDefault.value = { task: false, rules: false, structure: false };
+  if (activePromptTab.value === 'knowledge') {
+    activeKnowledgeMode.value = 'extract';
+  } else if (activePromptTab.value === 'summary') {
+    activeSummaryMode.value = 'direct';
+  }
 });
 
 async function save() {
@@ -269,7 +441,25 @@ async function testConnection() {
 async function savePrompts() {
   promptError.value = '';
   try {
-    await sendMessage('SAVE_CUSTOM_PROMPTS', customPrompts.value);
+    const toSave: CustomPrompts = { ...customPrompts.value };
+
+    if (activePromptTab.value === 'summary') {
+      const sections = buildSummarySectionsForSave();
+      if (Object.keys(sections).length > 0) {
+        toSave.summary = sections;
+      } else {
+        toSave.summary = undefined;
+      }
+    } else if (activePromptTab.value === 'knowledge') {
+      const sections = buildKnowledgeSectionsForSave();
+      if (Object.keys(sections).length > 0) {
+        toSave.knowledge = sections;
+      } else {
+        toSave.knowledge = undefined;
+      }
+    }
+
+    await sendMessage('SAVE_CUSTOM_PROMPTS', toSave);
     promptSaveMessage.value = 'Đã lưu prompt!';
     setTimeout(() => (promptSaveMessage.value = ''), 2000);
   } catch {
@@ -278,7 +468,23 @@ async function savePrompts() {
 }
 
 function resetPrompt() {
-  customPrompts.value = { ...customPrompts.value, [activePromptTab.value]: undefined };
+  if (activePromptTab.value === 'summary') {
+    resetSummaryMode(activeSummaryMode.value);
+  } else if (activePromptTab.value === 'knowledge') {
+    resetKnowledgeMode(activeKnowledgeMode.value);
+  } else {
+    customPrompts.value = { ...customPrompts.value, [activePromptTab.value]: undefined };
+  }
+  savePrompts();
+}
+
+function resetSummarySectionAndSave(mode: 'direct' | 'map' | 'reduce', section: 'task' | 'rules' | 'structure') {
+  resetSummarySection(mode, section);
+  savePrompts();
+}
+
+function resetKnowledgeSectionAndSave(mode: 'extract' | 'chunk' | 'reduce', section: 'task' | 'rules' | 'structure') {
+  resetKnowledgeSection(mode, section);
   savePrompts();
 }
 
@@ -588,21 +794,21 @@ async function exportCache() {
         </div>
         <div class="flex gap-1 mt-1">
           <button
-            class="btn btn-sm btn-secondary text-[10px]"
+            class="btn btn-sm btn-secondary text-xs"
             @click="config.thinkingBudget = undefined"
             title="Để model tự quyết định"
           >
             Tự động
           </button>
           <button
-            class="btn btn-sm btn-secondary text-[10px]"
+            class="btn btn-sm btn-secondary text-xs"
             @click="config.thinkingBudget = modelMaxThinkingBudget"
             title="Dùng tối đa thinking budget"
           >
             Max
           </button>
           <button
-            class="btn btn-sm btn-secondary text-[10px]"
+            class="btn btn-sm btn-secondary text-xs"
             @click="config.thinkingBudget = Math.floor(modelMaxThinkingBudget / 2)"
             title="Dùng 50% thinking budget"
           >
@@ -817,7 +1023,7 @@ async function exportCache() {
         >
           {{ promptTabLabels[tab] }}
           <span
-            v-if="customPrompts[tab]"
+            v-if="tab === 'knowledge' ? isKnowledgeCustomized : tab === 'summary' ? isSummaryCustomized : !!customPrompts[tab]"
             class="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-blue-500"
           />
         </button>
@@ -825,41 +1031,181 @@ async function exportCache() {
 
       <!-- Prompt editor -->
       <div class="p-3 space-y-2">
-        <textarea
-          v-model="activePromptValue"
-          rows="6"
-          class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
-          placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)"
-        />
-        <!-- Default prompt viewer -->
-        <button
-          type="button"
-          class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
-          @click="showDefaultPrompt = !showDefaultPrompt"
-        >
-          {{ showDefaultPrompt ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
-        </button>
-        <div
-          v-if="showDefaultPrompt"
-          class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-48 overflow-y-auto"
-        >
-          <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ defaultPrompts[activePromptTab] }}</pre>
-        </div>
-        <div class="flex gap-2">
+        <!-- Summary tab: 3-section editor with sub-tabs -->
+        <template v-if="activePromptTab === 'summary'">
+          <!-- Sub-tabs: Direct / Chunk / Reduce -->
+          <div class="flex border border-(--color-border) rounded-lg overflow-hidden">
+            <button
+              v-for="mode in (['direct', 'map', 'reduce'] as const)"
+              :key="mode"
+              class="flex-1 py-1 text-xs font-medium transition-colors"
+              :class="activeSummaryMode === mode
+                ? 'text-(--color-accent) bg-(--color-bg-surface)'
+                : 'text-(--color-text-secondary) hover:text-(--color-text-primary) bg-(--color-bg-muted)'"
+              @click="activeSummaryMode = mode"
+            >
+              {{ { direct: 'Trực tiếp', map: 'Chunk', reduce: 'Gộp' }[mode] }}
+            </button>
+          </div>
+
+          <!-- 3 sections per mode -->
+          <div v-for="section in (['task', 'rules', 'structure'] as const)" :key="section" class="space-y-1">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-(--color-text-secondary)">
+                {{ { task: 'Nhiệm vụ', rules: 'Quy tắc bắt buộc', structure: 'Cấu trúc JSON' }[section] }}
+              </label>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
+                  @click="showSummaryDefault[section] = !showSummaryDefault[section]"
+                >
+                  {{ showSummaryDefault[section] ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
+                </button>
+                <button
+                  type="button"
+                  class="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
+                  :disabled="!summarySections[activeSummaryMode][section]"
+                  @click="resetSummarySectionAndSave(activeSummaryMode, section)"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+            <textarea
+              :value="getSummarySectionValue(activeSummaryMode, section)"
+              @input="setSummarySectionValue(activeSummaryMode, section, ($event.target as HTMLTextAreaElement).value)"
+              :rows="section === 'structure' ? 5 : 10"
+              class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
+              :placeholder="'Nhập phần ' + { task: 'nhiệm vụ', rules: 'quy tắc', structure: 'cấu trúc' }[section] + ' tuỳ chỉnh...'"
+            />
+            <div
+              v-if="showSummaryDefault[section]"
+              class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-36 overflow-y-auto"
+            >
+              <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ getSummaryDefault(activeSummaryMode, section) }}</pre>
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-1">
+            <button class="flex-1 btn btn-sm btn-primary" @click="savePrompts">Lưu Prompts</button>
+            <button
+              class="btn btn-sm btn-secondary"
+              :disabled="!summarySections[activeSummaryMode].task && !summarySections[activeSummaryMode].rules && !summarySections[activeSummaryMode].structure"
+              @click="resetPrompt"
+            >
+              Reset mặc định
+            </button>
+          </div>
+        </template>
+
+        <!-- Knowledge tab: 3-section editor with sub-tabs -->
+        <template v-else-if="activePromptTab === 'knowledge'">
+          <!-- Sub-tabs: Extract / Chunk / Reduce -->
+          <div class="flex border border-(--color-border) rounded-lg overflow-hidden">
+            <button
+              v-for="mode in (['extract', 'chunk', 'reduce'] as const)"
+              :key="mode"
+              class="flex-1 py-1 text-xs font-medium transition-colors"
+              :class="activeKnowledgeMode === mode
+                ? 'text-(--color-accent) bg-(--color-bg-surface)'
+                : 'text-(--color-text-secondary) hover:text-(--color-text-primary) bg-(--color-bg-muted)'"
+              @click="activeKnowledgeMode = mode"
+            >
+              {{ { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] }}
+            </button>
+          </div>
+
+          <!-- 3 sections per mode -->
+          <div v-for="section in (['task', 'rules', 'structure'] as const)" :key="section" class="space-y-1">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-(--color-text-secondary)">
+                {{ { task: 'Nhiệm vụ', rules: 'Quy tắc bắt buộc', structure: 'Cấu trúc JSON' }[section] }}
+              </label>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
+                  @click="showKnowledgeDefault[section] = !showKnowledgeDefault[section]"
+                >
+                  {{ showKnowledgeDefault[section] ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
+                </button>
+                <button
+                  type="button"
+                  class="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
+                  :disabled="!knowledgeSections[activeKnowledgeMode][section]"
+                  @click="resetKnowledgeSectionAndSave(activeKnowledgeMode, section)"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+            <textarea
+              :value="getSectionValue(activeKnowledgeMode, section)"
+              @input="setSectionValue(activeKnowledgeMode, section, ($event.target as HTMLTextAreaElement).value)"
+              :rows="section === 'structure' ? 5 : 10"
+              class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
+              :placeholder="'Nhập phần ' + { task: 'nhiệm vụ', rules: 'quy tắc', structure: 'cấu trúc' }[section] + ' tuỳ chỉnh...'"
+            />
+            <div
+              v-if="showKnowledgeDefault[section]"
+              class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-36 overflow-y-auto"
+            >
+              <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ getKnowledgeDefault(activeKnowledgeMode, section) }}</pre>
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-1">
+            <button class="flex-1 btn btn-sm btn-primary" @click="savePrompts">Lưu Prompts</button>
+            <button
+              class="btn btn-sm btn-secondary"
+              :disabled="!knowledgeSections[activeKnowledgeMode].task && !knowledgeSections[activeKnowledgeMode].rules && !knowledgeSections[activeKnowledgeMode].structure"
+              @click="resetPrompt"
+            >
+              Reset mặc định
+            </button>
+          </div>
+        </template>
+
+        <!-- Other tabs: single textarea (backward compat) -->
+        <template v-else>
+          <textarea
+            v-model="activePromptValue"
+            rows="6"
+            class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
+            placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)"
+          />
+          <!-- Default prompt viewer -->
           <button
-            class="flex-1 btn btn-sm btn-primary"
-            @click="savePrompts"
+            type="button"
+            class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
+            @click="showDefaultPrompt = !showDefaultPrompt"
           >
-            Lưu Prompts
+            {{ showDefaultPrompt ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
           </button>
-          <button
-            class="btn btn-sm btn-secondary"
-            :disabled="!customPrompts[activePromptTab]"
-            @click="resetPrompt"
+          <div
+            v-if="showDefaultPrompt"
+            class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-48 overflow-y-auto"
           >
-            Reset mặc định
-          </button>
-        </div>
+            <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ defaultPrompts[activePromptTab] }}</pre>
+          </div>
+          <div class="flex gap-2">
+            <button
+              class="flex-1 btn btn-sm btn-primary"
+              @click="savePrompts"
+            >
+              Lưu Prompts
+            </button>
+            <button
+              class="btn btn-sm btn-secondary"
+              :disabled="!customPrompts[activePromptTab]"
+              @click="resetPrompt"
+            >
+              Reset mặc định
+            </button>
+          </div>
+        </template>
+
         <p v-if="promptSaveMessage" class="text-xs text-(--color-success-text)">{{ promptSaveMessage }}</p>
         <p v-if="promptError" class="text-xs text-(--color-error-text)">{{ promptError }}</p>
       </div>

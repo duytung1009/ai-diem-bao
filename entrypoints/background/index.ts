@@ -337,14 +337,14 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
       case 'extract_knowledge_chunk': {
         const { posts, title } = payload as { posts: ScrapedPost[]; title: string };
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        const raw = await extractKnowledgeChunk(posts, title, config, onProgress, signal);
+        const raw = await extractKnowledgeChunk(posts, title, config, onProgress, prompts, signal);
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }
       case 'reduce_knowledge_chunks': {
         const { partialEntries, entryCap } = payload as { partialEntries: KnowledgeEntry[][]; entryCap?: number };
         inputTokens = estimateTokens(JSON.stringify(partialEntries));
-        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress, signal, entryCap);
+        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress, signal, prompts, entryCap);
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }

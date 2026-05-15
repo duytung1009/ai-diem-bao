@@ -1,7 +1,6 @@
 import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback, KnowledgeEntry, ThreadAnalysisJSON, KnowledgePromptParts, SummaryPromptParts } from '../types';
 import { createProvider } from './factory';
 import {
-  SUMMARY_PROMPT,
   INCREMENTAL_UPDATE_PROMPT,
   RESEARCH_PROMPT,
   buildSummaryPrompt,

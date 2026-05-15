@@ -3,6 +3,7 @@ import { sendMessage } from '@/lib/messaging';
 import { estimateTokens } from '@/lib/token-estimator';
 import { STORAGE_KEYS, FALLBACK_MS_PER_TOKEN, LLM_TASK_CLEANUP_DELAY_MS } from '@/lib/constants';
 import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON, PipelineDefinition } from '@/lib/types';
+import { markNextStepRunning, markStepDone, markStepError, markStepRunning } from '@/lib/pipeline-builder';
 
 interface LLMTaskState {
   taskId: string;
@@ -35,7 +36,7 @@ function handleProgress(payload: LLMProgressMessage) {
     message: payload.message,
   };
   // Initialize pipeline from first progress message
-  if (payload.pipeline && !task.pipeline) {
+  if (payload.pipeline) {
     task.pipeline = payload.pipeline;
   }
   // Update step statuses when pipeline is active
@@ -49,16 +50,9 @@ function handleProgress(payload: LLMProgressMessage) {
       // (e.g. map-reduce summarize sends 4 progress steps for a single "summarize" pipeline step)
       const pipelineIdx = Math.min(currentStep, pipelineSteps - 1);
       task.pipeline.steps.forEach((s, idx) => {
-        if (idx < pipelineIdx) {
-          s.status = 'done';
-        } else if (idx === pipelineIdx) {
-          s.status = 'running';
-          s.etaMs = task.estimatedTotalMs > 0
-            ? Math.max(0, (task.estimatedTotalMs - payload.elapsedMs) / (total - currentStep))
-            : undefined;
-        } else {
-          s.status = s.status === 'done' ? 'done' : 'pending';
-        }
+        if (idx === pipelineIdx) {
+          markNextStepRunning(task.pipeline!, s.id, task.estimatedTotalMs);
+        } 
       });
     }
   }
@@ -74,15 +68,12 @@ function handleResult(payload: LLMResultMessage) {
   task.elapsedMs = payload.stats.elapsedMs;
   // Mark all pipeline steps as done on success, or mark current running as error
   if (task.pipeline) {
-    task.pipeline.steps.forEach(s => {
-      if (payload.success) {
-        s.status = 'done';
-        s.etaMs = undefined;
-      } else if (s.status === 'running') {
-        s.status = 'error';
-        s.error = payload.error ?? undefined;
-      }
-    });
+    const runningStep = task.pipeline.steps.find(s => s.status === 'running');
+    if (payload.success) {
+      markStepDone(task.pipeline!, runningStep!.id);
+    } else {
+      markStepError(task.pipeline!, runningStep!.id, payload.error ?? undefined);
+    }
   }
   task.onComplete?.(payload);
   // Cleanup after 5s so progress display fades naturally
@@ -108,7 +99,12 @@ function getETA(inputTokens: number, model: string): number | null {
 function estimateETA(taskType: string, payload: unknown): number {
   let text = '';
   if (Array.isArray(payload)) {
-    text = (payload as ScrapedPost[]).map(p => p.content).join('');
+    const firstItem = payload?.[0];
+    if (firstItem && typeof firstItem === 'object' && 'content' in firstItem) {
+      text = (payload as ScrapedPost[]).map(p => p.content).join('');
+    } else if (typeof payload[0] === 'string') { 
+      text = (payload as string[]).join('');
+    }
   } else if (typeof payload === 'object' && payload !== null) {
     const p = payload as Record<string, unknown>;
     if (Array.isArray(p.posts)) text = (p.posts as ScrapedPost[]).map((x: ScrapedPost) => x.content).join('');

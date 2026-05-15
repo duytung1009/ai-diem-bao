@@ -89,6 +89,23 @@ const activeTabInList = computed(() => {
   return allTopics.value.some(t => normalizeUrl(t.url) === normalizeUrl(store.activeTabUrl.value!));
 });
 
+// Cached topic matching the active tab URL (if any)
+const activeTabCachedTopic = computed<CachedTopic | null>(() => {
+  if (!store.activeTabUrl.value) return null;
+  return allTopics.value.find(t => normalizeUrl(t.url) === normalizeUrl(store.activeTabUrl.value!)) || null;
+});
+
+// Summary status for active tab topic
+const activeTabStatus = computed(() => {
+  if (!store.activeTabDetect.value) return 'none' as const;
+  const isSummarizing = store.summarizingUrl.value && store.activeTabUrl.value
+    && isSameTopicUrl(store.summarizingUrl.value, store.activeTabUrl.value);
+  if (isSummarizing) return 'in-progress' as const;
+  const cached = activeTabCachedTopic.value;
+  if (cached) return topicSummaryStatus(cached, false);
+  return 'none' as const;
+});
+
 // Track unsummarized posts count per topic
 const newPostsMap = computed<Record<string, number>>(() => {
   const result: Record<string, number> = {};
@@ -172,6 +189,12 @@ async function executeDelete() {
 function handleActiveTabTopic() {
   // Navigate to summary view — SummaryView will detect the active tab topic
   if (store.activeTabDetect.value && store.activeTabUrl.value) {
+    if (activeTabCachedTopic.value) {
+      // Nếu đã có cached topic khớp active tab, dùng luôn
+      store.selectTopic(activeTabCachedTopic.value);
+      router.push('/summary');
+      return;
+    }
     // Create a minimal CachedTopic-like object from the detected topic
     const detect = store.activeTabDetect.value;
     const minimalTopic: CachedTopic = {
@@ -257,9 +280,9 @@ async function toggleBookmark(topic: CachedTopic) {
         </div>
       </div>
 
-      <!-- Active tab topic (if not in cached list) -->
+      <!-- Active tab topic -->
       <button
-        v-if="store.activeTabDetect.value && !activeTabInList"
+        v-if="store.activeTabDetect.value"
         class="w-full text-left border-2 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30 rounded-lg p-3 hover:border-blue-400 dark:hover:border-blue-600 transition-colors space-y-1.5"
         @click="handleActiveTabTopic"
       >
@@ -268,23 +291,76 @@ async function toggleBookmark(topic: CachedTopic) {
         </div>
         <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2">
           {{ store.activeTabDetect.value.title }}
+          <!-- News badge -->
+          <span v-if="activeTabCachedTopic?.topicType === 'news'"
+            class="text-purple-700 dark:text-purple-400 font-regular text-xs ml-1"
+          >
+            Tin tức
+          </span>
         </p>
         <div class="flex items-center gap-2 justify-between">
           <div class="flex items-center gap-2 flex-wrap">
             <span
-              v-if="store.summarizingUrl.value && store.activeTabUrl.value && isSameTopicUrl(store.summarizingUrl.value, store.activeTabUrl.value)"
+              v-if="activeTabStatus === 'in-progress'"
               class="text-blue-700 dark:text-blue-400 animate-pulse font-medium"
             >
               ✨ Đang tóm tắt...
+            </span>
+            <span
+              v-else-if="activeTabStatus === 'done'"
+              class="text-(--color-success-text) font-medium"
+            >
+              ✓ Đã tóm tắt
+            </span>
+            <span
+              v-else-if="activeTabStatus === 'partial'"
+              class="text-yellow-700 dark:text-yellow-400 font-medium"
+            >
+              ~ Một phần
+            </span>
+            <span
+              v-else-if="activeTabStatus === 'locked'"
+              class="text-red-700 dark:text-red-400 font-medium"
+            >
+              🔒 Đã khóa
+            </span>
+            <span
+              v-else-if="activeTabStatus === 'deleted'"
+              class="text-gray-700 dark:text-gray-400 font-medium"
+            >
+              ❌ Đã ốp
             </span>
             <span v-else class="text-(--color-text-muted) font-medium">
               ○ Chưa tóm tắt
             </span>
           </div>
-          <div class="flex items-center gap-2 justify-end">
-            <span class="text-xs text-(--color-text-secondary)">{{ store.activeTabDetect.value.postCount }} bài</span>
-            <span class="text-xs text-(--color-text-secondary)">{{ store.activeTabDetect.value.pageCount }} trang</span>
-          </div>
+        </div>
+                    
+        <div class="flex items-center gap-2 justify-start">
+          <!-- Post count -->
+          <span class="text-xs text-(--color-text-secondary)">
+            <template v-if="activeTabCachedTopic?.forumPostCount && activeTabCachedTopic?.forumPostCount > activeTabCachedTopic?.totalPosts">
+              {{ formatNumber(activeTabCachedTopic?.summarizedPostCount ?? activeTabCachedTopic?.totalPosts) }}/{{ formatNumber(activeTabCachedTopic?.forumPostCount) }} bài
+            </template>
+            <template v-else-if="topicSummaryStatus(activeTabCachedTopic, false) === 'partial'">
+              {{ formatNumber(activeTabCachedTopic?.summarizedPostCount ?? activeTabCachedTopic?.totalPosts) }}/{{ formatNumber(activeTabCachedTopic?.totalPosts) }} bài
+            </template>
+            <template v-else>{{ formatNumber(activeTabCachedTopic?.summarizedPostCount ?? activeTabCachedTopic?.totalPosts) }} bài</template>
+            <span
+              v-if="activeTabCachedTopic?.url && newPostsMap[activeTabCachedTopic?.url]"
+              class="text-(--color-accent-text) ml-0.5"
+            >(+{{ formatNumber(newPostsMap[activeTabCachedTopic?.url]) }} mới)</span>
+          </span>
+          <!-- Page -->
+          <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(activeTabCachedTopic?.totalPages) }} trang</span>
+          <!-- Time -->
+          <span v-if="activeTabCachedTopic?.cachedAt" class="text-xs text-(--color-text-secondary)">
+            {{ formatTopicDate(activeTabCachedTopic?.cachedAt) }}
+          </span>
+          <!-- Model -->
+          <span v-if="activeTabCachedTopic?.llmConfig?.model && (activeTabCachedTopic?.summary || activeTabCachedTopic?.segments?.some(s => s?.summary))" class="text-xs text-(--color-text-secondary) italic truncate max-w-24" :title="`${activeTabCachedTopic?.llmConfig.model}`">
+            {{ activeTabCachedTopic?.llmConfig.model }}
+          </span>
         </div>
       </button>
 

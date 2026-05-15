@@ -3,9 +3,10 @@ import type { CachedTopic } from './types';
 export type TopicSummaryStatus = 'none' | 'in-progress' | 'partial' | 'done' | 'locked' | 'deleted';
 
 export function topicSummaryStatus(
-  topic: CachedTopic,
+  topic: CachedTopic | null,
   isSummarizing: boolean,
 ): TopicSummaryStatus {
+  if (!topic) return 'none';
   if (topic.threadLocked) return 'locked';
   if (topic.threadDeleted) return 'deleted';
   if (isSummarizing) return 'in-progress';

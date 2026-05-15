@@ -9,6 +9,7 @@ defineProps<{
 defineEmits<{ cancel: [] }>();
 
 function formatETA(ms: number): string {
+  if (!ms || ms < 0) return '';
   if (ms < 5000) return 'Sắp xong...';
   const mins = Math.floor(ms / 60000);
   const secs = Math.floor((ms % 60000) / 1000);

@@ -8,7 +8,7 @@ import MarkdownContent from '../components/MarkdownContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import { useLLM } from '../composables/useLLM';
 import type { PipelineDefinition } from '@/lib/types';
-import { buildResearchPipeline } from '@/lib/pipeline-builder';
+import { buildResearchPipeline, markFirstStepRunning } from '@/lib/pipeline-builder';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 
@@ -75,6 +75,7 @@ async function handleResearch() {
   isLoading.value = true;
   error.value = null;
   const pipeline = buildResearchPipeline();
+  markFirstStepRunning(pipeline);
 
   try {
     const { taskId, result } = runResearch(allPosts.value, q);

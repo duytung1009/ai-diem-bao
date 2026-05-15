@@ -4,6 +4,13 @@ function pending(label: string, id?: string): PipelineStep {
   return { id: id ?? label, label, status: 'pending' };
 }
 
+/** Mark the first step of a pipeline as running */
+export function markFirstStepRunning(pipeline: PipelineDefinition): void {
+  if (pipeline.steps.length > 0 && pipeline.steps[0].status === 'pending') {
+    pipeline.steps[0].status = 'running';
+  }
+}
+
 /**
  * Build pipeline for summarize workflow.
  * - Single segment: [scrape, summarize]

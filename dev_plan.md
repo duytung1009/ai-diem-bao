@@ -232,6 +232,13 @@ Side Panel (Vue): render summary, opinions, research
 - Background gửi steps definition cùng với LLM_PROGRESS
 - Cập nhật useLLM, useSummarize, các Views
 
+**Phase 8 — Timeline UX Improvement (Backlog)**
+- Cải thiện dynamic segment pipeline: scrape toàn bộ pages trước → chia segments → build pipeline hoàn chỉnh → chạy LLM tasks
+- Timeline hiển thị đầy đủ từ đầu, không cần progressive append
+- Flow: `Scrape pages X-Y` → `Tóm tắt segment 1/N` → `Tóm tắt segment 2/N` → ... → `Tóm tắt tổng quan`
+- Giảm số lần rebuild/modify pipeline trong quá trình chạy
+- Ưu tiên sau khi Phase 7 ổn định và có feedback từ user
+
 ---
 
 **Phase 5 — Help Tab + Onboarding Guide**

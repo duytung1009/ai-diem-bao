@@ -5,7 +5,7 @@ import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON, PipelineDefinition, PipelineStep } from '@/lib/types';
-import { buildSummarizePipeline, markStepRunning, markStepDone } from '@/lib/pipeline-builder';
+import { buildSummarizePipeline, markStepRunning, markStepDone, markFirstStepRunning } from '@/lib/pipeline-builder';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { estimateTokens, calculateSegmentBudget, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
@@ -411,6 +411,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     scrapingInfo.value = [];
     // Build pipeline for this summarize operation
     pipeline.value = buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
+    markFirstStepRunning(pipeline.value);
     // Mark only this segment's scrape step as running
     const scrapeStepId = segments.value.length <= 1 ? 'scrape' : `scrape_${segmentIndex}`;
     pipeline.value.steps.forEach(s => { if (s.id === scrapeStepId) s.status = 'running'; });
@@ -594,15 +595,15 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const completedSegments = segmentSummaries.value.filter(s => s?.summary);
     if (completedSegments.length === 0) return;
 
-    // Mark all existing steps as done, append overall summary step
+    // Mark scrape step as done, set overall step to running
     if (pipeline.value) {
-      pipeline.value.steps.forEach(s => { s.status = 'done'; s.etaMs = undefined; });
-    }
-    const overallStep: PipelineStep = { id: 'overall', label: 'Tạo tóm tắt tổng quan', status: 'running' };
-    if (pipeline.value) {
-      pipeline.value.steps.push(overallStep);
-    } else {
-      pipeline.value = { workflow: 'summarize', steps: [overallStep] };
+      const scrapeStep = pipeline.value.steps.find(s => s.id === 'scrape_remaining' || s.id === 'scrape');
+      if (scrapeStep) scrapeStep.status = 'done';
+      const overallStep = pipeline.value.steps.find(s => s.id === 'overall');
+      if (overallStep) {
+        overallStep.status = 'running';
+        overallStep.etaMs = undefined;
+      }
     }
 
     // Single segment: copy trực tiếp, không gọi LLM
@@ -699,7 +700,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const currentSegments = segmentSummaries.value;
     const lastSummarizedSeg = currentSegments.filter(s => s?.summary).slice(-1)[0];
     const coveredEndPage = lastSummarizedSeg?.endPage ?? 0;
-    const newTotalPages = store.activeTabDetect.value?.pageCount ?? topicInfo.value.pageCount;
+    // Use max across live detect + cached pageCount; activeTabDetect may be null/stale
+    // when user opens sidepanel from a non-forum tab, but cached value may be stale too.
+    const newTotalPages = Math.max(
+      store.activeTabDetect.value?.pageCount ?? 0,
+      topicInfo.value.pageCount,
+    );
 
     // Use forumPostCount (live) to detect new posts, not just pageCount.
     // Prefer cached forumPostCount over activeTabDetect: the latter may be stale
@@ -720,13 +726,20 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       error.value = '';
       scrapingWarnings.value = [];
       scrapingInfo.value = [];
-      // Build pipeline from remaining pages only (coveredEndPage+1 → newTotalPages)
-      // Cannot predict exact dynamic segments ahead of time — show remaining range
+      // Build initial pipeline: scrape remaining pages + overall summary placeholder
+      // Segment steps will be appended progressively as each segment completes
       if (topicInfo.value) {
         const totalPages = Math.max(newTotalPages, topicInfo.value.pageCount);
         const remainingStart = coveredEndPage + 1;
         if (remainingStart <= totalPages) {
-          pipeline.value = buildSummarizePipeline([{ start: remainingStart, end: totalPages }]);
+          const label = remainingStart === totalPages ? `Scrape trang ${remainingStart}` : `Scrape trang ${remainingStart}–${totalPages}`;
+          pipeline.value = {
+            workflow: 'summarize',
+            steps: [
+              { id: 'scrape_remaining', label, status: 'running' },
+              { id: 'overall', label: 'Tạo tóm tắt tổng quan', status: 'pending' },
+            ],
+          };
         }
       }
       const thisId = ++activeSummarizeId;
@@ -854,15 +867,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     await saveTopic(topic, { segments: tempBase });
     segmentSummaries.value = tempBase as TopicSegment[];
 
-    // Mark scrape for this segment as done, summarize as running
+    // Mark scrape as done
     if (pipeline.value) {
-      const isMulti = pipeline.value.steps.some(s => s.id.startsWith('scrape_'));
-      const scrapeId = isMulti ? `scrape_${segmentIndex}` : 'scrape';
-      const sumId = isMulti ? `summarize_${segmentIndex}` : 'summarize';
-      pipeline.value.steps.forEach(s => {
-        if (s.id === scrapeId) s.status = 'done';
-        if (s.id === sumId) s.status = 'running';
-      });
+      const scrapeStep = pipeline.value.steps.find(s => s.id === 'scrape_remaining' || s.id === 'scrape');
+      if (scrapeStep) scrapeStep.status = 'done';
     }
     const segTask = summarize(posts);
     llmTaskId.value = segTask.taskId;
@@ -929,6 +937,21 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       summaryJson: newSeg.summaryJson ?? undefined,
     } as Partial<CachedTopic>);
     activeSegmentIndex.value = segmentIndex;
+
+    // Progressive append: insert segment summary step before "overall"
+    if (pipeline.value) {
+      const overallIdx = pipeline.value.steps.findIndex(s => s.id === 'overall');
+      const segStep: PipelineStep = {
+        id: `summarize_${segmentIndex}`,
+        label: `Tóm tắt segment ${segmentIndex + 1}`,
+        status: 'done',
+      };
+      if (overallIdx >= 0) {
+        pipeline.value.steps.splice(overallIdx, 0, segStep);
+      } else {
+        pipeline.value.steps.push(segStep);
+      }
+    }
 
     simpleLoadingText.value = '';
   }
@@ -1168,7 +1191,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value;
     if (!topic || !topicInfo.value) return;
 
-    const totalPages = topicInfo.value.pageCount;
+    // Use max across live detect + cached pageCount so we never miss new pages
+    // when the cached value is stale (same pattern as handleSegmentUpdate).
+    const totalPages = Math.max(
+      topicInfo.value.pageCount,
+      store.activeTabDetect.value?.pageCount ?? 0,
+    );
     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
 
     error.value = '';
@@ -1182,6 +1210,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         const budget = await computeDynamicBudget();
         // Build pipeline for the full page range before dynamic processing
         pipeline.value = buildSummarizePipeline([{ start: 1, end: totalPages }]);
+        markFirstStepRunning(pipeline.value);
         if (forceRegenerate) {
           // Force regenerate: clear all existing state, start fresh
           dynamicSegmentBoundaries.value = [];

@@ -155,7 +155,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       store.updateSelectedTopic({ topicType });
       // Only persist if the topic has already been summarized
       if (topic.summary) {
-        await sendMessage('SAVE_CACHED_TOPIC', { ...topic, topicType }).catch(() => {});
+        await sendMessage('SAVE_CACHED_TOPIC', { ...topic, topicType }).catch(() => { });
       }
     } catch { /* silent — detection is best-effort */ }
   }
@@ -167,7 +167,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       version: topic.version,
       totalPages: topic.totalPages,
       ...fields,
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   async function enrichWithNewsArticles(
@@ -216,7 +216,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (ageMs > oneWeek) return 'outdated';
     const totalRef = cached.forumPostCount ?? cached.totalPosts;
     if (ageMs > oneDay || (currentPostCount !== null && currentPostCount > totalRef)
-        || (cached.summarizedPostCount ?? cached.totalPosts ?? 0) < totalRef) return 'stale';
+      || (cached.summarizedPostCount ?? cached.totalPosts ?? 0) < totalRef) return 'stale';
     return 'fresh';
   }
 
@@ -256,7 +256,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const effectiveForumPostCount = liveCount ?? fresh?.forumPostCount;
 
       if (liveCount != null && liveCount > 0 && liveCount !== fresh?.forumPostCount) {
-        sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, forumPostCount: liveCount }).catch(() => {});
+        sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, forumPostCount: liveCount }).catch(() => { });
       }
 
       // Update threadLocked/threadDeleted immediately from live detect (before any scraping)
@@ -271,7 +271,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
       // Persist thread status to cache immediately
       if (Object.keys(threadStatusUpdates).length > 0) {
-        sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, ...threadStatusUpdates }).catch(() => {});
+        sendMessage('SAVE_CACHED_TOPIC', { url: topic.url, ...threadStatusUpdates }).catch(() => { });
       }
 
       if (fresh) {
@@ -528,7 +528,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
           segments: updated,
-        }).catch(() => {});
+        }).catch(() => { });
         return;
       }
 
@@ -651,7 +651,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           summaryJson: overallSummaryJson ?? undefined,
           summarizedPostCount: totalSummarized,
           segments: segmentSummaries.value,
-        }).catch(() => {});
+        }).catch(() => { });
         return;
       }
 
@@ -732,7 +732,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const thisId = ++activeSummarizeId;
       store.setSummarizing(topic.url);
       try {
-const budget = await computeDynamicBudget();
+        const budget = await computeDynamicBudget();
         const resume = computeResumeState();
         if (resume && hasNewPosts) {
           // New posts on existing pages (may or may not also have new pages).
@@ -903,7 +903,7 @@ const budget = await computeDynamicBudget();
         totalPosts: Math.max(topic.totalPosts, segTotalPosts),
         summarizedPostCount: segTotalPosts,
         segments: updated,
-      }).catch(() => {});
+      }).catch(() => { });
       return;
     }
 
@@ -1164,80 +1164,80 @@ const budget = await computeDynamicBudget();
    * In dynamic mode: scrapes page by page, splits on token budget, summarizes each chunk.
    * In fixed mode: summarizes all existing fixed segments sequentially.
    */
-   async function handleAutoSummarizeAll(forceRegenerate: boolean = false) {
-     const topic = store.selectedTopic.value;
-     if (!topic || !topicInfo.value) return;
- 
-     const totalPages = topicInfo.value.pageCount;
-     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
- 
-     error.value = '';
-     scrapingWarnings.value = [];
-     scrapingInfo.value = [];
-     const thisId = ++activeSummarizeId;
-     store.setSummarizing(topic.url);
- 
-      try {
-        if (isDynamic) {
-          const budget = await computeDynamicBudget();
-          // Build pipeline for the full page range before dynamic processing
-          pipeline.value = buildSummarizePipeline([{ start: 1, end: totalPages }]);
-          if (forceRegenerate) {
-           // Force regenerate: clear all existing state, start fresh
-           dynamicSegmentBoundaries.value = [];
-           segmentSummaries.value = [];
-           await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
-} else {
-            // Resume from partial results if any, otherwise start fresh
-            const resume = computeResumeState();
-            if (!resume) {
-              dynamicSegmentBoundaries.value = [];
-              segmentSummaries.value = [];
-            }
-            if (resume && resume.fromPage <= totalPages) {
-              await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume);
-            } else if (!resume) {
-              await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
-            }
-            // When resume.fromPage > totalPages, all pages are already summarized —
-            // just proceed to generateOverallSummary below
+  async function handleAutoSummarizeAll(forceRegenerate: boolean = false) {
+    const topic = store.selectedTopic.value;
+    if (!topic || !topicInfo.value) return;
+
+    const totalPages = topicInfo.value.pageCount;
+    const isDynamic = currentConfig.value?.dynamicSegments ?? true;
+
+    error.value = '';
+    scrapingWarnings.value = [];
+    scrapingInfo.value = [];
+    const thisId = ++activeSummarizeId;
+    store.setSummarizing(topic.url);
+
+    try {
+      if (isDynamic) {
+        const budget = await computeDynamicBudget();
+        // Build pipeline for the full page range before dynamic processing
+        pipeline.value = buildSummarizePipeline([{ start: 1, end: totalPages }]);
+        if (forceRegenerate) {
+          // Force regenerate: clear all existing state, start fresh
+          dynamicSegmentBoundaries.value = [];
+          segmentSummaries.value = [];
+          await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+        } else {
+          // Resume from partial results if any, otherwise start fresh
+          const resume = computeResumeState();
+          if (!resume) {
+            dynamicSegmentBoundaries.value = [];
+            segmentSummaries.value = [];
           }
-       } else {
-         // Fixed mode: summarize all segments sequentially
-         if (forceRegenerate) {
-           segmentSummaries.value = [];
-         }
-         for (let i = 0; i < segments.value.length; i++) {
-           if (thisId !== activeSummarizeId) return;
-           await handleSummarizeSegment(i);
-           if (error.value) return;
-         }
-       }
- 
-       // Generate overall summary
-       if (thisId === activeSummarizeId && !error.value) {
-         const completed = segmentSummaries.value.filter(s => s?.summary).length;
-         if (completed >= 1) {
-           simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-           await generateOverallSummary();
-         }
-       }
-     } catch (err) {
-       isScraping.value = false;
-       scrapeProgress.value = null;
-       if (thisId !== activeSummarizeId) return;
-       if (err instanceof DOMException && err.name === 'AbortError') return;
-       error.value = err instanceof Error ? err.message : String(err);
-     } finally {
-       store.setSummarizing(null);
-       if (thisId === activeSummarizeId) {
-         simpleLoadingText.value = '';
-         llmTaskId.value = null;
-         isScraping.value = false;
-         scrapeProgress.value = null;
-       }
-     }
-   }
+          if (resume && resume.fromPage <= totalPages) {
+            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume);
+          } else if (!resume) {
+            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+          }
+          // When resume.fromPage > totalPages, all pages are already summarized —
+          // just proceed to generateOverallSummary below
+        }
+      } else {
+        // Fixed mode: summarize all segments sequentially
+        if (forceRegenerate) {
+          segmentSummaries.value = [];
+        }
+        for (let i = 0; i < segments.value.length; i++) {
+          if (thisId !== activeSummarizeId) return;
+          await handleSummarizeSegment(i);
+          if (error.value) return;
+        }
+      }
+
+      // Generate overall summary
+      if (thisId === activeSummarizeId && !error.value) {
+        const completed = segmentSummaries.value.filter(s => s?.summary).length;
+        if (completed >= 1) {
+          simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
+          await generateOverallSummary();
+        }
+      }
+    } catch (err) {
+      isScraping.value = false;
+      scrapeProgress.value = null;
+      if (thisId !== activeSummarizeId) return;
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      error.value = err instanceof Error ? err.message : String(err);
+    } finally {
+      store.setSummarizing(null);
+      if (thisId === activeSummarizeId) {
+        simpleLoadingText.value = '';
+        llmTaskId.value = null;
+        isScraping.value = false;
+        scrapeProgress.value = null;
+      }
+    }
+  }
 
   async function handleGenerateAnalysis(): Promise<void> {
     const topic = store.selectedTopic.value;
@@ -1269,7 +1269,7 @@ const budget = await computeDynamicBudget();
         version: topic.version,
         totalPages: topic.totalPages,
         threadAnalysis: analysis,
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (err) {
       if (thisAnalyzeId !== activeAnalyzeId) return;
       error.value = err instanceof Error ? err.message : String(err);

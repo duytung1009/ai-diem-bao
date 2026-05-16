@@ -626,7 +626,7 @@
         "dependencies": [
           "167"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -634,9 +634,10 @@
             "description": "Tạo file lib/segment-persistence.ts và di chuyển logic từ makeDenseBase để tối ưu cấu trúc segment.",
             "dependencies": [],
             "details": "Định nghĩa các interface cần thiết cho module persistence. Thực hiện chuyển đổi logic từ makeDenseBase sang hàm makeDenseSegments mới nhằm đảm bảo dữ liệu segment đầu ra được nén gọn và chuẩn hóa cấu trúc.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test kiểm tra hàm makeDenseSegments với các bộ dữ liệu đầu vào khác nhau để đảm bảo cấu trúc mảng segment đầu ra luôn nhất quán.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:38:44.716Z"
           },
           {
             "id": 2,
@@ -646,9 +647,10 @@
               1
             ],
             "details": "Sử dụng Math.max để tính toán totalPosts chính xác từ các nguồn dữ liệu. Cài đặt logic single-segment promotion để tự động nâng cấp trạng thái segment khi điều kiện thỏa mãn, đảm bảo tương thích với cấu trúc store hiện tại.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Snapshot test so sánh payload sinh ra cho hai trường hợp: single-segment và multi-segment để xác nhận tính chính xác của metadata.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:38:54.293Z"
           },
           {
             "id": 3,
@@ -658,14 +660,16 @@
               2
             ],
             "details": "Tích hợp stale-guard token vào buildSegmentSavePayload. Cài đặt logic gán cờ 'stale' dựa trên việc so sánh token hiện hành. Hoàn thiện hàm xử lý payload cho SAVE_CACHED_TOPIC, bao quát cả trường hợp single vs multi-segment.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration test giả lập việc thay đổi token của stale-guard và kiểm tra xem payload sinh ra có được đánh dấu cờ stale chính xác hay không.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:39:04.815Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token."
+        "expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token.",
+        "updatedAt": "2026-05-16T13:39:04.815Z"
       },
       {
         "id": "170",
@@ -953,9 +957,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T07:08:49.044Z",
+      "lastModified": "2026-05-16T13:39:04.821Z",
       "taskCount": 20,
-      "completedCount": 14,
+      "completedCount": 15,
       "tags": [
         "master"
       ]

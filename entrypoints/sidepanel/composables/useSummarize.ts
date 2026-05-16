@@ -12,6 +12,7 @@ import { SUMMARY_PROMPT } from '@/lib/prompts';
 import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule } from '@/lib/segment-planner';
 import type { DynamicResumeState } from '@/lib/segment-planner';
 import { createRunGuard } from '@/lib/run-guard';
+import { makeDenseSegments, buildSegmentSavePayload } from '@/lib/segment-persistence';
 import { estimateSummarizeSegmentCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from './useTopicStore';
@@ -400,12 +401,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
-  const makeDenseBase = (segIdx: number): (TopicSegment | null)[] =>
-    Array.from(
-      { length: Math.max(segmentSummaries.value.length, segIdx + 1, segments.value.length) },
-      (_, i) => segmentSummaries.value[i] ?? null,
-    );
-
   async function handleSummarizeSegment(segmentIndex: number) {
     const seg = segments.value[segmentIndex];
     if (!seg || !topicInfo.value) return;
@@ -466,7 +461,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       // Feature 16: Save segment posts early before LLM
-      const tempUpdated = makeDenseBase(segmentIndex);
+      const tempUpdated = makeDenseSegments({ existing: segmentSummaries.value, segIdx: segmentIndex, totalSegments: segments.value.length });
       tempUpdated[segmentIndex] = {
         startPage: seg.start,
         endPage: seg.end,
@@ -521,53 +516,46 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         summarizedAt: Date.now(),
       };
 
-      const updated = makeDenseBase(segmentIndex);
+      const updated = makeDenseSegments({ existing: segmentSummaries.value, segIdx: segmentIndex, totalSegments: segments.value.length });
       updated[segmentIndex] = newSeg;
       const updatedDense = updated as TopicSegment[];
 
       // Stale guard
       if (summarizeGuard.isStale(thisId)) {
-        await saveTopic(topic, {
+        const stalePayload = buildSegmentSavePayload({
+          topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
+          updatedSegments: updated,
+          newSeg,
           forumPostCount: getLiveForumPostCount(),
-          totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
-          summarizedPostCount: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
-          segments: updated,
-        }).catch(() => { });
+          isSingleSegment: segments.value.length === 1,
+        });
+        await saveTopic(topic, stalePayload).catch(() => { });
         return;
       }
 
       segmentSummaries.value = updatedDense;
       activeSegmentIndex.value = segmentIndex;
 
-      const segTotalPosts = updatedDense.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
       const isSingleSegment = segments.value.length === 1;
-
-      await sendMessage('SAVE_CACHED_TOPIC', {
-        url: topic.url,
-        title: topic.title,
-        version: topic.version,
-        totalPages: topic.totalPages,
+      const savePayload = buildSegmentSavePayload({
+        topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
+        updatedSegments: updatedDense,
+        newSeg,
         forumPostCount: getLiveForumPostCount(),
-        totalPosts: segTotalPosts,
-        summarizedPostCount: segTotalPosts,
-        segments: updatedDense,
-        ...(isSingleSegment ? {
-          summary: newSeg.summary,
-          summaryJson: newSeg.summaryJson ?? undefined,
-        } : {}),
+        isSingleSegment,
       });
+
+      await sendMessage('SAVE_CACHED_TOPIC', savePayload);
       store.updateSelectedTopic({
         title: topic.title,
         version: topic.version,
         totalPages: topic.totalPages,
-        totalPosts: segTotalPosts,
-        forumPostCount: getLiveForumPostCount(),
-        summarizedPostCount: segTotalPosts,
-        segments: updatedDense,
-        ...(isSingleSegment ? {
-          summary: newSeg.summary,
-          summaryJson: newSeg.summaryJson ?? undefined,
-        } : {}),
+        totalPosts: savePayload.totalPosts,
+        forumPostCount: savePayload.forumPostCount,
+        summarizedPostCount: savePayload.summarizedPostCount,
+        segments: savePayload.segments,
+        ...(savePayload.summary ? { summary: savePayload.summary } : {}),
+        ...(savePayload.summaryJson ? { summaryJson: savePayload.summaryJson } : {}),
       } as Partial<CachedTopic>);
 
       if (isSingleSegment) {
@@ -864,7 +852,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     dynamicSegmentBoundaries.value = boundaries;
 
     // Save posts early before LLM call
-    const tempBase = makeDenseBase(segmentIndex);
+    const tempBase = makeDenseSegments({ existing: segmentSummaries.value, segIdx: segmentIndex, totalSegments: segments.value.length });
     tempBase[segmentIndex] = {
       startPage,
       endPage,
@@ -907,43 +895,44 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       complete: !incomplete,
     };
 
-    const updated = makeDenseBase(segmentIndex);
+    const updated = makeDenseSegments({ existing: segmentSummaries.value, segIdx: segmentIndex, totalSegments: segments.value.length });
     updated[segmentIndex] = newSeg;
 
-    const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
     const forumCount = getLiveForumPostCount();
 
     if (summarizeGuard.isStale(thisId)) {
       // Stale: still save but don't update UI
-      await saveTopic(topic, {
+      const stalePayload = buildSegmentSavePayload({
+        topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
+        updatedSegments: updated,
+        newSeg,
         forumPostCount: forumCount,
-        totalPosts: Math.max(topic.totalPosts, segTotalPosts),
-        summarizedPostCount: segTotalPosts,
-        segments: updated,
-      }).catch(() => { });
+        isSingleSegment: true, // dynamic mode always promotes
+        useMaxTotal: true,
+      });
+      await saveTopic(topic, stalePayload).catch(() => { });
       return;
     }
 
     segmentSummaries.value = updated as TopicSegment[];
-    await sendMessage('SAVE_CACHED_TOPIC', {
-      url: topic.url,
-      title: topic.title,
-      version: topic.version,
-      totalPages: topic.totalPages,
+
+    const savePayload = buildSegmentSavePayload({
+      topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
+      updatedSegments: updated,
+      newSeg,
       forumPostCount: forumCount,
-      totalPosts: Math.max(topic.totalPosts, segTotalPosts),
-      summarizedPostCount: segTotalPosts,
-      segments: updated,
-      summary: newSeg.summary,
-      summaryJson: newSeg.summaryJson ?? undefined,
+      isSingleSegment: true, // dynamic mode always promotes
+      useMaxTotal: true,
     });
+
+    await sendMessage('SAVE_CACHED_TOPIC', savePayload);
     store.updateSelectedTopic({
-      totalPosts: Math.max(topic.totalPosts, segTotalPosts),
-      forumPostCount: forumCount,
-      summarizedPostCount: segTotalPosts,
-      segments: updated,
-      summary: newSeg.summary,
-      summaryJson: newSeg.summaryJson ?? undefined,
+      totalPosts: savePayload.totalPosts,
+      forumPostCount: savePayload.forumPostCount,
+      summarizedPostCount: savePayload.summarizedPostCount,
+      segments: savePayload.segments,
+      summary: savePayload.summary,
+      summaryJson: savePayload.summaryJson,
     } as Partial<CachedTopic>);
     activeSegmentIndex.value = segmentIndex;
 

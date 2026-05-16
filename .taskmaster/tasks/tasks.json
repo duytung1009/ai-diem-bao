@@ -489,7 +489,7 @@
         "dependencies": [
           "165"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -497,9 +497,10 @@
             "description": "Thực hiện xóa bỏ các hàm updateSummary() trong lib/llm/summarizer.ts, summarizeIncremental() trong useLLM.ts và xử lý message 'summarize_incremental' trong background/index.ts.",
             "dependencies": [],
             "details": "Truy cập các file lib/llm/summarizer.ts để xóa updateSummary, useLLM.ts để xóa summarizeIncremental, và background/index.ts để xóa case 'summarize_incremental'. Đảm bảo không còn logic nghiệp vụ nào gọi đến các hàm này.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T04:35:36.398Z"
           },
           {
             "id": 2,
@@ -509,14 +510,16 @@
               1
             ],
             "details": "Xóa định nghĩa INCREMENTAL_UPDATE_PROMPT và các type liên quan. Sử dụng grep để tìm tất cả các tham chiếu còn sót lại trong mã nguồn. Chạy npm run compile để xác nhận không còn lỗi do code bị xóa.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Chạy lệnh 'npm run compile' và 'grep -r \"incremental\" .' để xác nhận sạch dead code.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T04:35:37.022Z"
           }
         ],
         "complexity": 3,
         "recommendedSubtasks": 2,
-        "expansionPrompt": "Xác định tất cả các file và dòng code cần xoá liên quan đến incremental update, bao gồm cả prompts, types và background listeners. Tạo quy trình kiểm tra sau khi xoá bằng compiler."
+        "expansionPrompt": "Xác định tất cả các file và dòng code cần xoá liên quan đến incremental update, bao gồm cả prompts, types và background listeners. Tạo quy trình kiểm tra sau khi xoá bằng compiler.",
+        "updatedAt": "2026-05-16T04:35:37.022Z"
       },
       {
         "id": "167",
@@ -943,9 +946,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T04:26:57.823Z",
+      "lastModified": "2026-05-16T04:35:37.026Z",
       "taskCount": 20,
-      "completedCount": 11,
+      "completedCount": 12,
       "tags": [
         "master"
       ]

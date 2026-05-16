@@ -1,7 +1,6 @@
 import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback, KnowledgeEntry, ThreadAnalysisJSON, KnowledgePromptParts, SummaryPromptParts } from '../types';
 import { createProvider } from './factory';
 import {
-  INCREMENTAL_UPDATE_PROMPT,
   RESEARCH_PROMPT,
   buildSummaryPrompt,
   buildKnowledgePrompt,
@@ -227,59 +226,6 @@ export async function summarizeTopic(
 
   // Direct summarization for small topics
   const response = await provider.summarize(posts, systemPrompt, signal);
-  const json = parseSummaryJSON(response.content);
-  return json ? JSON.stringify(json) : response.content;
-}
-
-export async function updateSummary(
-  previousSummary: string,
-  newPosts: ScrapedPost[],
-  config: LLMConfig,
-  onProgress?: LLMProgressCallback,
-  customPrompts?: CustomPrompts,
-  signal?: AbortSignal,
-): Promise<string> {
-  const provider = createProvider(config);
-  const systemPrompt = INCREMENTAL_UPDATE_PROMPT;
-  // Prepend the previous summary as a context post
-  const postsWithContext: ScrapedPost[] = [
-    {
-      author: 'SYSTEM',
-      content: `[BẢN TÓM TẮT CŨ]\n${previousSummary}`,
-      timestamp: '',
-      postNumber: 0,
-    },
-    ...newPosts,
-  ];
-
-  // Check if needs chunking
-  const responseBuffer = Math.max(2000, config.maxTokens ?? 0);
-  const thinkingOverhead = getThinkingOverhead(config.model, config.thinkingEnabled, config.thinkingBudget);
-  const contextCheck = willExceedContext(postsWithContext, config.model, estimateTokens(systemPrompt), responseBuffer, config.contextWindow, thinkingOverhead);
-  if (contextCheck.exceeds && contextCheck.chunksNeeded > 1) {
-    onProgress?.(`Cập nhật tóm tắt (${contextCheck.chunksNeeded} phần)...`);
-    const mapResolve = resolveSummaryParts(customPrompts, 'map');
-    const mapPrompt = mapResolve.isLegacy
-      ? mapResolve.legacyString!
-      : buildSummaryPrompt('map', mapResolve.parts, 300);
-    const reduceResolve = resolveSummaryParts(customPrompts, 'reduce');
-    const reducePrompt = reduceResolve.isLegacy
-      ? reduceResolve.legacyString!
-      : buildSummaryPrompt('reduce', reduceResolve.parts, 500);
-    const rawResult = await summarizeWithMapReduce(
-      postsWithContext,
-      config,
-      onProgress,
-      contextCheck.chunksNeeded,
-      mapPrompt,
-      reducePrompt,
-      signal,
-    );
-    const json = parseSummaryJSON(rawResult);
-    return json ? JSON.stringify(json) : rawResult;
-  }
-
-  const response = await provider.summarize(postsWithContext, systemPrompt, signal);
   const json = parseSummaryJSON(response.content);
   return json ? JSON.stringify(json) : response.content;
 }

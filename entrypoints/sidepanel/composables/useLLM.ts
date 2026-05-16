@@ -174,10 +174,6 @@ function createTask<TPayload>(
 
 function summarize(posts: ScrapedPost[]) { return createTask('summarize', posts); }
 
-function summarizeIncremental(previousSummary: string, newPosts: ScrapedPost[]) {
-  return createTask('summarize_incremental', { previousSummary, newPosts });
-}
-
 function researchTopic(posts: ScrapedPost[], question: string) {
   return createTask('research', { posts, question });
 }
@@ -225,7 +221,6 @@ export function useLLM() {
   return {
     startTask,
     summarize,
-    summarizeIncremental,
     summarizeSegmentsTask,
     researchTopic,
     extractKnowledge,

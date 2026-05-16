@@ -3,7 +3,7 @@ import { postFactory } from '@/tests/fixtures/post-factory';
 import { mockSummaryResponses, mockJsonResponse } from '@/tests/fixtures/mock-llm-responses';
 import { MockLLMProvider } from '@/tests/mocks/mock-provider';
 import { createMockProvider, restoreCreateProvider, overrideCreateProvider } from '@/tests/mocks/override-factory';
-import { summarizeTopic, updateSummary, parseSummaryJSON } from '@/lib/llm/summarizer';
+import { summarizeTopic, parseSummaryJSON } from '@/lib/llm/summarizer';
 import { willExceedContext } from '@/lib/token-estimator';
 import type { LLMConfig } from '@/lib/types';
 
@@ -42,20 +42,6 @@ describe('Phase 5: Edge Cases & Regression', () => {
       setTimeout(() => controller.abort(), 50);
 
       await expect(summarizeTopic(posts, testConfig, undefined, undefined, controller.signal))
-        .rejects.toThrow('The operation was aborted');
-    });
-
-    it('abort signal trong updateSummary throws', async () => {
-      const mock = new MockLLMProvider({ delayMs: 200 });
-      overrideCreateProvider(mock);
-
-      const previousSummary = mockJsonResponse(mockSummaryResponses.singleSegment);
-      const newPosts = postFactory.longThread(100);
-      const controller = new AbortController();
-
-      setTimeout(() => controller.abort(), 50);
-
-      await expect(updateSummary(previousSummary, newPosts, testConfig, undefined, undefined, controller.signal))
         .rejects.toThrow('The operation was aborted');
     });
 
@@ -202,15 +188,6 @@ describe('Phase 5: Edge Cases & Regression', () => {
       }
     });
 
-    it('updateSummary với newPosts rỗng vẫn hoạt động', async () => {
-      const mock = createMockProvider();
-      const previousSummary = mockJsonResponse(mockSummaryResponses.singleSegment);
-
-      const result = await updateSummary(previousSummary, [], testConfig);
-
-      expect(typeof result).toBe('string');
-      expect(mock.getCallCount()).toBeGreaterThanOrEqual(1);
-    });
   });
 
   describe('5.5: Recursive reduce overflow', () => {

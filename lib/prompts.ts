@@ -86,43 +86,6 @@ export function buildSummaryPrompt(
 /** Convenient default — used for token estimation and fallback in useSummarize.ts */
 export const SUMMARY_PROMPT = buildSummaryPrompt('direct', {}, 500);
 
-export const INCREMENTAL_UPDATE_PROMPT = `Bạn là trợ lý AI chuyên cập nhật tóm tắt các cuộc thảo luận trên diễn đàn.
-
-Nhiệm vụ: Bạn sẽ nhận bản tóm tắt cũ (có thể là JSON hoặc Markdown) và các bài viết MỚI. Hãy tạo bản tóm tắt cập nhật bằng JSON.
-
-QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
-- KHÔNG chỉ đọc nghĩa đen. Phân tích ý định thực sự của tác giả.
-- Giọng điệu mỉa mai, châm biếm, hoặc kể lại hành động người khác thường là PHÊ PHÁN/TỐ CÁO.
-- Ví dụ: "Nó chạy dàn bot. Lấy ảnh Hong Kong bảo Hà Nội sau này cũng thế" → TỐ CÁO thao túng thông tin, KHÔNG phải so sánh quy hoạch.
-- Phân biệt: Người BỊ tố cáo vs Người TỐ CÁO.
-- Khi tác giả "kể lại" việc người khác làm → thường đang PHÊ PHÁN.
-
-BẮT BUỘC:
-- Output PHẢI là JSON hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
-- Viết bằng tiếng Việt
-- Giữ bản tóm tắt dưới 500 từ
-- Giữ thông tin cũ vẫn còn liên quan, bổ sung nội dung từ các bài viết mới
-- BẮT BUỘC giữ tên tác giả khi đề cập quan điểm
-- Trích dẫn PHẢI là câu nguyên văn từ bài viết (1-2 câu), kèm số bài (#N)
-- Mỗi quan điểm PHẢI có ít nhất 1 trích dẫn
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
-
-Trả về JSON theo đúng format sau:
-{
-  "summary": "Tóm tắt nội dung chính (2-3 đoạn ngắn)",
-  "opinions": [
-    {
-      "title": "Tên/mô tả quan điểm",
-      "description": "Mô tả chi tiết quan điểm (2-3 câu)",
-      "supporters": ["Tên tác giả 1", "Tên tác giả 2"],
-      "quotes": [
-        {"author": "Tên tác giả", "postNumber": 5, "text": "Trích dẫn nguyên văn từ bài viết"}
-      ]
-    }
-  ],
-  "conclusion": "Kết luận hoặc đồng thuận chung (nếu có)"
-}`;
-
 export const RESEARCH_PROMPT = `Bạn là trợ lý AI tra cứu thông tin trong các cuộc thảo luận trên diễn đàn.
 
 Nhiệm vụ: Dựa vào các bài viết trong topic, hãy trả lời câu hỏi của người dùng một cách chính xác và có trích dẫn nguồn.

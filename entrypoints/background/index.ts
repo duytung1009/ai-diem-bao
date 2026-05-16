@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
-import { summarizeTopic, updateSummary, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
+import { summarizeTopic, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
@@ -261,8 +261,7 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
     case 'summarize_segments':
       // Caller (useSummarize) đã build detailed pipeline → không cần generic
       return null;
-    case 'summarize_incremental':
-      return { workflow: 'summarize', steps: [pendingStep('summarize', 'Cập nhật Segment tóm tắt')] };
+
     case 'research':
       return { workflow: 'research', steps: [pendingStep('research', 'Tra cứu và phân tích')] };
     case 'extract_knowledge':
@@ -315,12 +314,7 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         result = { summary: await summarizeTopic(posts, config, onProgress, prompts, signal) };
         break;
       }
-      case 'summarize_incremental': {
-        const { previousSummary, newPosts } = payload as { previousSummary: string; newPosts: ScrapedPost[] };
-        inputTokens = estimateTokens(previousSummary + newPosts.map(p => p.content).join(''));
-        result = { summary: await updateSummary(previousSummary, newPosts, config, onProgress, prompts, signal) };
-        break;
-      }
+
       case 'research': {
         const { posts, question } = payload as { posts: ScrapedPost[]; question: string };
         inputTokens = estimateTokens(posts.map(p => p.content).join('') + question);

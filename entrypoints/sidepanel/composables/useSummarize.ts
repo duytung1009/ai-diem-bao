@@ -11,6 +11,7 @@ import { estimateTokens, willExceedContext, getThinkingOverhead } from '@/lib/to
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule } from '@/lib/segment-planner';
 import type { DynamicResumeState } from '@/lib/segment-planner';
+import { createRunGuard } from '@/lib/run-guard';
 import { estimateSummarizeSegmentCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from './useTopicStore';
@@ -43,8 +44,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   // Non-reactive
   let scrapeAbortCtrl: AbortController | null = null;
-  let activeSummarizeId = 0;
-  let activeAnalyzeId = 0;
+  const summarizeGuard = createRunGuard();
+  const analyzeGuard = createRunGuard();
 
   // --- Computed ---
   const topicInfo = computed<DetectResult | null>(() => {
@@ -226,7 +227,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value;
     if (!topic) return;
 
-    activeSummarizeId++;
+    summarizeGuard.begin();
     summary.value = '';
     summaryJson.value = null;
     threadAnalysis.value = null;
@@ -345,7 +346,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   }
 
   async function handleCancel() {
-    activeSummarizeId++; // Invalidate any running flow (single segment or auto-summarize)
+    summarizeGuard.begin(); // Invalidate any running flow (single segment or auto-summarize)
     scrapeAbortCtrl?.abort();
     if (llmTaskId.value) cancelTask(llmTaskId.value);
     isScraping.value = false;
@@ -422,7 +423,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     pipeline.value.steps.forEach(s => {
       if (s.id === scrapeStepId) markStepRunning(pipeline.value!, s.id);
     });
-    const thisId = ++activeSummarizeId;
+    const thisId = summarizeGuard.begin();
     store.setSummarizing(topic.url);
 
     try {
@@ -525,7 +526,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const updatedDense = updated as TopicSegment[];
 
       // Stale guard
-      if (thisId !== activeSummarizeId) {
+      if (summarizeGuard.isStale(thisId)) {
         await saveTopic(topic, {
           forumPostCount: getLiveForumPostCount(),
           totalPosts: updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0),
@@ -578,12 +579,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     } catch (err) {
       isScraping.value = false;
       scrapeProgress.value = null;
-      if (thisId !== activeSummarizeId) return;
+      if (summarizeGuard.isStale(thisId)) return;
       if (err instanceof DOMException && err.name === 'AbortError') return;
       error.value = err instanceof Error ? err.message : String(err);
     } finally {
       store.setSummarizing(null);
-      if (thisId === activeSummarizeId) {
+      if (!summarizeGuard.isStale(thisId)) {
         simpleLoadingText.value = '';
         llmTaskId.value = null;
       }
@@ -620,7 +621,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       return;
     }
 
-    const thisId = ++activeSummarizeId;
+    const thisId = summarizeGuard.begin();
     store.setSummarizing(topic.url);
     simpleLoadingText.value = '';
 
@@ -640,7 +641,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const overallSummaryJson = parseSummaryJSON(overallSummaryText);
 
       // Stale guard
-      if (thisId !== activeSummarizeId) {
+      if (summarizeGuard.isStale(thisId)) {
         const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
           segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
         await saveTopic(topic, {
@@ -673,17 +674,17 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized, segments: segmentSummaries.value });
       cacheFreshness.value = 'fresh';
     } catch (err) {
-      if (thisId !== activeSummarizeId) return;
+      if (summarizeGuard.isStale(thisId)) return;
       error.value = err instanceof Error ? err.message : String(err);
     } finally {
       store.setSummarizing(null);
-      if (thisId === activeSummarizeId) {
+      if (!summarizeGuard.isStale(thisId)) {
         simpleLoadingText.value = '';
         llmTaskId.value = null;
         // Also clear scrapeProgress/isScraping in case we were called from
         // handleAutoSummarizeAll, where autoSummarizeDynamic keeps scrapeProgress
         // set across phases. handleAutoSummarizeAll's own finally can't clear it
-        // because generateOverallSummary bumps activeSummarizeId (stale guard).
+        // because generateOverallSummary bumps the guard (stale guard).
         isScraping.value = false;
         scrapeProgress.value = null;
       }
@@ -746,7 +747,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           ],
         };
       }
-      const thisId = ++activeSummarizeId;
+      const thisId = summarizeGuard.begin();
       store.setSummarizing(topic.url);
       try {
         const budget = await computeDynamicBudget();
@@ -780,7 +781,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         } else if (hasNewPosts) {
           await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId);
         }
-        if (thisId === activeSummarizeId && !error.value) {
+        if (!summarizeGuard.isStale(thisId) && !error.value) {
           const completed = segmentSummaries.value.filter(s => s?.summary).length;
           if (completed >= 1) {
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
@@ -791,12 +792,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       } catch (err) {
         isScraping.value = false;
         scrapeProgress.value = null;
-        if (thisId !== activeSummarizeId) return;
+        if (summarizeGuard.isStale(thisId)) return;
         if (err instanceof DOMException && err.name === 'AbortError') return;
         error.value = err instanceof Error ? err.message : String(err);
       } finally {
         store.setSummarizing(null);
-        if (thisId === activeSummarizeId) {
+        if (!summarizeGuard.isStale(thisId)) {
           simpleLoadingText.value = '';
           llmTaskId.value = null;
           isScraping.value = false;
@@ -850,7 +851,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     incomplete: boolean,
     thisId: number,
   ): Promise<void> {
-    if (thisId !== activeSummarizeId) return;
+    if (summarizeGuard.isStale(thisId)) return;
     const topic = store.selectedTopic.value!;
     const labelStr = `${startPage}–${endPage}`;
 
@@ -912,7 +913,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const segTotalPosts = updated.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
     const forumCount = getLiveForumPostCount();
 
-    if (thisId !== activeSummarizeId) {
+    if (summarizeGuard.isStale(thisId)) {
       // Stale: still save but don't update UI
       await saveTopic(topic, {
         forumPostCount: forumCount,
@@ -1048,7 +1049,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const delayMs = currentConfig.value?.scrapeDelayMs ?? 2000;
 
     for (let page = startPage; page <= totalPages; page++) {
-      if (thisId !== activeSummarizeId) return;
+      if (summarizeGuard.isStale(thisId)) return;
 
       isScraping.value = true;
       // Overall topic progress — scrapeProgress stays set across both scrape
@@ -1104,7 +1105,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       if (pageErrors.length) scrapingWarnings.value.push(...pageErrors);
-      if (thisId !== activeSummarizeId) return;
+      if (summarizeGuard.isStale(thisId)) return;
 
       // News enrichment for page 1 only
       let enrichedPosts = pagePosts;
@@ -1141,7 +1142,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // over the scrape default message in ProgressIndicator.
       if (pendingTokens + pageTokens > budgetTokens && pendingPosts.length > 0) {
         await summarizeAndSaveSegment(segmentIndex, pendingStartPage, page - 1, pendingPosts, false, thisId);
-        if (error.value || thisId !== activeSummarizeId) return;
+        if (error.value || summarizeGuard.isStale(thisId)) return;
 
         segmentIndex++;
         pendingPosts = [];
@@ -1152,14 +1153,14 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       pendingPosts.push(...enrichedPosts);
       pendingTokens += pageTokens;
 
-      if (page < totalPages && thisId === activeSummarizeId) {
+      if (page < totalPages && !summarizeGuard.isStale(thisId)) {
         const jitter = Math.random() * Math.min(delayMs * 0.3, 500);
         await new Promise((r) => setTimeout(r, delayMs + jitter));
       }
     }
 
     // Summarize remaining posts (last segment — all pages covered, always complete)
-    if (pendingPosts.length > 0 && thisId === activeSummarizeId) {
+    if (pendingPosts.length > 0 && !summarizeGuard.isStale(thisId)) {
       await summarizeAndSaveSegment(segmentIndex, pendingStartPage, totalPages, pendingPosts, false, thisId);
     }
   }
@@ -1184,7 +1185,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     error.value = '';
     scrapingWarnings.value = [];
     scrapingInfo.value = [];
-    const thisId = ++activeSummarizeId;
+    const thisId = summarizeGuard.begin();
     store.setSummarizing(topic.url);
 
     try {
@@ -1221,14 +1222,14 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           segmentSummaries.value = [];
         }
         for (let i = 0; i < segments.value.length; i++) {
-          if (thisId !== activeSummarizeId) return;
+          if (summarizeGuard.isStale(thisId)) return;
           await handleSummarizeSegment(i);
           if (error.value) return;
         }
       }
 
       // Generate overall summary
-      if (thisId === activeSummarizeId && !error.value) {
+      if (!summarizeGuard.isStale(thisId) && !error.value) {
         const completed = segmentSummaries.value.filter(s => s?.summary).length;
         if (completed >= 1) {
           simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
@@ -1239,12 +1240,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     } catch (err) {
       isScraping.value = false;
       scrapeProgress.value = null;
-      if (thisId !== activeSummarizeId) return;
+      if (summarizeGuard.isStale(thisId)) return;
       if (err instanceof DOMException && err.name === 'AbortError') return;
       error.value = err instanceof Error ? err.message : String(err);
     } finally {
       store.setSummarizing(null);
-      if (thisId === activeSummarizeId) {
+      if (!summarizeGuard.isStale(thisId)) {
         simpleLoadingText.value = '';
         llmTaskId.value = null;
         isScraping.value = false;
@@ -1257,7 +1258,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value;
     if (!topic || !summaryJson.value || isAnalyzing.value) return;
 
-    const thisAnalyzeId = ++activeAnalyzeId;
+    const thisAnalyzeId = analyzeGuard.begin();
     isAnalyzing.value = true;
     error.value = '';
 
@@ -1272,7 +1273,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       llmTaskId.value = null;
 
       // Stale guard: topic changed while analyzing
-      if (thisAnalyzeId !== activeAnalyzeId) return;
+      if (analyzeGuard.isStale(thisAnalyzeId)) return;
 
       const analysis = (taskResult.data as { analysis: unknown }).analysis;
       threadAnalysis.value = analysis as typeof threadAnalysis.value;
@@ -1285,10 +1286,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         threadAnalysis: analysis,
       }).catch(() => { });
     } catch (err) {
-      if (thisAnalyzeId !== activeAnalyzeId) return;
+      if (analyzeGuard.isStale(thisAnalyzeId)) return;
       error.value = err instanceof Error ? err.message : String(err);
     } finally {
-      if (thisAnalyzeId === activeAnalyzeId) {
+      if (!analyzeGuard.isStale(thisAnalyzeId)) {
         isAnalyzing.value = false;
         llmTaskId.value = null;
       }

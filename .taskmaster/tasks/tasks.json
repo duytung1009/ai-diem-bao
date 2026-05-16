@@ -531,7 +531,7 @@
         "dependencies": [
           "166"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -539,9 +539,10 @@
             "description": "Xây dựng hàm factory createRunGuard để quản lý token thực thi và ngăn chặn race conditions.",
             "dependencies": [],
             "details": "Tạo tệp lib/run-guard.ts triển khai logic tăng counter đơn điệu trong hàm begin() và so sánh token trong isStale(). Viết các test case đảm bảo token luôn tăng và trạng thái stale được xác định chính xác khi có tiến trình mới.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Sử dụng Jest để kiểm tra: 1. Token trả về từ begin() là duy nhất và tăng dần. 2. isStale(oldToken) trả về true sau khi begin() được gọi lại. 3. isStale(latestToken) trả về false.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T07:08:39.914Z"
           },
           {
             "id": 2,
@@ -551,14 +552,16 @@
               1
             ],
             "details": "Khởi tạo instance Run-Guard trong useSummarize. Gọi guard.begin() khi bắt đầu tiến trình mới hoặc trong handleCancel. Truyền token vào các callback xử lý segment để kiểm tra tính hợp lệ của dữ liệu trước khi cập nhật state.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra thực tế bằng cách trigger nhiều lần summarize liên tiếp và nhấn cancel, xác nhận rằng chỉ kết quả của lần gọi cuối cùng được áp dụng vào UI.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T07:08:49.043Z"
           }
         ],
         "complexity": 4,
         "recommendedSubtasks": 2,
-        "expansionPrompt": "Thiết kế interface cho lib/run-guard.ts và viết các unit test để kiểm tra tính đơn điệu của token và khả năng invalidate các tiến trình cũ khi có tiến trình mới bắt đầu."
+        "expansionPrompt": "Thiết kế interface cho lib/run-guard.ts và viết các unit test để kiểm tra tính đơn điệu của token và khả năng invalidate các tiến trình cũ khi có tiến trình mới bắt đầu.",
+        "updatedAt": "2026-05-16T07:08:49.043Z"
       },
       {
         "id": "168",
@@ -950,9 +953,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T05:14:02.058Z",
+      "lastModified": "2026-05-16T07:08:49.044Z",
       "taskCount": 20,
-      "completedCount": 13,
+      "completedCount": 14,
       "tags": [
         "master"
       ]

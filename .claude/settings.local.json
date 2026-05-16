@@ -70,7 +70,11 @@
       "Bash(task-master parse-prd *)",
       "Bash(task-master list *)",
       "Bash(task-master show *)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(task-master --version)",
+      "Bash(task-master analyze-complexity *)",
+      "Bash(task-master complexity-report *)",
+      "Bash(task-master expand *)"
     ]
   },
   "model": "opusplan"

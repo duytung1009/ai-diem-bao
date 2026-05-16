@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-14T03:27:46.830Z",
+		"generatedAt": "2026-05-16T03:18:34.219Z",
 		"tasksAnalyzed": 10,
-		"totalTasks": 10,
+		"totalTasks": 20,
 		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 155,
-			"taskTitle": "Định nghĩa Data Models và Types cho Pipeline",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Chia nhỏ task này thành các bước: tạo file pipeline.ts, định nghĩa interface PipelineStep, định nghĩa interface PipelineDefinition, export các types, chạy type-check.",
-			"reasoning": "Công việc đơn giản chỉ tạo file định nghĩa types, không cần phức tạp."
-		},
-		{
-			"taskId": 156,
-			"taskTitle": "Cập nhật Message Protocol LLM_PROGRESS",
-			"complexityScore": 3,
+			"taskId": 165,
+			"taskTitle": "Viết Characterization Tests cho 5 flow tóm tắt hiện tại",
+			"complexityScore": 6,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Các subtask: Thêm pipeline property vào LLMProgressMessage, cập nhật các hàm tạo message nếu có, viết unit test cho việc đóng gói/gỡ message với và không có pipeline.",
-			"reasoning": "Cần cập nhật cấu trúc message và kiểm tra tương thích ngược, phụ thuộc vào task 155."
+			"expansionPrompt": "Hãy liệt kê các test case chi tiết cho 5 flow tóm tắt, bao gồm các kịch bản mock sendMessage, mock LLM provider và cách xác thực cấu trúc SAVE_CACHED_TOPIC cho các kích thước topic khác nhau (1, 25, 234 trang).",
+			"reasoning": "Việc thiết lập characterization tests đòi hỏi hiểu sâu về logic hiện tại mà không làm thay đổi nó. Thách thức nằm ở việc thiết lập môi trường mock chính xác để ghi lại các side-effects như LLM calls và message passing."
 		},
 		{
-			"taskId": 157,
-			"taskTitle": "Phát triển Component StepTimeline.vue",
-			"complexityScore": 5,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Các subtask: Tạo component StepTimeline.vue với props, style cho 4 trạng thái (done, running, pending, error), xử lý hiển thị ETA badge và icon, thêm scroll cho timeline nếu dài, kiểm tra với Storybook.",
-			"reasoning": "Cần thiết kế giao diện và xử lý nhiều trạng thái khác nhau, đòi hỏi kiểm tra kỹ lưỡng."
-		},
-		{
-			"taskId": 158,
-			"taskTitle": "Cập nhật useLLM.ts Composable",
-			"complexityScore": 4,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Các subtask: Thêm pipeline vào LLMTaskState, cập nhật handleProgress để xử lý pipeline, sửa startTask để nhận pipeline, kiểm tra state trong DevTools.",
-			"reasoning": "Liên quan đến state management và logic xử lý progress, phụ thuộc vào task 156."
-		},
-		{
-			"taskId": 159,
-			"taskTitle": "Cập nhật Background Logic xử lý Task",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Các subtask: Lấy pipeline từ payload trong processLLMTask, gửi pipeline trong message progress đầu tiên, cập nhật onProgress callback để nhận step index/id và chuyển tiếp, xử lý lỗi cập nhật status error, test với console.log.",
-			"reasoning": "Cần chỉnh sửa logic background phức tạp, đảm bảo luồng gửi thông tin pipeline và cập nhật progress chính xác."
-		},
-		{
-			"taskId": 160,
-			"taskTitle": "Triển khai Pipeline Builder cho Summarize Workflow",
-			"complexityScore": 4,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Các subtask: Viết hàm buildSummarizePipeline cho single segment, mở rộng cho multi segment, truyền pipeline vào task LLM, kiểm tra số bước tạo ra.",
-			"reasoning": "Xây dựng pipeline động tùy theo số đoạn, cần xử lý logic lặp và kết hợp steps."
-		},
-		{
-			"taskId": 161,
-			"taskTitle": "Triển khai Pipeline Builder cho Knowledge/Research/Opinions",
-			"complexityScore": 3,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Các subtask: Cập nhật useKnowledge.ts (extract_i, reduce), useResearch.ts (research, save), useOpinions.ts (analyze, save), kiểm tra cấu trúc pipeline đúng theo PRD.",
-			"reasoning": "Mỗi workflow có pipeline cố định hoặc đơn giản, dễ thực hiện nhưng cần đồng bộ với nhiều file."
-		},
-		{
-			"taskId": 162,
-			"taskTitle": "Tích hợp StepTimeline vào SummaryView.vue",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Các subtask: Import StepTimeline và thay thế ProgressIndicator, thêm logic ẩn hiện dựa trên isLoading, kiểm tra giao diện.",
-			"reasoning": "Thay thế component đã có, ít phức tạp."
-		},
-		{
-			"taskId": 163,
-			"taskTitle": "Tích hợp StepTimeline vào Knowledge/Research/Opinions Views",
-			"complexityScore": 2,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Các subtask: Thay thế trong KnowledgeView, ResearchView, OpinionsView; kiểm tra đồng nhất UI.",
-			"reasoning": "Lặp lại công việc tương tự task 162 trên nhiều view."
-		},
-		{
-			"taskId": 164,
-			"taskTitle": "Kiểm tra Tương thích ngược và Hoàn tất",
+			"taskId": 166,
+			"taskTitle": "Loại bỏ Dead Code liên quan đến Incremental Update (R1)",
 			"complexityScore": 3,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Các subtask: Đánh dấu @deprecated ProgressIndicator, kiểm tra fallback khi pipeline null, chạy 'npm run compile' và kiểm tra performance.",
-			"reasoning": "Đảm bảo tương thích ngược và kiểm tra tổng thể, ít thay đổi code."
+			"expansionPrompt": "Xác định tất cả các file và dòng code cần xoá liên quan đến incremental update, bao gồm cả prompts, types và background listeners. Tạo quy trình kiểm tra sau khi xoá bằng compiler.",
+			"reasoning": "Đây chủ yếu là công việc dọn dẹp dựa trên kết quả tìm kiếm (grep). Rủi ro thấp nhưng cần sự tỉ mỉ để không để lại mẩu code thừa (orphan code) trong các file types hoặc prompts."
+		},
+		{
+			"taskId": 167,
+			"taskTitle": "Cài đặt Module Run-Guard Helper (R3)",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Thiết kế interface cho lib/run-guard.ts và viết các unit test để kiểm tra tính đơn điệu của token và khả năng invalidate các tiến trình cũ khi có tiến trình mới bắt đầu.",
+			"reasoning": "Logic của module này đơn giản (quản lý counter và flag), nhưng nó là nền tảng quan trọng để ngăn chặn race conditions (stale updates). Cần thiết kế API gọn nhẹ và dễ sử dụng."
+		},
+		{
+			"taskId": 168,
+			"taskTitle": "Triển khai Module Segment-Planner cho Budget và Resume State (R5)",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Chi tiết hóa các thuật toán tính toán budget token và logic quyết định khi nào nên tạo segment mới hoặc gộp vào segment cũ dựa trên tỷ lệ headroom 70%.",
+			"reasoning": "Yêu cầu tính toán chính xác để tối ưu hóa context window của LLM. Việc chuyển đổi logic từ useSummarize sang module pure cần đảm bảo không làm sai lệch các tham số đầu vào như maxTokens."
+		},
+		{
+			"taskId": 169,
+			"taskTitle": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token.",
+			"reasoning": "Module này chịu trách nhiệm chuẩn hóa dữ liệu trước khi lưu vào store. Sự phức tạp nằm ở việc duy trì tính tương thích với cấu trúc dữ liệu cũ (byte-equivalence) trong khi thêm các logic mới như stale flag."
+		},
+		{
+			"taskId": 170,
+			"taskTitle": "Refactor logic scraping thành Composable useTopicScraper (R4)",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady).",
+			"reasoning": "Scraping thường chứa nhiều logic biên (edge cases) như trang bị xoá, thread bị khoá, và cơ chế dedup trang cuối. Việc tách nó ra thành composable mà vẫn giữ nguyên được độ tin cậy là một thử thách."
+		},
+		{
+			"taskId": 171,
+			"taskTitle": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState.",
+			"reasoning": "Quản lý trạng thái UI (StepTimeline) một cách tập trung thay vì các hack phân tán yêu cầu một thiết kế state management chặt chẽ, đặc biệt là khi số lượng bước trong pipeline có thể thay đổi động."
+		},
+		{
+			"taskId": 172,
+			"taskTitle": "Xây dựng các hàm Primitive trong useSummarize",
+			"complexityScore": 7,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới.",
+			"reasoning": "Đây là các đơn vị thực thi cốt lõi của tính năng tóm tắt. Chúng phải xử lý các tác vụ bất đồng bộ (LLM calls) và đảm bảo tính toàn vẹn dữ liệu ngay cả khi người dùng nhấn cancel hoặc trigger flow mới."
+		},
+		{
+			"taskId": 173,
+			"taskTitle": "Triển khai Driver trung tâm runSummarizeJob (R7)",
+			"complexityScore": 8,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng.",
+			"reasoning": "Đây là task có độ phức tạp cao nhất vì nó đóng vai trò nhạc trưởng điều phối tất cả các modules đã tạo trước đó. Nó phải thay thế toàn bộ logic rẽ nhánh phức tạp cũ mà không làm hỏng bất kỳ flow nào."
+		},
+		{
+			"taskId": 174,
+			"taskTitle": "Hoàn thiện UI Wrappers và cập nhật Test E2E thực tế",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Cập nhật các hàm entry point UI để gọi driver trung tâm và viết lại các bài test E2E để kiểm tra toàn bộ luồng từ giao diện người dùng đến background script.",
+			"reasoning": "Mặc dù logic chính đã nằm ở Driver, việc kết nối với UI và cập nhật bộ test E2E là bước cuối cùng để đảm bảo hệ thống hoạt động ổn định trong thực tế và không có lỗi hồi quy."
 		}
 	]
 }

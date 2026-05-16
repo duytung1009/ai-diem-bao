@@ -568,7 +568,7 @@
         "testStrategy": "Unit test kiểm tra tính nhất quán của budget giữa computeSegmentBudget và computeResumeState. Kiểm tra resume state cho trường hợp headroom > 70% (tạo segment mới) và <= 70% (gộp vào segment cuối).",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -576,9 +576,10 @@
             "description": "Tạo cấu trúc file module pure và các kiểu dữ liệu cần thiết cho việc tính toán budget và resume state.",
             "dependencies": [],
             "details": "Định nghĩa các interface đầu vào như SegmentPlannerConfig, CurrentSegmentState và cấu trúc trả về cho BudgetInfo và ResumeState. Đảm bảo module không phụ thuộc vào React context hay state bên ngoài.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra type-check bằng npm run type-check để đảm bảo các interface bao quát đủ các trường thông tin cần thiết từ useSummarize.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T05:13:34.685Z"
           },
           {
             "id": 2,
@@ -588,9 +589,10 @@
               1
             ],
             "details": "Sử dụng công thức responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, config.maxTokens) để tính toán vùng đệm. Thực hiện trừ các phần context đã dùng để trả về giá trị budget an toàn cho segment tiếp theo.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test với nhiều bộ config.maxTokens khác nhau để xác nhận responseBuffer được tính đúng và budget không bao giờ bị âm hoặc vượt quá giới hạn của model.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T05:13:47.996Z"
           },
           {
             "id": 3,
@@ -600,14 +602,16 @@
               2
             ],
             "details": "Cài đặt logic quyết định: nếu tỷ lệ sử dụng (current_tokens / total_budget) > 0.7 thì trả về trạng thái yêu cầu tạo segment mới; nếu <= 0.7 thì thực hiện gộp vào segment cuối cùng hiện có.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test kiểm tra 2 trường hợp biên: headroom 71% (phải tạo segment mới) và headroom 69% (phải gộp vào segment hiện tại). Đảm bảo tính nhất quán với kết quả từ computeSegmentBudget.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T05:14:02.055Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Chi tiết hóa các thuật toán tính toán budget token và logic quyết định khi nào nên tạo segment mới hoặc gộp vào segment cũ dựa trên tỷ lệ headroom 70%."
+        "expansionPrompt": "Chi tiết hóa các thuật toán tính toán budget token và logic quyết định khi nào nên tạo segment mới hoặc gộp vào segment cũ dựa trên tỷ lệ headroom 70%.",
+        "updatedAt": "2026-05-16T05:14:02.055Z"
       },
       {
         "id": "169",
@@ -946,9 +950,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T04:35:37.026Z",
+      "lastModified": "2026-05-16T05:14:02.058Z",
       "taskCount": 20,
-      "completedCount": 12,
+      "completedCount": 13,
       "tags": [
         "master"
       ]

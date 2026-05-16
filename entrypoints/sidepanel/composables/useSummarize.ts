@@ -7,10 +7,12 @@ import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON, PipelineDefinition, PipelineStep } from '@/lib/types';
 import { buildSummarizePipeline, markStepRunning, markFirstStepRunning, markNextStepRunning } from '@/lib/pipeline-builder';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
-import { estimateTokens, calculateSegmentBudget, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
+import { estimateTokens, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
+import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule } from '@/lib/segment-planner';
+import type { DynamicResumeState } from '@/lib/segment-planner';
 import { estimateSummarizeSegmentCalls } from '@/lib/llm/cost-estimator';
-import { LLM_WARN_THRESHOLD_CALLS, RESPONSE_BUFFER_TOKENS } from '@/lib/constants';
+import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 
@@ -975,25 +977,21 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   // --- Dynamic segment helpers ---
 
-  /** Resume state for continuing a partial dynamic auto-summarize run. */
-  interface DynamicResumeState {
-    fromPage: number;         // first page to scrape
-    segmentIndex: number;     // index of the segment being built
-    pendingPosts: ScrapedPost[];
-    pendingTokens: number;
-    pendingStartPage: number; // page where the pending segment starts
-  }
-
-  /** Fetch budget based on actual system prompt (custom or default). */
+  /** Fetch budget based on actual system prompt (custom or default), then delegate to segment-planner. */
   async function computeDynamicBudget(): Promise<number> {
     const model = currentConfig.value?.model ?? 'gpt-4o-mini';
     const contextWindowOverride = currentConfig.value?.contextWindow;
-    const maxTokens = currentConfig.value?.maxTokens ?? 0;
-    const responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, maxTokens);
+    const maxTokens = currentConfig.value?.maxTokens;
     const thinkingOverhead = getThinkingOverhead(model, currentConfig.value?.thinkingEnabled, currentConfig.value?.thinkingBudget);
     const customPromptsData = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => null);
     const summaryPrompt = typeof customPromptsData?.summary === 'string' ? customPromptsData.summary : SUMMARY_PROMPT;
-    return calculateSegmentBudget(model, estimateTokens(summaryPrompt), responseBuffer, contextWindowOverride, thinkingOverhead);
+    return computeSegmentBudget({
+      model,
+      systemPromptTokens: estimateTokens(summaryPrompt),
+      maxTokens,
+      contextWindowOverride,
+      thinkingOverhead,
+    });
   }
 
   /**
@@ -1001,48 +999,15 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
    * Returns null if no segments are summarized yet (fresh run needed).
    */
   function computeResumeState(): DynamicResumeState | null {
-    const completed = segmentSummaries.value.filter(s => s?.summary);
-    if (completed.length === 0) return null;
-
-    const lastSeg = completed[completed.length - 1];
-    const lastSegIdx = segmentSummaries.value.lastIndexOf(lastSeg);
-
-    const pendingPosts = [...lastSeg.posts];
-    const pendingTokens = pendingPosts.reduce(
-      (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-      0,
-    );
-
-    // mergeBase: always start from last segment's state so new pages can be merged
-    const mergeBase = {
-      fromPage: lastSeg.endPage + 1,
-      segmentIndex: lastSegIdx,
-      pendingPosts,
-      pendingTokens,
-      pendingStartPage: lastSeg.startPage,
-    };
-
-    if (lastSeg.complete !== false) {
-      // Segment was marked complete — check if it still has headroom for merging.
-      // If usage is high (>70%), start a fresh segment to avoid constant re-summarization.
-      const model = currentConfig.value?.model ?? 'gpt-4o-mini';
-      const budget = calculateSegmentBudget(
-        model, estimateTokens(SUMMARY_PROMPT), RESPONSE_BUFFER_TOKENS,
-        currentConfig.value?.contextWindow,
-      );
-      const usagePct = budget > 0 ? pendingTokens / budget : 0;
-      if (usagePct > 0.7) {
-        return {
-          fromPage: lastSeg.endPage + 1,
-          segmentIndex: lastSegIdx + 1,
-          pendingPosts: [],
-          pendingTokens: 0,
-          pendingStartPage: lastSeg.endPage + 1,
-        };
-      }
-      // Headroom available — merge into existing segment
-    }
-    return mergeBase;
+    return computeResumeStateFromModule({
+      segments: segmentSummaries.value,
+      model: currentConfig.value?.model ?? 'gpt-4o-mini',
+      summaryPromptTokens: estimateTokens(SUMMARY_PROMPT),
+      maxTokens: currentConfig.value?.maxTokens,
+      contextWindow: currentConfig.value?.contextWindow,
+      thinkingEnabled: currentConfig.value?.thinkingEnabled,
+      thinkingBudget: currentConfig.value?.thinkingBudget,
+    });
   }
 
   /**

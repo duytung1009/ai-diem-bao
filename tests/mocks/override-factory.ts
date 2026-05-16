@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import type { LLMProvider } from '@/lib/llm/types';
 import type { LLMConfig } from '@/lib/types';
 import * as factoryModule from '@/lib/llm/factory';
-import { MockLLMProvider } from './mock-provider';
+import { MockLLMProvider, type MockProviderOptions } from './mock-provider';
 
 const originalCreateProvider = factoryModule.createProvider;
 
@@ -18,8 +18,8 @@ export function restoreCreateProvider(): void {
   vi.restoreAllMocks();
 }
 
-export function createMockProvider(): MockLLMProvider {
-  const provider = new MockLLMProvider();
+export function createMockProvider(options?: MockProviderOptions): MockLLMProvider {
+  const provider = new MockLLMProvider(options);
   overrideCreateProvider(provider);
   return provider;
 }

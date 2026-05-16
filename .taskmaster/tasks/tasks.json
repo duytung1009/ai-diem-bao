@@ -2,7 +2,7 @@
   "master": {
     "tasks": [
       {
-        "id": 155,
+        "id": "155",
         "title": "Định nghĩa Data Models và Types cho Pipeline",
         "description": "Tạo các interface TypeScript cho PipelineStep và PipelineDefinition để quản lý trạng thái các bước xử lý.",
         "details": "Tạo file `src/types/pipeline.ts`. Định nghĩa interface PipelineStep với các trường: id (string), label (string), status ('pending' | 'running' | 'done' | 'error'), etaMs (number, optional), và error (string, optional). Định nghĩa PipelineDefinition với workflow ('summarize' | 'knowledge' | 'research' | 'opinions') và mảng các steps. Export các types này để sử dụng trong toàn bộ project.",
@@ -77,7 +77,7 @@
         "updatedAt": "2026-05-14T03:33:02.351Z"
       },
       {
-        "id": 156,
+        "id": "156",
         "title": "Cập nhật Message Protocol LLM_PROGRESS",
         "description": "Mở rộng cấu trúc message LLMProgressMessage để hỗ trợ gửi thông tin pipeline từ background về sidepanel.",
         "details": "Tìm định nghĩa LLMProgressMessage trong file protocol. Cập nhật thêm thuộc tính optional 'pipeline' chứa object workflow và mảng các steps (id, label, status). Đảm bảo tính tương thích ngược bằng cách để thuộc tính pipeline là optional. Cập nhật các hàm tiện ích tạo message nếu có.",
@@ -132,7 +132,7 @@
         "updatedAt": "2026-05-14T03:34:22.177Z"
       },
       {
-        "id": 157,
+        "id": "157",
         "title": "Phát triển Component StepTimeline.vue",
         "description": "Tạo component hiển thị timeline dọc cho các bước xử lý với các trạng thái khác nhau.",
         "details": "Sử dụng Tailwind CSS. Props: pipeline (PipelineDefinition), showCancel (boolean), onCancel (callback). Style: Trạng thái 'done' dùng text-green-600 + icon check; 'running' dùng text-blue-600 + spinner icon + ETA badge; 'pending' dùng text-gray-400 + empty circle; 'error' dùng text-red-600 + icon X. Hiển thị danh sách các bước theo chiều dọc, mỗi bước có icon và label tương ứng.",
@@ -196,7 +196,7 @@
         "updatedAt": "2026-05-14T03:35:22.655Z"
       },
       {
-        "id": 158,
+        "id": "158",
         "title": "Cập nhật useLLM.ts Composable",
         "description": "Quản lý trạng thái pipeline trong state toàn cục của LLM task.",
         "details": "Thêm 'pipeline: PipelineDefinition | null' vào interface LLMTaskState. Cập nhật hàm handleProgress để khi nhận message có pipeline, nó sẽ cập nhật state. Viết logic cập nhật trạng thái của từng step trong pipeline dựa trên step index hoặc id nhận được từ progress message. Hàm startTask cần cho phép nhận pipeline ban đầu từ caller.",
@@ -249,7 +249,7 @@
         "updatedAt": "2026-05-14T03:36:26.958Z"
       },
       {
-        "id": 159,
+        "id": "159",
         "title": "Cập nhật Background Logic xử lý Task",
         "description": "Chỉnh sửa logic processLLMTask trong background để gửi pipeline definition và cập nhật progress.",
         "details": "Chỉnh sửa entrypoints/background/index.ts. Trong processLLMTask, lấy pipeline từ payload và gửi kèm trong message progress đầu tiên. Cập nhật onProgress callback để nhận thông tin về bước hiện tại (index hoặc id) và chuyển tiếp về sidepanel. Đảm bảo luồng xử lý lỗi sẽ cập nhật status của step hiện tại thành 'error'.",
@@ -302,7 +302,7 @@
         "updatedAt": "2026-05-14T03:37:57.280Z"
       },
       {
-        "id": 160,
+        "id": "160",
         "title": "Triển khai Pipeline Builder cho Summarize Workflow",
         "description": "Tạo logic xây dựng pipeline động cho các kịch bản tóm tắt khác nhau trong useSummarize.ts.",
         "details": "Trong useSummarize.ts, viết hàm buildSummarizePipeline(segments). Đối với đơn đoạn: [scrape, summarize, save]. Đối với đa đoạn: Lặp qua N đoạn để tạo các step [scrape_seg_i, summarize_seg_i], sau đó thêm [overall, save]. Truyền pipeline này vào hàm gọi task LLM.",
@@ -355,7 +355,7 @@
         "updatedAt": "2026-05-14T03:46:16.360Z"
       },
       {
-        "id": 161,
+        "id": "161",
         "title": "Triển khai Pipeline Builder cho Knowledge/Research/Opinions",
         "description": "Xây dựng pipeline cố định hoặc động cho các workflow còn lại.",
         "details": "Cập nhật useKnowledge.ts (extract_i cho M chunks, reduce), useResearch.ts (research, save), và useOpinions.ts (analyze, save). Đảm bảo mỗi workflow đều khởi tạo pipeline definition đầy đủ trước khi bắt đầu task.",
@@ -373,7 +373,7 @@
         "updatedAt": "2026-05-14T03:40:50.130Z"
       },
       {
-        "id": 162,
+        "id": "162",
         "title": "Tích hợp StepTimeline vào SummaryView.vue",
         "description": "Thay thế ProgressIndicator cũ bằng component StepTimeline mới trong view tóm tắt.",
         "details": "Import StepTimeline.vue. Thay thế component <ProgressIndicator /> bằng <StepTimeline :pipeline='llmState.pipeline' :onCancel='cancelTask' />. Thêm logic ẩn hiện dựa trên trạng thái llmState.isLoading. Đảm bảo layout không bị vỡ khi danh sách step dài.",
@@ -391,7 +391,7 @@
         "updatedAt": "2026-05-14T03:46:25.892Z"
       },
       {
-        "id": 163,
+        "id": "163",
         "title": "Tích hợp StepTimeline vào Knowledge/Research/Opinions Views",
         "description": "Thay thế hiển thị loading trong các view còn lại bằng StepTimeline.",
         "details": "Lặp lại việc thay thế ProgressIndicator bằng StepTimeline trong KnowledgeView.vue, ResearchView.vue và OpinionsView.vue. Truyền pipeline tương ứng từ mỗi composable vào component.",
@@ -409,7 +409,7 @@
         "updatedAt": "2026-05-14T03:46:36.380Z"
       },
       {
-        "id": 164,
+        "id": "164",
         "title": "Kiểm tra Tương thích ngược và Hoàn tất",
         "description": "Đảm bảo hệ thống vẫn hoạt động nếu pipeline không được cung cấp và dọn dẹp code.",
         "details": "Đánh dấu @deprecated cho ProgressIndicator.vue. Kiểm tra logic fallback trong useLLM: nếu pipeline null, hiển thị message text cũ. Chạy 'npm run compile' để đảm bảo không có lỗi type hoặc build. Kiểm tra performance khi có nhiều bước trong timeline.",
@@ -427,14 +427,14 @@
         "updatedAt": "2026-05-14T03:45:43.801Z"
       },
       {
-        "id": 165,
+        "id": "165",
         "title": "Viết Characterization Tests cho 5 flow tóm tắt hiện tại",
         "description": "Thiết lập các bài test đặc tính (characterization tests) để ghi lại hành vi hiện tại của 5 flow tóm tắt trước khi thực hiện refactor.",
         "details": "Sử dụng mock provider và mock sendMessage để kiểm tra orchestration của handleSegmentUpdate và handleAutoSummarizeAll. Đảm bảo ghi lại chính xác số lượng LLM calls và cấu trúc payload SAVE_CACHED_TOPIC cho các trường hợp: 1 trang, ~25 trang, và topic lớn (~234 trang).",
         "testStrategy": "Chạy bộ test mới và đảm bảo tất cả đều xanh (pass) với code hiện tại. Bộ test này sẽ được dùng làm lưới an toàn xuyên suốt quá trình refactor.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -442,8 +442,10 @@
             "description": "Cấu hình môi trường Vitest với các bản mock cho LLM Provider và Chrome runtime sendMessage.",
             "dependencies": [],
             "details": "Tạo tệp cấu hình test chuyên dụng cho characterization. Mock hàm sendMessage để bắt được payload SAVE_CACHED_TOPIC. Cài đặt vi.spyOn cho LLM provider để theo dõi số lượng lời gọi hàm và tham số truyền vào.",
-            "status": "pending",
-            "testStrategy": "Chạy thử một script test mẫu để xác nhận các mocks có thể bắt được message và không gây lỗi runtime khi thực thi logic cũ."
+            "status": "done",
+            "testStrategy": "Chạy thử một script test mẫu để xác nhận các mocks có thể bắt được message và không gây lỗi runtime khi thực thi logic cũ.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T04:26:53.684Z"
           },
           {
             "id": 2,
@@ -453,8 +455,10 @@
               1
             ],
             "details": "Sử dụng dữ liệu mẫu cho 1 trang và 25 trang. Kiểm tra cấu trúc payload gửi đến SAVE_CACHED_TOPIC, bao gồm các trường dữ liệu bắt buộc. Đếm chính xác số lần gọi LLM cho từng segment và lưu vào snapshot.",
-            "status": "pending",
-            "testStrategy": "Sử dụng vitest snapshot testing để so sánh kết quả output và side-effects của các lần chạy sau với lần chạy cơ sở đầu tiên."
+            "status": "done",
+            "testStrategy": "Sử dụng vitest snapshot testing để so sánh kết quả output và side-effects của các lần chạy sau với lần chạy cơ sở đầu tiên.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T04:26:54.923Z"
           },
           {
             "id": 3,
@@ -464,20 +468,26 @@
               2
             ],
             "details": "Giả lập dữ liệu cho 234 trang. Gọi handleAutoSummarizeAll và ghi lại trình tự các tin nhắn điều phối. Xác thực payload SAVE_CACHED_TOPIC cuối cùng cho toàn bộ topic lớn, đảm bảo tính toàn vẹn của dữ liệu cào được và nội dung tóm tắt.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra tính ổn định của bộ test khi chạy lặp lại nhiều lần với dữ liệu lớn, đảm bảo không có race conditions trong quá trình mock orchestration."
+            "status": "done",
+            "testStrategy": "Kiểm tra tính ổn định của bộ test khi chạy lặp lại nhiều lần với dữ liệu lớn, đảm bảo không có race conditions trong quá trình mock orchestration.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T04:26:57.821Z"
           }
-        ]
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Hãy liệt kê các test case chi tiết cho 5 flow tóm tắt, bao gồm các kịch bản mock sendMessage, mock LLM provider và cách xác thực cấu trúc SAVE_CACHED_TOPIC cho các kích thước topic khác nhau (1, 25, 234 trang).",
+        "updatedAt": "2026-05-16T04:26:57.821Z"
       },
       {
-        "id": 166,
+        "id": "166",
         "title": "Loại bỏ Dead Code liên quan đến Incremental Update (R1)",
         "description": "Xoá bỏ hoàn toàn các logic, hàm và prompt liên quan đến cơ chế cập nhật tăng trưởng (incremental) đã lỗi thời.",
         "details": "Xoá updateSummary() trong lib/llm/summarizer.ts, summarizeIncremental() trong useLLM.ts, case 'summarize_incremental' trong background index.ts, INCREMENTAL_UPDATE_PROMPT trong lib/prompts.ts và taskType tương ứng trong lib/types.ts. Xoá mọi tham chiếu grep được trong repo.",
         "testStrategy": "npm run compile để đảm bảo không còn tham chiếu tới code đã xoá. Chạy tests/e2e/update-summary-*.test.ts (sẽ fail tạm thời và được sửa ở task sau).",
         "priority": "high",
         "dependencies": [
-          165
+          "165"
         ],
         "status": "pending",
         "subtasks": [
@@ -488,7 +498,8 @@
             "dependencies": [],
             "details": "Truy cập các file lib/llm/summarizer.ts để xóa updateSummary, useLLM.ts để xóa summarizeIncremental, và background/index.ts để xóa case 'summarize_incremental'. Đảm bảo không còn logic nghiệp vụ nào gọi đến các hàm này.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -499,19 +510,23 @@
             ],
             "details": "Xóa định nghĩa INCREMENTAL_UPDATE_PROMPT và các type liên quan. Sử dụng grep để tìm tất cả các tham chiếu còn sót lại trong mã nguồn. Chạy npm run compile để xác nhận không còn lỗi do code bị xóa.",
             "status": "pending",
-            "testStrategy": "Chạy lệnh 'npm run compile' và 'grep -r \"incremental\" .' để xác nhận sạch dead code."
+            "testStrategy": "Chạy lệnh 'npm run compile' và 'grep -r \"incremental\" .' để xác nhận sạch dead code.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Xác định tất cả các file và dòng code cần xoá liên quan đến incremental update, bao gồm cả prompts, types và background listeners. Tạo quy trình kiểm tra sau khi xoá bằng compiler."
       },
       {
-        "id": 167,
+        "id": "167",
         "title": "Cài đặt Module Run-Guard Helper (R3)",
         "description": "Tạo helper quản lý trạng thái thực thi (stale-guard) để thay thế biến activeSummarizeId lặp lại.",
         "details": "Tạo lib/run-guard.ts với createRunGuard() trả về { begin(): number; isStale(token: number): boolean }. Tích hợp vào useSummarize.ts để thay thế cơ chế manual counter. Cập nhật handleCancel để invalidate các tiến trình đang chạy bằng guard.begin().",
         "testStrategy": "Unit test đảm bảo token tăng đơn điệu và isStale trả về đúng kết quả khi so sánh token cũ với trạng thái guard mới nhất.",
         "priority": "medium",
         "dependencies": [
-          166
+          "166"
         ],
         "status": "pending",
         "subtasks": [
@@ -522,7 +537,8 @@
             "dependencies": [],
             "details": "Tạo tệp lib/run-guard.ts triển khai logic tăng counter đơn điệu trong hàm begin() và so sánh token trong isStale(). Viết các test case đảm bảo token luôn tăng và trạng thái stale được xác định chính xác khi có tiến trình mới.",
             "status": "pending",
-            "testStrategy": "Sử dụng Jest để kiểm tra: 1. Token trả về từ begin() là duy nhất và tăng dần. 2. isStale(oldToken) trả về true sau khi begin() được gọi lại. 3. isStale(latestToken) trả về false."
+            "testStrategy": "Sử dụng Jest để kiểm tra: 1. Token trả về từ begin() là duy nhất và tăng dần. 2. isStale(oldToken) trả về true sau khi begin() được gọi lại. 3. isStale(latestToken) trả về false.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -533,12 +549,16 @@
             ],
             "details": "Khởi tạo instance Run-Guard trong useSummarize. Gọi guard.begin() khi bắt đầu tiến trình mới hoặc trong handleCancel. Truyền token vào các callback xử lý segment để kiểm tra tính hợp lệ của dữ liệu trước khi cập nhật state.",
             "status": "pending",
-            "testStrategy": "Kiểm tra thực tế bằng cách trigger nhiều lần summarize liên tiếp và nhấn cancel, xác nhận rằng chỉ kết quả của lần gọi cuối cùng được áp dụng vào UI."
+            "testStrategy": "Kiểm tra thực tế bằng cách trigger nhiều lần summarize liên tiếp và nhấn cancel, xác nhận rằng chỉ kết quả của lần gọi cuối cùng được áp dụng vào UI.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Thiết kế interface cho lib/run-guard.ts và viết các unit test để kiểm tra tính đơn điệu của token và khả năng invalidate các tiến trình cũ khi có tiến trình mới bắt đầu."
       },
       {
-        "id": 168,
+        "id": "168",
         "title": "Triển khai Module Segment-Planner cho Budget và Resume State (R5)",
         "description": "Tách logic tính toán token budget và trạng thái khôi phục (resume state) thành module pure.",
         "details": "Tạo lib/segment-planner.ts. Chuyển computeResumeState từ useSummarize sang. Cài đặt computeSegmentBudget với responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, config.maxTokens). Sửa bug thiếu maxTokens trong logic cũ.",
@@ -554,7 +574,8 @@
             "dependencies": [],
             "details": "Định nghĩa các interface đầu vào như SegmentPlannerConfig, CurrentSegmentState và cấu trúc trả về cho BudgetInfo và ResumeState. Đảm bảo module không phụ thuộc vào React context hay state bên ngoài.",
             "status": "pending",
-            "testStrategy": "Kiểm tra type-check bằng npm run type-check để đảm bảo các interface bao quát đủ các trường thông tin cần thiết từ useSummarize."
+            "testStrategy": "Kiểm tra type-check bằng npm run type-check để đảm bảo các interface bao quát đủ các trường thông tin cần thiết từ useSummarize.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -565,7 +586,8 @@
             ],
             "details": "Sử dụng công thức responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, config.maxTokens) để tính toán vùng đệm. Thực hiện trừ các phần context đã dùng để trả về giá trị budget an toàn cho segment tiếp theo.",
             "status": "pending",
-            "testStrategy": "Unit test với nhiều bộ config.maxTokens khác nhau để xác nhận responseBuffer được tính đúng và budget không bao giờ bị âm hoặc vượt quá giới hạn của model."
+            "testStrategy": "Unit test với nhiều bộ config.maxTokens khác nhau để xác nhận responseBuffer được tính đúng và budget không bao giờ bị âm hoặc vượt quá giới hạn của model.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -576,19 +598,23 @@
             ],
             "details": "Cài đặt logic quyết định: nếu tỷ lệ sử dụng (current_tokens / total_budget) > 0.7 thì trả về trạng thái yêu cầu tạo segment mới; nếu <= 0.7 thì thực hiện gộp vào segment cuối cùng hiện có.",
             "status": "pending",
-            "testStrategy": "Unit test kiểm tra 2 trường hợp biên: headroom 71% (phải tạo segment mới) và headroom 69% (phải gộp vào segment hiện tại). Đảm bảo tính nhất quán với kết quả từ computeSegmentBudget."
+            "testStrategy": "Unit test kiểm tra 2 trường hợp biên: headroom 71% (phải tạo segment mới) và headroom 69% (phải gộp vào segment hiện tại). Đảm bảo tính nhất quán với kết quả từ computeSegmentBudget.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chi tiết hóa các thuật toán tính toán budget token và logic quyết định khi nào nên tạo segment mới hoặc gộp vào segment cũ dựa trên tỷ lệ headroom 70%."
       },
       {
-        "id": 169,
+        "id": "169",
         "title": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
         "description": "Hợp nhất logic lưu segment, cập nhật store và promotion vào một module pure duy nhất.",
         "details": "Tạo lib/segment-persistence.ts. Xây dựng buildSegmentSavePayload() xử lý totalPosts (dùng Math.max) và single-segment promotion. Xây dựng makeDenseSegments() gộp logic từ makeDenseBase. Tích hợp stale-guard token để quyết định lưu payload với cờ stale.",
         "testStrategy": "Snapshot test so sánh payload sinh ra cho 4 case: single fresh, single stale, multi fresh, multi stale. Đảm bảo byte-tương đương với logic cũ.",
         "priority": "medium",
         "dependencies": [
-          167
+          "167"
         ],
         "status": "pending",
         "subtasks": [
@@ -599,7 +625,8 @@
             "dependencies": [],
             "details": "Định nghĩa các interface cần thiết cho module persistence. Thực hiện chuyển đổi logic từ makeDenseBase sang hàm makeDenseSegments mới nhằm đảm bảo dữ liệu segment đầu ra được nén gọn và chuẩn hóa cấu trúc.",
             "status": "pending",
-            "testStrategy": "Unit test kiểm tra hàm makeDenseSegments với các bộ dữ liệu đầu vào khác nhau để đảm bảo cấu trúc mảng segment đầu ra luôn nhất quán."
+            "testStrategy": "Unit test kiểm tra hàm makeDenseSegments với các bộ dữ liệu đầu vào khác nhau để đảm bảo cấu trúc mảng segment đầu ra luôn nhất quán.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -610,7 +637,8 @@
             ],
             "details": "Sử dụng Math.max để tính toán totalPosts chính xác từ các nguồn dữ liệu. Cài đặt logic single-segment promotion để tự động nâng cấp trạng thái segment khi điều kiện thỏa mãn, đảm bảo tương thích với cấu trúc store hiện tại.",
             "status": "pending",
-            "testStrategy": "Snapshot test so sánh payload sinh ra cho hai trường hợp: single-segment và multi-segment để xác nhận tính chính xác của metadata."
+            "testStrategy": "Snapshot test so sánh payload sinh ra cho hai trường hợp: single-segment và multi-segment để xác nhận tính chính xác của metadata.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -621,20 +649,24 @@
             ],
             "details": "Tích hợp stale-guard token vào buildSegmentSavePayload. Cài đặt logic gán cờ 'stale' dựa trên việc so sánh token hiện hành. Hoàn thiện hàm xử lý payload cho SAVE_CACHED_TOPIC, bao quát cả trường hợp single vs multi-segment.",
             "status": "pending",
-            "testStrategy": "Integration test giả lập việc thay đổi token của stale-guard và kiểm tra xem payload sinh ra có được đánh dấu cờ stale chính xác hay không."
+            "testStrategy": "Integration test giả lập việc thay đổi token của stale-guard và kiểm tra xem payload sinh ra có được đánh dấu cờ stale chính xác hay không.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token."
       },
       {
-        "id": 170,
+        "id": "170",
         "title": "Refactor logic scraping thành Composable useTopicScraper (R4)",
         "description": "Tách logic cào dữ liệu trang và enrichment thành một composable riêng biệt.",
         "details": "Tạo entrypoints/sidepanel/composables/useTopicScraper.ts. Đóng gói scrapeRange, vòng lặp page-by-page, news enrichment và xử lý threadDeleted/Locked. Cung cấp callback onSegmentReady và onProgress. Đảm bảo logic dedup re-scrape trang cuối được giữ nguyên.",
         "testStrategy": "Kiểm tra việc scrape trang đơn lẻ và đa trang qua mock scraper. Xác nhận scrapeProgress được cập nhật đúng và không re-scrape dữ liệu đã có trong store.",
         "priority": "medium",
         "dependencies": [
-          167,
-          168
+          "167",
+          "168"
         ],
         "status": "pending",
         "subtasks": [
@@ -645,7 +677,8 @@
             "dependencies": [],
             "details": "Tạo file useTopicScraper.ts tại entrypoints/sidepanel/composables. Định nghĩa các interface: ScrapeOptions (chứa range, resume), ScrapeProgress, và các kiểu callback onSegmentReady, onProgress.",
             "status": "pending",
-            "testStrategy": "Kiểm tra kiểu dữ liệu thông qua trình biên dịch TypeScript và đảm bảo không có lỗi cú pháp."
+            "testStrategy": "Kiểm tra kiểu dữ liệu thông qua trình biên dịch TypeScript và đảm bảo không có lỗi cú pháp.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -656,7 +689,8 @@
             ],
             "details": "Thực hiện vòng lặp page-by-page trong scrapeRange. Tích hợp logic kiểm tra và ném lỗi/xử lý khi gặp trạng thái threadDeleted hoặc threadLocked. Đảm bảo trạng thái tiến trình được cập nhật qua callback.",
             "status": "pending",
-            "testStrategy": "Sử dụng Vitest để mock scraper và kiểm tra xem vòng lặp có dừng đúng khi gặp lỗi thread hay không."
+            "testStrategy": "Sử dụng Vitest để mock scraper và kiểm tra xem vòng lặp có dừng đúng khi gặp lỗi thread hay không.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -667,7 +701,8 @@
             ],
             "details": "Gọi logic enrichment cho từng segment dữ liệu thu thập được. Triển khai thuật toán so sánh ID bài viết để thực hiện deduplication khi re-scrape trang cuối, tránh việc lưu trữ dữ liệu trùng lặp trong store.",
             "status": "pending",
-            "testStrategy": "Kiểm tra kết quả đầu ra của onSegmentReady để xác nhận không có item nào bị trùng lặp khi giả lập cào lại trang cuối."
+            "testStrategy": "Kiểm tra kết quả đầu ra của onSegmentReady để xác nhận không có item nào bị trùng lặp khi giả lập cào lại trang cuối.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -678,19 +713,23 @@
             ],
             "details": "Kết nối onProgress để cập nhật UI và onSegmentReady để đẩy dữ liệu về pipeline. Viết các test case cho: cào trang đơn lẻ, cào nhiều trang, và kịch bản lỗi mạng giữa chừng.",
             "status": "pending",
-            "testStrategy": "Sử dụng Mock Scraper để verify: 1. onProgress được gọi với index đúng. 2. Dữ liệu trả về đúng định dạng mong muốn."
+            "testStrategy": "Sử dụng Mock Scraper để verify: 1. onProgress được gọi với index đúng. 2. Dữ liệu trả về đúng định dạng mong muốn.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady)."
       },
       {
-        "id": 171,
+        "id": "171",
         "title": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
         "description": "Quản lý StepTimeline tập trung và đồng bộ trạng thái task.",
         "details": "Tạo usePipeline.ts. Xây dựng buildSummarizePipeline nhận boundary (số segment dự kiến) để build toàn bộ step up-front. Thêm phương thức reconcile(actualSegments) để điều chỉnh pipeline khi số segment thực tế thay đổi trong dynamic mode. Loại bỏ các hack progressive-append cũ.",
         "testStrategy": "Verify StepTimeline hiển thị danh sách step ổn định và giống nhau cho cùng một flow (ví dụ update-summary-with-segments) bất kể trạng thái ban đầu.",
         "priority": "medium",
         "dependencies": [
-          170
+          "170"
         ],
         "status": "pending",
         "subtasks": [
@@ -701,7 +740,8 @@
             "dependencies": [],
             "details": "Định nghĩa interface cho PipelineStep và StepTimeline. Triển khai hàm buildSummarizePipeline nhận tham số boundary (số segment dự kiến) để tạo trước danh sách các bước [scrape, summarize, overall, save].",
             "status": "pending",
-            "testStrategy": "Kiểm tra object StepTimeline được tạo ra có đúng số lượng step và cấu trúc theo tham số boundary đầu vào."
+            "testStrategy": "Kiểm tra object StepTimeline được tạo ra có đúng số lượng step và cấu trúc theo tham số boundary đầu vào.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -712,7 +752,8 @@
             ],
             "details": "Viết logic so sánh số lượng segment thực tế với boundary ban đầu. Thực hiện chèn thêm hoặc loại bỏ các step scrape/summarize tương ứng trong mảng StepTimeline mà vẫn giữ nguyên trạng thái các step đã thực hiện.",
             "status": "pending",
-            "testStrategy": "Unit test hàm reconcile với các kịch bản: số segment thực tế bằng, lớn hơn, hoặc nhỏ hơn giá trị boundary dự kiến."
+            "testStrategy": "Unit test hàm reconcile với các kịch bản: số segment thực tế bằng, lớn hơn, hoặc nhỏ hơn giá trị boundary dự kiến.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -723,20 +764,24 @@
             ],
             "details": "Liên kết trạng thái của từng bước trong StepTimeline với LLMTaskState. Xóa bỏ hoàn toàn các logic append step thủ công (hack progressive-append) cũ trong useSummarize để sử dụng cơ chế reconcile mới.",
             "status": "pending",
-            "testStrategy": "Chạy quy trình tóm tắt thực tế, kiểm tra giao diện Timeline hiển thị ổn định và chính xác các bước xử lý theo thời gian thực."
+            "testStrategy": "Chạy quy trình tóm tắt thực tế, kiểm tra giao diện Timeline hiển thị ổn định và chính xác các bước xử lý theo thời gian thực.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState."
       },
       {
-        "id": 172,
+        "id": "172",
         "title": "Xây dựng các hàm Primitive trong useSummarize",
         "description": "Định nghĩa 2 đơn vị thực thi cốt lõi: xử lý 1 segment và gộp (reduce) kết quả.",
         "details": "Triển khai summarizeOneSegment(index, posts, token) thực hiện LLM call + persist qua lib/segment-persistence. Triển khai reduceOverall(token) thực hiện gộp N summaries thành 1, bao gồm logic short-circuit cho single-segment. Cả hai phải tuân thủ stale-guard.",
         "testStrategy": "Unit test gọi riêng biệt từng hàm với mock LLM. Kiểm tra việc gọi persist đúng payload và đúng thời điểm.",
         "priority": "high",
         "dependencies": [
-          169,
-          171
+          "169",
+          "171"
         ],
         "status": "pending",
         "subtasks": [
@@ -747,7 +792,8 @@
             "dependencies": [],
             "details": "Thực hiện gọi LLM API với dữ liệu phân đoạn, kiểm tra stale-guard token trước và sau khi gọi, sau đó sử dụng lib/segment-persistence để lưu kết quả vào hệ thống.",
             "status": "pending",
-            "testStrategy": "Unit test với mock LLM API, kiểm tra xem hàm persist có được gọi với đúng payload không và xử lý stale token chính xác."
+            "testStrategy": "Unit test với mock LLM API, kiểm tra xem hàm persist có được gọi với đúng payload không và xử lý stale token chính xác.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -758,7 +804,8 @@
             ],
             "details": "Logic bao gồm kiểm tra stale-guard, thực hiện cơ chế short-circuit nếu chỉ có duy nhất một phân đoạn, nếu không sẽ gọi LLM để hợp nhất các bản tóm tắt thành phần.",
             "status": "pending",
-            "testStrategy": "Kiểm tra logic short-circuit cho trường hợp 1 segment và kiểm tra việc gọi LLM merge cho trường hợp có từ 2 segments trở lên."
+            "testStrategy": "Kiểm tra logic short-circuit cho trường hợp 1 segment và kiểm tra việc gọi LLM merge cho trường hợp có từ 2 segments trở lên.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -770,19 +817,23 @@
             ],
             "details": "Cài đặt kiểm tra token tại các điểm quyết định (trước khi lưu kết quả). Xử lý ngoại lệ từ LLM để không làm hỏng trạng thái của useSummarize khi có lỗi xảy ra.",
             "status": "pending",
-            "testStrategy": "Giả lập kịch bản race condition khi nhiều yêu cầu tóm tắt diễn ra liên tiếp để xác nhận chỉ kết quả mới nhất được lưu."
+            "testStrategy": "Giả lập kịch bản race condition khi nhiều yêu cầu tóm tắt diễn ra liên tiếp để xác nhận chỉ kết quả mới nhất được lưu.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới."
       },
       {
-        "id": 173,
+        "id": "173",
         "title": "Triển khai Driver trung tâm runSummarizeJob (R7)",
         "description": "Hợp nhất 5 flow tóm tắt vào một driver điều hướng duy nhất.",
         "details": "Tạo runSummarizeJob({ mode, range, resume }) trong useSummarize.ts. Điều phối: Khởi tạo pipeline -> Gọi useTopicScraper -> Lặp summarizeOneSegment -> Gọi reduceOverall. Chuyển logic rẽ nhánh phức tạp trong handleSegmentUpdate thành helper computeResumeMode trả về { mode, resume }.",
         "testStrategy": "Chạy lại characterization tests từ Task 165. Đảm bảo mock.getCallCount() không đổi so với trước refactor.",
         "priority": "high",
         "dependencies": [
-          172
+          "172"
         ],
         "status": "pending",
         "subtasks": [
@@ -793,7 +844,8 @@
             "dependencies": [],
             "details": "Xây dựng hàm computeResumeMode nhận các tham số trạng thái hiện tại của phiên làm việc và trả về đối tượng { mode, resume }. Logic này giúp xác định job sẽ chạy mới hoàn toàn, chạy tiếp từ vị trí cũ hay chỉ cập nhật các segment bổ sung.",
             "status": "pending",
-            "testStrategy": "Viết Unit test cho computeResumeMode với các kịch bản input khác nhau (có/không có dữ liệu cũ, các loại range khác nhau) để đảm bảo đầu ra logic chính xác."
+            "testStrategy": "Viết Unit test cho computeResumeMode với các kịch bản input khác nhau (có/không có dữ liệu cũ, các loại range khác nhau) để đảm bảo đầu ra logic chính xác.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -804,7 +856,8 @@
             ],
             "details": "Định nghĩa hàm runSummarizeJob({ mode, range, resume }). Sử dụng các interface từ Task 155 để khởi tạo PipelineDefinition. Thiết lập các bước (steps) cần thiết cho quy trình tóm tắt và cập nhật trạng thái UI ban đầu là 'running'.",
             "status": "pending",
-            "testStrategy": "Kiểm tra việc khởi tạo pipeline thông qua Redux/State store để đảm bảo các bước hiển thị đúng trên StepTimeline UI."
+            "testStrategy": "Kiểm tra việc khởi tạo pipeline thông qua Redux/State store để đảm bảo các bước hiển thị đúng trên StepTimeline UI.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -815,7 +868,8 @@
             ],
             "details": "Kết nối hàm driver với useTopicScraper để lấy dữ liệu thô. Sau đó, triển khai vòng lặp qua danh sách các segments, gọi hàm summarizeOneSegment cho từng phần tử và cập nhật tiến độ vào pipeline status sau mỗi bước hoàn thành.",
             "status": "pending",
-            "testStrategy": "Sử dụng mock data để giả lập danh sách segments và kiểm tra xem summarizeOneSegment có được gọi đúng số lần với dữ liệu đầu vào chuẩn hay không."
+            "testStrategy": "Sử dụng mock data để giả lập danh sách segments và kiểm tra xem summarizeOneSegment có được gọi đúng số lần với dữ liệu đầu vào chuẩn hay không.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -826,19 +880,23 @@
             ],
             "details": "Sau khi kết thúc vòng lặp tóm tắt segment, gọi hàm reduceOverall để kết hợp toàn bộ nội dung. Cập nhật trạng thái cuối cùng của pipeline thành 'done' hoặc xử lý lỗi nếu có bất kỳ bước nào thất bại trong quy trình.",
             "status": "pending",
-            "testStrategy": "Chạy lại bộ characterization tests từ Task 165 để so sánh số lượng lời gọi API (mock.getCallCount) và cấu trúc dữ liệu trả về so với logic cũ trước khi refactor."
+            "testStrategy": "Chạy lại bộ characterization tests từ Task 165 để so sánh số lượng lời gọi API (mock.getCallCount) và cấu trúc dữ liệu trả về so với logic cũ trước khi refactor.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng."
       },
       {
-        "id": 174,
+        "id": "174",
         "title": "Hoàn thiện UI Wrappers và cập nhật Test E2E thực tế",
         "description": "Chuyển các hàm UI entry point thành wrapper mỏng và cập nhật bộ test E2E theo cơ chế mới.",
         "details": "Biến handleAutoSummarizeAll, handleSegmentUpdate, handleSummarizeSegment thành các hàm wrapper gọi runSummarizeJob. Viết lại 3 bài test E2E update-summary-*.test.ts để drive orchestration thật qua sendMessage thay vì gọi trực tiếp logic nội bộ.",
         "testStrategy": "Chạy full suite npm run test và npm run compile. Kiểm tra thủ công trên trình duyệt các flow: tóm tắt mới, tóm tắt thêm segment, và retry để đảm bảo giao diện StepTimeline và trạng thái 'Đã tóm tắt' hoạt động chuẩn xác.",
         "priority": "medium",
         "dependencies": [
-          173
+          "173"
         ],
         "status": "pending",
         "subtasks": [
@@ -849,7 +907,8 @@
             "dependencies": [],
             "details": "Thay thế logic xử lý cũ bằng cách chuyển đổi tham số từ UI (như videoId, segmentId) thành các object điều khiển { mode, range, resume } rồi gọi hàm runSummarizeJob. Đảm bảo dữ liệu đầu vào được validate đúng trước khi chuyển sang driver.",
             "status": "pending",
-            "testStrategy": "Chạy npm run compile và kiểm tra kiểu dữ liệu TypeScript để đảm bảo tính nhất quán sau khi refactor."
+            "testStrategy": "Chạy npm run compile và kiểm tra kiểu dữ liệu TypeScript để đảm bảo tính nhất quán sau khi refactor.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -860,7 +919,8 @@
             ],
             "details": "Loại bỏ các lệnh gọi trực tiếp đến logic nội bộ trong các file test update-summary-*.test.ts. Sử dụng chrome.runtime.sendMessage hoặc mock dispatcher để kích hoạt toàn bộ luồng orchestration thông qua driver trung tâm và kiểm tra kết quả cuối cùng.",
             "status": "pending",
-            "testStrategy": "Thực thi npm run test đối với các file test đã cập nhật và đảm bảo tỷ lệ pass đạt 100%."
+            "testStrategy": "Thực thi npm run test đối với các file test đã cập nhật và đảm bảo tỷ lệ pass đạt 100%.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -872,15 +932,23 @@
             ],
             "details": "Thực hiện kiểm tra thủ công trên trình duyệt cho các kịch bản: tóm tắt mới hoàn toàn, tóm tắt thêm các đoạn segment mới, và luồng retry khi gặp lỗi. Đảm bảo component StepTimeline cập nhật trạng thái 'running' và 'done' chính xác theo pipeline.",
             "status": "pending",
-            "testStrategy": "Kiểm tra thủ công trên môi trường development (manual testing) và chạy full test suite để đảm bảo không có lỗi hồi quy."
+            "testStrategy": "Kiểm tra thủ công trên môi trường development (manual testing) và chạy full test suite để đảm bảo không có lỗi hồi quy.",
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Cập nhật các hàm entry point UI để gọi driver trung tâm và viết lại các bài test E2E để kiểm tra toàn bộ luồng từ giao diện người dùng đến background script."
       }
     ],
     "metadata": {
-      "created": "2026-05-16T03:16:15.949Z",
-      "updated": "2026-05-16T03:16:15.949Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2026-05-16T04:26:57.823Z",
+      "taskCount": 20,
+      "completedCount": 11,
+      "tags": [
+        "master"
+      ]
     }
   }
 }

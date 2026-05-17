@@ -74,7 +74,8 @@
       "Bash(task-master --version)",
       "Bash(task-master analyze-complexity *)",
       "Bash(task-master complexity-report *)",
-      "Bash(task-master expand *)"
+      "Bash(task-master expand *)",
+      "Bash(git fetch *)"
     ]
   },
   "model": "opusplan"

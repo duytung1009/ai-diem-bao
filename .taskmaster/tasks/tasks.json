@@ -472,6 +472,15 @@
             "testStrategy": "Kiểm tra tính ổn định của bộ test khi chạy lặp lại nhiều lần với dữ liệu lớn, đảm bảo không có race conditions trong quá trình mock orchestration.",
             "parentId": "undefined",
             "updatedAt": "2026-05-16T04:26:57.821Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 165
           }
         ],
         "complexity": 6,
@@ -514,6 +523,15 @@
             "testStrategy": "Chạy lệnh 'npm run compile' và 'grep -r \"incremental\" .' để xác nhận sạch dead code.",
             "parentId": "undefined",
             "updatedAt": "2026-05-16T04:35:37.022Z"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 166
           }
         ],
         "complexity": 3,
@@ -556,6 +574,15 @@
             "testStrategy": "Kiểm tra thực tế bằng cách trigger nhiều lần summarize liên tiếp và nhấn cancel, xác nhận rằng chỉ kết quả của lần gọi cuối cùng được áp dụng vào UI.",
             "parentId": "undefined",
             "updatedAt": "2026-05-16T07:08:49.043Z"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 167
           }
         ],
         "complexity": 4,
@@ -609,6 +636,15 @@
             "testStrategy": "Unit test kiểm tra 2 trường hợp biên: headroom 71% (phải tạo segment mới) và headroom 69% (phải gộp vào segment hiện tại). Đảm bảo tính nhất quán với kết quả từ computeSegmentBudget.",
             "parentId": "undefined",
             "updatedAt": "2026-05-16T05:14:02.055Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 168
           }
         ],
         "complexity": 5,
@@ -664,6 +700,15 @@
             "testStrategy": "Integration test giả lập việc thay đổi token của stale-guard và kiểm tra xem payload sinh ra có được đánh dấu cờ stale chính xác hay không.",
             "parentId": "undefined",
             "updatedAt": "2026-05-16T13:39:04.815Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 169
           }
         ],
         "complexity": 5,
@@ -733,6 +778,15 @@
             "testStrategy": "Sử dụng Mock Scraper để verify: 1. onProgress được gọi với index đúng. 2. Dữ liệu trả về đúng định dạng mong muốn.",
             "parentId": "undefined",
             "updatedAt": "2026-05-16T13:57:56.578Z"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 170
           }
         ],
         "complexity": 6,
@@ -788,6 +842,15 @@
             "testStrategy": "Chạy quy trình tóm tắt thực tế, kiểm tra giao diện Timeline hiển thị ổn định và chính xác các bước xử lý theo thời gian thực.",
             "parentId": "undefined",
             "updatedAt": "2026-05-17T06:38:46.929Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 171
           }
         ],
         "complexity": 6,
@@ -845,6 +908,15 @@
             "testStrategy": "Giả lập kịch bản race condition khi nhiều yêu cầu tóm tắt diễn ra liên tiếp để xác nhận chỉ kết quả mới nhất được lưu.",
             "parentId": "undefined",
             "updatedAt": "2026-05-17T07:03:37.211Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 172
           }
         ],
         "complexity": 7,
@@ -913,6 +985,15 @@
             "testStrategy": "Chạy lại bộ characterization tests từ Task 165 để so sánh số lượng lời gọi API (mock.getCallCount) và cấu trúc dữ liệu trả về so với logic cũ trước khi refactor.",
             "parentId": "undefined",
             "updatedAt": "2026-05-17T15:07:39.622Z"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 173
           }
         ],
         "complexity": 8,

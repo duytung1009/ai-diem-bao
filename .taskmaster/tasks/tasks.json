@@ -682,7 +682,7 @@
           "167",
           "168"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -690,9 +690,10 @@
             "description": "Thiết lập các cấu trúc dữ liệu cơ bản và kiểu dữ liệu cho composable mới để đảm bảo tính nhất quán.",
             "dependencies": [],
             "details": "Tạo file useTopicScraper.ts tại entrypoints/sidepanel/composables. Định nghĩa các interface: ScrapeOptions (chứa range, resume), ScrapeProgress, và các kiểu callback onSegmentReady, onProgress.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra kiểu dữ liệu thông qua trình biên dịch TypeScript và đảm bảo không có lỗi cú pháp.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:57:28.790Z"
           },
           {
             "id": 2,
@@ -702,9 +703,10 @@
               1
             ],
             "details": "Thực hiện vòng lặp page-by-page trong scrapeRange. Tích hợp logic kiểm tra và ném lỗi/xử lý khi gặp trạng thái threadDeleted hoặc threadLocked. Đảm bảo trạng thái tiến trình được cập nhật qua callback.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Sử dụng Vitest để mock scraper và kiểm tra xem vòng lặp có dừng đúng khi gặp lỗi thread hay không.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:57:38.238Z"
           },
           {
             "id": 3,
@@ -714,9 +716,10 @@
               2
             ],
             "details": "Gọi logic enrichment cho từng segment dữ liệu thu thập được. Triển khai thuật toán so sánh ID bài viết để thực hiện deduplication khi re-scrape trang cuối, tránh việc lưu trữ dữ liệu trùng lặp trong store.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra kết quả đầu ra của onSegmentReady để xác nhận không có item nào bị trùng lặp khi giả lập cào lại trang cuối.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:57:47.150Z"
           },
           {
             "id": 4,
@@ -726,14 +729,16 @@
               3
             ],
             "details": "Kết nối onProgress để cập nhật UI và onSegmentReady để đẩy dữ liệu về pipeline. Viết các test case cho: cào trang đơn lẻ, cào nhiều trang, và kịch bản lỗi mạng giữa chừng.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Sử dụng Mock Scraper để verify: 1. onProgress được gọi với index đúng. 2. Dữ liệu trả về đúng định dạng mong muốn.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:57:56.578Z"
           }
         ],
         "complexity": 6,
         "recommendedSubtasks": 4,
-        "expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady)."
+        "expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady).",
+        "updatedAt": "2026-05-16T13:57:56.578Z"
       },
       {
         "id": "171",
@@ -957,9 +962,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T13:39:04.821Z",
+      "lastModified": "2026-05-16T13:57:56.580Z",
       "taskCount": 20,
-      "completedCount": 15,
+      "completedCount": 16,
       "tags": [
         "master"
       ]

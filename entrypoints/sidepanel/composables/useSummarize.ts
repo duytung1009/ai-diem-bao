@@ -17,9 +17,11 @@ import { estimateSummarizeSegmentCalls } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
+import { useTopicScraper } from './useTopicScraper';
 
 export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const { summarize, summarizeSegmentsTask, threadAnalysisTask, cancelTask, getTaskState } = useLLM();
+  const scraper = useTopicScraper();
 
   // --- State ---
   const summary = ref('');
@@ -27,12 +29,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const threadAnalysis = ref<ThreadAnalysisJSON | null>(null);
   const isAnalyzing = ref(false);
   const error = ref('');
-  const scrapeProgress = ref<{ currentPage: number; totalPages: number; postsScraped: number } | null>(null);
   const simpleLoadingText = ref('');
   const llmTaskId = ref<string | null>(null);
-  const isScraping = ref(false);
-  const scrapingWarnings = ref<string[]>([]);
-  const scrapingInfo = ref<string[]>([]);
   const currentConfig = ref<LLMConfig | null>(null);
   const cachedTopic = computed(() => store.selectedTopic.value);
   const cacheFreshness = ref<CacheFreshness | null>(null);
@@ -44,7 +42,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const pipeline = ref<PipelineDefinition | null>(null);
 
   // Non-reactive
-  let scrapeAbortCtrl: AbortController | null = null;
   const summarizeGuard = createRunGuard();
   const analyzeGuard = createRunGuard();
 
@@ -60,7 +57,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     } satisfies DetectResult;
   });
 
-  const isProcessing = computed(() => !!llmTaskId.value || !!scrapeProgress.value || !!simpleLoadingText.value);
+  const isProcessing = computed(() => !!llmTaskId.value || !!scraper.scrapeProgress.value || !!simpleLoadingText.value);
 
   const summarizedPostCount = computed(() => {
     if (!cachedTopic.value) return 0;
@@ -123,9 +120,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   });
 
   // --- Helpers ---
-  function countRealPosts(posts: ScrapedPost[]): number {
-    return posts.filter(p => p.postNumber >= 0).length;
-  }
 
   /** Get best available forum post count, avoiding stale activeTabDetect data
    *  when the user is not on the forum tab. */
@@ -180,36 +174,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     onStatus: (msg: string) => void,
     onInfo: (msg: string) => void,
   ): Promise<ScrapedPost[]> {
-    try {
-      const forumDomain = new URL(topicUrl).hostname;
-      const newsCheck = detectNewsThread(posts, forumDomain);
-      if (!newsCheck.isNews || !newsCheck.articleUrls.length) return posts;
-
-      onStatus('Phát hiện chủ đề tin tức — đang tải bài báo gốc...');
-      const articles = (await Promise.all(
-        newsCheck.articleUrls.map(url =>
-          sendMessage<ArticleContent | null>('SCRAPE_ARTICLE', { url }).catch(() => null),
-        ),
-      )).filter(Boolean) as ArticleContent[];
-
-      if (!articles.length) return posts;
-
-      const firstPostIndex = posts.findIndex(p => p.postNumber > 0);
-      if (firstPostIndex === -1) return posts;
-
-      const articleText = articles.map(a =>
-        `[BÀI BÁO GỐC — ${a.source}]\nTiêu đề: ${a.title}\n\nNội dung:\n${a.content}`,
-      ).join('\n\n---\n\n');
-
-      const updatedPosts = [...posts];
-      updatedPosts[firstPostIndex] = {
-        ...updatedPosts[firstPostIndex],
-        content: `${articleText}\n\n---\n\n${updatedPosts[firstPostIndex].content}`,
-      };
-
-      onInfo(`Đã tải ${articles.length} bài báo gốc: ${articles.map(a => a.source).join(', ')}`);
-      return updatedPosts;
-    } catch { return posts; }
+    return scraper.enrichWithNewsArticles(posts, topicUrl, { onStatus, onInfo });
   }
 
   // --- Functions ---
@@ -234,13 +199,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     threadAnalysis.value = null;
     isAnalyzing.value = false;
     error.value = '';
-    scrapeProgress.value = null;
+    scraper.scrapeProgress.value = null;
     simpleLoadingText.value = '';
     pipeline.value = null;
     llmTaskId.value = null;
-    isScraping.value = false;
-    scrapingWarnings.value = [];
-    scrapingInfo.value = [];
+    scraper.isScraping.value = false;
+    scraper.scrapingWarnings.value = [];
+    scraper.scrapingInfo.value = [];
     cacheFreshness.value = null;
     segmentSummaries.value = [];
     activeSegmentIndex.value = null;
@@ -348,10 +313,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   async function handleCancel() {
     summarizeGuard.begin(); // Invalidate any running flow (single segment or auto-summarize)
-    scrapeAbortCtrl?.abort();
+    scraper.abortScrape();
     if (llmTaskId.value) cancelTask(llmTaskId.value);
-    isScraping.value = false;
-    scrapeProgress.value = null;
+    scraper.isScraping.value = false;
+    scraper.scrapeProgress.value = null;
     simpleLoadingText.value = '';
     pipeline.value = null;
     llmTaskId.value = null;
@@ -368,29 +333,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (!version || version === 'unknown') {
       throw new Error('Không xác định được phiên bản diễn đàn.');
     }
-    scrapeAbortCtrl = new AbortController();
-    const signal = scrapeAbortCtrl.signal;
-    try {
-      const result = await scrapePageRange(
-        version as XenForoVersion,
-        baseUrl,
-        startPage,
-        endPage,
-        (current, _total, postsScraped) => {
-          scrapeProgress.value = {
-            currentPage: startPage + current - 1,
-            totalPages: endPage,
-            postsScraped,
-          };
-        },
-        signal,
-        delayMs,
-      );
-      if (signal.aborted) throw new DOMException('Scraping cancelled', 'AbortError');
-      return { posts: result.posts, errors: result.errors, threadDeleted: result.threadDeleted, threadLocked: result.threadLocked };
-    } finally {
-      scrapeAbortCtrl = null;
-    }
+    return scraper.scrapeRange(version as XenForoVersion, baseUrl, startPage, endPage, delayMs);
   }
 
   function handleRetry() {
@@ -407,8 +350,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value!;
 
     error.value = '';
-    scrapingWarnings.value = [];
-    scrapingInfo.value = [];
+    scraper.scrapingWarnings.value = [];
+    scraper.scrapingInfo.value = [];
     // Build pipeline if not already set by parent (e.g. handleAutoSummarizeAll or handleSegmentUpdate loops)
     if (!pipeline.value) {
       pipeline.value = buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
@@ -427,11 +370,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (existing?.posts?.length) {
         segPosts = existing.posts;
       } else {
-        isScraping.value = true;
+        scraper.isScraping.value = true;
         // Let scrapeProgress's default message drive the display during scrape.
         const { posts: scraped, errors, threadDeleted, threadLocked } = await scrapeRange(topic.url, seg.start, seg.end, currentConfig.value?.scrapeDelayMs ?? 2000);
-        isScraping.value = false;
-        scrapeProgress.value = null;
+        scraper.isScraping.value = false;
+        scraper.scrapeProgress.value = null;
         if (threadDeleted) {
           await saveTopic(topic, { threadDeleted: true });
           throw new Error('Thread đã bị xóa.');
@@ -441,7 +384,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         }
         segPosts = scraped;
         if (!segPosts.length) throw new Error('Không tìm thấy bài viết nào.');
-        if (errors.length > 0) scrapingWarnings.value = errors;
+        if (errors.length > 0) scraper.scrapingWarnings.value = errors;
       }
 
       // News enrichment: only for segment 0 (first post may be news OP)
@@ -453,7 +396,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           segPosts,
           topic.url,
           (msg) => { simpleLoadingText.value = msg; },
-          (msg) => { scrapingInfo.value = [...scrapingInfo.value, msg]; },
+          (msg) => { scraper.scrapingInfo.value = [...scraper.scrapingInfo.value, msg]; },
         );
       }
       if (isNewsThread && cachedTopic.value) {
@@ -467,7 +410,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         endPage: seg.end,
         posts: segPosts,
         summary: segmentSummaries.value[segmentIndex]?.summary ?? '',
-        postCount: countRealPosts(segPosts),
+        postCount: scraper.countRealPosts(segPosts),
         summarizedAt: segmentSummaries.value[segmentIndex]?.summarizedAt ?? 0,
       };
       await saveTopic(topic, { segments: tempUpdated, ...(isNewsThread ? { topicType: 'news' } : {}) });
@@ -512,7 +455,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         posts: segPosts,
         summary: segSummaryText,
         summaryJson: segSummaryJson ?? undefined,
-        postCount: countRealPosts(segPosts),
+        postCount: scraper.countRealPosts(segPosts),
         summarizedAt: Date.now(),
       };
 
@@ -565,8 +508,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         cacheFreshness.value = 'fresh';
       }
     } catch (err) {
-      isScraping.value = false;
-      scrapeProgress.value = null;
+      scraper.isScraping.value = false;
+      scraper.scrapeProgress.value = null;
       if (summarizeGuard.isStale(thisId)) return;
       if (err instanceof DOMException && err.name === 'AbortError') return;
       error.value = err instanceof Error ? err.message : String(err);
@@ -673,8 +616,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         // handleAutoSummarizeAll, where autoSummarizeDynamic keeps scrapeProgress
         // set across phases. handleAutoSummarizeAll's own finally can't clear it
         // because generateOverallSummary bumps the guard (stale guard).
-        isScraping.value = false;
-        scrapeProgress.value = null;
+        scraper.isScraping.value = false;
+        scraper.scrapeProgress.value = null;
       }
     }
   }
@@ -710,8 +653,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // Dynamic mode: scrape new pages and append to last segment (or create new) via resume
       const topic = store.selectedTopic.value;
       error.value = '';
-      scrapingWarnings.value = [];
-      scrapingInfo.value = [];
+      scraper.scrapingWarnings.value = [];
+      scraper.scrapingInfo.value = [];
       // Build initial pipeline: scrape remaining pages + overall summary placeholder
       // Segment steps will be appended progressively as each segment completes
       const totalPages = topicInfo.value ? Math.max(newTotalPages, topicInfo.value.pageCount) : newTotalPages;
@@ -778,8 +721,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           }
         }
       } catch (err) {
-        isScraping.value = false;
-        scrapeProgress.value = null;
+        scraper.isScraping.value = false;
+        scraper.scrapeProgress.value = null;
         if (summarizeGuard.isStale(thisId)) return;
         if (err instanceof DOMException && err.name === 'AbortError') return;
         error.value = err instanceof Error ? err.message : String(err);
@@ -788,8 +731,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         if (!summarizeGuard.isStale(thisId)) {
           simpleLoadingText.value = '';
           llmTaskId.value = null;
-          isScraping.value = false;
-          scrapeProgress.value = null;
+          scraper.isScraping.value = false;
+          scraper.scrapeProgress.value = null;
         }
       }
       return;
@@ -858,7 +801,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       endPage,
       posts,
       summary: segmentSummaries.value[segmentIndex]?.summary ?? '',
-      postCount: countRealPosts(posts),
+      postCount: scraper.countRealPosts(posts),
       summarizedAt: segmentSummaries.value[segmentIndex]?.summarizedAt ?? 0,
     };
     await saveTopic(topic, { segments: tempBase });
@@ -890,7 +833,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       posts,
       summary: segSummaryText,
       summaryJson: segSummaryJson ?? undefined,
-      postCount: countRealPosts(posts),
+      postCount: scraper.countRealPosts(posts),
       summarizedAt: Date.now(),
       complete: !incomplete,
     };
@@ -1040,50 +983,38 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     for (let page = startPage; page <= totalPages; page++) {
       if (summarizeGuard.isStale(thisId)) return;
 
-      isScraping.value = true;
+      scraper.isScraping.value = true;
       // Overall topic progress — scrapeProgress stays set across both scrape
       // and LLM phases so the bar + ETA reflect the whole run.
-      scrapeProgress.value = {
+      scraper.scrapeProgress.value = {
         currentPage: page,
         totalPages,
         postsScraped: totalPostsScraped,
       };
 
-      // Call scrapePageRange directly: going through scrapeRange() would install
-      // a per-range progress callback that clobbers our overall scrapeProgress
-      // with a meaningless 1/1 = 100% each iteration.
-      scrapeAbortCtrl = new AbortController();
-      const signal = scrapeAbortCtrl.signal;
       let pagePosts: ScrapedPost[];
       let pageErrors: string[];
       let pageThreadDeleted = false;
       let pageThreadLocked = false;
       try {
-        const result = await scrapePageRange(
-          version as XenForoVersion,
-          topicUrl,
-          page,
-          page,
-          undefined,
-          signal,
-          delayMs,
-        );
-        if (signal.aborted) throw new DOMException('Scraping cancelled', 'AbortError');
+        const result = await scraper.scrapeRange(version as XenForoVersion, topicUrl, page, page, delayMs);
         pagePosts = result.posts;
         pageErrors = result.errors;
         pageThreadDeleted = result.threadDeleted ?? false;
         pageThreadLocked = result.threadLocked ?? false;
-      } finally {
-        scrapeAbortCtrl = null;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') throw err;
+        // scrapeRange handles all abort internally, but re-throw for the outer try/catch
+        throw err;
       }
-      isScraping.value = false;
+      scraper.isScraping.value = false;
 
       if (pageThreadDeleted) {
         if (cachedTopic.value) {
           await saveTopic(cachedTopic.value, { threadDeleted: true });
         }
         error.value = 'Thread đã bị xóa.';
-        scrapeProgress.value = null;
+        scraper.scrapeProgress.value = null;
         return;
       }
 
@@ -1093,7 +1024,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         }
       }
 
-      if (pageErrors.length) scrapingWarnings.value.push(...pageErrors);
+      if (pageErrors.length) scraper.scrapingWarnings.value.push(...pageErrors);
       if (summarizeGuard.isStale(thisId)) return;
 
       // News enrichment for page 1 only
@@ -1105,7 +1036,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         enrichedPosts = await enrichWithNewsArticles(
           pagePosts, topicUrl,
           msg => { simpleLoadingText.value = msg; },
-          msg => { scrapingInfo.value = [...scrapingInfo.value, msg]; },
+          msg => { scraper.scrapingInfo.value = [...scraper.scrapingInfo.value, msg]; },
         );
         if (isNewsThread && cachedTopic.value) {
           store.updateSelectedTopic({ topicType: 'news' });
@@ -1114,7 +1045,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       totalPostsScraped += enrichedPosts.length;
-      scrapeProgress.value = {
+      scraper.scrapeProgress.value = {
         currentPage: page,
         totalPages,
         postsScraped: totalPostsScraped,
@@ -1172,8 +1103,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
 
     error.value = '';
-    scrapingWarnings.value = [];
-    scrapingInfo.value = [];
+    scraper.scrapingWarnings.value = [];
+    scraper.scrapingInfo.value = [];
     const thisId = summarizeGuard.begin();
     store.setSummarizing(topic.url);
 
@@ -1227,8 +1158,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         }
       }
     } catch (err) {
-      isScraping.value = false;
-      scrapeProgress.value = null;
+      scraper.isScraping.value = false;
+      scraper.scrapeProgress.value = null;
       if (summarizeGuard.isStale(thisId)) return;
       if (err instanceof DOMException && err.name === 'AbortError') return;
       error.value = err instanceof Error ? err.message : String(err);
@@ -1237,8 +1168,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (!summarizeGuard.isStale(thisId)) {
         simpleLoadingText.value = '';
         llmTaskId.value = null;
-        isScraping.value = false;
-        scrapeProgress.value = null;
+        scraper.isScraping.value = false;
+        scraper.scrapeProgress.value = null;
       }
     }
   }
@@ -1292,12 +1223,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     threadAnalysis,
     isAnalyzing,
     error,
-    scrapeProgress,
+    scrapeProgress: scraper.scrapeProgress,
     simpleLoadingText,
     llmTaskId,
-    isScraping,
-    scrapingWarnings,
-    scrapingInfo,
+    isScraping: scraper.isScraping,
+    scrapingWarnings: scraper.scrapingWarnings,
+    scrapingInfo: scraper.scrapingInfo,
     currentConfig,
     cachedTopic,
     cacheFreshness,

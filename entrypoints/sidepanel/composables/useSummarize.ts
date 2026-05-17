@@ -345,6 +345,183 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
+  // --- Primitive: LLM call + persist for one segment ---
+  async function summarizeOneSegment(
+    segmentIndex: number,
+    segPosts: ScrapedPost[],
+    seg: { start: number; end: number },
+    thisId: number,
+  ): Promise<void> {
+    const topic = store.selectedTopic.value!;
+    const scrapeStepId = segments.value.length <= 1 ? 'scrape' : `scrape_${segmentIndex}`;
+
+    // Mark scrape done → summarize running
+    if (pl.pipeline.value) {
+      pl.pipeline.value = pl.markNextRunning(scrapeStepId);
+    }
+
+    const segTask = summarize(segPosts);
+    llmTaskId.value = segTask.taskId;
+    const st = getTaskState(segTask.taskId);
+    if (st && pl.pipeline.value) st.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
+    const segResult = await segTask.result;
+
+    if (pl.pipeline.value) {
+      const finalTask = getTaskState(segTask.taskId);
+      if (finalTask?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(finalTask.pipeline));
+    }
+
+    const segSummaryText = (segResult.data as { summary: string }).summary;
+    const segSummaryJson = parseSummaryJSON(segSummaryText);
+
+    const newSeg: TopicSegment = {
+      startPage: seg.start,
+      endPage: seg.end,
+      posts: segPosts,
+      summary: segSummaryText,
+      summaryJson: segSummaryJson ?? undefined,
+      postCount: scraper.countRealPosts(segPosts),
+      summarizedAt: Date.now(),
+    };
+
+    const updated = makeDenseSegments({ existing: segmentSummaries.value, segIdx: segmentIndex, totalSegments: segments.value.length });
+    updated[segmentIndex] = newSeg;
+
+    // Stale guard
+    if (summarizeGuard.isStale(thisId)) {
+      const stalePayload = buildSegmentSavePayload({
+        topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
+        updatedSegments: updated,
+        newSeg,
+        forumPostCount: getLiveForumPostCount(),
+        isSingleSegment: segments.value.length === 1,
+      });
+      await saveTopic(topic, stalePayload).catch(() => { });
+      return;
+    }
+
+    const updatedDense = updated as TopicSegment[];
+    segmentSummaries.value = updatedDense;
+    activeSegmentIndex.value = segmentIndex;
+
+    const isSingleSegment = segments.value.length === 1;
+    const savePayload = buildSegmentSavePayload({
+      topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
+      updatedSegments: updatedDense,
+      newSeg,
+      forumPostCount: getLiveForumPostCount(),
+      isSingleSegment,
+    });
+
+    await sendMessage('SAVE_CACHED_TOPIC', savePayload);
+    store.updateSelectedTopic({
+      title: topic.title,
+      version: topic.version,
+      totalPages: topic.totalPages,
+      totalPosts: savePayload.totalPosts,
+      forumPostCount: savePayload.forumPostCount,
+      summarizedPostCount: savePayload.summarizedPostCount,
+      segments: savePayload.segments,
+      ...(savePayload.summary ? { summary: savePayload.summary } : {}),
+      ...(savePayload.summaryJson ? { summaryJson: savePayload.summaryJson } : {}),
+    } as Partial<CachedTopic>);
+
+    if (isSingleSegment) {
+      summary.value = newSeg.summary;
+      summaryJson.value = newSeg.summaryJson ?? null;
+      activeSegmentIndex.value = null;
+      cacheFreshness.value = 'fresh';
+    }
+  }
+
+  // --- Primitive: merge N segment summaries into 1 overall ---
+  async function reduceOverall(thisId: number): Promise<void> {
+    const topic = store.selectedTopic.value;
+    if (!topic) return;
+
+    const completedSegments = segmentSummaries.value.filter(s => s?.summary);
+    if (completedSegments.length === 0) return;
+
+    // Single segment: copy trực tiếp, không gọi LLM
+    if (completedSegments.length === 1) {
+      const seg = completedSegments[0];
+      summary.value = seg.summary;
+      summaryJson.value = seg.summaryJson ?? null;
+      activeSegmentIndex.value = null;
+      store.updateSelectedTopic({
+        summary: seg.summary,
+        summaryJson: seg.summaryJson ?? undefined,
+        summarizedPostCount: seg.postCount,
+      });
+      cacheFreshness.value = 'fresh';
+      return;
+    }
+
+    store.setSummarizing(topic.url);
+    simpleLoadingText.value = '';
+
+    try {
+      const summaryStrings = completedSegments.map(seg => seg.summary);
+      const overallTask = summarizeSegmentsTask(summaryStrings);
+      llmTaskId.value = overallTask.taskId;
+      const st2 = getTaskState(overallTask.taskId);
+      if (st2 && pl.pipeline.value) st2.pipeline = pl.pipeline.value;
+      const overallResult = await overallTask.result;
+
+      if (pl.pipeline.value) {
+        const ft = getTaskState(overallTask.taskId);
+        if (ft?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
+      }
+
+      const overallSummaryText = (overallResult.data as { summary: string }).summary;
+      const overallSummaryJson = parseSummaryJSON(overallSummaryText);
+
+      if (summarizeGuard.isStale(thisId)) {
+        const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
+          segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+        await saveTopic(topic, {
+          forumPostCount: getLiveForumPostCount(),
+          summary: overallSummaryText,
+          summaryJson: overallSummaryJson ?? undefined,
+          summarizedPostCount: totalSummarized,
+          segments: segmentSummaries.value,
+        }).catch(() => { });
+        return;
+      }
+
+      summary.value = overallSummaryText;
+      summaryJson.value = overallSummaryJson;
+      activeSegmentIndex.value = null;
+
+      const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
+        segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        url: topic.url,
+        title: topic.title,
+        version: topic.version,
+        totalPages: topic.totalPages,
+        forumPostCount: getLiveForumPostCount(),
+        summary: overallSummaryText,
+        summaryJson: overallSummaryJson ?? undefined,
+        summarizedPostCount: totalSummarized,
+        segments: segmentSummaries.value,
+      });
+      store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized, segments: segmentSummaries.value });
+      cacheFreshness.value = 'fresh';
+    } catch (err) {
+      if (summarizeGuard.isStale(thisId)) return;
+      error.value = err instanceof Error ? err.message : String(err);
+    } finally {
+      store.setSummarizing(null);
+      if (!summarizeGuard.isStale(thisId)) {
+        simpleLoadingText.value = '';
+        llmTaskId.value = null;
+        scraper.isScraping.value = false;
+        scraper.scrapeProgress.value = null;
+      }
+    }
+  }
+
   async function handleSummarizeSegment(segmentIndex: number) {
     const seg = segments.value[segmentIndex];
     if (!seg || !topicInfo.value) return;
@@ -432,82 +609,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         simpleLoadingText.value = `Segment lớn — sẽ dùng ~${estimateSummarizeSegmentCalls(chunksNeeded)} API calls...`;
       }
 
-      // Mark this segment's scrape as done, summarize as running
-      if (pl.pipeline.value) {
-        pl.pipeline.value = pl.markNextRunning(scrapeStepId);
-      }
-      const segTask = summarize(segPosts);
-      llmTaskId.value = segTask.taskId;
-      // Propagate latest pipeline statuses to task state for auto-updates via handleProgress
-      const st = getTaskState(segTask.taskId);
-      if (st && pl.pipeline.value) st.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
-      const segResult = await segTask.result;
-      // Sync summarizePipeline with final task state for display after cleanup
-      if (pl.pipeline.value) {
-        const finalTask = getTaskState(segTask.taskId);
-        if (finalTask?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(finalTask.pipeline));
-      }
-      const segSummaryText = (segResult.data as { summary: string }).summary;
-      const segSummaryJson = parseSummaryJSON(segSummaryText);
-
-      const newSeg: TopicSegment = {
-        startPage: seg.start,
-        endPage: seg.end,
-        posts: segPosts,
-        summary: segSummaryText,
-        summaryJson: segSummaryJson ?? undefined,
-        postCount: scraper.countRealPosts(segPosts),
-        summarizedAt: Date.now(),
-      };
-
-      const updated = makeDenseSegments({ existing: segmentSummaries.value, segIdx: segmentIndex, totalSegments: segments.value.length });
-      updated[segmentIndex] = newSeg;
-      const updatedDense = updated as TopicSegment[];
-
-      // Stale guard
-      if (summarizeGuard.isStale(thisId)) {
-        const stalePayload = buildSegmentSavePayload({
-          topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
-          updatedSegments: updated,
-          newSeg,
-          forumPostCount: getLiveForumPostCount(),
-          isSingleSegment: segments.value.length === 1,
-        });
-        await saveTopic(topic, stalePayload).catch(() => { });
-        return;
-      }
-
-      segmentSummaries.value = updatedDense;
-      activeSegmentIndex.value = segmentIndex;
-
-      const isSingleSegment = segments.value.length === 1;
-      const savePayload = buildSegmentSavePayload({
-        topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
-        updatedSegments: updatedDense,
-        newSeg,
-        forumPostCount: getLiveForumPostCount(),
-        isSingleSegment,
-      });
-
-      await sendMessage('SAVE_CACHED_TOPIC', savePayload);
-      store.updateSelectedTopic({
-        title: topic.title,
-        version: topic.version,
-        totalPages: topic.totalPages,
-        totalPosts: savePayload.totalPosts,
-        forumPostCount: savePayload.forumPostCount,
-        summarizedPostCount: savePayload.summarizedPostCount,
-        segments: savePayload.segments,
-        ...(savePayload.summary ? { summary: savePayload.summary } : {}),
-        ...(savePayload.summaryJson ? { summaryJson: savePayload.summaryJson } : {}),
-      } as Partial<CachedTopic>);
-
-      if (isSingleSegment) {
-        summary.value = newSeg.summary;
-        summaryJson.value = newSeg.summaryJson ?? null;
-        activeSegmentIndex.value = null;
-        cacheFreshness.value = 'fresh';
-      }
+      // LLM + persist (delegates to summarizeOneSegment primitive)
+      await summarizeOneSegment(segmentIndex, segPosts, seg, thisId);
     } catch (err) {
       scraper.isScraping.value = false;
       scraper.scrapeProgress.value = null;
@@ -536,91 +639,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (scrapeStep) pl.pipeline.value = pl.markNextRunning(scrapeStep.id);
     }
 
-    // Single segment: copy trực tiếp, không gọi LLM
-    // summarizeAndSaveSegment already saved with summary/summaryJson at top level
-    // so we only update in-memory state here — no redundant SAVE_CACHED_TOPIC
-    if (completedSegments.length === 1) {
-      const seg = completedSegments[0];
-      summary.value = seg.summary;
-      summaryJson.value = seg.summaryJson ?? null;
-      activeSegmentIndex.value = null;
-      store.updateSelectedTopic({
-        summary: seg.summary,
-        summaryJson: seg.summaryJson ?? undefined,
-        summarizedPostCount: seg.postCount,
-      });
-      cacheFreshness.value = 'fresh';
-      return;
-    }
-
     const thisId = summarizeGuard.begin();
-    store.setSummarizing(topic.url);
-    simpleLoadingText.value = '';
-
-    try {
-      const summaryStrings = completedSegments.map(seg => seg.summary);
-      const overallTask = summarizeSegmentsTask(summaryStrings);
-      llmTaskId.value = overallTask.taskId;
-      const st2 = getTaskState(overallTask.taskId);
-      if (st2 && pl.pipeline.value) st2.pipeline = pl.pipeline.value;
-      const overallResult = await overallTask.result;
-      // Sync pipeline with final task state
-      if (pl.pipeline.value) {
-        const ft = getTaskState(overallTask.taskId);
-        if (ft?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
-      }
-      const overallSummaryText = (overallResult.data as { summary: string }).summary;
-      const overallSummaryJson = parseSummaryJSON(overallSummaryText);
-
-      // Stale guard
-      if (summarizeGuard.isStale(thisId)) {
-        const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
-          segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-        await saveTopic(topic, {
-          forumPostCount: getLiveForumPostCount(),
-          summary: overallSummaryText,
-          summaryJson: overallSummaryJson ?? undefined,
-          summarizedPostCount: totalSummarized,
-          segments: segmentSummaries.value,
-        }).catch(() => { });
-        return;
-      }
-
-      summary.value = overallSummaryText;
-      summaryJson.value = overallSummaryJson;
-      activeSegmentIndex.value = null;
-
-      const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
-        segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-      await sendMessage('SAVE_CACHED_TOPIC', {
-        url: topic.url,
-        title: topic.title,
-        version: topic.version,
-        totalPages: topic.totalPages,
-        forumPostCount: getLiveForumPostCount(),
-        summary: overallSummaryText,
-        summaryJson: overallSummaryJson ?? undefined,
-        summarizedPostCount: totalSummarized,
-        segments: segmentSummaries.value,
-      });
-      store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized, segments: segmentSummaries.value });
-      cacheFreshness.value = 'fresh';
-    } catch (err) {
-      if (summarizeGuard.isStale(thisId)) return;
-      error.value = err instanceof Error ? err.message : String(err);
-    } finally {
-      store.setSummarizing(null);
-      if (!summarizeGuard.isStale(thisId)) {
-        simpleLoadingText.value = '';
-        llmTaskId.value = null;
-        // Also clear scrapeProgress/isScraping in case we were called from
-        // handleAutoSummarizeAll, where autoSummarizeDynamic keeps scrapeProgress
-        // set across phases. handleAutoSummarizeAll's own finally can't clear it
-        // because generateOverallSummary bumps the guard (stale guard).
-        scraper.isScraping.value = false;
-        scraper.scrapeProgress.value = null;
-      }
-    }
+    await reduceOverall(thisId);
   }
 
   async function handleSegmentUpdate() {

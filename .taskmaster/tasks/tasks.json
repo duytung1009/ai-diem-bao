@@ -806,7 +806,7 @@
           "169",
           "171"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -814,9 +814,10 @@
             "description": "Xây dựng hàm xử lý tóm tắt cho một phân đoạn dữ liệu duy nhất, bao gồm gọi LLM và lưu kết quả.",
             "dependencies": [],
             "details": "Thực hiện gọi LLM API với dữ liệu phân đoạn, kiểm tra stale-guard token trước và sau khi gọi, sau đó sử dụng lib/segment-persistence để lưu kết quả vào hệ thống.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test với mock LLM API, kiểm tra xem hàm persist có được gọi với đúng payload không và xử lý stale token chính xác.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T07:03:16.936Z"
           },
           {
             "id": 2,
@@ -826,9 +827,10 @@
               1
             ],
             "details": "Logic bao gồm kiểm tra stale-guard, thực hiện cơ chế short-circuit nếu chỉ có duy nhất một phân đoạn, nếu không sẽ gọi LLM để hợp nhất các bản tóm tắt thành phần.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra logic short-circuit cho trường hợp 1 segment và kiểm tra việc gọi LLM merge cho trường hợp có từ 2 segments trở lên.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T07:03:26.568Z"
           },
           {
             "id": 3,
@@ -839,14 +841,16 @@
               2
             ],
             "details": "Cài đặt kiểm tra token tại các điểm quyết định (trước khi lưu kết quả). Xử lý ngoại lệ từ LLM để không làm hỏng trạng thái của useSummarize khi có lỗi xảy ra.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Giả lập kịch bản race condition khi nhiều yêu cầu tóm tắt diễn ra liên tiếp để xác nhận chỉ kết quả mới nhất được lưu.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T07:03:37.211Z"
           }
         ],
         "complexity": 7,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới."
+        "expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới.",
+        "updatedAt": "2026-05-17T07:03:37.211Z"
       },
       {
         "id": "173",
@@ -966,9 +970,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-17T06:38:46.930Z",
+      "lastModified": "2026-05-17T07:03:37.213Z",
       "taskCount": 20,
-      "completedCount": 17,
+      "completedCount": 18,
       "tags": [
         "master"
       ]

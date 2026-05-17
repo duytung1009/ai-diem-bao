@@ -677,46 +677,28 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     return { mode: 'resume', resume };
   }
 
-  async function handleSegmentUpdate() {
-    if (!topicInfo.value || !store.selectedTopic.value) return;
+  // --- Unified driver ---
 
+  /**
+   * Run the full summarize job: pipeline → scrape → summarize → reduce.
+   * Handles both fresh runs and incremental updates via computeResumeMode.
+   */
+  async function runSummarizeJob(totalPages: number, forceRegenerate: boolean = false): Promise<void> {
+    const topic = store.selectedTopic.value!;
     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
-    const currentSegments = segmentSummaries.value;
 
-    if (isDynamic && dynamicSegmentBoundaries.value.length > 0) {
-      // Dynamic mode: delegate to computeResumeMode + autoSummarizeDynamic
-      const resumeMode = computeResumeMode();
-      if (resumeMode.mode === 'skip') {
-        await generateOverallSummary();
-        return;
-      }
-
-      const topic = store.selectedTopic.value;
-      const newTotalPages = Math.max(
-        store.activeTabDetect.value?.pageCount ?? 0,
-        topicInfo.value.pageCount,
-      );
-      const totalPages = topicInfo.value ? Math.max(newTotalPages, topicInfo.value.pageCount) : newTotalPages;
-
-      error.value = '';
-      scraper.scrapingWarnings.value = [];
-      scraper.scrapingInfo.value = [];
+    if (!isDynamic) {
+      // Fixed mode: summarize pending segments sequentially, then reduce
+      pl.buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
+      pl.markFirstRunning();
+      if (forceRegenerate) segmentSummaries.value = [];
       const thisId = summarizeGuard.begin();
       store.setSummarizing(topic.url);
-
       try {
-        const budget = await computeDynamicBudget();
-        if (resumeMode.mode === 'fresh') {
-          dynamicSegmentBoundaries.value = [];
-          segmentSummaries.value = [];
-          await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
-        } else {
-          // Ensure resume state is valid; fall back to fresh if beyond total pages
-          if (resumeMode.resume.fromPage > totalPages) {
-            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
-          } else {
-            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resumeMode.resume);
-          }
+        for (let i = 0; i < segments.value.length; i++) {
+          if (summarizeGuard.isStale(thisId)) return;
+          await handleSummarizeSegment(i);
+          if (error.value) return;
         }
         if (!summarizeGuard.isStale(thisId) && !error.value) {
           const completed = segmentSummaries.value.filter(s => s?.summary).length;
@@ -740,6 +722,78 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           scraper.scrapeProgress.value = null;
         }
       }
+      return;
+    }
+
+    // Dynamic mode
+    error.value = '';
+    scraper.scrapingWarnings.value = [];
+    scraper.scrapingInfo.value = [];
+
+    const thisId = summarizeGuard.begin();
+    store.setSummarizing(topic.url);
+
+    try {
+      const budget = await computeDynamicBudget();
+      const resumeMode = forceRegenerate ? { mode: 'fresh' as const } : computeResumeMode();
+
+      if (resumeMode.mode === 'skip') {
+        await generateOverallSummary();
+        return;
+      }
+
+      if (resumeMode.mode === 'fresh') {
+        dynamicSegmentBoundaries.value = [];
+        segmentSummaries.value = [];
+      }
+
+      pl.buildSummarizePipeline([{ start: 1, end: totalPages }]);
+      pl.markFirstRunning();
+
+      if (resumeMode.mode === 'resume' && resumeMode.resume.fromPage <= totalPages) {
+        await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resumeMode.resume);
+      } else {
+        await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+      }
+
+      if (!summarizeGuard.isStale(thisId) && !error.value) {
+        const completed = segmentSummaries.value.filter(s => s?.summary).length;
+        if (completed >= 1) {
+          simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
+          await generateOverallSummary();
+        }
+      }
+    } catch (err) {
+      scraper.isScraping.value = false;
+      scraper.scrapeProgress.value = null;
+      if (summarizeGuard.isStale(thisId)) return;
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      error.value = err instanceof Error ? err.message : String(err);
+    } finally {
+      store.setSummarizing(null);
+      if (!summarizeGuard.isStale(thisId)) {
+        simpleLoadingText.value = '';
+        llmTaskId.value = null;
+        scraper.isScraping.value = false;
+        scraper.scrapeProgress.value = null;
+      }
+    }
+  }
+
+  async function handleSegmentUpdate() {
+    if (!topicInfo.value || !store.selectedTopic.value) return;
+
+    const isDynamic = currentConfig.value?.dynamicSegments ?? true;
+    const currentSegments = segmentSummaries.value;
+
+    if (isDynamic && dynamicSegmentBoundaries.value.length > 0) {
+      // Dynamic mode: delegate to unified driver
+      const newTotalPages = Math.max(
+        store.activeTabDetect.value?.pageCount ?? 0,
+        topicInfo.value.pageCount,
+      );
+      const totalPages = topicInfo.value ? Math.max(newTotalPages, topicInfo.value.pageCount) : newTotalPages;
+      await runSummarizeJob(totalPages);
       return;
     }
 
@@ -1078,84 +1132,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value;
     if (!topic || !topicInfo.value) return;
 
-    // Use max across live detect + cached pageCount so we never miss new pages
-    // when the cached value is stale (same pattern as handleSegmentUpdate).
     const totalPages = Math.max(
       topicInfo.value.pageCount,
       store.activeTabDetect.value?.pageCount ?? 0,
     );
-    const isDynamic = currentConfig.value?.dynamicSegments ?? true;
 
-    error.value = '';
-    scraper.scrapingWarnings.value = [];
-    scraper.scrapingInfo.value = [];
-    const thisId = summarizeGuard.begin();
-    store.setSummarizing(topic.url);
-
-    try {
-      if (isDynamic) {
-        const budget = await computeDynamicBudget();
-        // Build pipeline for the full page range before dynamic processing
-          pl.buildSummarizePipeline([{ start: 1, end: totalPages }]);
-        pl.markFirstRunning();
-        if (forceRegenerate) {
-          // Force regenerate: clear all existing state, start fresh
-          dynamicSegmentBoundaries.value = [];
-          segmentSummaries.value = [];
-          await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
-        } else {
-          // Resume from partial results if any, otherwise start fresh
-          const resume = computeResumeState();
-          if (!resume) {
-            dynamicSegmentBoundaries.value = [];
-            segmentSummaries.value = [];
-          }
-          if (resume && resume.fromPage <= totalPages) {
-            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resume);
-          } else if (!resume) {
-            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
-          }
-          // When resume.fromPage > totalPages, all pages are already summarized —
-          // just proceed to generateOverallSummary below
-        }
-      } else {
-        // Fixed mode: build pipeline once, then summarize all segments sequentially
-          pl.buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
-        pl.markFirstRunning();
-        if (forceRegenerate) {
-          segmentSummaries.value = [];
-        }
-        for (let i = 0; i < segments.value.length; i++) {
-          if (summarizeGuard.isStale(thisId)) return;
-          await handleSummarizeSegment(i);
-          if (error.value) return;
-        }
-      }
-
-      // Generate overall summary
-      if (!summarizeGuard.isStale(thisId) && !error.value) {
-        const completed = segmentSummaries.value.filter(s => s?.summary).length;
-        if (completed >= 1) {
-          simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-          // pl.markNextRunning(pl.pipeline.value!, 'overall');
-          await generateOverallSummary();
-        }
-      }
-    } catch (err) {
-      scraper.isScraping.value = false;
-      scraper.scrapeProgress.value = null;
-      if (summarizeGuard.isStale(thisId)) return;
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      error.value = err instanceof Error ? err.message : String(err);
-    } finally {
-      store.setSummarizing(null);
-      if (!summarizeGuard.isStale(thisId)) {
-        simpleLoadingText.value = '';
-        llmTaskId.value = null;
-        scraper.isScraping.value = false;
-        scraper.scrapeProgress.value = null;
-      }
-    }
+    await runSummarizeJob(totalPages, forceRegenerate);
   }
 
   async function handleGenerateAnalysis(): Promise<void> {

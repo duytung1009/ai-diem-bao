@@ -930,7 +930,7 @@
         "dependencies": [
           "173"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -938,9 +938,10 @@
             "description": "Thực hiện cấu trúc lại các hàm handleAutoSummarizeAll, handleSegmentUpdate và handleSummarizeSegment trong useSummarize.ts.",
             "dependencies": [],
             "details": "Thay thế logic xử lý cũ bằng cách chuyển đổi tham số từ UI (như videoId, segmentId) thành các object điều khiển { mode, range, resume } rồi gọi hàm runSummarizeJob. Đảm bảo dữ liệu đầu vào được validate đúng trước khi chuyển sang driver.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Chạy npm run compile và kiểm tra kiểu dữ liệu TypeScript để đảm bảo tính nhất quán sau khi refactor.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:14:27.545Z"
           },
           {
             "id": 2,
@@ -950,9 +951,10 @@
               1
             ],
             "details": "Loại bỏ các lệnh gọi trực tiếp đến logic nội bộ trong các file test update-summary-*.test.ts. Sử dụng chrome.runtime.sendMessage hoặc mock dispatcher để kích hoạt toàn bộ luồng orchestration thông qua driver trung tâm và kiểm tra kết quả cuối cùng.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Thực thi npm run test đối với các file test đã cập nhật và đảm bảo tỷ lệ pass đạt 100%.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:14:37.460Z"
           },
           {
             "id": 3,
@@ -963,21 +965,23 @@
               2
             ],
             "details": "Thực hiện kiểm tra thủ công trên trình duyệt cho các kịch bản: tóm tắt mới hoàn toàn, tóm tắt thêm các đoạn segment mới, và luồng retry khi gặp lỗi. Đảm bảo component StepTimeline cập nhật trạng thái 'running' và 'done' chính xác theo pipeline.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra thủ công trên môi trường development (manual testing) và chạy full test suite để đảm bảo không có lỗi hồi quy.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:14:46.807Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Cập nhật các hàm entry point UI để gọi driver trung tâm và viết lại các bài test E2E để kiểm tra toàn bộ luồng từ giao diện người dùng đến background script."
+        "expansionPrompt": "Cập nhật các hàm entry point UI để gọi driver trung tâm và viết lại các bài test E2E để kiểm tra toàn bộ luồng từ giao diện người dùng đến background script.",
+        "updatedAt": "2026-05-17T15:14:46.807Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-17T15:07:39.624Z",
+      "lastModified": "2026-05-17T15:14:46.809Z",
       "taskCount": 20,
-      "completedCount": 19,
+      "completedCount": 20,
       "tags": [
         "master"
       ]

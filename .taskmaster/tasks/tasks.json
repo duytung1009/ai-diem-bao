@@ -2,7 +2,7 @@
   "master": {
     "tasks": [
       {
-        "id": 155,
+        "id": "155",
         "title": "Định nghĩa Data Models và Types cho Pipeline",
         "description": "Tạo các interface TypeScript cho PipelineStep và PipelineDefinition để quản lý trạng thái các bước xử lý.",
         "details": "Tạo file `src/types/pipeline.ts`. Định nghĩa interface PipelineStep với các trường: id (string), label (string), status ('pending' | 'running' | 'done' | 'error'), etaMs (number, optional), và error (string, optional). Định nghĩa PipelineDefinition với workflow ('summarize' | 'knowledge' | 'research' | 'opinions') và mảng các steps. Export các types này để sử dụng trong toàn bộ project.",
@@ -77,7 +77,7 @@
         "updatedAt": "2026-05-14T03:33:02.351Z"
       },
       {
-        "id": 156,
+        "id": "156",
         "title": "Cập nhật Message Protocol LLM_PROGRESS",
         "description": "Mở rộng cấu trúc message LLMProgressMessage để hỗ trợ gửi thông tin pipeline từ background về sidepanel.",
         "details": "Tìm định nghĩa LLMProgressMessage trong file protocol. Cập nhật thêm thuộc tính optional 'pipeline' chứa object workflow và mảng các steps (id, label, status). Đảm bảo tính tương thích ngược bằng cách để thuộc tính pipeline là optional. Cập nhật các hàm tiện ích tạo message nếu có.",
@@ -132,7 +132,7 @@
         "updatedAt": "2026-05-14T03:34:22.177Z"
       },
       {
-        "id": 157,
+        "id": "157",
         "title": "Phát triển Component StepTimeline.vue",
         "description": "Tạo component hiển thị timeline dọc cho các bước xử lý với các trạng thái khác nhau.",
         "details": "Sử dụng Tailwind CSS. Props: pipeline (PipelineDefinition), showCancel (boolean), onCancel (callback). Style: Trạng thái 'done' dùng text-green-600 + icon check; 'running' dùng text-blue-600 + spinner icon + ETA badge; 'pending' dùng text-gray-400 + empty circle; 'error' dùng text-red-600 + icon X. Hiển thị danh sách các bước theo chiều dọc, mỗi bước có icon và label tương ứng.",
@@ -196,7 +196,7 @@
         "updatedAt": "2026-05-14T03:35:22.655Z"
       },
       {
-        "id": 158,
+        "id": "158",
         "title": "Cập nhật useLLM.ts Composable",
         "description": "Quản lý trạng thái pipeline trong state toàn cục của LLM task.",
         "details": "Thêm 'pipeline: PipelineDefinition | null' vào interface LLMTaskState. Cập nhật hàm handleProgress để khi nhận message có pipeline, nó sẽ cập nhật state. Viết logic cập nhật trạng thái của từng step trong pipeline dựa trên step index hoặc id nhận được từ progress message. Hàm startTask cần cho phép nhận pipeline ban đầu từ caller.",
@@ -249,7 +249,7 @@
         "updatedAt": "2026-05-14T03:36:26.958Z"
       },
       {
-        "id": 159,
+        "id": "159",
         "title": "Cập nhật Background Logic xử lý Task",
         "description": "Chỉnh sửa logic processLLMTask trong background để gửi pipeline definition và cập nhật progress.",
         "details": "Chỉnh sửa entrypoints/background/index.ts. Trong processLLMTask, lấy pipeline từ payload và gửi kèm trong message progress đầu tiên. Cập nhật onProgress callback để nhận thông tin về bước hiện tại (index hoặc id) và chuyển tiếp về sidepanel. Đảm bảo luồng xử lý lỗi sẽ cập nhật status của step hiện tại thành 'error'.",
@@ -302,7 +302,7 @@
         "updatedAt": "2026-05-14T03:37:57.280Z"
       },
       {
-        "id": 160,
+        "id": "160",
         "title": "Triển khai Pipeline Builder cho Summarize Workflow",
         "description": "Tạo logic xây dựng pipeline động cho các kịch bản tóm tắt khác nhau trong useSummarize.ts.",
         "details": "Trong useSummarize.ts, viết hàm buildSummarizePipeline(segments). Đối với đơn đoạn: [scrape, summarize, save]. Đối với đa đoạn: Lặp qua N đoạn để tạo các step [scrape_seg_i, summarize_seg_i], sau đó thêm [overall, save]. Truyền pipeline này vào hàm gọi task LLM.",
@@ -355,7 +355,7 @@
         "updatedAt": "2026-05-14T03:46:16.360Z"
       },
       {
-        "id": 161,
+        "id": "161",
         "title": "Triển khai Pipeline Builder cho Knowledge/Research/Opinions",
         "description": "Xây dựng pipeline cố định hoặc động cho các workflow còn lại.",
         "details": "Cập nhật useKnowledge.ts (extract_i cho M chunks, reduce), useResearch.ts (research, save), và useOpinions.ts (analyze, save). Đảm bảo mỗi workflow đều khởi tạo pipeline definition đầy đủ trước khi bắt đầu task.",
@@ -373,7 +373,7 @@
         "updatedAt": "2026-05-14T03:40:50.130Z"
       },
       {
-        "id": 162,
+        "id": "162",
         "title": "Tích hợp StepTimeline vào SummaryView.vue",
         "description": "Thay thế ProgressIndicator cũ bằng component StepTimeline mới trong view tóm tắt.",
         "details": "Import StepTimeline.vue. Thay thế component <ProgressIndicator /> bằng <StepTimeline :pipeline='llmState.pipeline' :onCancel='cancelTask' />. Thêm logic ẩn hiện dựa trên trạng thái llmState.isLoading. Đảm bảo layout không bị vỡ khi danh sách step dài.",
@@ -391,7 +391,7 @@
         "updatedAt": "2026-05-14T03:46:25.892Z"
       },
       {
-        "id": 163,
+        "id": "163",
         "title": "Tích hợp StepTimeline vào Knowledge/Research/Opinions Views",
         "description": "Thay thế hiển thị loading trong các view còn lại bằng StepTimeline.",
         "details": "Lặp lại việc thay thế ProgressIndicator bằng StepTimeline trong KnowledgeView.vue, ResearchView.vue và OpinionsView.vue. Truyền pipeline tương ứng từ mỗi composable vào component.",
@@ -409,7 +409,7 @@
         "updatedAt": "2026-05-14T03:46:36.380Z"
       },
       {
-        "id": 164,
+        "id": "164",
         "title": "Kiểm tra Tương thích ngược và Hoàn tất",
         "description": "Đảm bảo hệ thống vẫn hoạt động nếu pipeline không được cung cấp và dọn dẹp code.",
         "details": "Đánh dấu @deprecated cho ProgressIndicator.vue. Kiểm tra logic fallback trong useLLM: nếu pipeline null, hiển thị message text cũ. Chạy 'npm run compile' để đảm bảo không có lỗi type hoặc build. Kiểm tra performance khi có nhiều bước trong timeline.",
@@ -427,7 +427,7 @@
         "updatedAt": "2026-05-14T03:45:43.801Z"
       },
       {
-        "id": 165,
+        "id": "165",
         "title": "Viết Characterization Tests cho 5 flow tóm tắt hiện tại",
         "description": "Thiết lập các bài test đặc tính (characterization tests) để ghi lại hành vi hiện tại của 5 flow tóm tắt trước khi thực hiện refactor.",
         "details": "Sử dụng mock provider và mock sendMessage để kiểm tra orchestration của handleSegmentUpdate và handleAutoSummarizeAll. Đảm bảo ghi lại chính xác số lượng LLM calls và cấu trúc payload SAVE_CACHED_TOPIC cho các trường hợp: 1 trang, ~25 trang, và topic lớn (~234 trang).",
@@ -480,7 +480,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 165
+            "parentTaskId": 165,
+            "parentId": "undefined"
           }
         ],
         "complexity": 6,
@@ -489,7 +490,7 @@
         "updatedAt": "2026-05-16T04:26:57.821Z"
       },
       {
-        "id": 166,
+        "id": "166",
         "title": "Loại bỏ Dead Code liên quan đến Incremental Update (R1)",
         "description": "Xoá bỏ hoàn toàn các logic, hàm và prompt liên quan đến cơ chế cập nhật tăng trưởng (incremental) đã lỗi thời.",
         "details": "Xoá updateSummary() trong lib/llm/summarizer.ts, summarizeIncremental() trong useLLM.ts, case 'summarize_incremental' trong background index.ts, INCREMENTAL_UPDATE_PROMPT trong lib/prompts.ts và taskType tương ứng trong lib/types.ts. Xoá mọi tham chiếu grep được trong repo.",
@@ -531,7 +532,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 166
+            "parentTaskId": 166,
+            "parentId": "undefined"
           }
         ],
         "complexity": 3,
@@ -540,7 +542,7 @@
         "updatedAt": "2026-05-16T04:35:37.022Z"
       },
       {
-        "id": 167,
+        "id": "167",
         "title": "Cài đặt Module Run-Guard Helper (R3)",
         "description": "Tạo helper quản lý trạng thái thực thi (stale-guard) để thay thế biến activeSummarizeId lặp lại.",
         "details": "Tạo lib/run-guard.ts với createRunGuard() trả về { begin(): number; isStale(token: number): boolean }. Tích hợp vào useSummarize.ts để thay thế cơ chế manual counter. Cập nhật handleCancel để invalidate các tiến trình đang chạy bằng guard.begin().",
@@ -582,7 +584,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 167
+            "parentTaskId": 167,
+            "parentId": "undefined"
           }
         ],
         "complexity": 4,
@@ -591,7 +594,7 @@
         "updatedAt": "2026-05-16T07:08:49.043Z"
       },
       {
-        "id": 168,
+        "id": "168",
         "title": "Triển khai Module Segment-Planner cho Budget và Resume State (R5)",
         "description": "Tách logic tính toán token budget và trạng thái khôi phục (resume state) thành module pure.",
         "details": "Tạo lib/segment-planner.ts. Chuyển computeResumeState từ useSummarize sang. Cài đặt computeSegmentBudget với responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, config.maxTokens). Sửa bug thiếu maxTokens trong logic cũ.",
@@ -644,7 +647,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 168
+            "parentTaskId": 168,
+            "parentId": "undefined"
           }
         ],
         "complexity": 5,
@@ -653,7 +657,7 @@
         "updatedAt": "2026-05-16T05:14:02.055Z"
       },
       {
-        "id": 169,
+        "id": "169",
         "title": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
         "description": "Hợp nhất logic lưu segment, cập nhật store và promotion vào một module pure duy nhất.",
         "details": "Tạo lib/segment-persistence.ts. Xây dựng buildSegmentSavePayload() xử lý totalPosts (dùng Math.max) và single-segment promotion. Xây dựng makeDenseSegments() gộp logic từ makeDenseBase. Tích hợp stale-guard token để quyết định lưu payload với cờ stale.",
@@ -708,7 +712,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 169
+            "parentTaskId": 169,
+            "parentId": "undefined"
           }
         ],
         "complexity": 5,
@@ -717,7 +722,7 @@
         "updatedAt": "2026-05-17T15:23:57.970Z"
       },
       {
-        "id": 170,
+        "id": "170",
         "title": "Refactor logic scraping thành Composable useTopicScraper (R4)",
         "description": "Tách logic cào dữ liệu trang và enrichment thành một composable riêng biệt.",
         "details": "Tạo entrypoints/sidepanel/composables/useTopicScraper.ts. Đóng gói scrapeRange, vòng lặp page-by-page, news enrichment và xử lý threadDeleted/Locked. Cung cấp callback onSegmentReady và onProgress. Đảm bảo logic dedup re-scrape trang cuối được giữ nguyên.",
@@ -786,7 +791,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 170
+            "parentTaskId": 170,
+            "parentId": "undefined"
           }
         ],
         "complexity": 6,
@@ -795,7 +801,7 @@
         "updatedAt": "2026-05-17T15:24:37.938Z"
       },
       {
-        "id": 171,
+        "id": "171",
         "title": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
         "description": "Quản lý StepTimeline tập trung và đồng bộ trạng thái task.",
         "details": "Tạo usePipeline.ts. Xây dựng buildSummarizePipeline nhận boundary (số segment dự kiến) để build toàn bộ step up-front. Thêm phương thức reconcile(actualSegments) để điều chỉnh pipeline khi số segment thực tế thay đổi trong dynamic mode. Loại bỏ các hack progressive-append cũ.",
@@ -850,7 +856,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 171
+            "parentTaskId": 171,
+            "parentId": "undefined"
           }
         ],
         "complexity": 6,
@@ -859,7 +866,7 @@
         "updatedAt": "2026-05-17T15:25:19.041Z"
       },
       {
-        "id": 172,
+        "id": "172",
         "title": "Xây dựng các hàm Primitive trong useSummarize",
         "description": "Định nghĩa 2 đơn vị thực thi cốt lõi: xử lý 1 segment và gộp (reduce) kết quả.",
         "details": "Triển khai summarizeOneSegment(index, posts, token) thực hiện LLM call + persist qua lib/segment-persistence. Triển khai reduceOverall(token) thực hiện gộp N summaries thành 1, bao gồm logic short-circuit cho single-segment. Cả hai phải tuân thủ stale-guard.",
@@ -916,7 +923,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 172
+            "parentTaskId": 172,
+            "parentId": "undefined"
           }
         ],
         "complexity": 7,
@@ -925,7 +933,7 @@
         "updatedAt": "2026-05-17T15:26:01.154Z"
       },
       {
-        "id": 173,
+        "id": "173",
         "title": "Triển khai Driver trung tâm runSummarizeJob (R7)",
         "description": "Hợp nhất 5 flow tóm tắt vào một driver điều hướng duy nhất.",
         "details": "Tạo runSummarizeJob({ mode, range, resume }) trong useSummarize.ts. Điều phối: Khởi tạo pipeline -> Gọi useTopicScraper -> Lặp summarizeOneSegment -> Gọi reduceOverall. Chuyển logic rẽ nhánh phức tạp trong handleSegmentUpdate thành helper computeResumeMode trả về { mode, resume }.",
@@ -993,7 +1001,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 173
+            "parentTaskId": 173,
+            "parentId": "undefined"
           }
         ],
         "complexity": 8,
@@ -1002,7 +1011,7 @@
         "updatedAt": "2026-05-17T15:26:45.175Z"
       },
       {
-        "id": 174,
+        "id": "174",
         "title": "Hoàn thiện UI Wrappers và cập nhật Test E2E thực tế",
         "description": "Chuyển các hàm UI entry point thành wrapper mỏng và cập nhật bộ test E2E theo cơ chế mới.",
         "details": "Biến handleAutoSummarizeAll, handleSegmentUpdate, handleSummarizeSegment thành các hàm wrapper gọi runSummarizeJob. Viết lại 3 bài test E2E update-summary-*.test.ts để drive orchestration thật qua sendMessage thay vì gọi trực tiếp logic nội bộ.",
@@ -1058,14 +1067,14 @@
         "updatedAt": "2026-05-17T15:14:46.807Z"
       },
       {
-        "id": 175,
+        "id": "175",
         "title": "Setup test infrastructure for regression tests",
         "description": "Create utility functions and mocks for testing C1-C4. This includes mocks for scraper, useTopicScraper, usePipeline, and helpers to assert scrapeProgress, stale payload, segment completed predicate, and pipeline steps.",
         "details": "Create file tests/utils/testHelpers.ts containing:\n- createMockScraper(): mock object with scrapePageRange, abortScrape, scrapeRange\n- createMockSegment(overrides): segment with defaults\n- buildStalePayload(): payload without summary fields\n- assertProgress(progress, expected): check currentPage, totalPages, postsScraped\n- assertPipelineSteps(steps, expected): check step ids and done\nUse vi.mock accordingly. Ensure vitest config includes new tests.",
         "testStrategy": "Ensure helpers are correctly imported and used in regression tests; verify they compile and run in isolation.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1073,8 +1082,10 @@
             "description": "Tạo các hàm createMockScraper, createMockSegment, buildStalePayload, assertProgress, assertPipelineSteps trong file tests/utils/testHelpers.ts làm cơ sở cho regression tests.",
             "dependencies": [],
             "details": "Viết mã TypeScript cho các hàm: createMockScraper trả về object với scrapePageRange, abortScrape, scrapeRange; createMockSegment chấp nhận overrides để tạo segment mặc định; buildStalePayload tạo payload thiếu summary fields; assertProgress kiểm tra currentPage, totalPages, postsScraped; assertPipelineSteps kiểm tra step ids và done. Đảm bảo các hàm sử dụng đúng kiểu dữ liệu.",
-            "status": "pending",
-            "testStrategy": "Kiểm tra từng hàm bằng cách chạy test đơn vị sau khi hoàn thành subtask 3."
+            "status": "done",
+            "testStrategy": "Kiểm tra từng hàm bằng cách chạy test đơn vị sau khi hoàn thành subtask 3.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:53:09.861Z"
           },
           {
             "id": 2,
@@ -1084,8 +1095,10 @@
               1
             ],
             "details": "Thêm các lệnh vi.mock ở đầu file testHelpers.ts, ví dụ: vi.mock('@/lib/scraper', () => ({ createMockScraper: ... })). Tạo các mock objects cho scraper và pipeline để sử dụng trong helper functions.",
-            "status": "pending",
-            "testStrategy": "Xác nhận các mock được kích hoạt đúng khi import trong tests."
+            "status": "done",
+            "testStrategy": "Xác nhận các mock được kích hoạt đúng khi import trong tests.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:54:29.115Z"
           },
           {
             "id": 3,
@@ -1095,29 +1108,37 @@
               2
             ],
             "details": "Thêm 'tests/utils/**' vào include trong vitest.config. Tạo testHelpers.test.ts với các test case cho từng hàm: kiểm tra createMockScraper trả về object đúng cấu trúc, assertProgress báo lỗi nếu không khớp, v.v. Chạy thử test.",
-            "status": "pending",
-            "testStrategy": "Chạy lệnh vitest và xác nhận tất cả test pass."
+            "status": "done",
+            "testStrategy": "Chạy lệnh vitest và xác nhận tất cả test pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:03:22.743Z"
           },
           {
             "id": 4,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 175
+            "parentTaskId": 175,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:04:18.094Z"
           }
-        ]
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia task thành các subtask: 1) Tạo các hàm helper (createMockScraper, createMockSegment, buildStalePayload, assertProgress, assertPipelineSteps). 2) Tạo các mock objects cho scraper và pipeline. 3) Cập nhật cấu hình vitest và viết test cho các helpers.",
+        "updatedAt": "2026-05-17T16:04:18.094Z"
       },
       {
-        "id": 176,
+        "id": "176",
         "title": "Fix C3: stale-save does not promote summary",
         "description": "In stale path of summarizeOneSegment and summarizeAndSaveSegment, change buildSegmentSavePayload call to isSingleSegment: false, excluding summary/summaryJson. Add unit test asserting stale payload lacks these fields.",
         "details": "In useSummarize.ts:\n- Locate lines around L391-401 and L905-917.\n- Change isSingleSegment: true to isSingleSegment: false in the buildSegmentSavePayload call for stale branch.\n- Non-stale branch remains unchanged.\n- Write test: mock segment and run state, simulate stale condition (e.g., guard bumped), capture payload, assert no summary or summaryJson keys.",
         "testStrategy": "Unit test with mock function tracking dispatch; verify stale payload shape; also test non-stale to ensure no regression.",
         "priority": "high",
         "dependencies": [
-          175
+          "175"
         ],
         "status": "pending",
         "subtasks": [
@@ -1130,7 +1151,8 @@
             ],
             "details": "Trong useSummarize.ts, tại các dòng L391-401 và L905-917, đổi isSingleSegment: true thành isSingleSegment: false. Non-stale branch giữ nguyên. Viết test: mock segment và run state, simulate điều kiện stale (guard bumped), capture payload, assert không có khóa summary hoặc summaryJson.",
             "status": "pending",
-            "testStrategy": "Sử dụng mock function để track dispatch; verify shape của stale payload; kiểm tra non-stale để đảm bảo không regression."
+            "testStrategy": "Sử dụng mock function để track dispatch; verify shape của stale payload; kiểm tra non-stale để đảm bảo không regression.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1139,19 +1161,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 176
+            "parentTaskId": 176,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Chia task thành: 1) Sửa dòng lệnh isSingleSegment: true thành false trong stale path. 2) Viết unit test kiểm tra stale payload không có summary."
       },
       {
-        "id": 177,
+        "id": "177",
         "title": "Fix C2: unify segment completed predicate to truthy",
         "description": "Change filter in computeResumeState from s.summary != null to !!s.summary. Audit all other places filtering completed segments (reduceOverall, summarizedCount, computeResumeMode, runSummarizeJob) to use truthy check. Add test with segment having summary:''.",
         "details": "In lib/segment-planner.ts line ~66, change filter. Also check:\n- reduceOverall (L442)\n- summarizedCount (L98)\n- computeResumeMode (L653)\n- runSummarizeJob (L704/760)\nCreate helper isCompletedSegment(s: TopicSegment): boolean { return !!s?.summary; } and use consistently.\nWrite test: computeResumeState with segments: one with summary:'text', one with summary:'', one with summary:null. Expect only first to count.",
         "testStrategy": "Unit tests for computeResumeState and computeResumeMode; verify correct resume behavior with empty summary segment.",
         "priority": "high",
         "dependencies": [
-          176
+          "176"
         ],
         "status": "pending",
         "subtasks": [
@@ -1162,7 +1188,8 @@
             "dependencies": [],
             "details": "Implement trong file lib/segment-planner.ts. Hàm kiểm tra truthy của summary, xử lý null/undefined/empty string.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1173,7 +1200,8 @@
             ],
             "details": "Trong lib/segment-planner.ts, tìm và thay thế tại dòng ~66, L442, L98, L653, L704/760 (theo tài liệu). Đảm bảo dùng helper thay vì logic rải rác.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1184,7 +1212,8 @@
             ],
             "details": "Viết trong file test tương ứng (ví dụ segment-planner.test.ts). Test kiểm tra kết quả resume state chỉ bao gồm segment có summary truthy. Đảm bảo segment với summary rỗng không được tính.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -1193,19 +1222,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 177
+            "parentTaskId": 177,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia task thành: 1) Tạo helper isCompletedSegment. 2) Thay thế filter tại tất cả các vị trí (computeResumeState, reduceOverall, summarizedCount, computeResumeMode, runSummarizeJob). 3) Viết unit test với segment có summary rỗng."
       },
       {
-        "id": 178,
+        "id": "178",
         "title": "Fix C1: restore overall scrape progress in dynamic summarize",
         "description": "Modify autoSummarizeDynamic to call scrapePageRange directly instead of scraper.scrapeRange, with own AbortController linked to main abort. Ensure scrapeProgress shows total pages of topic, not individual page.",
         "details": "In useSummarize.ts, in autoSummarizeDynamic loop (L1038 area):\n- Replace scraper.scrapeRange(version, topicUrl, page, page, delayMs) with direct call to scrapePageRange (assume it returns posts and can be aborted)\n- Create child AbortController from scraper's abortController to respect cancel.\n- Keep setScrapeProgress({ currentPage: page, totalPages: totalPages, postsScraped }) as existing.\n- Ensure no internal progress overrides (e.g., remove any callback that sets totalPages=page).\nAdd characterization test: mock scrapePageRange, emit progress events, assert totalPages constant.",
         "testStrategy": "Unit test with mock scraper; simulate multi-page topic; verify scrapeProgress.totalPages equals topic pages, currentPage increments, no reset.",
         "priority": "high",
         "dependencies": [
-          177
+          "177"
         ],
         "status": "pending",
         "subtasks": [
@@ -1216,7 +1249,8 @@
             "dependencies": [],
             "details": "Sửa đổi trong file useSummarize.ts, vùng L1038. Thay thế dòng scraper.scrapeRange(...) bằng scrapePageRange(...). Đảm bảo hàm scrapePageRange được import hoặc định nghĩa sẵn.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1227,7 +1261,8 @@
             ],
             "details": "Trong autoSummarizeDynamic, trước khi gọi scrapePageRange, tạo một AbortController mới có signal liên kết với abortController của scraper. Truyền signal đó vào scrapePageRange để có thể hủy bỏ.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1239,7 +1274,8 @@
             ],
             "details": "Sử dụng mock cho scrapePageRange, emit các progress events, và kiểm tra rằng setScrapeProgress được gọi với totalPages không đổi. Đảm bảo không có internal progress overrides.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -1248,19 +1284,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 178
+            "parentTaskId": 178,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia task thành: 1) Thay thế scraper.scrapeRange bằng scrapePageRange trong autoSummarizeDynamic. 2) Tạo AbortController con liên kết với abort chính. 3) Viết characterization test kiểm tra scrapeProgress.totalPages không thay đổi."
       },
       {
-        "id": 179,
+        "id": "179",
         "title": "Fix C4 part 1: filter out placeholder 'summarize' step in reconcile",
         "description": "Modify reconcile in usePipeline.ts to remove step with id exactly 'summarize' if steps with 'summarize_' exist, to avoid duplication in dynamic flows. Keep fixed-mode single-segment unaffected.",
         "details": "In usePipeline.ts reconcile function:\n- After adding dynamic segment steps (which create 'summarize_0..N'), check if any step id starts with 'summarize_'.\n- If so, remove step with id exactly 'summarize' if present.\n- For fixed-mode single-segment, no 'summarize_' steps added, so 'summarize' remains.\nWrite tests:\n- Dynamic 1 segment: input [overall, summarize], output [overall, summarize_0], step count 2.\n- Dynamic 2 segments: input [overall, summarize, summarize_0]? Actually builder should output only one summarize. Simulate and assert correct.\n- Fixed single: input [overall, summarize], output unchanged.\n- Fixed multi: input [overall, summarize_0, summarize_1], output unchanged.",
         "testStrategy": "Unit tests for reconcile with various input pipeline states; verify step ids and absence of both 'summarize' and 'summarize_0' duplication.",
         "priority": "medium",
         "dependencies": [
-          178
+          "178"
         ],
         "status": "pending",
         "subtasks": [
@@ -1271,7 +1311,8 @@
             "dependencies": [],
             "details": "Trong hàm reconcile, sau khi thêm các step động (tạo 'summarize_0..N'), kiểm tra xem có bất kỳ step id nào bắt đầu bằng 'summarize_' không. Nếu có, loại bỏ step có id chính xác 'summarize' (nếu tồn tại). Đảm bảo logic không ảnh hưởng đến chế độ cố định đơn đoạn.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1282,7 +1323,8 @@
             ],
             "details": "Xây dựng test case: dynamic 1 segment: input [overall, summarize] -> output [overall, summarize_0]; dynamic 2 segments: input [overall, summarize, summarize_0]? -> output [overall, summarize_0, summarize_1] (chỉ giữ lại summarize_0, summarize_1); fixed single: input [overall, summarize] -> output unchanged; fixed multi: input [overall, summarize_0, summarize_1] -> output unchanged. Sử dụng mock để giả lập hành vi builder.",
             "status": "pending",
-            "testStrategy": "Unit tests với mock LLM và pipeline builder, kiểm tra số lượng step và id step sau khi gọi reconcile."
+            "testStrategy": "Unit tests với mock LLM và pipeline builder, kiểm tra số lượng step và id step sau khi gọi reconcile.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1291,19 +1333,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 179
+            "parentTaskId": 179,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia task thành: 1) Sửa hàm reconcile để xóa step 'summarize' khi có step 'summarize_'. 2) Viết unit test cho các trường hợp dynamic và fixed."
       },
       {
-        "id": 180,
+        "id": "180",
         "title": "Fix C4 part 2: mark overall done for single-segment dynamic",
         "description": "In reduceOverall, for single completed segment branch, call pl.markDone('overall') to ensure StepTimeline shows overall complete.",
         "details": "In useSummarize.ts reduceOverall function, within the early-return when completedSegments.length === 1, add:\n- if (pipeline) { pipeline.markDone?.('overall') } or equivalent state update.\n- Ensure it doesn't affect multi-segment case where overall is marked normally.\nWrite test: mock pipeline, run reduceOverall with one completed segment, assert overall step done=true.",
         "testStrategy": "Unit test with pipeline mock; verify overall step becomes done only when single segment dynamic.",
         "priority": "medium",
         "dependencies": [
-          179
+          "179"
         ],
         "status": "pending",
         "subtasks": [
@@ -1314,7 +1360,8 @@
             "dependencies": [],
             "details": "Sửa file useSummarize.ts: trong reduceOverall, tại vị trí early return khi completedSegments.length === 1, thêm if (pipeline) { pipeline.markDone?.('overall'); }. Tạo test file mới hoặc thêm vào test hiện có: mock pipeline, gọi reduceOverall với one completed segment, kiểm tra overall step done = true; gọi với multi segment, kiểm tra overall step không bị ảnh hưởng.",
             "status": "pending",
-            "testStrategy": "Unit test với pipeline mock; verify overall step được đánh dấu done chỉ trong single-segment dynamic."
+            "testStrategy": "Unit test với pipeline mock; verify overall step được đánh dấu done chỉ trong single-segment dynamic.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1323,23 +1370,27 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 180
+            "parentTaskId": 180,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Chia task thành: 1) Thêm dòng pipeline.markDone('overall') trong reduceOverall cho single segment. 2) Viết test mock pipeline."
       },
       {
-        "id": 181,
+        "id": "181",
         "title": "Write integration e2e test covering all four fixes",
         "description": "Expand tests/e2e/characterization-orchestration.test.ts to include scenarios for C1–C4 using mocked composables. Ensure each regression is covered and passes.",
         "details": "Add test cases:\n- C1: Run autoSummarizeDynamic with multiple pages; observe scrapeProgress never has totalPages==page (except last).\n- C2: segment with summary:'' leads to correct resume state and mode.\n- C3: stale save dispatch payload lacking summary.\n- C4: dynamic pipeline steps contain only 'summarize_0' and not 'summarize', and overall done after completion.\nUse test helpers from task 175.",
         "testStrategy": "Run with npm run test; all new tests must pass after fixes are applied.",
         "priority": "high",
         "dependencies": [
-          176,
-          177,
-          178,
-          179,
-          180
+          "176",
+          "177",
+          "178",
+          "179",
+          "180"
         ],
         "status": "pending",
         "subtasks": [
@@ -1350,7 +1401,8 @@
             "dependencies": [],
             "details": "Phân tích yêu cầu từng fix C1-C4 và định nghĩa các test case cụ thể. Sử dụng test helpers từ task 175 để tạo mocks cho scraper, composables.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1361,7 +1413,8 @@
             ],
             "details": "Triển khai test code cho từng case C1-C4, đảm bảo gọi đúng hàm orchestration, kiểm tra dispatch, progress, pipeline steps.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1372,7 +1425,8 @@
             ],
             "details": "Chạy test liên tục, điều chỉnh test hoặc code nếu cần. Đảm bảo không làm hỏng test hiện có.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -1381,19 +1435,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 181
+            "parentTaskId": 181,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia task thành: 1) Thiết lập test scenarios cho C1-C4. 2) Viết code test sử dụng test helpers từ task 175. 3) Chạy và điều chỉnh test cho đến khi pass."
       },
       {
-        "id": 182,
+        "id": "182",
         "title": "Full compile and test pass",
         "description": "Run npm run compile and npm run test, fix any failures resulting from changes.",
         "details": "Execute commands. If any test fails, investigate and fix. Likely issues: import errors, type mismatches. Adjust as needed.",
         "testStrategy": "Green compilation and all tests pass, including new regression tests.",
         "priority": "high",
         "dependencies": [
-          181
+          "181"
         ],
         "status": "pending",
         "subtasks": [
@@ -1406,7 +1464,8 @@
             ],
             "details": "Chạy npm run compile để kiểm tra lỗi biên dịch. Sửa các lỗi import, type mismatch, cú pháp. Sau đó chạy npm run test để kiểm tra unit test. Sửa lỗi test nếu có. Lặp lại cho đến khi compile thành công và test pass.",
             "status": "pending",
-            "testStrategy": "Green compilation và tất cả test pass bao gồm regression test."
+            "testStrategy": "Green compilation và tất cả test pass bao gồm regression test.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1415,19 +1474,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 182
+            "parentTaskId": 182,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Chia task thành: 1) Chạy npm run compile và sửa lỗi. 2) Chạy npm run test và sửa lỗi test."
       },
       {
-        "id": 183,
+        "id": "183",
         "title": "Manual testing on real topics",
         "description": "Manually test with topics of ~25 and ~234 pages. Observe progress bar, StepTimeline, cancel/resume behavior, stale overwrite not happening.",
         "details": "Follow test plan:\n- Run summarize on a 25-page topic, verify progress bar shows total pages and increments smoothly.\n- Cancel mid-run, resume; verify it resumes at correct segment (not empty summary segment).\n- Cancel again and modify thread (simulate stale guard bump); resume; verify summary not overwritten.\n- Check StepTimeline consistency for dynamic flows (no duplicate summarize steps).\n- Repeat for 234-page topic.",
         "testStrategy": "Manual validation; note any issues and fix if needed.",
         "priority": "medium",
         "dependencies": [
-          182
+          "182"
         ],
         "status": "pending",
         "subtasks": [
@@ -1440,7 +1503,8 @@
             ],
             "details": "Chạy summarize trên topic 25 trang, xác minh thanh tiến trình hiển thị tổng số trang và tăng dần mượt. Hủy giữa chừng, tiếp tục; xác minh tiếp tục ở đúng segment (không phải segment rỗng). Hủy lại và sửa thread (mô phỏng stale guard bump); tiếp tục; xác minh summary không bị ghi đè. Kiểm tra StepTimeline nhất quán (không có bước summarize trùng lặp). Ghi lại kết quả và sửa lỗi nếu có.",
             "status": "pending",
-            "testStrategy": "Kiểm thử thủ công; ghi nhận vấn đề và sửa nếu cần."
+            "testStrategy": "Kiểm thử thủ công; ghi nhận vấn đề và sửa nếu cần.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1451,7 +1515,8 @@
             ],
             "details": "Lặp lại quy trình kiểm thử như topic 25 trang: chạy summarize, kiểm tra thanh tiến trình, hủy/tiếp tục, kiểm tra stale guard, kiểm tra StepTimeline. Ghi lại kết quả và sửa lỗi nếu có.",
             "status": "pending",
-            "testStrategy": "Kiểm thử thủ công; ghi nhận vấn đề và sửa nếu cần."
+            "testStrategy": "Kiểm thử thủ công; ghi nhận vấn đề và sửa nếu cần.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1460,19 +1525,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 183
+            "parentTaskId": 183,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia task thành: 1) Test với topic 25 trang. 2) Test với topic 234 trang. Ghi lại kết quả và sửa lỗi nếu có."
       },
       {
-        "id": 184,
+        "id": "184",
         "title": "Verify invariants and decision log compliance",
         "description": "Ensure all invariants (mock call counts, single-segment promotion, legacy backward compat, threadDeleted/Locked, news-enrichment) are maintained. Confirm decisions 1 and 2 are correctly implemented.",
         "details": "Code review:\n- Check that mock call counts not changed.\n- Verify single-segment non-stale still promotes summary top-level.\n- Ensure legacy topics with missing fields still work.\n- threadDeleted/threadLocked handling unchanged.\n- News-enrichment page/segment 0 unaffected.\n- Confirm C1 uses direct scrapePageRange per Decision 1.\n- Confirm C4 reconcile approach per Decision 2.\n- Add any additional unit tests if gaps found.",
         "testStrategy": "All existing tests pass; manual inspection of code changes; no regression in legacy behavior.",
         "priority": "medium",
         "dependencies": [
-          183
+          "183"
         ],
         "status": "pending",
         "subtasks": [
@@ -1483,7 +1552,8 @@
             "dependencies": [],
             "details": "Kiểm tra code: mock call counts không thay đổi; single-segment không stale vẫn promotion summary top-level; legacy topics với missing fields vẫn hoạt động; threadDeleted/threadLocked xử lý không thay đổi; news-enrichment page/segment 0 không bị ảnh hưởng.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1492,7 +1562,8 @@
             "dependencies": [],
             "details": "Kiểm tra C1 sử dụng direct scrapePageRange theo Decision 1. Kiểm tra C4 reconcile approach theo Decision 2. Nếu có khoảng trống về unit test, thêm các test mới.",
             "status": "pending",
-            "testStrategy": null
+            "testStrategy": null,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1501,15 +1572,23 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 184
+            "parentTaskId": 184,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia task thành: 1) Kiểm tra các invariants (mock call counts, single-segment promotion, legacy compatibility, threadDeleted/Locked, news-enrichment). 2) Xác nhận quyết định 1 và 2 được triển khai đúng. Thêm unit test nếu cần."
       }
     ],
     "metadata": {
-      "created": "2026-05-17T15:29:15.369Z",
-      "updated": "2026-05-17T15:29:15.369Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2026-05-17T16:04:18.097Z",
+      "taskCount": 30,
+      "completedCount": 16,
+      "tags": [
+        "master"
+      ]
     }
   }
 }

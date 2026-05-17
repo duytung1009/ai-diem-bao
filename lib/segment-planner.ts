@@ -2,6 +2,14 @@ import type { ScrapedPost, TopicSegment } from './types';
 import { estimateTokens, calculateSegmentBudget, getThinkingOverhead } from './token-estimator';
 import { RESPONSE_BUFFER_TOKENS } from './constants';
 
+/**
+ * Check if a segment is considered "completed" — i.e., has a non-empty summary.
+ * Uses truthy check so that summary: '' is treated as incomplete.
+ */
+export function isCompletedSegment(seg: TopicSegment | null | undefined): seg is TopicSegment {
+  return !!seg?.summary;
+}
+
 export interface SegmentBudgetParams {
   model: string;
   systemPromptTokens: number;
@@ -63,7 +71,7 @@ export function computeResumeState(params: ResumeStateParams): DynamicResumeStat
     thinkingBudget,
   } = params;
 
-  const completed = segments.filter((s): s is TopicSegment => s?.summary != null);
+  const completed = segments.filter(isCompletedSegment);
   if (completed.length === 0) return null;
 
   const lastSeg = completed[completed.length - 1];

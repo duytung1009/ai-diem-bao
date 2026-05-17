@@ -1140,7 +1140,7 @@
         "dependencies": [
           "175"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1150,24 +1150,27 @@
               175
             ],
             "details": "Trong useSummarize.ts, tại các dòng L391-401 và L905-917, đổi isSingleSegment: true thành isSingleSegment: false. Non-stale branch giữ nguyên. Viết test: mock segment và run state, simulate điều kiện stale (guard bumped), capture payload, assert không có khóa summary hoặc summaryJson.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Sử dụng mock function để track dispatch; verify shape của stale payload; kiểm tra non-stale để đảm bảo không regression.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:31:50.284Z"
           },
           {
             "id": 2,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 176,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:32:03.726Z"
           }
         ],
         "complexity": 3,
         "recommendedSubtasks": 1,
-        "expansionPrompt": "Chia task thành: 1) Sửa dòng lệnh isSingleSegment: true thành false trong stale path. 2) Viết unit test kiểm tra stale payload không có summary."
+        "expansionPrompt": "Chia task thành: 1) Sửa dòng lệnh isSingleSegment: true thành false trong stale path. 2) Viết unit test kiểm tra stale payload không có summary.",
+        "updatedAt": "2026-05-17T16:32:03.726Z"
       },
       {
         "id": "177",
@@ -1179,7 +1182,7 @@
         "dependencies": [
           "176"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1187,9 +1190,10 @@
             "description": "Xây dựng hàm isCompletedSegment(s: TopicSegment): boolean sử dụng !!s?.summary để kiểm tra segment đã hoàn thành.",
             "dependencies": [],
             "details": "Implement trong file lib/segment-planner.ts. Hàm kiểm tra truthy của summary, xử lý null/undefined/empty string.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:38:45.672Z"
           },
           {
             "id": 2,
@@ -1199,9 +1203,10 @@
               1
             ],
             "details": "Trong lib/segment-planner.ts, tìm và thay thế tại dòng ~66, L442, L98, L653, L704/760 (theo tài liệu). Đảm bảo dùng helper thay vì logic rải rác.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:38:59.525Z"
           },
           {
             "id": 3,
@@ -1211,24 +1216,27 @@
               2
             ],
             "details": "Viết trong file test tương ứng (ví dụ segment-planner.test.ts). Test kiểm tra kết quả resume state chỉ bao gồm segment có summary truthy. Đảm bảo segment với summary rỗng không được tính.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:39:12.371Z"
           },
           {
             "id": 4,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 177,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:39:26.052Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Chia task thành: 1) Tạo helper isCompletedSegment. 2) Thay thế filter tại tất cả các vị trí (computeResumeState, reduceOverall, summarizedCount, computeResumeMode, runSummarizeJob). 3) Viết unit test với segment có summary rỗng."
+        "expansionPrompt": "Chia task thành: 1) Tạo helper isCompletedSegment. 2) Thay thế filter tại tất cả các vị trí (computeResumeState, reduceOverall, summarizedCount, computeResumeMode, runSummarizeJob). 3) Viết unit test với segment có summary rỗng.",
+        "updatedAt": "2026-05-17T16:39:26.052Z"
       },
       {
         "id": "178",
@@ -1240,7 +1248,7 @@
         "dependencies": [
           "177"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1248,9 +1256,10 @@
             "description": "Trong hàm autoSummarizeDynamic, thay thế lời gọi scraper.scrapeRange(version, topicUrl, page, page, delayMs) bằng lời gọi trực tiếp đến scrapePageRange, đảm bảo trả về posts và có thể hủy bỏ.",
             "dependencies": [],
             "details": "Sửa đổi trong file useSummarize.ts, vùng L1038. Thay thế dòng scraper.scrapeRange(...) bằng scrapePageRange(...). Đảm bảo hàm scrapePageRange được import hoặc định nghĩa sẵn.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:46:53.499Z"
           },
           {
             "id": 2,
@@ -1260,9 +1269,10 @@
               1
             ],
             "details": "Trong autoSummarizeDynamic, trước khi gọi scrapePageRange, tạo một AbortController mới có signal liên kết với abortController của scraper. Truyền signal đó vào scrapePageRange để có thể hủy bỏ.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:47:10.153Z"
           },
           {
             "id": 3,
@@ -1273,24 +1283,27 @@
               2
             ],
             "details": "Sử dụng mock cho scrapePageRange, emit các progress events, và kiểm tra rằng setScrapeProgress được gọi với totalPages không đổi. Đảm bảo không có internal progress overrides.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:47:30.966Z"
           },
           {
             "id": 4,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 178,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:47:47.216Z"
           }
         ],
         "complexity": 6,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Chia task thành: 1) Thay thế scraper.scrapeRange bằng scrapePageRange trong autoSummarizeDynamic. 2) Tạo AbortController con liên kết với abort chính. 3) Viết characterization test kiểm tra scrapeProgress.totalPages không thay đổi."
+        "expansionPrompt": "Chia task thành: 1) Thay thế scraper.scrapeRange bằng scrapePageRange trong autoSummarizeDynamic. 2) Tạo AbortController con liên kết với abort chính. 3) Viết characterization test kiểm tra scrapeProgress.totalPages không thay đổi.",
+        "updatedAt": "2026-05-17T16:47:47.216Z"
       },
       {
         "id": "179",
@@ -1302,7 +1315,7 @@
         "dependencies": [
           "178"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1310,9 +1323,10 @@
             "description": "Chỉnh sửa hàm reconcile trong usePipeline.ts để xóa step có id chính xác 'summarize' nếu tồn tại step bắt đầu bằng 'summarize_'. Thao tác này tránh trùng lặp trong luồng động. Đối với chế độ cố định đơn đoạn, không có step 'summarize_' được thêm vào, nên step 'summarize' vẫn được giữ nguyên.",
             "dependencies": [],
             "details": "Trong hàm reconcile, sau khi thêm các step động (tạo 'summarize_0..N'), kiểm tra xem có bất kỳ step id nào bắt đầu bằng 'summarize_' không. Nếu có, loại bỏ step có id chính xác 'summarize' (nếu tồn tại). Đảm bảo logic không ảnh hưởng đến chế độ cố định đơn đoạn.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:54:14.625Z"
           },
           {
             "id": 2,
@@ -1322,24 +1336,27 @@
               1
             ],
             "details": "Xây dựng test case: dynamic 1 segment: input [overall, summarize] -> output [overall, summarize_0]; dynamic 2 segments: input [overall, summarize, summarize_0]? -> output [overall, summarize_0, summarize_1] (chỉ giữ lại summarize_0, summarize_1); fixed single: input [overall, summarize] -> output unchanged; fixed multi: input [overall, summarize_0, summarize_1] -> output unchanged. Sử dụng mock để giả lập hành vi builder.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests với mock LLM và pipeline builder, kiểm tra số lượng step và id step sau khi gọi reconcile.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:54:27.658Z"
           },
           {
             "id": 3,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 179,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:54:41.565Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 2,
-        "expansionPrompt": "Chia task thành: 1) Sửa hàm reconcile để xóa step 'summarize' khi có step 'summarize_'. 2) Viết unit test cho các trường hợp dynamic và fixed."
+        "expansionPrompt": "Chia task thành: 1) Sửa hàm reconcile để xóa step 'summarize' khi có step 'summarize_'. 2) Viết unit test cho các trường hợp dynamic và fixed.",
+        "updatedAt": "2026-05-17T16:54:41.565Z"
       },
       {
         "id": "180",
@@ -1351,7 +1368,7 @@
         "dependencies": [
           "179"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1359,24 +1376,27 @@
             "description": "Trong hàm reduceOverall của useSummarize.ts, thêm lệnh gọi pipeline.markDone('overall') trong nhánh early-return khi completedSegments.length === 1. Viết test mock pipeline để đảm bảo overall step được đánh dấu done. Đồng thời kiểm tra không ảnh hưởng tới multi-segment case.",
             "dependencies": [],
             "details": "Sửa file useSummarize.ts: trong reduceOverall, tại vị trí early return khi completedSegments.length === 1, thêm if (pipeline) { pipeline.markDone?.('overall'); }. Tạo test file mới hoặc thêm vào test hiện có: mock pipeline, gọi reduceOverall với one completed segment, kiểm tra overall step done = true; gọi với multi segment, kiểm tra overall step không bị ảnh hưởng.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test với pipeline mock; verify overall step được đánh dấu done chỉ trong single-segment dynamic.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:01:22.686Z"
           },
           {
             "id": 2,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 180,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:01:37.541Z"
           }
         ],
         "complexity": 2,
         "recommendedSubtasks": 1,
-        "expansionPrompt": "Chia task thành: 1) Thêm dòng pipeline.markDone('overall') trong reduceOverall cho single segment. 2) Viết test mock pipeline."
+        "expansionPrompt": "Chia task thành: 1) Thêm dòng pipeline.markDone('overall') trong reduceOverall cho single segment. 2) Viết test mock pipeline.",
+        "updatedAt": "2026-05-17T17:01:37.541Z"
       },
       {
         "id": "181",
@@ -1392,7 +1412,7 @@
           "179",
           "180"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1400,9 +1420,10 @@
             "description": "Xác định các kịch bản test cụ thể cho từng regression C1-C4 dựa trên yêu cầu. Chuẩn bị dữ liệu mock và cấu trúc test.",
             "dependencies": [],
             "details": "Phân tích yêu cầu từng fix C1-C4 và định nghĩa các test case cụ thể. Sử dụng test helpers từ task 175 để tạo mocks cho scraper, composables.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:03:36.592Z"
           },
           {
             "id": 2,
@@ -1412,9 +1433,10 @@
               1
             ],
             "details": "Triển khai test code cho từng case C1-C4, đảm bảo gọi đúng hàm orchestration, kiểm tra dispatch, progress, pipeline steps.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:03:52.155Z"
           },
           {
             "id": 3,
@@ -1424,24 +1446,27 @@
               2
             ],
             "details": "Chạy test liên tục, điều chỉnh test hoặc code nếu cần. Đảm bảo không làm hỏng test hiện có.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:04:07.871Z"
           },
           {
             "id": 4,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 181,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:04:23.396Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Chia task thành: 1) Thiết lập test scenarios cho C1-C4. 2) Viết code test sử dụng test helpers từ task 175. 3) Chạy và điều chỉnh test cho đến khi pass."
+        "expansionPrompt": "Chia task thành: 1) Thiết lập test scenarios cho C1-C4. 2) Viết code test sử dụng test helpers từ task 175. 3) Chạy và điều chỉnh test cho đến khi pass.",
+        "updatedAt": "2026-05-17T17:04:23.396Z"
       },
       {
         "id": "182",
@@ -1453,7 +1478,7 @@
         "dependencies": [
           "181"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1463,24 +1488,27 @@
               181
             ],
             "details": "Chạy npm run compile để kiểm tra lỗi biên dịch. Sửa các lỗi import, type mismatch, cú pháp. Sau đó chạy npm run test để kiểm tra unit test. Sửa lỗi test nếu có. Lặp lại cho đến khi compile thành công và test pass.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Green compilation và tất cả test pass bao gồm regression test.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:07:59.086Z"
           },
           {
             "id": 2,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 182,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:08:13.419Z"
           }
         ],
         "complexity": 2,
         "recommendedSubtasks": 1,
-        "expansionPrompt": "Chia task thành: 1) Chạy npm run compile và sửa lỗi. 2) Chạy npm run test và sửa lỗi test."
+        "expansionPrompt": "Chia task thành: 1) Chạy npm run compile và sửa lỗi. 2) Chạy npm run test và sửa lỗi test.",
+        "updatedAt": "2026-05-17T17:08:13.419Z"
       },
       {
         "id": "183",
@@ -1492,7 +1520,7 @@
         "dependencies": [
           "182"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1531,7 +1559,8 @@
         ],
         "complexity": 4,
         "recommendedSubtasks": 2,
-        "expansionPrompt": "Chia task thành: 1) Test với topic 25 trang. 2) Test với topic 234 trang. Ghi lại kết quả và sửa lỗi nếu có."
+        "expansionPrompt": "Chia task thành: 1) Test với topic 25 trang. 2) Test với topic 234 trang. Ghi lại kết quả và sửa lỗi nếu có.",
+        "updatedAt": "2026-05-17T17:19:53.588Z"
       },
       {
         "id": "184",
@@ -1543,7 +1572,7 @@
         "dependencies": [
           "183"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1551,9 +1580,10 @@
             "description": "Đảm bảo các invariants như mock call counts, single-segment promotion, legacy compatibility, threadDeleted/Locked, news-enrichment được duy trì. Xem xét mã nguồn để kiểm tra.",
             "dependencies": [],
             "details": "Kiểm tra code: mock call counts không thay đổi; single-segment không stale vẫn promotion summary top-level; legacy topics với missing fields vẫn hoạt động; threadDeleted/threadLocked xử lý không thay đổi; news-enrichment page/segment 0 không bị ảnh hưởng.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:21:09.460Z"
           },
           {
             "id": 2,
@@ -1561,31 +1591,34 @@
             "description": "Xác nhận Decision 1 (C1 dùng direct scrapePageRange) và Decision 2 (C4 reconcile approach) được triển khai đúng. Thêm unit test nếu phát hiện lỗ hổng.",
             "dependencies": [],
             "details": "Kiểm tra C1 sử dụng direct scrapePageRange theo Decision 1. Kiểm tra C4 reconcile approach theo Decision 2. Nếu có khoảng trống về unit test, thêm các test mới.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:21:19.970Z"
           },
           {
             "id": 3,
             "title": "Self-review",
             "description": "Chạy template/self_review_checklist.md cho thay đổi của task, fix mọi issue, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 184,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T17:21:29.237Z"
           }
         ],
         "complexity": 3,
         "recommendedSubtasks": 2,
-        "expansionPrompt": "Chia task thành: 1) Kiểm tra các invariants (mock call counts, single-segment promotion, legacy compatibility, threadDeleted/Locked, news-enrichment). 2) Xác nhận quyết định 1 và 2 được triển khai đúng. Thêm unit test nếu cần."
+        "expansionPrompt": "Chia task thành: 1) Kiểm tra các invariants (mock call counts, single-segment promotion, legacy compatibility, threadDeleted/Locked, news-enrichment). 2) Xác nhận quyết định 1 và 2 được triển khai đúng. Thêm unit test nếu cần.",
+        "updatedAt": "2026-05-17T17:21:29.237Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-17T16:04:18.097Z",
+      "lastModified": "2026-05-17T17:21:29.239Z",
       "taskCount": 30,
-      "completedCount": 16,
+      "completedCount": 25,
       "tags": [
         "master"
       ]

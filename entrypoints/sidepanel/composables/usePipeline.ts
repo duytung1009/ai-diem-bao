@@ -20,13 +20,24 @@ export function usePipeline() {
   function reconcile(actualSegments: number): void {
     if (!pipeline.value) return;
 
-    const overallIdx = pipeline.value.steps.findIndex(s => s.id === 'overall');
-    const insertIdx = overallIdx >= 0 ? overallIdx : pipeline.value.steps.length;
+    const existingSegSteps = pipeline.value.steps.filter(s => s.id.startsWith('summarize_'));
+    const hasDynamicSegments = existingSegSteps.length > 0;
 
-    // Remove any existing segment steps (summarize_N)
-    const filtered = pipeline.value.steps.filter(
-      s => !s.id.startsWith('summarize_'),
-    );
+    // If fixed-mode multi-segment already has the right number of segments, no-op
+    if (hasDynamicSegments && existingSegSteps.length === actualSegments) return;
+
+    // Remove existing segment steps (summarize_N) and the placeholder 'summarize'
+    // when rebuilding dynamic segments. For fixed-mode multi-segment, keep existing.
+    const filtered = pipeline.value.steps.filter(s => {
+      if (hasDynamicSegments) {
+        return !s.id.startsWith('summarize_') && s.id !== 'summarize';
+      }
+      return s.id !== 'summarize';
+    });
+
+    // Find where to insert (before 'overall' step)
+    const overallIdx = filtered.findIndex(s => s.id === 'overall');
+    const insertIdx = overallIdx >= 0 ? overallIdx : filtered.length;
 
     // Insert segment steps for all actual segments
     const segSteps: PipelineStep[] = [];

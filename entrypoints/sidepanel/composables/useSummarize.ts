@@ -9,7 +9,7 @@ import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig,
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { estimateTokens, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
-import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule } from '@/lib/segment-planner';
+import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule, isCompletedSegment } from '@/lib/segment-planner';
 import type { DynamicResumeState } from '@/lib/segment-planner';
 import { createRunGuard } from '@/lib/run-guard';
 import { makeDenseSegments, buildSegmentSavePayload } from '@/lib/segment-persistence';
@@ -95,7 +95,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   });
 
   const summarizedCount = computed(() =>
-    segmentSummaries.value.filter(s => s?.summary).length,
+    segmentSummaries.value.filter(isCompletedSegment).length,
   );
 
   const progressPercent = computed(() =>
@@ -394,7 +394,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         updatedSegments: updated,
         newSeg,
         forumPostCount: getLiveForumPostCount(),
-        isSingleSegment: segments.value.length === 1,
+        isSingleSegment: false,
       });
       await saveTopic(topic, stalePayload).catch(() => { });
       return;
@@ -431,6 +431,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       summaryJson.value = newSeg.summaryJson ?? null;
       activeSegmentIndex.value = null;
       cacheFreshness.value = 'fresh';
+      pl.markDone('overall');
     }
   }
 
@@ -439,7 +440,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value;
     if (!topic) return;
 
-    const completedSegments = segmentSummaries.value.filter(s => s?.summary);
+    const completedSegments = segmentSummaries.value.filter(isCompletedSegment);
     if (completedSegments.length === 0) return;
 
     // Single segment: copy trực tiếp, không gọi LLM
@@ -454,6 +455,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         summarizedPostCount: seg.postCount,
       });
       cacheFreshness.value = 'fresh';
+      pl.markDone('overall');
       return;
     }
 
@@ -630,7 +632,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value;
     if (!topic) return;
 
-    const completedSegments = segmentSummaries.value.filter(s => s?.summary);
+    const completedSegments = segmentSummaries.value.filter(isCompletedSegment);
     if (completedSegments.length === 0) return;
 
     // Mark scrape step as done, set overall step to running
@@ -650,7 +652,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   /** Decide the next action based on current segment state and live forum data. */
   function computeResumeMode(): ResumeMode {
     const currentSegments = segmentSummaries.value;
-    const completed = currentSegments.filter(s => s?.summary);
+    const completed = currentSegments.filter(isCompletedSegment);
     if (completed.length === 0) return { mode: 'fresh' };
 
     const lastSeg = completed[completed.length - 1];
@@ -701,7 +703,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           if (error.value) return;
         }
         if (!summarizeGuard.isStale(thisId) && !error.value) {
-          const completed = segmentSummaries.value.filter(s => s?.summary).length;
+          const completed = segmentSummaries.value.filter(isCompletedSegment).length;
           if (completed >= 1) {
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
             await generateOverallSummary();
@@ -757,7 +759,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       if (!summarizeGuard.isStale(thisId) && !error.value) {
-        const completed = segmentSummaries.value.filter(s => s?.summary).length;
+        const completed = segmentSummaries.value.filter(isCompletedSegment).length;
         if (completed >= 1) {
           simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
           await generateOverallSummary();
@@ -822,7 +824,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (error.value) return;
     }
 
-    const completedCount = segmentSummaries.value.filter(s => s?.summary).length;
+    const completedCount = segmentSummaries.value.filter(isCompletedSegment).length;
     if (completedCount >= 1) {
       await generateOverallSummary();
     }
@@ -909,7 +911,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         updatedSegments: updated,
         newSeg,
         forumPostCount: forumCount,
-        isSingleSegment: true, // dynamic mode always promotes
+        isSingleSegment: false,
         useMaxTotal: true,
       });
       await saveTopic(topic, stalePayload).catch(() => { });
@@ -1035,14 +1037,33 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       let pageThreadDeleted = false;
       let pageThreadLocked = false;
       try {
-        const result = await scraper.scrapeRange(version as XenForoVersion, topicUrl, page, page, delayMs);
+        // Call scrapePageRange directly so we control the progress callback
+        // and can report overall topic totalPages (not per-page).
+        const pageAbortCtrl = new AbortController();
+        // Link child abort to the main scraper abort
+        scraper.getAbortSignal()?.addEventListener('abort', () => pageAbortCtrl.abort(), { once: true });
+
+        const result = await scrapePageRange(
+          version as XenForoVersion,
+          topicUrl,
+          page,
+          page,
+          (_current, _total, postsScraped) => {
+            scraper.scrapeProgress.value = {
+              currentPage: page,
+              totalPages,
+              postsScraped: totalPostsScraped + postsScraped,
+            };
+          },
+          pageAbortCtrl.signal,
+          delayMs,
+        );
         pagePosts = result.posts;
         pageErrors = result.errors;
         pageThreadDeleted = result.threadDeleted ?? false;
         pageThreadLocked = result.threadLocked ?? false;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') throw err;
-        // scrapeRange handles all abort internally, but re-throw for the outer try/catch
         throw err;
       }
       scraper.isScraping.value = false;

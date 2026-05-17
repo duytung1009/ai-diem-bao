@@ -653,4 +653,67 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       expect(seg0.summary).toBe('');
     });
   });
+
+  describe('C1: scrape progress in dynamic summarize', () => {
+    it('CHAR-20: scrapeProgress.totalPages stays constant across all pages', async () => {
+      await setupComposable({ totalPages: 5, totalPosts: 100 });
+
+      h.scrapePageRange.mockImplementation(async (_version, _url, startPage, endPage, onProgress, _signal, _delayMs) => {
+        const posts = postFactory.shortThread(20);
+        onProgress?.(1, 1, posts.length);
+        return makeScrapeResult(posts);
+      });
+
+      h.summarize.mockReturnValue({
+        taskId: 'task-1',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll(false);
+
+      expect(h.scrapePageRange).toHaveBeenCalledTimes(5);
+      expect(composable.scrapeProgress.value).toBeDefined();
+      expect(composable.scrapeProgress.value!.totalPages).toBe(5);
+    });
+
+    it('CHAR-21: scrapeProgress.currentPage increments correctly', async () => {
+      await setupComposable({ totalPages: 3, totalPosts: 60 });
+
+      h.scrapePageRange.mockImplementation(async (_version, _url, startPage, endPage, onProgress, _signal, _delayMs) => {
+        const posts = postFactory.shortThread(20);
+        onProgress?.(1, 1, posts.length);
+        return makeScrapeResult(posts);
+      });
+
+      h.summarize.mockReturnValue({
+        taskId: 'task-1',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll(false);
+
+      expect(h.scrapePageRange).toHaveBeenCalledTimes(3);
+      expect(composable.scrapeProgress.value!.totalPages).toBe(3);
+    });
+  });
+
+  describe('C4 part 2: overall step done for single-segment', () => {
+    it('CHAR-22: overall step marked done after single segment completes', async () => {
+      await setupComposable({ totalPages: 1, totalPosts: 20 });
+
+      h.scrapePageRange.mockResolvedValueOnce(makeScrapeResult(postFactory.shortThread(20)));
+      h.summarize.mockReturnValueOnce({
+        taskId: 'single-seg-task',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleSummarizeSegment(0);
+
+      const overallStep = composable.pipeline.value?.steps.find(s => s.id === 'overall');
+      expect(overallStep?.status).toBe('done');
+    });
+  });
 });

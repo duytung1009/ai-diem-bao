@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-16T03:18:34.219Z",
+		"generatedAt": "2026-05-17T15:35:00.747Z",
 		"tasksAnalyzed": 10,
-		"totalTasks": 20,
+		"totalTasks": 30,
 		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 165,
-			"taskTitle": "Viết Characterization Tests cho 5 flow tóm tắt hiện tại",
+			"taskId": 175,
+			"taskTitle": "Setup test infrastructure for regression tests",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Chia task thành các subtask: 1) Tạo các hàm helper (createMockScraper, createMockSegment, buildStalePayload, assertProgress, assertPipelineSteps). 2) Tạo các mock objects cho scraper và pipeline. 3) Cập nhật cấu hình vitest và viết test cho các helpers.",
+			"reasoning": "Công việc cơ bản nhưng cần thiết cho các task sau. Độ phức tạp trung bình vì phải tạo nhiều hàm tiện ích và đảm bảo chúng hoạt động đúng."
+		},
+		{
+			"taskId": 176,
+			"taskTitle": "Fix C3: stale-save does not promote summary",
+			"complexityScore": 3,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "Chia task thành: 1) Sửa dòng lệnh isSingleSegment: true thành false trong stale path. 2) Viết unit test kiểm tra stale payload không có summary.",
+			"reasoning": "Sửa lỗi đơn giản, chỉ thay đổi một tham số. Đã có hướng dẫn cụ thể. Độ phức tạp thấp."
+		},
+		{
+			"taskId": 177,
+			"taskTitle": "Fix C2: unify segment completed predicate to truthy",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Chia task thành: 1) Tạo helper isCompletedSegment. 2) Thay thế filter tại tất cả các vị trí (computeResumeState, reduceOverall, summarizedCount, computeResumeMode, runSummarizeJob). 3) Viết unit test với segment có summary rỗng.",
+			"reasoning": "Cần thay đổi nhiều nơi trong codebase và tạo helper chung. Viết test đảm bảo đúng hành vi. Độ phức tạp trung bình."
+		},
+		{
+			"taskId": 178,
+			"taskTitle": "Fix C1: restore overall scrape progress in dynamic summarize",
 			"complexityScore": 6,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Hãy liệt kê các test case chi tiết cho 5 flow tóm tắt, bao gồm các kịch bản mock sendMessage, mock LLM provider và cách xác thực cấu trúc SAVE_CACHED_TOPIC cho các kích thước topic khác nhau (1, 25, 234 trang).",
-			"reasoning": "Việc thiết lập characterization tests đòi hỏi hiểu sâu về logic hiện tại mà không làm thay đổi nó. Thách thức nằm ở việc thiết lập môi trường mock chính xác để ghi lại các side-effects như LLM calls và message passing."
+			"expansionPrompt": "Chia task thành: 1) Thay thế scraper.scrapeRange bằng scrapePageRange trong autoSummarizeDynamic. 2) Tạo AbortController con liên kết với abort chính. 3) Viết characterization test kiểm tra scrapeProgress.totalPages không thay đổi.",
+			"reasoning": "Thay đổi logic gọi scrape, cần đảm bảo tương tác với abort controller và không làm hỏng progress. Có thể ảnh hưởng đến các phần khác. Độ phức tạp khá cao."
 		},
 		{
-			"taskId": 166,
-			"taskTitle": "Loại bỏ Dead Code liên quan đến Incremental Update (R1)",
-			"complexityScore": 3,
+			"taskId": 179,
+			"taskTitle": "Fix C4 part 1: filter out placeholder 'summarize' step in reconcile",
+			"complexityScore": 5,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Xác định tất cả các file và dòng code cần xoá liên quan đến incremental update, bao gồm cả prompts, types và background listeners. Tạo quy trình kiểm tra sau khi xoá bằng compiler.",
-			"reasoning": "Đây chủ yếu là công việc dọn dẹp dựa trên kết quả tìm kiếm (grep). Rủi ro thấp nhưng cần sự tỉ mỉ để không để lại mẩu code thừa (orphan code) trong các file types hoặc prompts."
+			"expansionPrompt": "Chia task thành: 1) Sửa hàm reconcile để xóa step 'summarize' khi có step 'summarize_'. 2) Viết unit test cho các trường hợp dynamic và fixed.",
+			"reasoning": "Cần hiểu logic reconcile và các trường hợp biên. Viết test nhiều kịch bản. Độ phức tạp trung bình."
 		},
 		{
-			"taskId": 167,
-			"taskTitle": "Cài đặt Module Run-Guard Helper (R3)",
+			"taskId": 180,
+			"taskTitle": "Fix C4 part 2: mark overall done for single-segment dynamic",
+			"complexityScore": 2,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "Chia task thành: 1) Thêm dòng pipeline.markDone('overall') trong reduceOverall cho single segment. 2) Viết test mock pipeline.",
+			"reasoning": "Thay đổi nhỏ, thêm một dòng lệnh. Có test kèm theo. Độ phức tạp thấp."
+		},
+		{
+			"taskId": 181,
+			"taskTitle": "Write integration e2e test covering all four fixes",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Chia task thành: 1) Thiết lập test scenarios cho C1-C4. 2) Viết code test sử dụng test helpers từ task 175. 3) Chạy và điều chỉnh test cho đến khi pass.",
+			"reasoning": "Viết test tích hợp sử dụng mocks, cần cover nhiều kịch bản. Độ phức tạp trung bình."
+		},
+		{
+			"taskId": 182,
+			"taskTitle": "Full compile and test pass",
+			"complexityScore": 2,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "Chia task thành: 1) Chạy npm run compile và sửa lỗi. 2) Chạy npm run test và sửa lỗi test.",
+			"reasoning": "Bước kiểm tra cuối, thường đơn giản nếu code đúng. Độ phức tạp thấp."
+		},
+		{
+			"taskId": 183,
+			"taskTitle": "Manual testing on real topics",
 			"complexityScore": 4,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Thiết kế interface cho lib/run-guard.ts và viết các unit test để kiểm tra tính đơn điệu của token và khả năng invalidate các tiến trình cũ khi có tiến trình mới bắt đầu.",
-			"reasoning": "Logic của module này đơn giản (quản lý counter và flag), nhưng nó là nền tảng quan trọng để ngăn chặn race conditions (stale updates). Cần thiết kế API gọn nhẹ và dễ sử dụng."
+			"expansionPrompt": "Chia task thành: 1) Test với topic 25 trang. 2) Test với topic 234 trang. Ghi lại kết quả và sửa lỗi nếu có.",
+			"reasoning": "Cần thực hiện thủ công, có thể phát sinh lỗi cần sửa. Độ phức tạp trung bình thấp."
 		},
 		{
-			"taskId": 168,
-			"taskTitle": "Triển khai Module Segment-Planner cho Budget và Resume State (R5)",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chi tiết hóa các thuật toán tính toán budget token và logic quyết định khi nào nên tạo segment mới hoặc gộp vào segment cũ dựa trên tỷ lệ headroom 70%.",
-			"reasoning": "Yêu cầu tính toán chính xác để tối ưu hóa context window của LLM. Việc chuyển đổi logic từ useSummarize sang module pure cần đảm bảo không làm sai lệch các tham số đầu vào như maxTokens."
-		},
-		{
-			"taskId": 169,
-			"taskTitle": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token.",
-			"reasoning": "Module này chịu trách nhiệm chuẩn hóa dữ liệu trước khi lưu vào store. Sự phức tạp nằm ở việc duy trì tính tương thích với cấu trúc dữ liệu cũ (byte-equivalence) trong khi thêm các logic mới như stale flag."
-		},
-		{
-			"taskId": 170,
-			"taskTitle": "Refactor logic scraping thành Composable useTopicScraper (R4)",
-			"complexityScore": 6,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady).",
-			"reasoning": "Scraping thường chứa nhiều logic biên (edge cases) như trang bị xoá, thread bị khoá, và cơ chế dedup trang cuối. Việc tách nó ra thành composable mà vẫn giữ nguyên được độ tin cậy là một thử thách."
-		},
-		{
-			"taskId": 171,
-			"taskTitle": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
-			"complexityScore": 6,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState.",
-			"reasoning": "Quản lý trạng thái UI (StepTimeline) một cách tập trung thay vì các hack phân tán yêu cầu một thiết kế state management chặt chẽ, đặc biệt là khi số lượng bước trong pipeline có thể thay đổi động."
-		},
-		{
-			"taskId": 172,
-			"taskTitle": "Xây dựng các hàm Primitive trong useSummarize",
-			"complexityScore": 7,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới.",
-			"reasoning": "Đây là các đơn vị thực thi cốt lõi của tính năng tóm tắt. Chúng phải xử lý các tác vụ bất đồng bộ (LLM calls) và đảm bảo tính toàn vẹn dữ liệu ngay cả khi người dùng nhấn cancel hoặc trigger flow mới."
-		},
-		{
-			"taskId": 173,
-			"taskTitle": "Triển khai Driver trung tâm runSummarizeJob (R7)",
-			"complexityScore": 8,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng.",
-			"reasoning": "Đây là task có độ phức tạp cao nhất vì nó đóng vai trò nhạc trưởng điều phối tất cả các modules đã tạo trước đó. Nó phải thay thế toàn bộ logic rẽ nhánh phức tạp cũ mà không làm hỏng bất kỳ flow nào."
-		},
-		{
-			"taskId": 174,
-			"taskTitle": "Hoàn thiện UI Wrappers và cập nhật Test E2E thực tế",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Cập nhật các hàm entry point UI để gọi driver trung tâm và viết lại các bài test E2E để kiểm tra toàn bộ luồng từ giao diện người dùng đến background script.",
-			"reasoning": "Mặc dù logic chính đã nằm ở Driver, việc kết nối với UI và cập nhật bộ test E2E là bước cuối cùng để đảm bảo hệ thống hoạt động ổn định trong thực tế và không có lỗi hồi quy."
+			"taskId": 184,
+			"taskTitle": "Verify invariants and decision log compliance",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Chia task thành: 1) Kiểm tra các invariants (mock call counts, single-segment promotion, legacy compatibility, threadDeleted/Locked, news-enrichment). 2) Xác nhận quyết định 1 và 2 được triển khai đúng. Thêm unit test nếu cần.",
+			"reasoning": "Code review và kiểm tra không hồi quy. Yêu cầu hiểu biết sâu về hệ thống nhưng không phức tạp về mặt kỹ thuật."
 		}
 	]
 }

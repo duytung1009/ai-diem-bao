@@ -862,7 +862,7 @@
         "dependencies": [
           "172"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -870,9 +870,10 @@
             "description": "Tách và đóng gói logic rẽ nhánh từ handleSegmentUpdate vào một hàm helper độc lập.",
             "dependencies": [],
             "details": "Xây dựng hàm computeResumeMode nhận các tham số trạng thái hiện tại của phiên làm việc và trả về đối tượng { mode, resume }. Logic này giúp xác định job sẽ chạy mới hoàn toàn, chạy tiếp từ vị trí cũ hay chỉ cập nhật các segment bổ sung.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Viết Unit test cho computeResumeMode với các kịch bản input khác nhau (có/không có dữ liệu cũ, các loại range khác nhau) để đảm bảo đầu ra logic chính xác.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:07:10.709Z"
           },
           {
             "id": 2,
@@ -882,9 +883,10 @@
               1
             ],
             "details": "Định nghĩa hàm runSummarizeJob({ mode, range, resume }). Sử dụng các interface từ Task 155 để khởi tạo PipelineDefinition. Thiết lập các bước (steps) cần thiết cho quy trình tóm tắt và cập nhật trạng thái UI ban đầu là 'running'.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra việc khởi tạo pipeline thông qua Redux/State store để đảm bảo các bước hiển thị đúng trên StepTimeline UI.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:07:20.517Z"
           },
           {
             "id": 3,
@@ -894,9 +896,10 @@
               2
             ],
             "details": "Kết nối hàm driver với useTopicScraper để lấy dữ liệu thô. Sau đó, triển khai vòng lặp qua danh sách các segments, gọi hàm summarizeOneSegment cho từng phần tử và cập nhật tiến độ vào pipeline status sau mỗi bước hoàn thành.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Sử dụng mock data để giả lập danh sách segments và kiểm tra xem summarizeOneSegment có được gọi đúng số lần với dữ liệu đầu vào chuẩn hay không.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:07:30.131Z"
           },
           {
             "id": 4,
@@ -906,14 +909,16 @@
               3
             ],
             "details": "Sau khi kết thúc vòng lặp tóm tắt segment, gọi hàm reduceOverall để kết hợp toàn bộ nội dung. Cập nhật trạng thái cuối cùng của pipeline thành 'done' hoặc xử lý lỗi nếu có bất kỳ bước nào thất bại trong quy trình.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Chạy lại bộ characterization tests từ Task 165 để so sánh số lượng lời gọi API (mock.getCallCount) và cấu trúc dữ liệu trả về so với logic cũ trước khi refactor.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T15:07:39.622Z"
           }
         ],
         "complexity": 8,
         "recommendedSubtasks": 4,
-        "expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng."
+        "expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng.",
+        "updatedAt": "2026-05-17T15:07:39.622Z"
       },
       {
         "id": "174",
@@ -970,9 +975,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-17T07:03:37.213Z",
+      "lastModified": "2026-05-17T15:07:39.624Z",
       "taskCount": 20,
-      "completedCount": 18,
+      "completedCount": 19,
       "tags": [
         "master"
       ]

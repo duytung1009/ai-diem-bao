@@ -643,101 +643,85 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     await reduceOverall(thisId);
   }
 
+  // --- Driver helpers ---
+
+  type ResumeMode = { mode: 'fresh' } | { mode: 'resume'; resume: DynamicResumeState } | { mode: 'skip' };
+
+  /** Decide the next action based on current segment state and live forum data. */
+  function computeResumeMode(): ResumeMode {
+    const currentSegments = segmentSummaries.value;
+    const completed = currentSegments.filter(s => s?.summary);
+    if (completed.length === 0) return { mode: 'fresh' };
+
+    const lastSeg = completed[completed.length - 1];
+    const coveredEndPage = lastSeg?.endPage ?? 0;
+    const currentSummarizedPosts = currentSegments.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    const livePostCount = getLiveForumPostCount();
+    const hasNewPosts = livePostCount > currentSummarizedPosts;
+
+    const newTotalPages = Math.max(
+      store.activeTabDetect.value?.pageCount ?? 0,
+      topicInfo.value?.pageCount ?? 0,
+    );
+
+    if (newTotalPages <= coveredEndPage && !hasNewPosts) {
+      return { mode: 'skip' }; // nothing new → just reduce overall
+    }
+
+    const resume = computeResumeState();
+    if (!resume) {
+      // Fresh run needed — existing segments are invalid/missing
+      return { mode: 'fresh' };
+    }
+
+    return { mode: 'resume', resume };
+  }
+
   async function handleSegmentUpdate() {
     if (!topicInfo.value || !store.selectedTopic.value) return;
 
     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
     const currentSegments = segmentSummaries.value;
-    const lastSummarizedSeg = currentSegments.filter(s => s?.summary).slice(-1)[0];
-    const coveredEndPage = lastSummarizedSeg?.endPage ?? 0;
-    // Use max across live detect + cached pageCount; activeTabDetect may be null/stale
-    // when user opens sidepanel from a non-forum tab, but cached value may be stale too.
-    const newTotalPages = Math.max(
-      store.activeTabDetect.value?.pageCount ?? 0,
-      topicInfo.value.pageCount,
-    );
-
-    // Use forumPostCount (live) to detect new posts, not just pageCount.
-    // Prefer cached forumPostCount over activeTabDetect: the latter may be stale
-    // when the user clicks "Cập nhật" from a non-forum tab.
-    const currentSummarizedPosts = currentSegments.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
-    const livePostCount = getLiveForumPostCount();
-    const hasNewPosts = livePostCount > currentSummarizedPosts;
-
-    // Skip only if no new pages AND no new posts within existing pages
-    if (newTotalPages <= coveredEndPage && !hasNewPosts) {
-      await generateOverallSummary();
-      return;
-    }
 
     if (isDynamic && dynamicSegmentBoundaries.value.length > 0) {
-      // Dynamic mode: scrape new pages and append to last segment (or create new) via resume
+      // Dynamic mode: delegate to computeResumeMode + autoSummarizeDynamic
+      const resumeMode = computeResumeMode();
+      if (resumeMode.mode === 'skip') {
+        await generateOverallSummary();
+        return;
+      }
+
       const topic = store.selectedTopic.value;
+      const newTotalPages = Math.max(
+        store.activeTabDetect.value?.pageCount ?? 0,
+        topicInfo.value.pageCount,
+      );
+      const totalPages = topicInfo.value ? Math.max(newTotalPages, topicInfo.value.pageCount) : newTotalPages;
+
       error.value = '';
       scraper.scrapingWarnings.value = [];
       scraper.scrapingInfo.value = [];
-      // Build initial pipeline: scrape remaining pages + overall summary placeholder
-      // Segment steps will be appended progressively as each segment completes
-      const totalPages = topicInfo.value ? Math.max(newTotalPages, topicInfo.value.pageCount) : newTotalPages;
-      const remainingStart = coveredEndPage + 1;
-      if (remainingStart <= totalPages) {
-        const label = remainingStart === totalPages ? `Scrape trang ${remainingStart}` : `Scrape trang ${remainingStart}–${totalPages}`;
-        pl.pipeline.value = {
-          workflow: 'summarize',
-          steps: [
-            { id: 'scrape_remaining', label, status: 'running' },
-            { id: 'overall', label: 'Tóm tắt tổng quan', status: 'pending' },
-          ],
-        };
-      } else {
-        // No new pages but has new posts — still need pipeline for display
-        pl.pipeline.value = {
-          workflow: 'summarize',
-          steps: [
-            { id: 'scrape_remaining', label: 'Scrape bài viết mới', status: 'running' },
-            { id: 'overall', label: 'Tóm tắt tổng quan', status: 'pending' },
-          ],
-        };
-      }
       const thisId = summarizeGuard.begin();
       store.setSummarizing(topic.url);
+
       try {
         const budget = await computeDynamicBudget();
-        const resume = computeResumeState();
-        if (resume && hasNewPosts) {
-          // New posts on existing pages (may or may not also have new pages).
-          // Re-scrape from the last page of the last segment to capture new posts,
-          // then continue to any new pages if they exist.
-          const lastSeg = segmentSummaries.value[resume.segmentIndex];
-          const lastSegEndPage = lastSeg?.endPage ?? resume.pendingStartPage;
-          // Exclude posts on lastSegEndPage from pendingPosts to avoid duplicates
-          // when we re-scrape that page. deduplicateAndSort handles remaining overlap.
-          const preservedPosts = (resume.pendingPosts ?? []).filter(p => {
-            const page = (p as ScrapedPost).page;
-            return page != null && page < lastSegEndPage;
-          });
-          const preservedTokens = preservedPosts.reduce(
-            (sum, p) => sum + estimateTokens(`[${(p as ScrapedPost).author}] (#${(p as ScrapedPost).postNumber}):\n${(p as ScrapedPost).content}`),
-            0,
-          );
-          const reResume: DynamicResumeState = {
-            fromPage: lastSegEndPage,
-            segmentIndex: resume.segmentIndex,
-            pendingPosts: preservedPosts,
-            pendingTokens: preservedTokens,
-            pendingStartPage: resume.pendingStartPage,
-          };
-          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, reResume);
-        } else if (resume && resume.fromPage <= newTotalPages) {
-          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId, resume);
-        } else if (hasNewPosts) {
-          await autoSummarizeDynamic(topic.url, newTotalPages, budget, thisId);
+        if (resumeMode.mode === 'fresh') {
+          dynamicSegmentBoundaries.value = [];
+          segmentSummaries.value = [];
+          await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+        } else {
+          // Ensure resume state is valid; fall back to fresh if beyond total pages
+          if (resumeMode.resume.fromPage > totalPages) {
+            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+          } else {
+            await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resumeMode.resume);
+          }
         }
         if (!summarizeGuard.isStale(thisId) && !error.value) {
           const completed = segmentSummaries.value.filter(s => s?.summary).length;
           if (completed >= 1) {
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-            // pl.markNextRunning(pl.pipeline.value!, 'overall');
             await generateOverallSummary();
           }
         }

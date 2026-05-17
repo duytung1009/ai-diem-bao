@@ -750,7 +750,7 @@
         "dependencies": [
           "170"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -758,9 +758,10 @@
             "description": "Tạo cấu trúc cơ bản cho usePipeline.ts để quản lý StepTimeline tập trung và hàm buildSummarizePipeline.",
             "dependencies": [],
             "details": "Định nghĩa interface cho PipelineStep và StepTimeline. Triển khai hàm buildSummarizePipeline nhận tham số boundary (số segment dự kiến) để tạo trước danh sách các bước [scrape, summarize, overall, save].",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Kiểm tra object StepTimeline được tạo ra có đúng số lượng step và cấu trúc theo tham số boundary đầu vào.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T06:38:26.428Z"
           },
           {
             "id": 2,
@@ -770,9 +771,10 @@
               1
             ],
             "details": "Viết logic so sánh số lượng segment thực tế với boundary ban đầu. Thực hiện chèn thêm hoặc loại bỏ các step scrape/summarize tương ứng trong mảng StepTimeline mà vẫn giữ nguyên trạng thái các step đã thực hiện.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test hàm reconcile với các kịch bản: số segment thực tế bằng, lớn hơn, hoặc nhỏ hơn giá trị boundary dự kiến.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T06:38:37.307Z"
           },
           {
             "id": 3,
@@ -782,14 +784,16 @@
               2
             ],
             "details": "Liên kết trạng thái của từng bước trong StepTimeline với LLMTaskState. Xóa bỏ hoàn toàn các logic append step thủ công (hack progressive-append) cũ trong useSummarize để sử dụng cơ chế reconcile mới.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Chạy quy trình tóm tắt thực tế, kiểm tra giao diện Timeline hiển thị ổn định và chính xác các bước xử lý theo thời gian thực.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T06:38:46.929Z"
           }
         ],
         "complexity": 6,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState."
+        "expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState.",
+        "updatedAt": "2026-05-17T06:38:46.929Z"
       },
       {
         "id": "172",
@@ -962,9 +966,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T13:57:56.580Z",
+      "lastModified": "2026-05-17T06:38:46.930Z",
       "taskCount": 20,
-      "completedCount": 16,
+      "completedCount": 17,
       "tags": [
         "master"
       ]

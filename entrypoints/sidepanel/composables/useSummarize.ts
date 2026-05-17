@@ -5,7 +5,7 @@ import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON, PipelineDefinition, PipelineStep } from '@/lib/types';
-import { buildSummarizePipeline, markStepRunning, markFirstStepRunning, markNextStepRunning } from '@/lib/pipeline-builder';
+
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { estimateTokens, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
@@ -18,10 +18,12 @@ import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 import { useTopicScraper } from './useTopicScraper';
+import { usePipeline } from './usePipeline';
 
 export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const { summarize, summarizeSegmentsTask, threadAnalysisTask, cancelTask, getTaskState } = useLLM();
   const scraper = useTopicScraper();
+  const pl = usePipeline();
 
   // --- State ---
   const summary = ref('');
@@ -39,7 +41,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const activeSegmentIndex = ref<number | null>(null);
   const loadedTopicUrl = ref<string | null>(null);
   const dynamicSegmentBoundaries = ref<{ start: number; end: number; label: string }[]>([]);
-  const pipeline = ref<PipelineDefinition | null>(null);
 
   // Non-reactive
   const summarizeGuard = createRunGuard();
@@ -201,7 +202,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     error.value = '';
     scraper.scrapeProgress.value = null;
     simpleLoadingText.value = '';
-    pipeline.value = null;
+    pl.pipeline.value = null;
     llmTaskId.value = null;
     scraper.isScraping.value = false;
     scraper.scrapingWarnings.value = [];
@@ -318,7 +319,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     scraper.isScraping.value = false;
     scraper.scrapeProgress.value = null;
     simpleLoadingText.value = '';
-    pipeline.value = null;
+    pl.pipeline.value = null;
     llmTaskId.value = null;
     store.setSummarizing(null);
   }
@@ -353,13 +354,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     scraper.scrapingWarnings.value = [];
     scraper.scrapingInfo.value = [];
     // Build pipeline if not already set by parent (e.g. handleAutoSummarizeAll or handleSegmentUpdate loops)
-    if (!pipeline.value) {
-      pipeline.value = buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
+    if (!pl.pipeline.value) {
+        pl.buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
     }
     // Mark only this segment's scrape step as running
     const scrapeStepId = segments.value.length <= 1 ? 'scrape' : `scrape_${segmentIndex}`;
-    pipeline.value.steps.forEach(s => {
-      if (s.id === scrapeStepId) markStepRunning(pipeline.value!, s.id);
+    pl.pipeline.value?.steps.forEach(s => {
+      if (s.id === scrapeStepId) pl.markRunning(s.id);
     });
     const thisId = summarizeGuard.begin();
     store.setSummarizing(topic.url);
@@ -432,19 +433,19 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       // Mark this segment's scrape as done, summarize as running
-      if (pipeline.value) {
-        pipeline.value = markNextStepRunning(pipeline.value, scrapeStepId);
+      if (pl.pipeline.value) {
+        pl.pipeline.value = pl.markNextRunning(scrapeStepId);
       }
       const segTask = summarize(segPosts);
       llmTaskId.value = segTask.taskId;
       // Propagate latest pipeline statuses to task state for auto-updates via handleProgress
       const st = getTaskState(segTask.taskId);
-      if (st && pipeline.value) st.pipeline = JSON.parse(JSON.stringify(pipeline.value));
+      if (st && pl.pipeline.value) st.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
       const segResult = await segTask.result;
       // Sync summarizePipeline with final task state for display after cleanup
-      if (pipeline.value) {
+      if (pl.pipeline.value) {
         const finalTask = getTaskState(segTask.taskId);
-        if (finalTask?.pipeline) pipeline.value = JSON.parse(JSON.stringify(finalTask.pipeline));
+        if (finalTask?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(finalTask.pipeline));
       }
       const segSummaryText = (segResult.data as { summary: string }).summary;
       const segSummaryJson = parseSummaryJSON(segSummaryText);
@@ -530,9 +531,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (completedSegments.length === 0) return;
 
     // Mark scrape step as done, set overall step to running
-    if (pipeline.value) {
-      const scrapeStep = pipeline.value.steps.find(s => s.status === 'running' && s.id.startsWith('scrape'));
-      if (scrapeStep) pipeline.value = markNextStepRunning(pipeline.value, scrapeStep.id);
+    if (pl.pipeline.value) {
+      const scrapeStep = pl.pipeline.value.steps.find(s => s.status === 'running' && s.id.startsWith('scrape'));
+      if (scrapeStep) pl.pipeline.value = pl.markNextRunning(scrapeStep.id);
     }
 
     // Single segment: copy trực tiếp, không gọi LLM
@@ -561,12 +562,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const overallTask = summarizeSegmentsTask(summaryStrings);
       llmTaskId.value = overallTask.taskId;
       const st2 = getTaskState(overallTask.taskId);
-      if (st2 && pipeline.value) st2.pipeline = pipeline.value;
+      if (st2 && pl.pipeline.value) st2.pipeline = pl.pipeline.value;
       const overallResult = await overallTask.result;
       // Sync pipeline with final task state
-      if (pipeline.value) {
+      if (pl.pipeline.value) {
         const ft = getTaskState(overallTask.taskId);
-        if (ft?.pipeline) pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
+        if (ft?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
       }
       const overallSummaryText = (overallResult.data as { summary: string }).summary;
       const overallSummaryJson = parseSummaryJSON(overallSummaryText);
@@ -661,7 +662,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const remainingStart = coveredEndPage + 1;
       if (remainingStart <= totalPages) {
         const label = remainingStart === totalPages ? `Scrape trang ${remainingStart}` : `Scrape trang ${remainingStart}–${totalPages}`;
-        pipeline.value = {
+        pl.pipeline.value = {
           workflow: 'summarize',
           steps: [
             { id: 'scrape_remaining', label, status: 'running' },
@@ -670,7 +671,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         };
       } else {
         // No new pages but has new posts — still need pipeline for display
-        pipeline.value = {
+        pl.pipeline.value = {
           workflow: 'summarize',
           steps: [
             { id: 'scrape_remaining', label: 'Scrape bài viết mới', status: 'running' },
@@ -716,7 +717,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           const completed = segmentSummaries.value.filter(s => s?.summary).length;
           if (completed >= 1) {
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-            // markNextStepRunning(pipeline.value!, 'overall');
+            // pl.markNextRunning(pl.pipeline.value!, 'overall');
             await generateOverallSummary();
           }
         }
@@ -756,8 +757,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
 
     // Fixed mode: build pipeline once, then summarize pending segments
-    pipeline.value = buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
-    markFirstStepRunning(pipeline.value);
+    pl.buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
+    pl.markFirstRunning();
     for (const idx of segmentsToProcess) {
       await handleSummarizeSegment(idx);
       if (error.value) return;
@@ -808,19 +809,19 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     segmentSummaries.value = tempBase as TopicSegment[];
 
     // Mark scrape as done
-    if (pipeline.value) {
-      const scrapeStep = pipeline.value.steps.find(s => s.status === 'running' && s.id.startsWith('scrape'));
-      if (scrapeStep) pipeline.value = markNextStepRunning(pipeline.value, scrapeStep.id);
+    if (pl.pipeline.value) {
+      const scrapeStep = pl.pipeline.value.steps.find(s => s.status === 'running' && s.id.startsWith('scrape'));
+      if (scrapeStep) pl.pipeline.value = pl.markNextRunning(scrapeStep.id);
     }
     const segTask = summarize(posts);
     llmTaskId.value = segTask.taskId;
     const st3 = getTaskState(segTask.taskId);
-    if (st3 && pipeline.value) st3.pipeline = JSON.parse(JSON.stringify(pipeline.value));
+    if (st3 && pl.pipeline.value) st3.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
     const segResult = await segTask.result;
     // Sync pipeline with final task state
-    if (pipeline.value) {
+    if (pl.pipeline.value) {
       const ft = getTaskState(segTask.taskId);
-      if (ft?.pipeline) pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
+      if (ft?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
     }
     llmTaskId.value = null;
 
@@ -879,30 +880,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     } as Partial<CachedTopic>);
     activeSegmentIndex.value = segmentIndex;
 
-    // Progressive append: insert segment summary step before "overall"
-    if (pipeline.value) {
-      const overallIdx = pipeline.value.steps.findIndex(s => s.id === 'overall');
-      const newSegSteps: PipelineStep[] = pipeline.value.steps.slice(0, overallIdx >= 0 ? overallIdx : pipeline.value.steps.length);
-      if (segmentIndex === 1) {
-        // For the second segment, create and push the first segment's step
-        const firstSegStep: PipelineStep = {
-          id: 'summarize_0',
-          label: 'Tóm tắt segment 1', 
-          status: 'pending',
-        };
-        newSegSteps.push(firstSegStep);
-      }
-      const segStep: PipelineStep = {
-        id: `summarize_${segmentIndex}`,
-        label: `Tóm tắt segment ${segmentIndex + 1}`,
-        status: 'pending',
-      };
-      newSegSteps.push(segStep);
-      if (overallIdx >= 0) {
-        newSegSteps.push(...pipeline.value.steps.slice(overallIdx));
-      } 
-      pipeline.value.steps = newSegSteps;
-      pipeline.value = markNextStepRunning(pipeline.value, newSegSteps[newSegSteps.length - 1]?.id);
+    // Reconcile pipeline with actual segment count
+    if (pl.pipeline.value) {
+      pl.reconcile(segmentIndex + 1);
     }
 
     simpleLoadingText.value = '';
@@ -1112,8 +1092,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (isDynamic) {
         const budget = await computeDynamicBudget();
         // Build pipeline for the full page range before dynamic processing
-        pipeline.value = buildSummarizePipeline([{ start: 1, end: totalPages }]);
-        markFirstStepRunning(pipeline.value);
+          pl.buildSummarizePipeline([{ start: 1, end: totalPages }]);
+        pl.markFirstRunning();
         if (forceRegenerate) {
           // Force regenerate: clear all existing state, start fresh
           dynamicSegmentBoundaries.value = [];
@@ -1136,8 +1116,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         }
       } else {
         // Fixed mode: build pipeline once, then summarize all segments sequentially
-        pipeline.value = buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
-        markFirstStepRunning(pipeline.value);
+          pl.buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
+        pl.markFirstRunning();
         if (forceRegenerate) {
           segmentSummaries.value = [];
         }
@@ -1153,7 +1133,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         const completed = segmentSummaries.value.filter(s => s?.summary).length;
         if (completed >= 1) {
           simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-          // markNextStepRunning(pipeline.value!, 'overall');
+          // pl.markNextRunning(pl.pipeline.value!, 'overall');
           await generateOverallSummary();
         }
       }
@@ -1232,7 +1212,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     currentConfig,
     cachedTopic,
     cacheFreshness,
-    pipeline,
+    pipeline: pl.pipeline,
     segmentSize,
     segmentSummaries,
     activeSegmentIndex,

@@ -315,6 +315,9 @@ Sau khi PRD files được tạo/cập nhật xong, CHẠY TUẦN TỰ:
 2. task-master analyze-complexity --research
 3. task-master complexity-report
 4. task-master expand --all --research
+5. Với MỖI task vừa generate/expand: thêm subtask Self-review ở VỊ TRÍ CUỐI CÙNG
+   task-master add-subtask --parent=<id> --title="Self-review" \
+     --description="Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review"
 ```
 
 **Quy tắc:**
@@ -323,6 +326,7 @@ Sau khi PRD files được tạo/cập nhật xong, CHẠY TUẦN TỰ:
 - Luôn chạy `analyze-complexity` sau khi parse xong TẤT CẢ PRD
 - `complexity-report` chỉ cần chạy 1 lần, review các task complexity > 5
 - `expand --all --research` để tự động bung subtasks cho complex tasks
+- **BẮT BUỘC — Self-review subtask:** mỗi task PHẢI có subtask **Self-review** là subtask **cuối cùng** (sau toàn bộ subtask implement). `expand` không tự sinh subtask này → LUÔN thêm thủ công bằng step 5 sau khi expand. Áp dụng cho MỌI task, kể cả complexity thấp, không ngoại lệ. Subtask Self-review chỉ được set done sau khi đã chạy `template/self_review_checklist.md` và fix hết issue tìm được.
 
 ### Phase 3 — Implementation (AI-driven)
 
@@ -340,6 +344,7 @@ Khi user yêu cầu "implement task N" hoặc "tiếp tục":
 
 **Quy tắc implementation:**
 - LUÔN chạy `npm run compile` (type check) sau khi code
+- Subtask **Self-review** (subtask cuối) PHẢI được thực hiện sau khi xong mọi subtask implement: chạy `template/self_review_checklist.md`, fix hết issue, rồi mới set task `--status=review`. Không skip subtask này dù task nhỏ.
 - Sau mỗi task done → `task-master next` → hỏi user có muốn tiếp tục không
 - Không tự commit code
 

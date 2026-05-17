@@ -466,6 +466,15 @@
             "details": "Giả lập dữ liệu cho 234 trang. Gọi handleAutoSummarizeAll và ghi lại trình tự các tin nhắn điều phối. Xác thực payload SAVE_CACHED_TOPIC cuối cùng cho toàn bộ topic lớn, đảm bảo tính toàn vẹn của dữ liệu cào được và nội dung tóm tắt.",
             "status": "pending",
             "testStrategy": "Kiểm tra tính ổn định của bộ test khi chạy lặp lại nhiều lần với dữ liệu lớn, đảm bảo không có race conditions trong quá trình mock orchestration."
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 165
           }
         ]
       },
@@ -500,6 +509,15 @@
             "details": "Xóa định nghĩa INCREMENTAL_UPDATE_PROMPT và các type liên quan. Sử dụng grep để tìm tất cả các tham chiếu còn sót lại trong mã nguồn. Chạy npm run compile để xác nhận không còn lỗi do code bị xóa.",
             "status": "pending",
             "testStrategy": "Chạy lệnh 'npm run compile' và 'grep -r \"incremental\" .' để xác nhận sạch dead code."
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 166
           }
         ]
       },
@@ -534,6 +552,15 @@
             "details": "Khởi tạo instance Run-Guard trong useSummarize. Gọi guard.begin() khi bắt đầu tiến trình mới hoặc trong handleCancel. Truyền token vào các callback xử lý segment để kiểm tra tính hợp lệ của dữ liệu trước khi cập nhật state.",
             "status": "pending",
             "testStrategy": "Kiểm tra thực tế bằng cách trigger nhiều lần summarize liên tiếp và nhấn cancel, xác nhận rằng chỉ kết quả của lần gọi cuối cùng được áp dụng vào UI."
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 167
           }
         ]
       },
@@ -577,6 +604,15 @@
             "details": "Cài đặt logic quyết định: nếu tỷ lệ sử dụng (current_tokens / total_budget) > 0.7 thì trả về trạng thái yêu cầu tạo segment mới; nếu <= 0.7 thì thực hiện gộp vào segment cuối cùng hiện có.",
             "status": "pending",
             "testStrategy": "Unit test kiểm tra 2 trường hợp biên: headroom 71% (phải tạo segment mới) và headroom 69% (phải gộp vào segment hiện tại). Đảm bảo tính nhất quán với kết quả từ computeSegmentBudget."
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 168
           }
         ]
       },
@@ -622,6 +658,15 @@
             "details": "Tích hợp stale-guard token vào buildSegmentSavePayload. Cài đặt logic gán cờ 'stale' dựa trên việc so sánh token hiện hành. Hoàn thiện hàm xử lý payload cho SAVE_CACHED_TOPIC, bao quát cả trường hợp single vs multi-segment.",
             "status": "pending",
             "testStrategy": "Integration test giả lập việc thay đổi token của stale-guard và kiểm tra xem payload sinh ra có được đánh dấu cờ stale chính xác hay không."
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 169
           }
         ]
       },
@@ -679,6 +724,15 @@
             "details": "Kết nối onProgress để cập nhật UI và onSegmentReady để đẩy dữ liệu về pipeline. Viết các test case cho: cào trang đơn lẻ, cào nhiều trang, và kịch bản lỗi mạng giữa chừng.",
             "status": "pending",
             "testStrategy": "Sử dụng Mock Scraper để verify: 1. onProgress được gọi với index đúng. 2. Dữ liệu trả về đúng định dạng mong muốn."
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 170
           }
         ]
       },
@@ -724,6 +778,15 @@
             "details": "Liên kết trạng thái của từng bước trong StepTimeline với LLMTaskState. Xóa bỏ hoàn toàn các logic append step thủ công (hack progressive-append) cũ trong useSummarize để sử dụng cơ chế reconcile mới.",
             "status": "pending",
             "testStrategy": "Chạy quy trình tóm tắt thực tế, kiểm tra giao diện Timeline hiển thị ổn định và chính xác các bước xử lý theo thời gian thực."
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 171
           }
         ]
       },
@@ -771,6 +834,15 @@
             "details": "Cài đặt kiểm tra token tại các điểm quyết định (trước khi lưu kết quả). Xử lý ngoại lệ từ LLM để không làm hỏng trạng thái của useSummarize khi có lỗi xảy ra.",
             "status": "pending",
             "testStrategy": "Giả lập kịch bản race condition khi nhiều yêu cầu tóm tắt diễn ra liên tiếp để xác nhận chỉ kết quả mới nhất được lưu."
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 172
           }
         ]
       },
@@ -827,6 +899,15 @@
             "details": "Sau khi kết thúc vòng lặp tóm tắt segment, gọi hàm reduceOverall để kết hợp toàn bộ nội dung. Cập nhật trạng thái cuối cùng của pipeline thành 'done' hoặc xử lý lỗi nếu có bất kỳ bước nào thất bại trong quy trình.",
             "status": "pending",
             "testStrategy": "Chạy lại bộ characterization tests từ Task 165 để so sánh số lượng lời gọi API (mock.getCallCount) và cấu trúc dữ liệu trả về so với logic cũ trước khi refactor."
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 173
           }
         ]
       },
@@ -873,6 +954,15 @@
             "details": "Thực hiện kiểm tra thủ công trên trình duyệt cho các kịch bản: tóm tắt mới hoàn toàn, tóm tắt thêm các đoạn segment mới, và luồng retry khi gặp lỗi. Đảm bảo component StepTimeline cập nhật trạng thái 'running' và 'done' chính xác theo pipeline.",
             "status": "pending",
             "testStrategy": "Kiểm tra thủ công trên môi trường development (manual testing) và chạy full test suite để đảm bảo không có lỗi hồi quy."
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md cho toàn bộ thay đổi của task này, fix mọi issue tìm được, rồi set-status task --status=review. Subtask cuối cùng, không skip.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 174
           }
         ]
       }

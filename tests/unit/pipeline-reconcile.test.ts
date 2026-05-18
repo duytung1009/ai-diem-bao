@@ -1,62 +1,87 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { usePipeline } from '@/entrypoints/sidepanel/composables/usePipeline';
 
-describe('C4 part 1: filter out placeholder summarize step in reconcile', () => {
+describe('pipeline reconcile with scrape + summarize steps', () => {
   let pipeline: ReturnType<typeof usePipeline>;
 
   beforeEach(() => {
     pipeline = usePipeline();
   });
 
-  describe('reconcile with dynamic segments', () => {
-    it('removes placeholder summarize when dynamic segments exist (1 segment)', () => {
-      // Simulate fixed-mode pipeline: [scrape, summarize, overall]
+  describe('reconcile with dynamic segments (first call, no hasDynamicSegments)', () => {
+    it('creates scrape_0 + summarize_0 for 1 segment, removes placeholder summarize+scrape', () => {
       pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
       expect(pipeline.pipeline.value?.steps.map(s => s.id)).toEqual(['scrape', 'summarize', 'overall']);
 
-      // Reconcile with 1 dynamic segment
-      pipeline.reconcile(1);
+      pipeline.reconcile(1, [{ start: 1, end: 9 }]);
 
       const stepIds = pipeline.pipeline.value?.steps.map(s => s.id);
-      expect(stepIds).toEqual(['scrape', 'summarize_0', 'overall']);
+      expect(stepIds).toEqual(['scrape_0', 'summarize_0', 'overall']);
       expect(stepIds).not.toContain('summarize');
+      expect(stepIds).not.toContain('scrape');
     });
 
-    it('removes placeholder summarize when dynamic segments exist (2 segments)', () => {
+    it('creates scrape_0..1 + summarize_0..1 for 2 segments', () => {
       pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
-      pipeline.reconcile(2);
+      pipeline.reconcile(2, [{ start: 1, end: 9 }, { start: 10, end: 16 }]);
 
       const stepIds = pipeline.pipeline.value?.steps.map(s => s.id);
-      expect(stepIds).toEqual(['scrape', 'summarize_0', 'summarize_1', 'overall']);
-      expect(stepIds).not.toContain('summarize');
-    });
-
-    it('removes placeholder summarize when dynamic segments exist (3 segments)', () => {
-      pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
-      pipeline.reconcile(3);
-
-      const stepIds = pipeline.pipeline.value?.steps.map(s => s.id);
-      expect(stepIds).toEqual(['scrape', 'summarize_0', 'summarize_1', 'summarize_2', 'overall']);
+      expect(stepIds).toEqual([
+        'scrape_0', 'summarize_0',
+        'scrape_1', 'summarize_1', 'overall',
+      ]);
       expect(stepIds).not.toContain('summarize');
     });
   });
 
+  describe('reconcile with dynamic segments (subsequent calls, hasDynamicSegments)', () => {
+    it('rebuilds all scrape + summarize steps on second call', () => {
+      // First call: replaces scrape+summarize → scrape_0, summarize_0, overall
+      pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
+      pipeline.reconcile(1, [{ start: 1, end: 9 }]);
+
+      // Second call rebuilds with all 2 segments
+      pipeline.reconcile(2, [{ start: 1, end: 9 }, { start: 10, end: 16 }]);
+
+      const stepIds = pipeline.pipeline.value?.steps.map(s => s.id);
+      expect(stepIds).toEqual([
+        'scrape_0', 'summarize_0',
+        'scrape_1', 'summarize_1', 'overall',
+      ]);
+      expect(stepIds).not.toContain('scrape');
+      expect(stepIds).not.toContain('summarize');
+    });
+
+    it('rebuilds 3 segments with scrape + summarize each', () => {
+      pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
+      pipeline.reconcile(3, [
+        { start: 1, end: 9 },
+        { start: 10, end: 16 },
+        { start: 17, end: 20 },
+      ]);
+
+      const stepIds = pipeline.pipeline.value?.steps.map(s => s.id);
+      expect(stepIds).toEqual([
+        'scrape_0', 'summarize_0',
+        'scrape_1', 'summarize_1',
+        'scrape_2', 'summarize_2', 'overall',
+      ]);
+    });
+  });
+
   describe('reconcile with fixed-mode multi-segment', () => {
-    it('keeps summarize_N steps, no placeholder to remove', () => {
-      // Fixed-mode multi-segment: [scrape_0, summarize_0, scrape_1, summarize_1, overall]
+    it('keeps existing steps unchanged (no-op)', () => {
       pipeline.buildSummarizePipeline([
         { start: 1, end: 20 },
         { start: 21, end: 40 },
       ]);
 
-      const stepIds = pipeline.pipeline.value?.steps.map(s => s.id);
-      expect(stepIds).toEqual(['scrape_0', 'summarize_0', 'scrape_1', 'summarize_1', 'overall']);
-      expect(stepIds).not.toContain('summarize');
+      const beforeIds = pipeline.pipeline.value?.steps.map(s => s.id);
+      expect(beforeIds).toEqual(['scrape_0', 'summarize_0', 'scrape_1', 'summarize_1', 'overall']);
 
-      // Reconcile should not change anything
       pipeline.reconcile(2);
       const afterIds = pipeline.pipeline.value?.steps.map(s => s.id);
-      expect(afterIds).toEqual(['scrape_0', 'summarize_0', 'scrape_1', 'summarize_1', 'overall']);
+      expect(afterIds).toEqual(beforeIds);
     });
   });
 
@@ -66,24 +91,43 @@ describe('C4 part 1: filter out placeholder summarize step in reconcile', () => 
       expect(pipeline.pipeline.value).toBeNull();
     });
 
-    it('handles reconcile with 0 segments', () => {
+    it('handles 0 segments (removes both placeholder steps)', () => {
       pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
       pipeline.reconcile(0);
 
       const stepIds = pipeline.pipeline.value?.steps.map(s => s.id);
-      // Only scrape and overall remain, no summarize steps
-      expect(stepIds).toEqual(['scrape', 'overall']);
+      expect(stepIds).toEqual(['overall']);
     });
 
-    it('marks last segment as running, others as done', () => {
+    it('all inserted steps are done (none running)', () => {
       pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
-      pipeline.reconcile(3);
+      pipeline.reconcile(3, [
+        { start: 1, end: 9 },
+        { start: 10, end: 16 },
+        { start: 17, end: 20 },
+      ]);
 
       const steps = pipeline.pipeline.value?.steps;
-      const segSteps = steps?.filter(s => s.id.startsWith('summarize_'));
-      expect(segSteps?.[0].status).toBe('done');
-      expect(segSteps?.[1].status).toBe('done');
-      expect(segSteps?.[2].status).toBe('running');
+      const segSteps = steps?.filter(s => s.id.startsWith('scrape_') || s.id.startsWith('summarize_'));
+      expect(segSteps?.length).toBe(6);
+      segSteps?.forEach(s => expect(s.status).toBe('done'));
+    });
+
+    it('scrape labels use page ranges when provided', () => {
+      pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
+      pipeline.reconcile(2, [{ start: 1, end: 9 }, { start: 10, end: 16 }]);
+
+      const steps = pipeline.pipeline.value?.steps;
+      expect(steps?.find(s => s.id === 'scrape_0')?.label).toBe('Scrape trang 1–9');
+      expect(steps?.find(s => s.id === 'scrape_1')?.label).toBe('Scrape trang 10–16');
+    });
+
+    it('single-page scrape label shows single page number', () => {
+      pipeline.buildSummarizePipeline([{ start: 1, end: 20 }]);
+      pipeline.reconcile(1, [{ start: 5, end: 5 }]);
+
+      const step = pipeline.pipeline.value?.steps.find(s => s.id === 'scrape_0');
+      expect(step?.label).toBe('Scrape trang 5');
     });
   });
 });

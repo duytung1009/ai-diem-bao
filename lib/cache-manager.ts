@@ -27,6 +27,8 @@ export function mergePartialTopic(
     overallSummary: partial.overallSummary ?? existing?.overallSummary,
     summaryJson: partial.summaryJson ?? existing?.summaryJson,
     bookmarked: partial.bookmarked ?? existing?.bookmarked,
+    threadLocked: partial.threadLocked ?? existing?.threadLocked,
+    threadDeleted: partial.threadDeleted ?? existing?.threadDeleted,
     knowledgeEntries: partial.knowledgeEntries ?? existing?.knowledgeEntries,
     knowledgeChunks: partial.knowledgeChunks !== undefined
       ? partial.knowledgeChunks

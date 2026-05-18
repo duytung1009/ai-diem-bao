@@ -335,33 +335,6 @@ async function toggleBookmark(topic: CachedTopic) {
             </span>
           </div>
         </div>
-                    
-        <div class="flex items-center gap-2 justify-start">
-          <!-- Post count -->
-          <span class="text-xs text-(--color-text-secondary)">
-            <template v-if="activeTabCachedTopic?.forumPostCount && activeTabCachedTopic?.forumPostCount > activeTabCachedTopic?.totalPosts">
-              {{ formatNumber(activeTabCachedTopic?.summarizedPostCount ?? activeTabCachedTopic?.totalPosts) }}/{{ formatNumber(activeTabCachedTopic?.forumPostCount) }} bài
-            </template>
-            <template v-else-if="topicSummaryStatus(activeTabCachedTopic, false) === 'partial'">
-              {{ formatNumber(activeTabCachedTopic?.summarizedPostCount ?? activeTabCachedTopic?.totalPosts) }}/{{ formatNumber(activeTabCachedTopic?.totalPosts) }} bài
-            </template>
-            <template v-else>{{ formatNumber(activeTabCachedTopic?.summarizedPostCount ?? activeTabCachedTopic?.totalPosts) }} bài</template>
-            <span
-              v-if="activeTabCachedTopic?.url && newPostsMap[activeTabCachedTopic?.url]"
-              class="text-(--color-accent-text) ml-0.5"
-            >(+{{ formatNumber(newPostsMap[activeTabCachedTopic?.url]) }} mới)</span>
-          </span>
-          <!-- Page -->
-          <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(activeTabCachedTopic?.totalPages) }} trang</span>
-          <!-- Time -->
-          <span v-if="activeTabCachedTopic?.cachedAt" class="text-xs text-(--color-text-secondary)">
-            {{ formatTopicDate(activeTabCachedTopic?.cachedAt) }}
-          </span>
-          <!-- Model -->
-          <span v-if="activeTabCachedTopic?.llmConfig?.model && (activeTabCachedTopic?.summary || activeTabCachedTopic?.segments?.some(s => s?.summary))" class="text-xs text-(--color-text-secondary) italic truncate max-w-24" :title="`${activeTabCachedTopic?.llmConfig.model}`">
-            {{ activeTabCachedTopic?.llmConfig.model }}
-          </span>
-        </div>
       </button>
 
       <!-- Topic list grouped by domain -->
@@ -438,7 +411,7 @@ async function toggleBookmark(topic: CachedTopic) {
                       </span>
                     </div>
                     
-                    <div class="flex items-center gap-2 justify-start">
+                    <div class="flex items-center gap-2 justify-start flex-wrap">
                       <!-- Post count -->
                       <span class="text-xs text-(--color-text-secondary)">
                         <template v-if="topic.forumPostCount && topic.forumPostCount > topic.totalPosts">

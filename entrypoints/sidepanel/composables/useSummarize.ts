@@ -868,10 +868,30 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     await saveTopic(topic, { segments: tempBase });
     segmentSummaries.value = tempBase as TopicSegment[];
 
-    // Mark scrape as done
+    // Mark scrape as done, set summarize to running before LLM call.
+    // In dynamic mode, steps may be named 'scrape' (initial) or 'scrape_N' (per-segment).
     if (pl.pipeline.value) {
-      const scrapeStep = pl.pipeline.value.steps.find(s => s.status === 'running' && s.id.startsWith('scrape'));
-      if (scrapeStep) pl.pipeline.value = pl.markNextRunning(scrapeStep.id);
+      const scrapeKey = segmentIndex === 0 ? 'scrape' : `scrape_${segmentIndex}`;
+      const scrapeStep = pl.pipeline.value.steps.find(s => s.id === scrapeKey && s.status === 'running');
+      if (scrapeStep) pl.markDone(scrapeStep.id);
+      const summarizeKey = `summarize_${segmentIndex}`;
+      // Also find the initial monolithic scrape step (id='scrape') being replaced by segment 0's scrape
+      if (segmentIndex > 0) {
+        const initScrape = pl.pipeline.value.steps.find(s => s.id === 'scrape' && s.status === 'running');
+        if (initScrape) pl.markDone(initScrape.id);
+      }
+      // Insert summarize step if it doesn't exist yet (dynamic segments added after first reconcile)
+      if (!pl.pipeline.value.steps.some(s => s.id === summarizeKey)) {
+        const overallIdx = pl.pipeline.value.steps.findIndex(s => s.id === 'overall');
+        const insertAt = overallIdx >= 0 ? overallIdx : pl.pipeline.value.steps.length;
+        pl.pipeline.value.steps.splice(insertAt, 0, {
+          id: summarizeKey,
+          label: `Tóm tắt Segment ${segmentIndex + 1}`,
+          status: 'running',
+        });
+      } else {
+        pl.markRunning(summarizeKey);
+      }
     }
     const segTask = summarize(posts);
     llmTaskId.value = segTask.taskId;
@@ -940,9 +960,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     } as Partial<CachedTopic>);
     activeSegmentIndex.value = segmentIndex;
 
-    // Reconcile pipeline with actual segment count
+    // Reconcile pipeline with actual segment count + page ranges
     if (pl.pipeline.value) {
-      pl.reconcile(segmentIndex + 1);
+      const boundaries = [...dynamicSegmentBoundaries.value];
+      while (boundaries.length <= segmentIndex + 1) boundaries.push({ start: 0, end: 0, label: '' });
+      boundaries[segmentIndex] = { start: startPage, end: endPage, label: labelStr };
+      const pageRanges = boundaries.slice(0, segmentIndex + 1).map(b => ({ start: b.start, end: b.end }));
+      pl.reconcile(segmentIndex + 1, pageRanges);
     }
 
     simpleLoadingText.value = '';
@@ -1127,6 +1151,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         pendingPosts = [];
         pendingTokens = 0;
         pendingStartPage = page;
+
+        // Add scrape step for the next segment so the timeline shows it
+        if (pl.pipeline.value && !pl.pipeline.value.steps.some(s => s.id === `scrape_${segmentIndex}`)) {
+          const overallIdx = pl.pipeline.value.steps.findIndex(s => s.id === 'overall');
+          const insertAt = overallIdx >= 0 ? overallIdx : pl.pipeline.value.steps.length;
+          const nextScrape: PipelineStep = {
+            id: `scrape_${segmentIndex}`,
+            label: `Scrape trang ${page}–?`,
+            status: 'running',
+          };
+          pl.pipeline.value.steps.splice(insertAt, 0, nextScrape);
+        }
       }
 
       pendingPosts.push(...enrichedPosts);

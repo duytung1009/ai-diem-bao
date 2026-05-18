@@ -3,6 +3,71 @@ import { estimateTokens, calculateSegmentBudget, getThinkingOverhead } from './t
 import { RESPONSE_BUFFER_TOKENS } from './constants';
 
 /**
+ * Plan dynamic segments from all scraped posts.
+ * Pure function — deterministic, no side effects, no I/O.
+ *
+ * Groups posts by page, accumulates tokens per page using the same formula as
+ * the online algorithm in autoSummarizeDynamic (useSummarize.ts:1137-1166).
+ * When pending tokens + page tokens exceed budget and pending posts exist,
+ * commits a segment. Final page range is flushed as the last segment.
+ *
+ * @param posts — all scraped posts, sorted naturally by page (ascending).
+ * @param budgetTokens — per-segment token budget.
+ * @returns deterministic array of {start, end} boundaries.
+ */
+export function planDynamicSegments(
+  posts: ScrapedPost[],
+  budgetTokens: number,
+): { start: number; end: number }[] {
+  if (posts.length === 0) return [];
+
+  // Group posts by page so iteration mirrors the original scrape-page loop.
+  const pageMap = new Map<number, ScrapedPost[]>();
+  for (const post of posts) {
+    const page = post.page ?? 1;
+    let bucket = pageMap.get(page);
+    if (!bucket) {
+      bucket = [];
+      pageMap.set(page, bucket);
+    }
+    bucket.push(post);
+  }
+
+  const pageNumbers = [...pageMap.keys()].sort((a, b) => a - b);
+  const boundaries: { start: number; end: number }[] = [];
+
+  let pendingPosts: ScrapedPost[] = [];
+  let pendingTokens = 0;
+  let pendingStartPage = pageNumbers[0];
+
+  for (const page of pageNumbers) {
+    const pagePosts = pageMap.get(page)!;
+    const pageTokens = pagePosts.reduce(
+      (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
+      0,
+    );
+
+    if (pendingTokens + pageTokens > budgetTokens && pendingPosts.length > 0) {
+      boundaries.push({ start: pendingStartPage, end: page - 1 });
+      pendingPosts = [];
+      pendingTokens = 0;
+      pendingStartPage = page;
+    }
+
+    pendingPosts.push(...pagePosts);
+    pendingTokens += pageTokens;
+  }
+
+  // Flush remaining posts as the last segment
+  if (pendingPosts.length > 0) {
+    const lastPage = pageNumbers[pageNumbers.length - 1];
+    boundaries.push({ start: pendingStartPage, end: lastPage });
+  }
+
+  return boundaries;
+}
+
+/**
  * Check if a segment is considered "completed" — i.e., has a non-empty summary.
  * Uses truthy check so that summary: '' is treated as incomplete.
  */

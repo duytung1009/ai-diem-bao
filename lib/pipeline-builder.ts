@@ -12,6 +12,24 @@ export function markFirstStepRunning(pipeline: PipelineDefinition): void {
 }
 
 /**
+ * Build pipeline for dynamic summarize flow.
+ * Before segments are known: shows scrape + plan phases upfront.
+ * After plan completes, rebuildWithSegments (usePipeline.ts) replaces the
+ * placeholder `overall` step with the real summarize_0..N + overall steps.
+ */
+export function buildDynamicScrapePipeline(totalPages: number): PipelineDefinition {
+  const label = totalPages === 1 ? 'Scraping trang 1' : `Scraping trang 1–${totalPages}`;
+  return {
+    workflow: 'summarize',
+    steps: [
+      pending(label, 'scrape'),
+      pending('Tạo segment động', 'plan'),
+      pending('Tóm tắt tổng quan', 'overall'),
+    ],
+  };
+}
+
+/**
  * Build pipeline for summarize workflow.
  * - Single segment: [scrape, summarize]
  * - Multi-segment (N): [scrape_0, summarize_0, ..., overall]

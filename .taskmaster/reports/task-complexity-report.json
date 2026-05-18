@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-17T15:35:00.747Z",
+		"generatedAt": "2026-05-18T06:58:14.001Z",
 		"tasksAnalyzed": 10,
-		"totalTasks": 30,
+		"totalTasks": 40,
 		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 175,
-			"taskTitle": "Setup test infrastructure for regression tests",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia task thành các subtask: 1) Tạo các hàm helper (createMockScraper, createMockSegment, buildStalePayload, assertProgress, assertPipelineSteps). 2) Tạo các mock objects cho scraper và pipeline. 3) Cập nhật cấu hình vitest và viết test cho các helpers.",
-			"reasoning": "Công việc cơ bản nhưng cần thiết cho các task sau. Độ phức tạp trung bình vì phải tạo nhiều hàm tiện ích và đảm bảo chúng hoạt động đúng."
+			"taskId": 185,
+			"taskTitle": "Tạo hàm thuần `planDynamicSegments` trong `lib/segment-planner.ts`",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Nhiệm vụ đã được mô tả chi tiết. Không cần chia nhỏ thêm.",
+			"reasoning": "Công việc tập trung vào việc tạo một hàm thuần, đơn giản với thuật toán được xác định rõ. Cần tham khảo code hiện có và đảm bảo tính xác định. Độ phức tạp trung bình thấp."
 		},
 		{
-			"taskId": 176,
-			"taskTitle": "Fix C3: stale-save does not promote summary",
+			"taskId": 186,
+			"taskTitle": "Viết unit test cho `planDynamicSegments`",
 			"complexityScore": 3,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Chia task thành: 1) Sửa dòng lệnh isSingleSegment: true thành false trong stale path. 2) Viết unit test kiểm tra stale payload không có summary.",
-			"reasoning": "Sửa lỗi đơn giản, chỉ thay đổi một tham số. Đã có hướng dẫn cụ thể. Độ phức tạp thấp."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Nhiệm vụ đã đầy đủ: tạo file test, viết các test case theo mô tả.",
+			"reasoning": "Viết unit test cho một hàm thuần, có sẵn các kịch bản test. Công việc có độ phức tạp thấp."
 		},
 		{
-			"taskId": 177,
-			"taskTitle": "Fix C2: unify segment completed predicate to truthy",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia task thành: 1) Tạo helper isCompletedSegment. 2) Thay thế filter tại tất cả các vị trí (computeResumeState, reduceOverall, summarizedCount, computeResumeMode, runSummarizeJob). 3) Viết unit test với segment có summary rỗng.",
-			"reasoning": "Cần thay đổi nhiều nơi trong codebase và tạo helper chung. Viết test đảm bảo đúng hành vi. Độ phức tạp trung bình."
+			"taskId": 187,
+			"taskTitle": "Thêm `buildDynamicScrapePipeline` vào `lib/pipeline-builder.ts`",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Nhiệm vụ đơn giản, chỉ cần thêm một hàm trả về mảng tĩnh.",
+			"reasoning": "Thêm một hàm đơn giản trả về mảng các step dựa trên tham số đầu vào. Rất ít phức tạp."
 		},
 		{
-			"taskId": 178,
-			"taskTitle": "Fix C1: restore overall scrape progress in dynamic summarize",
+			"taskId": 188,
+			"taskTitle": "Thêm `rebuildWithSegments` vào `usePipeline.ts` và xóa `reconcile`",
 			"complexityScore": 6,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia task thành: 1) Thay thế scraper.scrapeRange bằng scrapePageRange trong autoSummarizeDynamic. 2) Tạo AbortController con liên kết với abort chính. 3) Viết characterization test kiểm tra scrapeProgress.totalPages không thay đổi.",
-			"reasoning": "Thay đổi logic gọi scrape, cần đảm bảo tương tác với abort controller và không làm hỏng progress. Có thể ảnh hưởng đến các phần khác. Độ phức tạp khá cao."
+			"expansionPrompt": "Chia thành các bước: (1) Thêm method `rebuildWithSegments` trong `usePipeline.ts`, (2) Xóa hàm `reconcile` và mọi call site, (3) Xóa block `.splice()` tại `useSummarize.ts:1156-1165`, (4) Viết unit test.",
+			"reasoning": "Công việc bao gồm thêm method mới, xóa code cũ trên nhiều file, và đảm bảo tính nhất quán. Có độ phức tạp trung bình, cần kiểm tra kỹ."
 		},
 		{
-			"taskId": 179,
-			"taskTitle": "Fix C4 part 1: filter out placeholder 'summarize' step in reconcile",
+			"taskId": 189,
+			"taskTitle": "Tách hàm `scrapeAllPages` trong `useSummarize.ts`",
+			"complexityScore": 5,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Nhiệm vụ đã được mô tả đầy đủ, chỉ cần thực hiện tách code và đảm bảo giữ nguyên xử lý.",
+			"reasoning": "Tách logic scrape từ một hàm lớn thành hàm riêng. Cần chú ý giữ nguyên các xử lý ngoại lệ, progress, abort. Độ phức tạp trung bình."
+		},
+		{
+			"taskId": 190,
+			"taskTitle": "Kết nối 2-phase flow trong `runSummarizeJob` và cập nhật `handleSegmentUpdate`",
+			"complexityScore": 8,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Chia thành: (1) Sửa `runSummarizeJob` cho dynamic mode: gọi `buildDynamicScrapePipeline`, scrape, plan, rebuild, loop summarize, overall, (2) Cập nhật `handleSegmentUpdate`, (3) Kiểm soát trạng thái pipeline, (4) Viết E2E test.",
+			"reasoning": "Công việc tích hợp nhiều module mới vào luồng điều khiển chính, thay đổi logic nhiều. Độ phức tạp cao, cần kiểm thử kỹ lưỡng."
+		},
+		{
+			"taskId": 191,
+			"taskTitle": "Cơ chế persist post trong `scrapeAllPages` để hỗ trợ resume an toàn",
 			"complexityScore": 5,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chia task thành: 1) Sửa hàm reconcile để xóa step 'summarize' khi có step 'summarize_'. 2) Viết unit test cho các trường hợp dynamic và fixed.",
-			"reasoning": "Cần hiểu logic reconcile và các trường hợp biên. Viết test nhiều kịch bản. Độ phức tạp trung bình."
+			"expansionPrompt": "Chia thành: (1) Triển khai lưu cache định kỳ trong `scrapeAllPages`, (2) Triển khai load cache và resume logic, (3) Viết test cho persist và resume.",
+			"reasoning": "Thêm cơ chế lưu trữ tạm thời và khôi phục. Cần xử lý lưu trữ đồng bộ, đọc ghi cache. Độ phức tạp trung bình."
 		},
 		{
-			"taskId": 180,
-			"taskTitle": "Fix C4 part 2: mark overall done for single-segment dynamic",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Chia task thành: 1) Thêm dòng pipeline.markDone('overall') trong reduceOverall cho single segment. 2) Viết test mock pipeline.",
-			"reasoning": "Thay đổi nhỏ, thêm một dòng lệnh. Có test kèm theo. Độ phức tạp thấp."
-		},
-		{
-			"taskId": 181,
-			"taskTitle": "Write integration e2e test covering all four fixes",
-			"complexityScore": 5,
+			"taskId": 192,
+			"taskTitle": "Logic resume re-plan với deterministic planner",
+			"complexityScore": 7,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia task thành: 1) Thiết lập test scenarios cho C1-C4. 2) Viết code test sử dụng test helpers từ task 175. 3) Chạy và điều chỉnh test cho đến khi pass.",
-			"reasoning": "Viết test tích hợp sử dụng mocks, cần cover nhiều kịch bản. Độ phức tạp trung bình."
+			"expansionPrompt": "Chia thành: (1) So sánh boundaries cũ và mới để xác định segment cần re-summarize, (2) Tích hợp logic re-plan vào `runSummarizeJob`, (3) Viết test cho kịch bản resume thay đổi segment.",
+			"reasoning": "Yêu cầu logic so sánh và quyết định segment nào cần tóm tắt lại dựa trên boundary. Có độ phức tạp cao vì liên quan đến trạng thái cache và tính nhất quán."
 		},
 		{
-			"taskId": 182,
-			"taskTitle": "Full compile and test pass",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Chia task thành: 1) Chạy npm run compile và sửa lỗi. 2) Chạy npm run test và sửa lỗi test.",
-			"reasoning": "Bước kiểm tra cuối, thường đơn giản nếu code đúng. Độ phức tạp thấp."
-		},
-		{
-			"taskId": 183,
-			"taskTitle": "Manual testing on real topics",
-			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chia task thành: 1) Test với topic 25 trang. 2) Test với topic 234 trang. Ghi lại kết quả và sửa lỗi nếu có.",
-			"reasoning": "Cần thực hiện thủ công, có thể phát sinh lỗi cần sửa. Độ phức tạp trung bình thấp."
-		},
-		{
-			"taskId": 184,
-			"taskTitle": "Verify invariants and decision log compliance",
+			"taskId": 193,
+			"taskTitle": "Đảm bảo fixed mode và giao diện StepTimeline không bị ảnh hưởng",
 			"complexityScore": 3,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chia task thành: 1) Kiểm tra các invariants (mock call counts, single-segment promotion, legacy compatibility, threadDeleted/Locked, news-enrichment). 2) Xác nhận quyết định 1 và 2 được triển khai đúng. Thêm unit test nếu cần.",
-			"reasoning": "Code review và kiểm tra không hồi quy. Yêu cầu hiểu biết sâu về hệ thống nhưng không phức tạp về mặt kỹ thuật."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Nhiệm vụ kiểm tra và xác nhận không có lỗi phát sinh. Không cần chia nhỏ.",
+			"reasoning": "Công việc mang tính kiểm thử hồi quy, không thay đổi code nhiều. Độ phức tạp thấp."
+		},
+		{
+			"taskId": 194,
+			"taskTitle": "E2E test cho dynamic flow và resume",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Chia thành: (1) Test dynamic flow pipeline structure, (2) Test resume chỉ scrape trang thiếu, (3) Test không re-summarize segment cũ.",
+			"reasoning": "Viết E2E test cần mô phỏng nhiều kịch bản, nhưng không đòi hỏi thuật toán phức tạp. Độ phức tạp trung bình thấp."
 		}
 	]
 }

@@ -4,12 +4,12 @@ import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
 import type { ArticleContent } from '@/lib/scrapers/article-extractor';
-import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON, PipelineDefinition, PipelineStep } from '@/lib/types';
+import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON } from '@/lib/types';
 
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
 import { estimateTokens, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
-import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule, isCompletedSegment } from '@/lib/segment-planner';
+import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule, isCompletedSegment, planDynamicSegments } from '@/lib/segment-planner';
 import type { DynamicResumeState } from '@/lib/segment-planner';
 import { createRunGuard } from '@/lib/run-guard';
 import { makeDenseSegments, buildSegmentSavePayload } from '@/lib/segment-persistence';
@@ -653,6 +653,24 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   function computeResumeMode(): ResumeMode {
     const currentSegments = segmentSummaries.value;
     const completed = currentSegments.filter(isCompletedSegment);
+
+    // Check for scrape-phase partial progress (scraped but not yet summarized)
+    const lastPage = cachedTopic.value?.lastScrapedPage;
+    const cachedPosts = cachedTopic.value?.posts;
+    if (completed.length === 0 && lastPage && lastPage > 0 && cachedPosts && cachedPosts.length > 0) {
+      // We have cached posts from a previous scrape run that was interrupted
+      return {
+        mode: 'resume',
+        resume: {
+          fromPage: lastPage + 1,
+          segmentIndex: 0,
+          pendingPosts: [...cachedPosts],
+          pendingTokens: 0,
+          pendingStartPage: 1,
+        },
+      };
+    }
+
     if (completed.length === 0) return { mode: 'fresh' };
 
     const lastSeg = completed[completed.length - 1];
@@ -727,7 +745,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       return;
     }
 
-    // Dynamic mode
+    // Dynamic mode — 2-phase flow: scrape all → plan → rebuild timeline → summarize
     error.value = '';
     scraper.scrapingWarnings.value = [];
     scraper.scrapingInfo.value = [];
@@ -749,20 +767,69 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         segmentSummaries.value = [];
       }
 
-      pl.buildSummarizePipeline([{ start: 1, end: totalPages }]);
+      // Phase 1: Build initial timeline — scrape + plan steps visible immediately
+      pl.buildDynamicScrapePipeline(totalPages);
       pl.markFirstRunning();
 
-      if (resumeMode.mode === 'resume' && resumeMode.resume.fromPage <= totalPages) {
-        await autoSummarizeDynamic(topic.url, totalPages, budget, thisId, resumeMode.resume);
-      } else {
-        await autoSummarizeDynamic(topic.url, totalPages, budget, thisId);
+      // Phase 2: Scrape all pages (from resume start or from page 1)
+      const resumeStartPage = resumeMode.mode === 'resume' ? resumeMode.resume.fromPage : 1;
+      const startPage = resumeStartPage > totalPages ? 1 : resumeStartPage;
+      const newPosts = await scrapeAllPages(topic.url, totalPages, startPage, thisId);
+      if (!newPosts || summarizeGuard.isStale(thisId) || error.value) return;
+
+      // Merge resume pendingPosts (cached posts from interrupted segment/scrape) with newly scraped
+      const resumePendingPosts = resumeMode.mode === 'resume' ? resumeMode.resume.pendingPosts : [];
+      const allPosts = [...resumePendingPosts, ...newPosts];
+
+      pl.markDone('scrape');
+      pl.markRunning('plan');
+
+      // Phase 3: Plan deterministic segments
+      const boundaries = planDynamicSegments(allPosts, budget);
+      dynamicSegmentBoundaries.value = boundaries.map(b => ({ start: b.start, end: b.end, label: `${b.start}–${b.end}` }));
+
+      // Phase 4: Rebuild timeline with all summarize steps
+      pl.rebuildWithSegments(boundaries);
+      pl.markDone('plan');
+
+      // Phase 5: Summarize each segment (skip if boundary unchanged and already summarized)
+      for (let i = 0; i < boundaries.length; i++) {
+        if (summarizeGuard.isStale(thisId) || error.value) return;
+
+        const segId = boundaries.length <= 1 ? 'summarize' : `summarize_${i}`;
+        pl.markRunning(segId);
+
+        const boundary = boundaries[i];
+        const segPosts = allPosts.filter(p => {
+          const pg = p.page ?? 1;
+          return pg >= boundary.start && pg <= boundary.end;
+        });
+
+        // Resume optimization: skip LLM call if matching segment already summarized
+        const existingSeg = segmentSummaries.value[i];
+        const isAlreadyDone = existingSeg?.summary
+          && existingSeg.startPage === boundary.start
+          && existingSeg.endPage === boundary.end;
+
+        if (isAlreadyDone) {
+          pl.markDone(segId);
+          continue;
+        }
+
+        await summarizeAndSaveSegment(i, boundary.start, boundary.end, segPosts, false, thisId);
+        if (error.value || summarizeGuard.isStale(thisId)) return;
+
+        pl.markDone(segId);
       }
 
+      // Phase 6: Overall summary
       if (!summarizeGuard.isStale(thisId) && !error.value) {
         const completed = segmentSummaries.value.filter(isCompletedSegment).length;
         if (completed >= 1) {
+          pl.markRunning('overall');
           simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
           await generateOverallSummary();
+          pl.markDone('overall');
         }
       }
     } catch (err) {
@@ -868,31 +935,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     await saveTopic(topic, { segments: tempBase });
     segmentSummaries.value = tempBase as TopicSegment[];
 
-    // Mark scrape as done, set summarize to running before LLM call.
-    // In dynamic mode, steps may be named 'scrape' (initial) or 'scrape_N' (per-segment).
-    if (pl.pipeline.value) {
-      const scrapeKey = segmentIndex === 0 ? 'scrape' : `scrape_${segmentIndex}`;
-      const scrapeStep = pl.pipeline.value.steps.find(s => s.id === scrapeKey && s.status === 'running');
-      if (scrapeStep) pl.markDone(scrapeStep.id);
-      const summarizeKey = `summarize_${segmentIndex}`;
-      // Also find the initial monolithic scrape step (id='scrape') being replaced by segment 0's scrape
-      if (segmentIndex > 0) {
-        const initScrape = pl.pipeline.value.steps.find(s => s.id === 'scrape' && s.status === 'running');
-        if (initScrape) pl.markDone(initScrape.id);
-      }
-      // Insert summarize step if it doesn't exist yet (dynamic segments added after first reconcile)
-      if (!pl.pipeline.value.steps.some(s => s.id === summarizeKey)) {
-        const overallIdx = pl.pipeline.value.steps.findIndex(s => s.id === 'overall');
-        const insertAt = overallIdx >= 0 ? overallIdx : pl.pipeline.value.steps.length;
-        pl.pipeline.value.steps.splice(insertAt, 0, {
-          id: summarizeKey,
-          label: `Tóm tắt Segment ${segmentIndex + 1}`,
-          status: 'running',
-        });
-      } else {
-        pl.markRunning(summarizeKey);
-      }
-    }
+    // Pipeline step management (markRunning/markDone) is handled by the caller (runSummarizeJob)
     const segTask = summarize(posts);
     llmTaskId.value = segTask.taskId;
     const st3 = getTaskState(segTask.taskId);
@@ -960,15 +1003,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     } as Partial<CachedTopic>);
     activeSegmentIndex.value = segmentIndex;
 
-    // Reconcile pipeline with actual segment count + page ranges
-    if (pl.pipeline.value) {
-      const boundaries = [...dynamicSegmentBoundaries.value];
-      while (boundaries.length <= segmentIndex + 1) boundaries.push({ start: 0, end: 0, label: '' });
-      boundaries[segmentIndex] = { start: startPage, end: endPage, label: labelStr };
-      const pageRanges = boundaries.slice(0, segmentIndex + 1).map(b => ({ start: b.start, end: b.end }));
-      pl.reconcile(segmentIndex + 1, pageRanges);
-    }
-
     simpleLoadingText.value = '';
   }
 
@@ -1008,48 +1042,36 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   }
 
   /**
-   * Scrape topic page by page, split into segments when token budget is exceeded,
-   * and summarize each segment immediately.
-   * Decision: scrape 1 page at a time for accurate per-post token boundary detection.
-   * Total time is identical to batching since per-page delay dominates.
-   * Optional `resume` allows continuing a previous partial run without re-scraping.
+   * Scrape all pages from `fromPage` to `totalPages` for a dynamic job.
+   * Returns the combined posts, or null if aborted / thread deleted / stale.
+   *
+   * Own responsibilities:
+   * - News enrichment (page 1 only)
+   * - scrapeProgress overall tracking (preserves fix C1)
+   * - Abort linking (child AbortController linked to scraper abort)
+   * - Thread deleted / locked detection
+   * - Delay + jitter between pages
+   * - Page errors pushed to scrapingWarnings
    */
-  async function autoSummarizeDynamic(
+  async function scrapeAllPages(
     topicUrl: string,
     totalPages: number,
-    budgetTokens: number,
+    fromPage: number,
     thisId: number,
-    resume?: DynamicResumeState,
-  ): Promise<void> {
-    let segmentIndex = resume?.segmentIndex ?? 0;
-    let pendingPosts: ScrapedPost[] = resume?.pendingPosts ? [...resume.pendingPosts] : [];
-    let pendingTokens = resume?.pendingTokens ?? 0;
-    let pendingStartPage = resume?.pendingStartPage ?? 1;
-    const startPage = resume?.fromPage ?? 1;
-
+  ): Promise<ScrapedPost[] | null> {
     const version = topicInfo.value?.version;
     if (!version || version === 'unknown') {
       throw new Error('Không xác định được phiên bản diễn đàn.');
     }
 
-    // Overall-progress accumulator: count posts from completed segments + pending.
-    // This drives a single topic-wide scrapeProgress that stays set across both
-    // scrape and LLM phases, so the progress bar reflects page/totalPages of the
-    // whole task (not each 1-page scrape) and ETA covers remaining topic scrape time.
-    let totalPostsScraped = pendingPosts.length;
-    for (let i = 0; i < segmentIndex; i++) {
-      const seg = segmentSummaries.value[i];
-      if (seg?.posts) totalPostsScraped += seg.posts.length;
-    }
-
     const delayMs = currentConfig.value?.scrapeDelayMs ?? 2000;
+    const allPosts: ScrapedPost[] = [];
+    let totalPostsScraped = 0;
 
-    for (let page = startPage; page <= totalPages; page++) {
-      if (summarizeGuard.isStale(thisId)) return;
+    for (let page = fromPage; page <= totalPages; page++) {
+      if (summarizeGuard.isStale(thisId)) return null;
 
       scraper.isScraping.value = true;
-      // Overall topic progress — scrapeProgress stays set across both scrape
-      // and LLM phases so the bar + ETA reflect the whole run.
       scraper.scrapeProgress.value = {
         currentPage: page,
         totalPages,
@@ -1061,10 +1083,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       let pageThreadDeleted = false;
       let pageThreadLocked = false;
       try {
-        // Call scrapePageRange directly so we control the progress callback
-        // and can report overall topic totalPages (not per-page).
         const pageAbortCtrl = new AbortController();
-        // Link child abort to the main scraper abort
         scraper.getAbortSignal()?.addEventListener('abort', () => pageAbortCtrl.abort(), { once: true });
 
         const result = await scrapePageRange(
@@ -1098,7 +1117,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         }
         error.value = 'Thread đã bị xóa.';
         scraper.scrapeProgress.value = null;
-        return;
+        return null;
       }
 
       if (pageThreadLocked) {
@@ -1108,7 +1127,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       }
 
       if (pageErrors.length) scraper.scrapingWarnings.value.push(...pageErrors);
-      if (summarizeGuard.isStale(thisId)) return;
+      if (summarizeGuard.isStale(thisId)) return null;
 
       // News enrichment for page 1 only
       let enrichedPosts = pagePosts;
@@ -1134,15 +1153,75 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         postsScraped: totalPostsScraped,
       };
 
-      const pageTokens = enrichedPosts.reduce(
+      allPosts.push(...enrichedPosts);
+
+      // Persist accumulated posts + lastScrapedPage every 5 pages during scrape phase
+      // (not on last page — final save handles that). Enables resume after cancel.
+      if (cachedTopic.value && page % 5 === 0 && page < totalPages) {
+        await saveTopic(cachedTopic.value, {
+          posts: allPosts,
+          lastScrapedPage: page,
+        }).catch(() => { });
+      }
+
+      if (page < totalPages && !summarizeGuard.isStale(thisId)) {
+        const jitter = Math.random() * Math.min(delayMs * 0.3, 500);
+        await new Promise((r) => setTimeout(r, delayMs + jitter));
+      }
+    }
+
+    return allPosts;
+  }
+
+  /**
+   * Scrape topic page by page, split into segments when token budget is exceeded,
+   * and summarize each segment immediately.
+   * Decision: scrape 1 page at a time for accurate per-post token boundary detection.
+   * Total time is identical to batching since per-page delay dominates.
+   * Optional `resume` allows continuing a previous partial run without re-scraping.
+   */
+  async function autoSummarizeDynamic(
+    topicUrl: string,
+    totalPages: number,
+    budgetTokens: number,
+    thisId: number,
+    resume?: DynamicResumeState,
+  ): Promise<void> {
+    let segmentIndex = resume?.segmentIndex ?? 0;
+    let pendingPosts: ScrapedPost[] = resume?.pendingPosts ? [...resume.pendingPosts] : [];
+    let pendingTokens = resume?.pendingTokens ?? 0;
+    let pendingStartPage = resume?.pendingStartPage ?? 1;
+    const startPage = resume?.fromPage ?? 1;
+
+    // Scrape all remaining pages in one phase
+    const newPosts = await scrapeAllPages(topicUrl, totalPages, startPage, thisId);
+    if (!newPosts || summarizeGuard.isStale(thisId)) return;
+
+    // Combine resume pending posts with newly scraped posts, then re-apply boundary logic
+    // on the complete post set (deterministic — same boundaries as online algorithm).
+    const allPosts = [...pendingPosts, ...newPosts];
+
+    // Group by page to mirror the original per-page boundary algorithm
+    const pageMap = new Map<number, ScrapedPost[]>();
+    for (const post of allPosts) {
+      const pg = post.page ?? 1;
+      if (!pageMap.has(pg)) pageMap.set(pg, []);
+      pageMap.get(pg)!.push(post);
+    }
+    const pageNumbers = [...pageMap.keys()].sort((a, b) => a - b);
+    if (pageNumbers.length === 0) return;
+
+    pendingPosts = [];
+    pendingTokens = 0;
+    pendingStartPage = pageNumbers[0];
+
+    for (const page of pageNumbers) {
+      const pagePosts = pageMap.get(page)!;
+      const pageTokens = pagePosts.reduce(
         (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
         0,
       );
 
-      // If adding this page would overflow the budget → finalize current segment.
-      // Keep scrapeProgress set during summarize so the overall bar keeps ticking;
-      // summarizeAndSaveSegment will set simpleLoadingText which takes precedence
-      // over the scrape default message in ProgressIndicator.
       if (pendingTokens + pageTokens > budgetTokens && pendingPosts.length > 0) {
         await summarizeAndSaveSegment(segmentIndex, pendingStartPage, page - 1, pendingPosts, false, thisId);
         if (error.value || summarizeGuard.isStale(thisId)) return;
@@ -1151,27 +1230,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         pendingPosts = [];
         pendingTokens = 0;
         pendingStartPage = page;
-
-        // Add scrape step for the next segment so the timeline shows it
-        if (pl.pipeline.value && !pl.pipeline.value.steps.some(s => s.id === `scrape_${segmentIndex}`)) {
-          const overallIdx = pl.pipeline.value.steps.findIndex(s => s.id === 'overall');
-          const insertAt = overallIdx >= 0 ? overallIdx : pl.pipeline.value.steps.length;
-          const nextScrape: PipelineStep = {
-            id: `scrape_${segmentIndex}`,
-            label: `Scrape trang ${page}–?`,
-            status: 'running',
-          };
-          pl.pipeline.value.steps.splice(insertAt, 0, nextScrape);
-        }
       }
 
-      pendingPosts.push(...enrichedPosts);
+      pendingPosts.push(...pagePosts);
       pendingTokens += pageTokens;
-
-      if (page < totalPages && !summarizeGuard.isStale(thisId)) {
-        const jitter = Math.random() * Math.min(delayMs * 0.3, 500);
-        await new Promise((r) => setTimeout(r, delayMs + jitter));
-      }
     }
 
     // Summarize remaining posts (last segment — all pages covered, always complete)

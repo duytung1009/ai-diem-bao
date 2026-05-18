@@ -171,6 +171,7 @@ export interface CachedTopic {
   threadAnalysis?: ThreadAnalysisJSON;
   threadLocked?: boolean;
   threadDeleted?: boolean;
+  lastScrapedPage?: number;    // last page fully scraped (for resume after cancel during scrape phase)
 }
 
 export interface TopicSegment {

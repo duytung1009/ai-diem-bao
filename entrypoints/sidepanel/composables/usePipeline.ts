@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import { buildSummarizePipeline as buildSummaryPipelineSteps, markStepRunning, markStepDone, markNextStepRunning, markFirstStepRunning } from '@/lib/pipeline-builder';
+import { buildSummarizePipeline as buildSummaryPipelineSteps, buildDynamicScrapePipeline as buildDynamicScrapeSteps, markStepRunning, markStepDone, markNextStepRunning, markFirstStepRunning } from '@/lib/pipeline-builder';
 import type { PipelineDefinition, PipelineStep } from '@/lib/types';
 
 export function usePipeline() {
@@ -10,75 +10,44 @@ export function usePipeline() {
     pipeline.value = buildSummaryPipelineSteps(segments);
   }
 
+  /** Build the initial pipeline for dynamic mode: scrape + plan phases visible upfront. */
+  function buildDynamicScrapePipeline(totalPages: number): void {
+    pipeline.value = buildDynamicScrapeSteps(totalPages);
+  }
+
   /**
-   * Reconcile the pipeline with the actual number of segments created during
-   * dynamic auto-summarize. Replaces the old progressive-append hack.
+   * Rebuild the pipeline after dynamic segment planning.
+   * Called once after planDynamicSegments determines the boundaries.
    *
-   * Called each time a new segment is finalized. Inserts or adjusts segment
-   * steps between the scrape steps and the "overall" step.
+   * Replaces the entire pipeline with a deterministic set of steps:
+   *   scrape (done) → plan (done) → summarize_0 (pending) → ... → overall (pending)
    *
-   * In dynamic mode, each segment gets a scrape step + summarize step
-   * (like the fixed-mode multi-segment pipeline), so the StepTimeline shows
-   * both scraping and summarizing for every dynamically-created segment.
+   * Single-segment case: steps = scrape, plan, summarize, overall
+   * Multi-segment case:  steps = scrape, plan, summarize_0..N, overall
    */
-  function reconcile(
-    actualSegments: number,
-    pageRanges?: { start: number; end: number }[],
-  ): void {
-    if (!pipeline.value) return;
+  function rebuildWithSegments(boundaries: { start: number; end: number }[]): void {
+    const steps: PipelineStep[] = [
+      { id: 'scrape', label: 'Scrape tất cả trang', status: 'done' },
+      { id: 'plan', label: 'Tạo segment động', status: 'done' },
+    ];
 
-    const existingSegSteps = pipeline.value.steps.filter(s => s.id.startsWith('summarize_'));
-    const hasDynamicSegments = existingSegSteps.length > 0;
-
-    // If fixed-mode multi-segment already has the right number of segments, no-op
-    if (hasDynamicSegments && existingSegSteps.length === actualSegments) return;
-
-    // Remove existing segment steps (summarize_N and scrape_N) and the placeholder
-    // 'summarize' / 'scrape' when rebuilding dynamic segments.
-    // For the first dynamic call (no existing summarize_N), also remove the initial
-    // monolithic 'scrape' step since we replace it with per-segment scrape_N.
-    // For fixed-mode multi-segment, keep existing steps.
-    const filtered = pipeline.value.steps.filter(s => {
-      if (hasDynamicSegments) {
-        return !s.id.startsWith('summarize_') && !s.id.startsWith('scrape_')
-          && s.id !== 'summarize' && s.id !== 'scrape';
+    if (boundaries.length === 0) {
+      // No segments — no summarize step needed
+    } else if (boundaries.length === 1) {
+      steps.push({ id: 'summarize', label: 'Tóm tắt segment', status: 'pending' });
+    } else {
+      for (let i = 0; i < boundaries.length; i++) {
+        steps.push({
+          id: `summarize_${i}`,
+          label: `Tóm tắt Segment ${i + 1}/${boundaries.length}`,
+          status: 'pending',
+        });
       }
-      return s.id !== 'summarize' && s.id !== 'scrape';
-    });
-
-    // Find where to insert (before 'overall' step)
-    const overallIdx = filtered.findIndex(s => s.id === 'overall');
-    const insertIdx = overallIdx >= 0 ? overallIdx : filtered.length;
-
-    // Insert scrape + summarize steps for all segments completed so far.
-    // In dynamic mode there is a single monolithic 'scrape' step initially;
-    // we replace it with per-segment scrape_N + summarize_N pairs.
-    // All inserted steps are 'done' since reconcile is called after LLM completes.
-    const segSteps: PipelineStep[] = [];
-    for (let i = 0; i < actualSegments; i++) {
-      const range = pageRanges?.[i] ?? { start: i + 1, end: i + 1 };
-      const scrapeLabel = range.start === range.end
-        ? `Scrape trang ${range.start}`
-        : `Scrape trang ${range.start}–${range.end}`;
-      segSteps.push({
-        id: `scrape_${i}`,
-        label: scrapeLabel,
-        status: 'done',
-      });
-      segSteps.push({
-        id: `summarize_${i}`,
-        label: `Tóm tắt Segment ${i + 1}`,
-        status: 'done',
-      });
     }
 
-    const before = filtered.slice(0, insertIdx);
-    const after = filtered.slice(insertIdx);
+    steps.push({ id: 'overall', label: 'Tóm tắt tổng quan', status: 'pending' });
 
-    pipeline.value = {
-      ...pipeline.value,
-      steps: [...before, ...segSteps, ...after],
-    };
+    pipeline.value = { workflow: 'summarize', steps };
   }
 
   function markFirstRunning(): void {
@@ -102,7 +71,8 @@ export function usePipeline() {
   return {
     pipeline,
     buildSummarizePipeline,
-    reconcile,
+    buildDynamicScrapePipeline,
+    rebuildWithSegments,
     markFirstRunning,
     markRunning,
     markDone,

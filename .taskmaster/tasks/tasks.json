@@ -1612,13 +1612,795 @@
         "recommendedSubtasks": 2,
         "expansionPrompt": "Chia task thành: 1) Kiểm tra các invariants (mock call counts, single-segment promotion, legacy compatibility, threadDeleted/Locked, news-enrichment). 2) Xác nhận quyết định 1 và 2 được triển khai đúng. Thêm unit test nếu cần.",
         "updatedAt": "2026-05-17T17:21:29.237Z"
+      },
+      {
+        "id": "185",
+        "title": "Tạo hàm thuần `planDynamicSegments` trong `lib/segment-planner.ts`",
+        "description": "Tạo file mới `lib/segment-planner.ts` với hàm `planDynamicSegments(posts, budgetTokens)` trả về mảng các segment `{start, end}`. Hàm group post theo page, cộng dồn token, chốt segment khi vượt budget. Đảm bảo deterministic và tương thích với thuật toán online hiện tại.",
+        "details": "Tham khảo code hiện tại tại `useSummarize.ts:1137-1166`. Implement hàm pure: nhận `ScrapedPost[]` đã sort theo page, `budgetTokens`. Duyệt page tăng dần, tính token mỗi page bằng `estimateTokens([${author}] (#${postNumber}):\n${content})`. Khi pendingTokens + pageTokens > budgetTokens và pendingPosts.length > 0, chốt segment. Cuối cùng flush segment còn lại. Trả về mảng `{start: number, end: number}[]`.",
+        "testStrategy": "Kiểm tra cùng input cho cùng output. Budget nhỏ → nhiều segment; 1 trang → 1 segment; post có postNumber < 0 (article) gán đúng page. So sánh với kết quả từ thuật toán online tham khảo.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Nghiên cứu thuật toán hiện tại từ useSummarize.ts:1137-1166",
+            "description": "Phân tích code hiện tại để hiểu cách tính token và chốt segment theo budget.",
+            "dependencies": [],
+            "details": "Xem xét chi tiết logic tại dòng 1137-1166, xác định công thức estimateTokens, cách lưu segment boundaries.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo file mới lib/segment-planner.ts với hàm planDynamicSegments",
+            "description": "Tạo file và khai báo hàm planDynamicSegments nhận ScrapedPost[] và budgetTokens, trả về mảng {start,end}.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng TypeScript, định nghĩa type Segment. Xuất hàm planDynamicSegments.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Triển khai vòng lặp duyệt page và chốt segment",
+            "description": "Duyệt posts đã sort theo page, tính pendingTokens, chốt segment khi vượt budget và có bài trong đoạn.",
+            "dependencies": [
+              2
+            ],
+            "details": "Thực hiện thuật toán: duyệt từng post, cộng token, khi pendingTokens+pageTokens > budget và pendingPosts>0, đẩy segment. Cuối cùng flush.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Tích hợp hàm estimateTokens và xử lý trường hợp đặc biệt",
+            "description": "Sử dụng công thức estimateTokens cho từng post, xử lý postNumber âm (article) gán đúng page.",
+            "dependencies": [
+              3
+            ],
+            "details": "Tính token với mẫu [author] (#postNumber):\\ncontent. Đảm bảo page được gán từ pageStart. Xử lý article pages riêng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit test kiểm tra deterministic và so sánh với online algorithm",
+            "description": "Tạo test case đảm bảo output không đổi với cùng input, so sánh với reference implementation.",
+            "dependencies": [
+              4
+            ],
+            "details": "Dùng Vitest, test budget nhỏ/nhiều segment, 1 trang, post article. So sánh output với code cũ.",
+            "status": "pending",
+            "testStrategy": "Chạy npm test, đảm bảo tất cả test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 185,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Nhiệm vụ đã được mô tả chi tiết. Không cần chia nhỏ thêm.",
+        "updatedAt": "2026-05-18T07:16:25.322Z"
+      },
+      {
+        "id": "186",
+        "title": "Viết unit test cho `planDynamicSegments`",
+        "description": "Tạo unit test trong `tests/unit/segment-planner.test.ts` để đảm bảo hàm hoạt động đúng, deterministic, và cho ra kết quả giống thuật toán online trên cùng input.",
+        "details": "Dùng Jest hoặc Vitest. Viết test case: (1) input 3 trang, budget lớn → 1 segment; (2) budget nhỏ → nhiều segment; (3) post article gán page đúng; (4) so sánh output với reference implementation (code hiện tại). Đảm bảo không phụ thuộc thứ tự scrape.",
+        "testStrategy": "Chạy test: `npm test` (hoặc tương đương). Test pass khi output đúng và deterministic.",
+        "priority": "high",
+        "dependencies": [
+          "185"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo file test và cài đặt cơ bản",
+            "description": "Tạo file tests/unit/segment-planner.test.ts với cấu trúc test suite sử dụng Jest/Vitest. Import hàm planDynamicSegments từ lib/segment-planner, thiết lập dữ liệu mẫu cho các test case sau.",
+            "dependencies": [
+              185
+            ],
+            "details": "Cài đặt test framework và cấu trúc file: import function, tạo describe block, chuẩn bị các fixture (ScrapedPost[]) để dùng chung.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Viết test case 'budget lớn → 1 segment'",
+            "description": "Tạo test case với input 3 posts từ 3 trang khác nhau, budget rất lớn (ví dụ 100000 token). Expect mảng segment chỉ có 1 phần tử chứa tất cả posts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng dữ liệu mẫu: tạo 3 scraped posts với page 1,2,3, budget lớn. Kiểm tra segments.length === 1 và các start,end bao phủ đúng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết test case 'budget nhỏ → nhiều segment'",
+            "description": "Tạo test case với cùng 3 posts nhưng budget nhỏ (ví dụ 500 token). Expect nhiều segment (có thể 2 hoặc 3) tùy vào kích thước token.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tính toán token mỗi post, set budget nhỏ hơn tổng token. Kiểm tra segments.length > 1 và các segment không chứa quá budget.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết test case 'post article gán page đúng'",
+            "description": "Tạo posts với một post có postNumber âm (article) nằm giữa các page. Kiểm tra rằng article được gán vào page đúng (page của các post liền kề).",
+            "dependencies": [
+              1
+            ],
+            "details": "Input: 3 posts: page1 postNumber=1, page2 postNumber=-1, page3 postNumber=2. Budget đủ lớn. Kiểm tra segment bao gồm page1, page2, page3 trong cùng segment do article được gán page2.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết test case 'xác định (deterministic) và so sánh với reference'",
+            "description": "Viết test kiểm tra cùng input luôn cho output giống nhau khi chạy nhiều lần. Và so sánh output với kết quả từ thuật toán online hiện tại (copy code reference vào test).",
+            "dependencies": [
+              1
+            ],
+            "details": "Tạo bài test input cố định, chạy function nhiều lần, kiểm tra output giống hệt. Đồng thời, implement reference function (từ useSummarize.ts) và so sánh output.",
+            "status": "pending",
+            "testStrategy": "Chạy npm test, tất cả test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 186,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Nhiệm vụ đã đầy đủ: tạo file test, viết các test case theo mô tả.",
+        "updatedAt": "2026-05-18T07:20:00.620Z"
+      },
+      {
+        "id": "187",
+        "title": "Thêm `buildDynamicScrapePipeline` vào `lib/pipeline-builder.ts`",
+        "description": "Thêm hàm `buildDynamicScrapePipeline(totalPages): PipelineStep[]` trả về pipeline gồm [scrape, plan, overall] (overall pending). Giữ nguyên `buildSummarizePipeline` cho fixed mode.",
+        "details": "Trong file `lib/pipeline-builder.ts`, thêm export function `buildDynamicScrapePipeline(totalPages: number): PipelineStep[]`. Trả về mảng các step: `{ id: 'scrape', label: 'Scraping trang 1–{totalPages}', status: 'pending' }`, `{ id: 'plan', label: 'Tạo segment động', status: 'pending' }`, `{ id: 'overall', label: 'Tổng hợp chung', status: 'pending' }`. Sau khi clear compose, dùng builder này cho dynamic flow.",
+        "testStrategy": "Viết unit test kiểm tra pipeline build đúng: step đầu scrape, step giữa plan, step cuối overall. Fixed mode (buildSummarizePipeline) không bị ảnh hưởng.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Phân tích module pipeline-builder hiện tại",
+            "description": "Xem xét file lib/pipeline-builder.ts để hiểu cấu trúc, hàm buildSummarizePipeline hiện có và cách export.",
+            "dependencies": [],
+            "details": "Kiểm tra kiểu PipelineStep, cách các bước được định nghĩa. Xác định vị trí thêm hàm mới.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Viết hàm buildDynamicScrapePipeline",
+            "description": "Thêm export function buildDynamicScrapePipeline(totalPages: number): PipelineStep[] trả về mảng các bước scrape, plan, overall.",
+            "dependencies": [
+              1
+            ],
+            "details": "Hàm trả về mảng gồm { id: 'scrape', label: 'Scraping trang 1–{totalPages}', status: 'pending' }, { id: 'plan', label: 'Tạo segment động', status: 'pending' }, { id: 'overall', label: 'Tổng hợp chung', status: 'pending' }.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật export module",
+            "description": "Đảm bảo hàm buildDynamicScrapePipeline được export từ file để các module khác có thể import.",
+            "dependencies": [
+              2
+            ],
+            "details": "Kiểm tra câu lệnh export hiện tại, thêm export function buildDynamicScrapePipeline hoặc thêm vào export list nếu có.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết unit test cho buildDynamicScrapePipeline",
+            "description": "Tạo test case kiểm tra pipeline build đúng: step đầu là scrape, step giữa plan, step cuối overall và status của tất cả đều là pending.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng framework test hiện có (vitest/jest). Test với totalPages=5, kiểm tra label có chứa '5'. Test totalPages=1 cũng hoạt động.",
+            "status": "pending",
+            "testStrategy": "Viết unit test kiểm tra pipeline build đúng, label động, và không ảnh hưởng đến buildSummarizePipeline.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra hồi quy buildSummarizePipeline",
+            "description": "Đảm bảo rằng hàm buildSummarizePipeline vẫn hoạt động bình thường sau khi thêm hàm mới.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Chạy lại các test hiện có liên quan đến buildSummarizePipeline, xác nhận không có thay đổi nào phá vỡ chức năng fixed mode.",
+            "status": "pending",
+            "testStrategy": "Chạy bộ test hiện tại, viết thêm test so sánh output của buildSummarizePipeline trước và sau khi thay đổi nếu cần.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 187,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 187,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Nhiệm vụ đơn giản, chỉ cần thêm một hàm trả về mảng tĩnh.",
+        "updatedAt": "2026-05-18T07:17:49.065Z"
+      },
+      {
+        "id": "188",
+        "title": "Thêm `rebuildWithSegments` vào `usePipeline.ts` và xóa `reconcile`",
+        "description": "Thêm method `rebuildWithSegments(boundaries: {start:number,end:number}[])` để thay thế pipeline bằng [scrape(done), plan(done), summarize_0(pending), ..., summarize_{N-1}(pending), overall(pending)]. Xóa `reconcile()` và mọi call site, xóa block `.splice()` tại `useSummarize.ts:1156-1165`.",
+        "details": "Trong `entrypoints/sidepanel/composables/usePipeline.ts`, thêm method `rebuildWithSegments`. Method này sẽ đặt lại `pipeline.value` thành mảng mới với scrape và plan ở trạng thái done, các summarize_i pending, overall pending. Đảm bảo single-segment fast path: nếu boundaries dài 1, chỉ tạo một step summarize không có index. Xóa function `reconcile` và mọi chỗ gọi nó (tìm trong codebase). Xóa khối `.splice()` tại dòng 1156-1165 trong `useSummarize.ts`.",
+        "testStrategy": "Unit test: gọi rebuildWithSegments với 2 segment → pipeline có 4 step (scrape, plan, summarize_0, summarize_1, overall). Gọi với 1 segment → pipeline có 4 step nhưng summarize không có index. Kiểm tra status đúng.",
+        "priority": "high",
+        "dependencies": [
+          "187"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm method rebuildWithSegments vào usePipeline.ts",
+            "description": "Thêm method rebuildWithSegments(boundaries) trong composable usePipeline.ts. Method này tạo pipeline mới với scrape và plan ở trạng thái done, các summarize_i pending, overall pending. Xử lý single-segment fast path khi boundaries dài 1.",
+            "dependencies": [],
+            "details": "Trong file entrypoints/sidepanel/composables/usePipeline.ts, thêm method rebuildWithSegments nhận tham số boundaries (mảng {start,end}). Tạo mảng steps với scrape, plan (done), các summarize_i (pending) và overall (pending). Nếu boundaries.length === 1, chỉ tạo một step summarize không có index. Cập nhật pipeline.value.",
+            "status": "pending",
+            "testStrategy": "Unit test: gọi rebuildWithSegments với 2 segment, kiểm tra pipeline có 5 step (scrape, plan, summarize_0, summarize_1, overall) đúng trạng thái. Gọi với 1 segment, kiểm tra summarize step không có index.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xóa hàm reconcile và mọi call site",
+            "description": "Xóa function reconcile() khỏi codebase và tất cả các nơi gọi nó. Đảm bảo không còn tham chiếu đến hàm này sau khi xóa.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm kiếm toàn bộ codebase để tìm function reconcile() và mọi call site. Xóa định nghĩa hàm và tất cả các lời gọi. Kiểm tra không làm hỏng logic khác.",
+            "status": "pending",
+            "testStrategy": "Sau khi xóa, chạy TypeScript compiler để kiểm tra không còn lỗi tham chiếu. Kiểm tra các workflow liên quan hoạt động bình thường.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xóa block .splice() tại useSummarize.ts:1156-1165",
+            "description": "Xóa khối lệnh .splice() tại dòng 1156-1165 trong file useSummarize.ts. Đảm bảo không ảnh hưởng đến các phần code xung quanh.",
+            "dependencies": [],
+            "details": "Mở file entrypoints/sidepanel/composables/useSummarize.ts, xóa các dòng từ 1156 đến 1165 bao gồm lệnh .splice(). Kiểm tra logic xung quanh vẫn hợp lệ và không bị gián đoạn.",
+            "status": "pending",
+            "testStrategy": "Sau khi xóa, chạy thử tính năng tóm tắt để đảm bảo không xuất hiện lỗi. So sánh hành vi trước và sau khi xóa (có thể dùng snapshot test).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 188,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia thành các bước: (1) Thêm method `rebuildWithSegments` trong `usePipeline.ts`, (2) Xóa hàm `reconcile` và mọi call site, (3) Xóa block `.splice()` tại `useSummarize.ts:1156-1165`, (4) Viết unit test.",
+        "updatedAt": "2026-05-18T07:28:40.030Z"
+      },
+      {
+        "id": "189",
+        "title": "Tách hàm `scrapeAllPages` trong `useSummarize.ts`",
+        "description": "Từ `autoSummarizeDynamic`, tách vòng lặp scrape thành hàm riêng `scrapeAllPages(topicUrl, totalPages, fromPage, thisId): Promise<ScrapedPost[]>`. Giữ nguyên các xử lý: news enrichment, progress, abort, thread deleted/locked, delay+jitter, persist post tăng dần (tái dùng early-save F15/F16).",
+        "details": "Sao chép code từ `autoSummarizeDynamic` (khoảng dòng 1017-1136) vào hàm mới. Đảm bảo `scrapeProgress` được cập nhật `currentPage`, `totalPages`, `postsScraped`. Sau mỗi N trang, lưu post tích lũy vào cache để hỗ trợ resume (sẽ implement ở task riêng). Trả về mảng `ScrapedPost[]` đã gom từ tất cả trang.",
+        "testStrategy": "Viết unit test giả lập scrape 2 trang, kiểm tra kết quả trả về đúng số post. Kiểm tra abort hủy đúng. Kiểm tra thread deleted/locked không crash.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Phân tích code hiện tại trong autoSummarizeDynamic",
+            "description": "Xác định đoạn code từ dòng 1017-1136, ghi chú các biến và logic cần giữ nguyên",
+            "dependencies": [],
+            "details": "Đọc code, xác định phạm vi vòng lặp scrape, các xử lý enrich, progress, abort, thread deleted/locked, delay+jitter, persist. Ghi lại các tham số và kiểu dữ liệu sử dụng",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo khung hàm scrapeAllPages",
+            "description": "Tạo hàm mới scrapeAllPages với chữ ký chính xác: (topicUrl, totalPages, fromPage, thisId) => Promise<ScrapedPost[]>",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong file useSummarize.ts, thêm hàm export async function scrapeAllPages(...). Sao chép cấu trúc từ autoSummarizeDynamic nhưng chưa điền body",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Di chuyển logic scrape vào hàm scrapeAllPages",
+            "description": "Sao chép và điều chỉnh code vòng lặp từ autoSummarizeDynamic vào scrapeAllPages, đảm bảo update scrapeProgress và các xử lý ngoại lệ",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Đảm bảo các biến như posts, lastScrapedPage, fetchPage, delay+jitter, abort signal, thread check, news enrichment, early-save persist được chuyển giao đúng. Cập nhật scrapeProgress.currentPage, totalPages, postsScraped sau mỗi trang",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Cập nhật autoSummarizeDynamic gọi scrapeAllPages",
+            "description": "Thay thế code inline vòng lặp bằng lời gọi tới scrapeAllPages, xử lý kết quả trả về và lỗi",
+            "dependencies": [
+              3
+            ],
+            "details": "Trong autoSummarizeDynamic, sau khi chuẩn bị tham số, gọi const scrapedPosts = await scrapeAllPages(...). Sau đó dùng mảng scrapedPosts cho các bước tiếp theo. Đảm bảo xóa code cũ không còn cần thiết",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit test cho scrapeAllPages",
+            "description": "Tạo test giả lập fetch để scrape 2 trang, kiểm tra kết quả trả về đúng số post, kiểm tra abort, thread deleted/locked không gây crash",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Dùng mock fetch api, tạo dữ liệu giả. Kiểm tra hàm trả về mảng ScrapedPost[], kiểm tra scrapeProgress được cập nhật. Viết test case: scrape thành công, abort giữa chừng, thread deleted trả về mảng rỗng, thread locked vẫn scrape nhưng bỏ qua",
+            "status": "pending",
+            "testStrategy": "Chạy jest test, kiểm tra kết quả trả về và progress",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 189,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 189,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Nhiệm vụ đã được mô tả đầy đủ, chỉ cần thực hiện tách code và đảm bảo giữ nguyên xử lý.",
+        "updatedAt": "2026-05-18T07:23:47.831Z"
+      },
+      {
+        "id": "190",
+        "title": "Kết nối 2-phase flow trong `runSummarizeJob` và cập nhật `handleSegmentUpdate`",
+        "description": "Sửa `runSummarizeJob` cho dynamic mode: gọi `buildDynamicScrapePipeline` → scrapeAllPages → planDynamicSegments → rebuildWithSegments → loop summarize các segment → overall. Cập nhật `handleSegmentUpdate` để dùng luồng mới khi totalPages tăng.",
+        "details": "Trong `runSummarizeJob` (dòng 688-783), nhánh dynamic: thay `buildSummarizePipeline(...)` bằng `buildDynamicScrapePipeline(totalPages)`. Sau đó gọi `scrapeAllPages` -> lấy posts -> `const boundaries = planDynamicSegments(posts, budget)` -> `pl.rebuildWithSegments(boundaries)` -> loop for i in boundaries: markRunning(summarize_i) -> summarizeAndSaveSegment(i, ...) -> markDone(summarize_i) -> markRunning('overall') -> generateOverallSummary -> markDone('overall'). Cập nhật `handleSegmentUpdate` để thực hiện tương tự: scrape trang mới, gộp post cũ, re-plan, rebuild, summarize segment thiếu.",
+        "testStrategy": "E2E test: chạy dynamic job, kiểm tra timeline ban đầu có [scrape, plan, overall], sau khi scrape xong và plan xong, timeline thành [scrape(done), plan(done), summarize_0(pending), ..., overall(pending)]. Kiểm tra không có thay đổi step nào sau đó.",
+        "priority": "high",
+        "dependencies": [
+          "185",
+          "187",
+          "188",
+          "189"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Sửa `runSummarizeJob` cho dynamic mode",
+            "description": "Trong `runSummarizeJob`, nhánh dynamic: thay `buildSummarizePipeline` bằng `buildDynamicScrapePipeline(totalPages)`. Sau đó gọi `scrapeAllPages` -> lấy posts -> `const boundaries = planDynamicSegments(posts, budget)` -> `pl.rebuildWithSegments(boundaries)` -> loop for i in boundaries: markRunning(summarize_i) -> summarizeAndSaveSegment(i, ...) -> markDone(summarize_i) -> markRunning('overall') -> generateOverallSummary -> markDone('overall').",
+            "dependencies": [],
+            "details": "Cập nhật hàm `runSummarizeJob` tại dòng 688-783, nhánh dynamic mode. Import các hàm cần thiết: `buildDynamicScrapePipeline` (từ Task 187), `scrapeAllPages`, `planDynamicSegments`, `rebuildWithSegments`, `summarizeAndSaveSegment`, `generateOverallSummary`. Đảm bảo luồng chạy đúng thứ tự và cập nhật trạng thái pipeline step tương ứng.",
+            "status": "pending",
+            "testStrategy": "Kiểm thử đơn vị: mock các hàm con để kiểm tra logic gọi đúng trình tự. Kiểm thử tích hợp: chạy job dynamic với dữ liệu giả và kiểm tra kết quả.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật `handleSegmentUpdate`",
+            "description": "Sửa `handleSegmentUpdate` để xử lý khi totalPages tăng: scrape trang mới, gộp posts cũ, re-plan segments, rebuild pipeline, và summarize segment thiếu.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong `handleSegmentUpdate`, thêm logic: lấy dữ liệu mới từ `scrapeAllPages` cho trang mới, gộp với posts hiện tại, gọi `planDynamicSegments` để tạo boundaries mới, gọi `rebuildWithSegments` để cập nhật pipeline steps, sau đó gọi `summarizeAndSaveSegment` cho các segment mới. Đảm bảo không chạy lại các segment đã hoàn thành.",
+            "status": "pending",
+            "testStrategy": "Unit test: mock các hàm và kiểm tra hành vi đúng khi totalPages tăng. Kiểm thử tích hợp: simulate update và kiểm tra trạng thái pipeline.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm soát trạng thái pipeline trong dynamic flow",
+            "description": "Cập nhật các cập nhật trạng thái (markRunning, markDone) cho các step scrape, plan, summarize_i, overall đúng thời điểm. Đảm bảo pipeline steps được cập nhật chính xác.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong `runSummarizeJob` và `handleSegmentUpdate`, gọi `markRunning`/`markDone` tại các bước quan trọng: sau khi scrape xong, sau khi plan xong, trong vòng lặp summarize từng segment, và sau overall. Sử dụng helper `updatePipelineStepStatus` nếu có. Xử lý trường hợp lỗi: đánh dấu step lỗi.",
+            "status": "pending",
+            "testStrategy": "Kiểm thử trạng thái pipeline: sau mỗi bước, kiểm tra mảng steps đúng với expected.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết E2E test cho dynamic mode flow",
+            "description": "Xây dựng E2E test: chạy dynamic job qua API endpoint, kiểm tra timeline ban đầu có [scrape, plan, overall], sau khi scrape và plan xong timeline thành [scrape(done), plan(done), summarize_0(pending), ..., overall(pending)]. Kiểm tra không có thay đổi step không mong muốn.",
+            "dependencies": [
+              3
+            ],
+            "details": "Dùng framework test (Jest với mongodb-memory-server). Tạo job với config dynamic. Gọi API trigger job. Đợi job chạy xong các bước. Kiểm tra pipeline steps tại các thời điểm: sau khi scrape, sau plan, sau mỗi segment, sau overall. Đảm bảo tích hợp với DB và các module khác.",
+            "status": "pending",
+            "testStrategy": "Chạy test E2E, kiểm tra kết quả mong đợi. Test cover cả trường hợp không có segment mới (no change).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 190,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chia thành: (1) Sửa `runSummarizeJob` cho dynamic mode: gọi `buildDynamicScrapePipeline`, scrape, plan, rebuild, loop summarize, overall, (2) Cập nhật `handleSegmentUpdate`, (3) Kiểm soát trạng thái pipeline, (4) Viết E2E test.",
+        "updatedAt": "2026-05-18T07:35:46.589Z"
+      },
+      {
+        "id": "191",
+        "title": "Cơ chế persist post trong `scrapeAllPages` để hỗ trợ resume an toàn",
+        "description": "Triển khai lưu post tích lũy sau mỗi N trang vào cache, cùng với `lastScrapedPage`. Khi resume, load cache, chỉ scrape từ `lastScrapedPage+1` đến `totalPages`, gộp lại.",
+        "details": "Sử dụng cơ chế early-save có sẵn (F15/F16 trong PRD?). Cụ thể: trong hàm `scrapeAllPages`, sau mỗi page (hoặc mỗi 2 page), lưu mảng posts tích lũy và `lastScrapedPage` vào extension storage (Chrome storage API). Khi resume, đọc `cachedPosts` và `lastScrapedPage` từ storage. Nếu có, chỉ scrape từ `lastScrapedPage+1` đến totalPages, sau đó nối mảng posts. Lưu ý: nếu totalPages thay đổi, vẫn xử lý đúng.",
+        "testStrategy": "Viết test mock storage: scrape 2 trang, dừng giữa chừng, resume -> chỉ scrape trang 3, kết quả gộp đúng. Kiểm tra không scrape lại trang đã có.",
+        "priority": "medium",
+        "dependencies": [
+          "189"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai lưu cache định kỳ và load cache/resume trong scrapeAllPages",
+            "description": "Cài đặt cơ chế lưu posts tích lũy và lastScrapedPage vào Chrome storage sau mỗi N trang, và load cache khi resume để chỉ scrape các trang còn thiếu.",
+            "dependencies": [
+              189
+            ],
+            "details": "Trong hàm scrapeAllPages, sau mỗi page (hoặc mỗi 2 page), gọi chrome.storage.local.set với key 'cachedPosts' (mảng posts tới thời điểm hiện tại) và 'lastScrapedPage' (số trang vừa scrape xong). Khi bắt đầu scrapeAllPages, kiểm tra storage xem có cache không, nếu có thì lấy lastScrapedPage và bắt đầu từ trang tiếp theo; nếu không thì scrape từ trang 1. Kết thúc scrape, xóa cache. Xử lý trường hợp totalPages thay đổi.",
+            "status": "pending",
+            "testStrategy": "Viết unit test mock chrome.storage để kiểm tra lưu cache đúng sau mỗi 2 trang, và load cache đúng khi resume.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Viết test cho persist và resume",
+            "description": "Xây dựng bộ test kiểm thử toàn bộ flow persist và resume, bao gồm trường hợp dừng giữa chừng, resume với totalPages thay đổi, và đảm bảo không scrape lại trang đã có.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng mock storage và mock fetch để mô phỏng scrape 3 trang, dừng sau 2 trang, lưu cache, resume chỉ scrape trang 3, gộp kết quả đúng. Kiểm tra cache được xóa sau khi hoàn tất. Kiểm tra khi totalPages giảm, cache vẫn hoạt động đúng.",
+            "status": "pending",
+            "testStrategy": "Chạy test với các scenario: (1) scrape 2 trang, dừng, resume -> kết quả gộp 3 trang; (2) resume với totalPages = 2 (giảm) -> chỉ scrape đến trang 2; (3) không cache khi mới bắt đầu.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 191,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia thành: (1) Triển khai lưu cache định kỳ trong `scrapeAllPages`, (2) Triển khai load cache và resume logic, (3) Viết test cho persist và resume.",
+        "updatedAt": "2026-05-18T07:41:28.938Z"
+      },
+      {
+        "id": "192",
+        "title": "Logic resume re-plan với deterministic planner",
+        "description": "Khi resume, load posts đã cache + scrape thêm trang mới, gọi `planDynamicSegments` trên toàn bộ posts. Boundary tính lại ổn định. Chỉ re-summarize segment có boundary lệch so với cache cũ.",
+        "details": "Trong `runSummarizeJob`, khi resume: kiểm tra cache, nếu có thì load posts, `lastScrapedPage`. Sau khi scrape đủ, gọi `planDynamicSegments` với full posts. So sánh boundaries mới với boundaries đã lưu trong cache (nếu có). Segment nào có `(start,end)` trùng khít segment cache thì skip summarize (dùng summary cũ). Segment mới hoặc lệch thì summarize. Lưu boundaries mới vào cache.",
+        "testStrategy": "Kiểm tra: scrape 2 trang, tạo segment, lưu cache. Resume với thêm 1 trang: boundary cũ không đổi (trừ segment cuối), segment cuối được mở rộng hoặc tạo mới, chỉ summarize segment bị ảnh hưởng.",
+        "priority": "medium",
+        "dependencies": [
+          "185",
+          "191"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "So sánh boundaries cũ và mới để xác định segment cần re-summarize",
+            "description": "Xây dựng hàm so sánh danh sách boundaries cũ và mới, trả về danh sách segment cần summarize (segment mới, segment bị thay đổi).",
+            "dependencies": [],
+            "details": "Viết hàm compareBoundaries(oldBoundaries: Segment[], newBoundaries: Segment[]): Segment[] dùng logic so sánh (start,end) từng cặp. Segment mới hoặc có (start,end) khác với cache cũ thì cần summarize. Segment trùng khít giữ nguyên thì skip.",
+            "status": "pending",
+            "testStrategy": "Unit test kiểm tra: boundaries không đổi (trả về rỗng), thêm segment mới (trả về segment mới), segment bị mở rộng (start giữ nguyên, end tăng, trả về segment đó), segment bị thu hẹp.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp logic re-plan vào runSummarizeJob",
+            "description": "Chỉnh sửa runSummarizeJob để khi resume, sử dụng cache và hàm so sánh để skip summarize các segment không đổi.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong runSummarizeJob (tại điểm sau khi scrape xong toàn bộ posts), nếu đang resume và cache có boundaries cũ: gọi planDynamicSegments với full posts, dùng hàm compareBoundaries để xác định segment cần summarize. Lưu boundaries mới vào cache. Segment không đổi: dùng summary cũ. Segment thay đổi: gọi summarize riêng.",
+            "status": "pending",
+            "testStrategy": "Integration test: mock scrapedPosts và cache, kiểm tra job gọi summarize đúng segment và không gọi cho segment không đổi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết test cho kịch bản resume thay đổi segment",
+            "description": "Tạo test case mô phỏng resume với thêm trang mới, kiểm tra chỉ summarize segment bị ảnh hưởng.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Sử dụng mock dữ liệu: cache cũ gồm 2 trang, 2 segment. Resume thêm trang thứ 3, tạo ra segment mới hoặc mở rộng segment cuối. Kiểm tra rằng chỉ segment mới/mở rộng được summarize, segment cũ không đổi không bị gọi summarize.",
+            "status": "pending",
+            "testStrategy": "Dùng mock functions cho planDynamicSegments và compareBoundaries, verify số lần summarize được gọi và tham số đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 192,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 192,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia thành: (1) So sánh boundaries cũ và mới để xác định segment cần re-summarize, (2) Tích hợp logic re-plan vào `runSummarizeJob`, (3) Viết test cho kịch bản resume thay đổi segment.",
+        "updatedAt": "2026-05-18T08:13:55.754Z"
+      },
+      {
+        "id": "193",
+        "title": "Đảm bảo fixed mode và giao diện StepTimeline không bị ảnh hưởng",
+        "description": "Kiểm tra fixed mode vẫn dùng `buildSummarizePipeline` như cũ, không có step plan. StepTimeline hiển thị đúng các step. Xóa `reconcile` và `.splice` không gây lỗi.",
+        "details": "Chạy fixed mode job, verify: pipeline chỉ có [summarize_0,..., overall], không có `plan`. StepTimeline render đúng. Kiểm tra không còn gọi `reconcile` ở bất kỳ đâu. Xóa dòng `.splice()` đã xác định. Kiểm tra UI không có lỗi console.",
+        "testStrategy": "Chạy E2E với fixed mode, chụp màn hình so sánh timeline. Kiểm tra console không có warning về reconcile.",
+        "priority": "medium",
+        "dependencies": [
+          "188",
+          "190"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Kiểm tra pipeline của fixed mode",
+            "description": "Xác nhận fixed mode sử dụng buildSummarizePipeline và pipeline chỉ chứa [summarize_0,..., overall], không có plan.",
+            "dependencies": [],
+            "details": "Chạy một job fixed mode, kiểm tra pipeline trả về từ buildSummarizePipeline. Đảm bảo không có step 'plan' trong pipeline.",
+            "status": "pending",
+            "testStrategy": "Chạy job fixed mode và log pipeline ra console để kiểm tra.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm tra hiển thị StepTimeline",
+            "description": "Đảm bảo StepTimeline hiển thị đúng danh sách các step và cập nhật trạng thái chính xác.",
+            "dependencies": [
+              1
+            ],
+            "details": "Khi chạy fixed mode, kiểm tra UI của StepTimeline: các step được hiển thị đầy đủ, icon và màu sắc thể hiện đúng trạng thái.",
+            "status": "pending",
+            "testStrategy": "Chụp màn hình và so sánh với expected layout.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xác nhận không còn gọi reconcile",
+            "description": "Kiểm tra toàn bộ codebase không còn lời gọi hàm reconcile.",
+            "dependencies": [],
+            "details": "Tìm kiếm trong source code tất cả các file .ts, .vue để chắc chắn không còn lời gọi 'reconcile'.",
+            "status": "pending",
+            "testStrategy": "Dùng grep hoặc IDE search toàn bộ project.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Xóa và kiểm tra dòng .splice()",
+            "description": "Xác nhận dòng .splice() đã được loại bỏ và không gây lỗi.",
+            "dependencies": [],
+            "details": "Tìm và xóa dòng .splice() đã xác định. Kiểm tra project biên dịch thành công và không có lỗi runtime liên quan.",
+            "status": "pending",
+            "testStrategy": "Build project và chạy unit tests.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra UI không có lỗi console",
+            "description": "Chạy fixed mode job và kiểm tra console không có warning/error.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Mở browser console, thực hiện thao tác fixed mode, quan sát console không có lỗi hoặc warning không mong muốn.",
+            "status": "pending",
+            "testStrategy": "Ghi lại log console trong quá trình chạy.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 193,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 193,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Nhiệm vụ kiểm tra và xác nhận không có lỗi phát sinh. Không cần chia nhỏ.",
+        "updatedAt": "2026-05-18T08:24:55.571Z"
+      },
+      {
+        "id": "194",
+        "title": "E2E test cho dynamic flow và resume",
+        "description": "Viết E2E test (theo framework hiện tại) kiểm tra dynamic flow build pipeline đúng cấu trúc, không thay đổi sau rebuild, resume chỉ scrape trang thiếu, không re-summarize segment cũ.",
+        "details": "Tận dụng test infrastructure hiện có. Viết test: (1) dynamic flow: start job -> kiểm tra pipeline có [scrape, plan, overall] -> sau scrape+plan -> kiểm tra pipeline có [scrape:done, plan:done, summarize_i:pending, overall:pending] -> không thay đổi step. (2) Resume: mock scrape 2/3 trang, hủy job, chạy lại -> chỉ scrape trang cuối, boundary không đổi, segment đầu tiên không re-summarize. (3) Thread deleted/locked không crash.",
+        "testStrategy": "Chạy `npm run e2e`. Kiểm tra test pass. Kiểm tra thủ công trên extension thật nếu cần.",
+        "priority": "low",
+        "dependencies": [
+          "190",
+          "192",
+          "193"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Kiểm tra cấu trúc pipeline của dynamic flow",
+            "description": "Viết E2E test kiểm tra dynamic flow build pipeline đúng cấu trúc, các step không thay đổi sau rebuild.",
+            "dependencies": [],
+            "details": "Tận dụng test infrastructure hiện có. Start job -> kiểm tra pipeline có [scrape, plan, overall] -> sau scrape+plan -> kiểm tra pipeline có [scrape:done, plan:done, summarize_i:pending, overall:pending] -> không thay đổi step.",
+            "status": "pending",
+            "testStrategy": "Chạy `npm run e2e` và kiểm tra test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm tra resume chỉ scrape trang thiếu",
+            "description": "Viết E2E test kiểm tra resume chỉ scrape trang chưa hoàn thành, không re-scrape trang đã có.",
+            "dependencies": [],
+            "details": "Mock scrape 2/3 trang, hủy job, chạy lại -> chỉ scrape trang cuối, boundary không đổi.",
+            "status": "pending",
+            "testStrategy": "Chạy `npm run e2e` và kiểm tra test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra không re-summarize segment cũ",
+            "description": "Viết E2E test kiểm tra khi resume, các segment cũ không bị re-summarize.",
+            "dependencies": [],
+            "details": "Đảm bảo sau khi hủy và chạy lại, segment đầu tiên giữ nguyên summary, chỉ summarize dữ liệu mới.",
+            "status": "pending",
+            "testStrategy": "Chạy `npm run e2e` và kiểm tra test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 194,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia thành: (1) Test dynamic flow pipeline structure, (2) Test resume chỉ scrape trang thiếu, (3) Test không re-summarize segment cũ.",
+        "updatedAt": "2026-05-18T08:29:56.326Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-17T17:21:29.239Z",
-      "taskCount": 30,
-      "completedCount": 25,
+      "lastModified": "2026-05-18T08:29:56.328Z",
+      "taskCount": 40,
+      "completedCount": 35,
       "tags": [
         "master"
       ]

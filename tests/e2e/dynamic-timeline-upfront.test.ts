@@ -276,10 +276,10 @@ describe('Dynamic timeline upfront — 2-phase flow', () => {
     h.getTaskState.mockReturnValue(undefined);
 
     // Update forumPostCount > totalPosts to simulate new posts
-    const topic = store.selectedTopic.value;
-    if (topic) {
-      store.selectTopic({ ...topic, forumPostCount: 80, totalPosts: 60, totalPages: 3 });
-    }
+    store.selectTopic(makeBaseTopic({
+      totalPages: 3, totalPosts: 60, forumPostCount: 80,
+      posts: postFactory.shortThread(60),
+    }));
 
     await composable.handleSegmentUpdate();
 

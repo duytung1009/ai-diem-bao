@@ -628,7 +628,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
-  async function generateOverallSummary() {
+  async function generateOverallSummary(guardToken?: number) {
     const topic = store.selectedTopic.value;
     if (!topic) return;
 
@@ -641,7 +641,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       if (scrapeStep) pl.pipeline.value = pl.markNextRunning(scrapeStep.id);
     }
 
-    const thisId = summarizeGuard.begin();
+    const thisId = guardToken ?? summarizeGuard.begin();
     await reduceOverall(thisId);
   }
 
@@ -724,7 +724,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           const completed = segmentSummaries.value.filter(isCompletedSegment).length;
           if (completed >= 1) {
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-            await generateOverallSummary();
+            await generateOverallSummary(thisId);
           }
         }
       } catch (err) {
@@ -774,11 +774,21 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // Phase 2: Scrape all pages (from resume start or from page 1)
       const resumeStartPage = resumeMode.mode === 'resume' ? resumeMode.resume.fromPage : 1;
       const startPage = resumeStartPage > totalPages ? 1 : resumeStartPage;
+
+      // When resume fromPage exceeds totalPages (all pages already covered),
+      // we're re-scraping from page 1 — old segments are stale and
+      // pendingPosts would duplicate with newly scraped posts.
+      if (resumeMode.mode === 'resume' && resumeStartPage > totalPages) {
+        dynamicSegmentBoundaries.value = [];
+        segmentSummaries.value = [];
+      }
+
       const newPosts = await scrapeAllPages(topic.url, totalPages, startPage, thisId);
       if (!newPosts || summarizeGuard.isStale(thisId) || error.value) return;
 
-      // Merge resume pendingPosts (cached posts from interrupted segment/scrape) with newly scraped
-      const resumePendingPosts = resumeMode.mode === 'resume' ? resumeMode.resume.pendingPosts : [];
+      // Merge resume pendingPosts only when scraping started after page 1
+      // (avoids duplicating posts when startPage was reset to 1)
+      const resumePendingPosts = (resumeMode.mode === 'resume' && startPage > 1) ? resumeMode.resume.pendingPosts : [];
       const allPosts = [...resumePendingPosts, ...newPosts];
 
       pl.markDone('scrape');
@@ -828,7 +838,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         if (completed >= 1) {
           pl.markRunning('overall');
           simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
-          await generateOverallSummary();
+          await generateOverallSummary(thisId);
           pl.markDone('overall');
         }
       }

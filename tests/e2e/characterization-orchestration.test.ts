@@ -655,12 +655,14 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
   });
 
   describe('C1: scrape progress in dynamic summarize', () => {
-    it('CHAR-20: scrapeProgress.totalPages stays constant across all pages', async () => {
+    it('CHAR-20: scrapeProgress reports correct totalPages during scrape', async () => {
       await setupComposable({ totalPages: 5, totalPosts: 100 });
 
+      let capturedProgress: unknown = null;
       h.scrapePageRange.mockImplementation(async (_version, _url, startPage, endPage, onProgress, _signal, _delayMs) => {
         const posts = postFactory.shortThread(20);
         onProgress?.(1, 1, posts.length);
+        capturedProgress = composable.scrapeProgress.value;
         return makeScrapeResult(posts);
       });
 
@@ -673,16 +675,19 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       await composable.handleAutoSummarizeAll(false);
 
       expect(h.scrapePageRange).toHaveBeenCalledTimes(5);
-      expect(composable.scrapeProgress.value).toBeDefined();
-      expect(composable.scrapeProgress.value!.totalPages).toBe(5);
+      // scrapeProgress is cleaned up after job completes; verify it was correct during scrape
+      expect(capturedProgress).not.toBeNull();
+      if (capturedProgress) expect((capturedProgress as { totalPages: number }).totalPages).toBe(5);
     });
 
     it('CHAR-21: scrapeProgress.currentPage increments correctly', async () => {
       await setupComposable({ totalPages: 3, totalPosts: 60 });
 
+      const progressPages: number[] = [];
       h.scrapePageRange.mockImplementation(async (_version, _url, startPage, endPage, onProgress, _signal, _delayMs) => {
         const posts = postFactory.shortThread(20);
         onProgress?.(1, 1, posts.length);
+        progressPages.push(composable.scrapeProgress.value?.currentPage ?? 0);
         return makeScrapeResult(posts);
       });
 
@@ -695,7 +700,9 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       await composable.handleAutoSummarizeAll(false);
 
       expect(h.scrapePageRange).toHaveBeenCalledTimes(3);
-      expect(composable.scrapeProgress.value!.totalPages).toBe(3);
+      expect(progressPages).toEqual([1, 2, 3]);
+      // scrapeProgress is null after job completes (cleaned up by finally block)
+      expect(composable.scrapeProgress.value).toBeNull();
     });
   });
 
@@ -714,6 +721,196 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
 
       const overallStep = composable.pipeline.value?.steps.find(s => s.id === 'overall');
       expect(overallStep?.status).toBe('done');
+    });
+  });
+
+  describe('BUG: single-segment dynamic — isProcessing stuck after summarize completes', () => {
+    it('isProcessing must be false after single-segment dynamic auto-summarize', async () => {
+      await setupComposable({ totalPages: 2, totalPosts: 40 });
+
+      h.scrapePageRange.mockResolvedValue(makeScrapeResult(postFactory.shortThread(20)));
+      h.summarize.mockReturnValue({
+        taskId: 'test-task',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+      });
+      h.summarizeSegments.mockReturnValue({
+        taskId: 'test-overall',
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll();
+
+      expect(composable.isProcessing.value).toBe(false);
+      expect(composable.simpleLoadingText.value).toBe('');
+      expect(composable.llmTaskId.value).toBeNull();
+      expect(composable.scrapeProgress.value).toBeNull();
+    });
+
+    it('summary and segmentSummaries[0].summary must be set after single-segment dynamic auto-summarize', async () => {
+      await setupComposable({ totalPages: 2, totalPosts: 40 });
+
+      h.scrapePageRange.mockResolvedValue(makeScrapeResult(postFactory.shortThread(20)));
+      h.summarize.mockReturnValue({
+        taskId: 'test-task',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+      });
+      h.summarizeSegments.mockReturnValue({
+        taskId: 'test-overall',
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll();
+
+      expect(composable.summary.value).toBeTruthy();
+      expect(composable.summaryJson.value).not.toBeNull();
+      expect(composable.segmentSummaries.value[0]?.summary).toBeTruthy();
+    });
+
+    it('pipeline has all steps done after single-segment dynamic auto-summarize', async () => {
+      await setupComposable({ totalPages: 2, totalPosts: 40 });
+
+      h.scrapePageRange.mockResolvedValue(makeScrapeResult(postFactory.shortThread(20)));
+      h.summarize.mockReturnValue({
+        taskId: 'test-task',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+      });
+      h.summarizeSegments.mockReturnValue({
+        taskId: 'test-overall',
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll();
+
+      const pipeline = composable.pipeline.value;
+      expect(pipeline).not.toBeNull();
+      const stepIds = pipeline!.steps.map(s => s.id);
+      expect(stepIds).toContain('summarize');
+      expect(stepIds).toContain('overall');
+      for (const step of pipeline!.steps) {
+        expect(step.status).toBe('done');
+      }
+    });
+  });
+
+  describe('BUG: resume with fromPage > totalPages re-scrapes from page 1 but keeps stale segments', () => {
+    it('must clear stale segments and call LLM when resume fromPage > totalPages', async () => {
+      // Scenario: topic was previously summarized (9 pages, single segment).
+      // User clicks "Tóm tắt toàn bộ" (not force regenerate).
+      // hasNewPosts=true → computeResumeMode returns 'resume' with fromPage=10.
+      // totalPages=9 → startPage reset to 1 → all pages re-scraped.
+      // OLD BUG: segmentSummaries not cleared → isAlreadyDone matches → no LLM calls.
+      // FIX: when resumeStartPage > totalPages, clear stale segments.
+      await setupComposable({ totalPages: 9, totalPosts: 180, forumPostCount: 200 });
+
+      // Simulate previously summarized single segment (pages 1-9)
+      const oldPosts = postFactory.shortThread(180);
+      composable.segmentSummaries.value = [{
+        startPage: 1,
+        endPage: 9,
+        posts: oldPosts,
+        summary: mockJsonResponse(mockSummaryResponses.singleSegment),
+        summaryJson: mockSummaryResponses.singleSegment,
+        postCount: 180,
+        summarizedAt: Date.now() - 10000,
+        complete: true,
+      }];
+      composable.dynamicSegmentBoundaries.value = [{ start: 1, end: 9, label: '1–9' }];
+
+      h.scrapePageRange.mockResolvedValue(makeScrapeResult(postFactory.shortThread(20)));
+      h.summarize.mockReturnValue({
+        taskId: 'resume-llm-task',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+      });
+      h.summarizeSegments.mockReturnValue({
+        taskId: 'resume-overall-task',
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll(false);
+
+      // KEY ASSERTION: LLM calls must happen (old segments cleared, isAlreadyDone=false)
+      expect(h.summarize).toHaveBeenCalled();
+      expect(composable.summary.value).toBeTruthy();
+      expect(composable.isProcessing.value).toBe(false);
+    });
+
+    it('must NOT duplicate posts when resume fromPage > totalPages', async () => {
+      await setupComposable({ totalPages: 9, totalPosts: 180, forumPostCount: 200 });
+
+      const oldPosts = postFactory.shortThread(180);
+      composable.segmentSummaries.value = [{
+        startPage: 1,
+        endPage: 9,
+        posts: oldPosts,
+        summary: mockJsonResponse(mockSummaryResponses.singleSegment),
+        summaryJson: mockSummaryResponses.singleSegment,
+        postCount: 180,
+        summarizedAt: Date.now() - 10000,
+        complete: true,
+      }];
+      composable.dynamicSegmentBoundaries.value = [{ start: 1, end: 9, label: '1–9' }];
+
+      // Track what posts get sent to LLM
+      let llmPostCount = 0;
+      h.scrapePageRange.mockResolvedValue(makeScrapeResult(postFactory.shortThread(20)));
+      h.summarize.mockImplementation((posts: ScrapedPost[]) => {
+        llmPostCount = posts.length;
+        return {
+          taskId: 'dup-task',
+          result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
+        };
+      });
+      h.summarizeSegments.mockReturnValue({
+        taskId: 'dup-overall',
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll(false);
+
+      // Posts sent to LLM should be from the new scrape only, not duplicated with pendingPosts
+      expect(llmPostCount).toBeLessThanOrEqual(180);
+      expect(llmPostCount).toBeGreaterThan(0);
+    });
+
+    it('valid resume (fromPage within totalPages) should still skip already-summarized segments', async () => {
+      await setupComposable({ totalPages: 10, totalPosts: 200, forumPostCount: 220 });
+
+      const seg0Posts = postFactory.custom({ count: 100, startPostNumber: 1 });
+      composable.segmentSummaries.value = [{
+        startPage: 1,
+        endPage: 5,
+        posts: seg0Posts,
+        summary: mockJsonResponse(mockSummaryResponses.segment1),
+        summaryJson: mockSummaryResponses.segment1,
+        postCount: 100,
+        summarizedAt: Date.now() - 10000,
+        complete: true,
+      }];
+
+      // Return posts with correct page numbers based on the scraped page
+      h.scrapePageRange.mockImplementation(async (_version, _url, startPage, _endPage) => {
+        const posts = postFactory.custom({ count: 20, startPostNumber: (startPage - 1) * 20 + 1 });
+        return makeScrapeResult(posts);
+      });
+      h.summarize.mockReturnValue({
+        taskId: 'valid-resume-task',
+        result: Promise.resolve(makeLLMResult(mockSummaryResponses.segment1)),
+      });
+      h.summarizeSegments.mockReturnValue({
+        taskId: 'valid-resume-overall',
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      });
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll(false);
+
+      expect(h.summarize).toHaveBeenCalled();
+      expect(composable.isProcessing.value).toBe(false);
     });
   });
 });

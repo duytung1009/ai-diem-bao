@@ -3,7 +3,7 @@ import { sendMessage } from '@/lib/messaging';
 import { estimateTokens } from '@/lib/token-estimator';
 import { STORAGE_KEYS, FALLBACK_MS_PER_TOKEN, LLM_TASK_CLEANUP_DELAY_MS } from '@/lib/constants';
 import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON, PipelineDefinition } from '@/lib/types';
-import { markNextStepRunning, markStepDone, markStepError, markStepRunning } from '@/lib/pipeline-builder';
+import { markStepDone, markStepError } from '@/lib/pipeline-builder';
 
 interface LLMTaskState {
   taskId: string;
@@ -39,21 +39,15 @@ function handleProgress(payload: LLMProgressMessage) {
   if (payload.pipeline) {
     task.pipeline = payload.pipeline;
   }
-  // Update step statuses when pipeline is active
+  // Update ETA on the currently running pipeline step (do NOT advance steps —
+  // LLM progress step numbers represent map-reduce chunks within a single task,
+  // not pipeline flow steps.  Advancing them here causes handleResult to find
+  // no running step and throw a TypeError, which silently kills the onComplete
+  // callback and hangs the entire summarize flow.)
   if (task.pipeline) {
-    const currentStep = payload.step;
-    const total = payload.totalSteps;
-    // Only update if we have enough info
-    if (total > 0) {
-      const pipelineSteps = task.pipeline.steps.length;
-      // Clamp to pipeline's last step — background progress steps can exceed pipeline step count
-      // (e.g. map-reduce summarize sends 4 progress steps for a single "summarize" pipeline step)
-      const pipelineIdx = Math.min(currentStep, pipelineSteps - 1);
-      task.pipeline.steps.forEach((s, idx) => {
-        if (idx === pipelineIdx) {
-          markNextStepRunning(task.pipeline!, s.id, task.estimatedTotalMs);
-        } 
-      });
+    const runningStep = task.pipeline.steps.find(s => s.status === 'running');
+    if (runningStep) {
+      runningStep.etaMs = task.estimatedTotalMs;
     }
   }
 }
@@ -69,10 +63,12 @@ function handleResult(payload: LLMResultMessage) {
   // Mark all pipeline steps as done on success, or mark current running as error
   if (task.pipeline) {
     const runningStep = task.pipeline.steps.find(s => s.status === 'running');
-    if (payload.success) {
-      markStepDone(task.pipeline!, runningStep!.id);
-    } else {
-      markStepError(task.pipeline!, runningStep!.id, payload.error ?? undefined);
+    if (runningStep) {
+      if (payload.success) {
+        markStepDone(task.pipeline!, runningStep.id);
+      } else {
+        markStepError(task.pipeline!, runningStep.id, payload.error ?? undefined);
+      }
     }
   }
   task.onComplete?.(payload);

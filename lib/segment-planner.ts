@@ -100,6 +100,7 @@ export interface ResumeStateParams {
   contextWindow?: number;
   thinkingEnabled?: boolean;
   thinkingBudget?: number;
+  totalPages?: number;
 }
 
 /**
@@ -134,6 +135,7 @@ export function computeResumeState(params: ResumeStateParams): DynamicResumeStat
     contextWindow,
     thinkingEnabled,
     thinkingBudget,
+    totalPages,
   } = params;
 
   const completed = segments.filter(isCompletedSegment);
@@ -148,9 +150,13 @@ export function computeResumeState(params: ResumeStateParams): DynamicResumeStat
     0,
   );
 
+  // When no new pages exist (endPage >= totalPages), re-scrape last page to pick up new posts
+  const nextNewPage = lastSeg.endPage + 1;
+  const fromPage = (totalPages && nextNewPage > totalPages) ? lastSeg.endPage : nextNewPage;
+
   // Always start from the last segment's state so new pages can be merged
   const mergeBase: DynamicResumeState = {
-    fromPage: lastSeg.endPage + 1,
+    fromPage,
     segmentIndex: lastSegIdx,
     pendingPosts,
     pendingTokens,
@@ -171,11 +177,11 @@ export function computeResumeState(params: ResumeStateParams): DynamicResumeStat
     const usagePct = budget > 0 ? pendingTokens / budget : 0;
     if (usagePct > 0.7) {
       return {
-        fromPage: lastSeg.endPage + 1,
-        segmentIndex: lastSegIdx + 1,
-        pendingPosts: [],
-        pendingTokens: 0,
-        pendingStartPage: lastSeg.endPage + 1,
+        fromPage,
+        segmentIndex: fromPage === lastSeg.endPage ? lastSegIdx : lastSegIdx + 1,
+        pendingPosts: fromPage === lastSeg.endPage ? pendingPosts : [],
+        pendingTokens: fromPage === lastSeg.endPage ? pendingTokens : 0,
+        pendingStartPage: fromPage === lastSeg.endPage ? lastSeg.startPage : fromPage,
       };
     }
   }

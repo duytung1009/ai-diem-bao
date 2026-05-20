@@ -262,6 +262,42 @@ expect(mock.getCallCount()).toBe(1);
 
 ---
 
+### KH4: Thêm Debug Logs Sớm Khi Gặp Bug Phức Tạp — Đừng Suy Đoán Quá Nhiều
+
+**Triệu chứng:**
+- Bug không tái hiện được trong test environment
+- Agent spending nhiều vòng phân tích code tĩnh, suy đoán root cause mà không verify được
+- Multiple hypotheses đều plausible nhưng không confirm được cái nào đúng
+
+**Root cause:**
+- Khi bug chỉ xảy ra ở runtime (real extension, scraper parsing, network) — code analysis tĩnh không đủ
+- Agent có xu hướng "dry-debug" — đọc code, suy luận, hypothesize — thay vì add logs để capture thực tế
+- Mỗi vòng hypothesize tốn context window mà không tiến gần hơn đến root cause
+
+**Fix:**
+- Khi bug phức tạp (> 2 vòng đoán sai hoặc không reproduce được trong test), **NGAY LẬP TỨC** thêm `console.log` strategic ở các điểm data flow quan trọng
+- Log format: `[functionName]` prefix + structured data (counts, distributions, key values)
+- Đặt logs ở: (1) input/output của function suspected, (2) mỗi bước transform data, (3) ngay trước khi data gửi đi (VD: trước LLM call)
+- Giữ logs trong code cho đến khi bug confirmed fix — không xóa sớm
+- Xóa logs chỉ khi bug đã fix và user confirm
+
+```typescript
+// ✅ Strategic logging tại data flow checkpoints
+console.log('[runSummarizeJob] Scrape complete:', {
+  newPostsCount: newPosts.length,
+  allPostsCount: allPosts.length,
+  pageDistribution: Object.entries(allPosts.reduce(...)).join(', '),
+});
+console.log('[summarizeAndSaveSegment] seg=${seg}, posts=${posts.length}, postPages={${pages}}`);
+```
+
+**Anti-pattern:**
+- Spending > 2 vòng đọc code suy đoán root cause mà không add logs
+- Xóa debug logs ngay sau khi test pass — cần giữ cho user verify ở runtime
+- Add logs quá chi tiết (logging từng post) — nên log aggregated data (counts, distributions)
+
+---
+
 ### KH3: Scraper filter `content.trim()` gây mất bài viết khi tóm tắt
 
 **Triệu chứng:**

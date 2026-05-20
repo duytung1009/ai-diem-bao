@@ -854,11 +854,14 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       }];
       composable.dynamicSegmentBoundaries.value = [{ start: 1, end: 9, label: '1–9' }];
 
-      // Track what posts get sent to LLM
-      let llmPostCount = 0;
-      h.scrapePageRange.mockResolvedValue(makeScrapeResult(postFactory.shortThread(20)));
-      h.summarize.mockImplementation((posts: ScrapedPost[]) => {
-        llmPostCount = posts.length;
+      // Only 1 page should be scraped (last page re-scrape), not all 9
+      let scrapeCallCount = 0;
+      h.scrapePageRange.mockImplementation(async (_version, _url, startPage, _endPage) => {
+        scrapeCallCount++;
+        const posts = postFactory.custom({ count: 20, startPostNumber: (startPage - 1) * 20 + 1 });
+        return makeScrapeResult(posts);
+      });
+      h.summarize.mockImplementation((_posts: ScrapedPost[]) => {
         return {
           taskId: 'dup-task',
           result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
@@ -872,9 +875,9 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
 
       await composable.handleAutoSummarizeAll(false);
 
-      // Posts sent to LLM should be from the new scrape only, not duplicated with pendingPosts
-      expect(llmPostCount).toBeLessThanOrEqual(180);
-      expect(llmPostCount).toBeGreaterThan(0);
+      // Should only scrape the last page, not all 9
+      expect(scrapeCallCount).toBe(1);
+      expect(h.scrapePageRange).toHaveBeenCalled();
     });
 
     it('valid resume (fromPage within totalPages) should still skip already-summarized segments', async () => {

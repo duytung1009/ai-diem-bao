@@ -14,15 +14,13 @@
 ## Tính năng chính / Key Features
 
 - **Tóm tắt tự động** *(Auto Summarization)* — Đọc toàn bộ topic (kể cả nhiều trang) và tóm tắt nội dung thảo luận bằng AI
-- **Phân tích ý kiến** *(Opinion Analysis)* — Nhóm các quan điểm, xác định phe ủng hộ/phản đối, đánh giá sentiment
 - **Trích xuất kiến thức** *(Knowledge Extraction)* — Rút trích sự thật, mẹo, kinh nghiệm từ thảo luận thành kho kiến thức có cấu trúc
-- **Phân tích thread sâu** *(Thread Analysis)* — Phân tích động thái debate, profile người dùng, timeline, bình luận notable, và tóm tắt phong cách "võ hiệp"
 - **Tra cứu / Q&A** *(Research)* — Đặt câu hỏi cụ thể về nội dung topic và nhận câu trả lời có trích dẫn
+- **Phân tích chuyên sâu** *(Thread Analysis)* — Phân tích động thái debate, profile người dùng, timeline, bình luận notable, và tóm tắt phong cách "võ hiệp"
 - **Export** — Sao chép Markdown, plain text, hoặc tải file `.md`
-- **Cache thông minh** *(Smart Cache)* — Lưu kết quả vào IndexedDB, phát hiện bài mới, hỗ trợ cập nhật incremental
+- **Caching** — Lưu kết quả vào IndexedDB, phát hiện bài mới, hỗ trợ cập nhật incremental
 - **Custom prompts** — Tuỳ chỉnh system prompt cho từng loại phân tích
-- **Retry tự động** — Tự thử lại khi gặp lỗi rate limit (429) hoặc lỗi server (5xx)
-- **Map-reduce pipeline** — Tự động chia nhỏ topic vượt context limit thành nhiều chunk để xử lý
+- **Map-reduce pipeline** — Tự động chia nhỏ topic thành nhiều chunk để xử lý dựa trên cấu hình LLM tương ứng
 - **Phát hiện bài viết** *(News Detection)* — Tự động phân biệt discussion và news article, trích xuất nội dung bài báo
 
 ## Hỗ trợ / Support
@@ -129,14 +127,16 @@ ai-diem-bao/
 │       ├── index.html              # Side panel HTML shell
 │       ├── views/
 │       │   ├── TopicHubView.vue    # Dashboard danh sách topic
-│       │   ├── SummaryView.vue     # Hiển thị tóm tắt
+│       │   ├── SummaryView.vue     # Hiển thị tóm tắt + phân tích ý kiến
 │       │   ├── KnowledgeView.vue   # Trích xuất & quản lý kiến thức
 │       │   ├── ResearchView.vue    # Q&A / Research
-│       │   └── SettingsView.vue    # Cấu hình LLM provider
-│       ├── components/             # 11 reusable UI components
+│       │   ├── SettingsView.vue    # Cấu hình LLM provider
+│       │   └── HelpView.vue        # Hướng dẫn sử dụng
+│       ├── components/             # 12 reusable UI components
 │       │   ├── TopicMeta.vue       # Topic metadata
 │       │   ├── SummaryContent.vue  # Summary rendering
 │       │   ├── ThreadAnalysisContent.vue  # Thread analysis rendering
+│       │   ├── StepTimeline.vue    # Progress step timeline
 │       │   ├── ExportButton.vue    # Export functionality
 │       │   ├── CacheIndicator.vue  # Cache freshness indicator
 │       │   ├── ProgressIndicator.vue  # Scraping/LLM progress
@@ -147,8 +147,11 @@ ai-diem-bao/
 │       │   └── ConfirmInline.vue   # Inline confirmation dialog
 │       └── composables/
 │           ├── useTopicStore.ts    # Reactive topic state management
-│           ├── useLLM.ts           # LLM task communication
 │           ├── useSummarize.ts     # Summarization orchestration
+│           ├── useLLM.ts           # LLM task communication
+│           ├── usePipeline.ts      # Pipeline state management
+│           ├── useTopicScraper.ts  # Scraping coordination
+│           ├── useOptimisticUpdate.ts  # Optimistic UI updates với auto-rollback
 │           └── useTheme.ts         # Dark mode theming
 │
 ├── lib/
@@ -160,8 +163,13 @@ ai-diem-bao/
 │   ├── cache-manager.ts            # Cache CRUD với URL normalization
 │   ├── cache-db.ts                 # IndexedDB wrapper
 │   ├── token-estimator.ts          # Token counting, cost estimation, context checking
+│   ├── pipeline-builder.ts         # Pipeline assembly và reconciliation
+│   ├── run-guard.ts                # Stale-run guard (monotonic token để cancel race)
+│   ├── segment-planner.ts          # Dynamic segment sizing dựa trên token budget
+│   ├── segment-persistence.ts      # Segment save payload builder
 │   ├── exporter.ts                 # Cache export (JSON) functionality
 │   ├── format.ts                   # Number formatting utilities
+│   ├── text-utils.ts               # Text processing utilities
 │   ├── topic-utils.ts              # Topic utility functions
 │   ├── detector.ts                 # XenForo version detection
 │   ├── llm/                        # LLM provider adapters
@@ -179,18 +187,37 @@ ai-diem-bao/
 │       ├── xf1-scraper.ts          # XenForo 1.x scraper
 │       ├── xf2-scraper.ts          # XenForo 2.x scraper
 │       ├── page-loader.ts          # Multi-page loading
+│       ├── thread-status.ts        # Thread status detection
 │       ├── article-extractor.ts    # News article extraction
 │       └── news-detector.ts        # News vs discussion detection
 │
-├── docs/architecture/              # Architecture documentation
-│   ├── scraping.md                 # Scraping mechanism
+├── docs/architecture/              # Architecture documentation (12 files)
 │   ├── summarization.md            # Map-reduce pipeline
-│   └── knowledge.md                # Knowledge extraction
+│   ├── scraping.md                 # Scraping mechanism
+│   ├── knowledge.md                # Knowledge extraction
+│   ├── opinions.md                 # Opinion analysis
+│   ├── research.md                 # Q&A / Research flow
+│   ├── thread-analysis.md          # Thread analysis pipeline
+│   ├── topic-hub.md                # Topic Hub view
+│   ├── messaging.md                # Chrome messaging architecture
+│   ├── cache.md                    # Caching layer
+│   ├── cost-estimator.md           # LLM cost estimation
+│   ├── dark-mode.md                # Dark mode implementation
+│   └── common-components.md        # Shared UI components
 │
-├── planning/                       # Feature planning docs
-├── review/                         # Code review reports
-├── .taskmaster/                    # Task Master AI task management
+├── tests/
+│   ├── unit/                       # 14 unit test files
+│   ├── e2e/                        # 6 end-to-end test files
+│   ├── fixtures/                   # Mock data generators
+│   ├── mocks/                      # Mock providers & factories
+│   └── utils/                      # Test helpers
+│
+├── planning/                       # Feature planning docs với Decision Logs
+├── review/                         # Code review reports (tier 1/2/3)
+├── template/                       # Templates cho bug report, review, self-review
+├── .taskmaster/                    # Task Master AI — PRDs & workflow docs
 ├── wxt.config.ts                   # WXT + manifest configuration
+├── vitest.config.ts                # Vitest test configuration
 ├── package.json                    # Dependencies & scripts
 ├── tsconfig.json                   # TypeScript config
 ├── STYLE_GUIDE.md                  # UI styling conventions
@@ -271,12 +298,23 @@ Xem `.env.example` để biết danh sách đầy đủ các biến hỗ trợ:
 
 ## Documentation
 
-- [Architecture: Scraping](docs/architecture/scraping.md)
-- [Architecture: Summarization (Map-Reduce)](docs/architecture/summarization.md)
-- [Architecture: Knowledge Extraction](docs/architecture/knowledge.md)
+**Architecture:**
+- [Summarization (Map-Reduce)](docs/architecture/summarization.md)
+- [Scraping](docs/architecture/scraping.md)
+- [Knowledge Extraction](docs/architecture/knowledge.md)
+- [Opinion Analysis](docs/architecture/opinions.md)
+- [Research / Q&A](docs/architecture/research.md)
+- [Thread Analysis](docs/architecture/thread-analysis.md)
+- [Topic Hub](docs/architecture/topic-hub.md)
+- [Messaging Architecture](docs/architecture/messaging.md)
+- [Cache Layer](docs/architecture/cache.md)
+- [Cost Estimator](docs/architecture/cost-estimator.md)
+- [Dark Mode](docs/architecture/dark-mode.md)
+- [Common Components](docs/architecture/common-components.md)
+
+**Other:**
 - [Style Guide](STYLE_GUIDE.md)
 - [Example Summary](EXAMPLE_SUMMARY.md)
-- [Prompt Example](PROMPT_EXAMPLE.md)
 
 ## License
 

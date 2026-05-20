@@ -31,6 +31,10 @@ dev-debug.log
 .claude/settings.local.json
 .claude/worktrees/
 
+# Local sample/export data files
+*.export-*.json
+llm_sample_*.json
+
 # Task Master — personal config and runtime state
 .taskmaster/config.json
 .taskmaster/state.json

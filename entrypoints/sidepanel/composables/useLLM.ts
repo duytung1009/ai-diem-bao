@@ -44,10 +44,15 @@ function handleProgress(payload: LLMProgressMessage) {
   // not pipeline flow steps.  Advancing them here causes handleResult to find
   // no running step and throw a TypeError, which silently kills the onComplete
   // callback and hangs the entire summarize flow.)
+  // NOTE: Use index access (steps[i]) instead of .find() to get reactive proxy
+  // from Vue's array proxy, so etaMs mutation triggers re-render.
   if (task.pipeline) {
-    const runningStep = task.pipeline.steps.find(s => s.status === 'running');
-    if (runningStep) {
-      runningStep.etaMs = task.estimatedTotalMs;
+    const steps = task.pipeline.steps;
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].status === 'running') {
+        steps[i].etaMs = task.estimatedTotalMs;
+        break;
+      }
     }
   }
 }

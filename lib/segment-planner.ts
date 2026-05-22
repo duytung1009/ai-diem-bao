@@ -94,13 +94,6 @@ export interface DynamicResumeState {
 
 export interface ResumeStateParams {
   segments: (TopicSegment | null)[];
-  model: string;
-  summaryPromptTokens: number;
-  maxTokens?: number;
-  contextWindow?: number;
-  thinkingEnabled?: boolean;
-  thinkingBudget?: number;
-  totalPages?: number;
 }
 
 /**
@@ -123,20 +116,12 @@ export function computeSegmentBudget(params: SegmentBudgetParams): number {
 /**
  * Compute resume state from current segment status.
  * Returns null if no segments were completed yet (fresh run needed).
- * If the last completed segment has ≤70% token usage, merges new pages into it.
- * If >70%, a new segment is created to avoid perpetual re-summarization.
+ * Always merges new pages into the last segment — planDynamicSegments handles
+ * the splitting, and the resume-optimization (skip already-summarized segments
+ * with matching boundaries) avoids unnecessary LLM calls.
  */
 export function computeResumeState(params: ResumeStateParams): DynamicResumeState | null {
-  const {
-    segments,
-    model,
-    summaryPromptTokens,
-    maxTokens,
-    contextWindow,
-    thinkingEnabled,
-    thinkingBudget,
-    totalPages,
-  } = params;
+  const { segments } = params;
 
   const completed = segments.filter(isCompletedSegment);
   if (completed.length === 0) return null;
@@ -150,40 +135,13 @@ export function computeResumeState(params: ResumeStateParams): DynamicResumeStat
     0,
   );
 
-  // When no new pages exist (endPage >= totalPages), re-scrape last page to pick up new posts
-  const nextNewPage = lastSeg.endPage + 1;
-  const fromPage = (totalPages && nextNewPage > totalPages) ? lastSeg.endPage : nextNewPage;
+  const fromPage = lastSeg.endPage;
 
-  // Always start from the last segment's state so new pages can be merged
-  const mergeBase: DynamicResumeState = {
+  return {
     fromPage,
     segmentIndex: lastSegIdx,
     pendingPosts,
     pendingTokens,
     pendingStartPage: lastSeg.startPage,
   };
-
-  if (lastSeg.complete !== false) {
-    // Segment was marked complete — check if it still has headroom for merging.
-    // If usage is high (>70%), start a fresh segment to avoid constant re-summarization.
-    const thinkingOverhead = getThinkingOverhead(model, thinkingEnabled, thinkingBudget);
-    const budget = computeSegmentBudget({
-      model,
-      systemPromptTokens: summaryPromptTokens,
-      maxTokens,
-      contextWindowOverride: contextWindow,
-      thinkingOverhead,
-    });
-    const usagePct = budget > 0 ? pendingTokens / budget : 0;
-    if (usagePct > 0.7) {
-      return {
-        fromPage,
-        segmentIndex: fromPage === lastSeg.endPage ? lastSegIdx : lastSegIdx + 1,
-        pendingPosts: fromPage === lastSeg.endPage ? pendingPosts : [],
-        pendingTokens: fromPage === lastSeg.endPage ? pendingTokens : 0,
-        pendingStartPage: fromPage === lastSeg.endPage ? lastSeg.startPage : fromPage,
-      };
-    }
-  }
-  return mergeBase;
 }

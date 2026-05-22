@@ -45,16 +45,11 @@ describe('C2: unify segment completed predicate to truthy', () => {
         null,
       ];
 
-      const result = computeResumeState({
-        segments,
-        model: 'gpt-4o-mini',
-        summaryPromptTokens: 100,
-      });
+      const result = computeResumeState({ segments });
 
-      // Only first segment counts as completed
       expect(result).not.toBeNull();
       expect(result!.segmentIndex).toBe(0);
-      expect(result!.fromPage).toBe(21);
+      expect(result!.fromPage).toBe(20);
     });
 
     it('returns null when no segments have non-empty summary', () => {
@@ -64,11 +59,7 @@ describe('C2: unify segment completed predicate to truthy', () => {
         null,
       ];
 
-      const result = computeResumeState({
-        segments,
-        model: 'gpt-4o-mini',
-        summaryPromptTokens: 100,
-      });
+      const result = computeResumeState({ segments });
 
       expect(result).toBeNull();
     });
@@ -76,33 +67,26 @@ describe('C2: unify segment completed predicate to truthy', () => {
     it('returns null when all segments are null', () => {
       const segments: (TopicSegment | null)[] = [null, null, null];
 
-      const result = computeResumeState({
-        segments,
-        model: 'gpt-4o-mini',
-        summaryPromptTokens: 100,
-      });
+      const result = computeResumeState({ segments });
 
       expect(result).toBeNull();
     });
 
-    it('resumes from last completed segment with headroom', () => {
+    it('always merges into last completed segment', () => {
       const seg1 = makeSegment({ startPage: 1, endPage: 10, summary: 'seg1' });
       const seg2 = makeSegment({ startPage: 11, endPage: 20, summary: 'seg2' });
       const segments: (TopicSegment | null)[] = [seg1, seg2, null];
 
-      const result = computeResumeState({
-        segments,
-        model: 'gpt-4o-mini',
-        summaryPromptTokens: 100,
-      });
+      const result = computeResumeState({ segments });
 
       expect(result).not.toBeNull();
       expect(result!.segmentIndex).toBe(1);
-      expect(result!.fromPage).toBe(21);
+      expect(result!.fromPage).toBe(20);
+      expect(result!.pendingPosts).toEqual(seg2.posts);
+      expect(result!.pendingStartPage).toBe(11);
     });
 
-    it('creates new segment when last completed has high usage (>70%)', () => {
-      // Create a segment with many posts that would exceed 70% budget
+    it('always merges even when last segment has high usage', () => {
       const manyPosts = Array.from({ length: 100 }, (_, i) => ({
         author: `user${i}`,
         content: 'x'.repeat(500),
@@ -118,15 +102,12 @@ describe('C2: unify segment completed predicate to truthy', () => {
       });
       const segments: (TopicSegment | null)[] = [seg, null];
 
-      const result = computeResumeState({
-        segments,
-        model: 'gpt-4o-mini',
-        summaryPromptTokens: 100,
-      });
+      const result = computeResumeState({ segments });
 
-      // Result should exist, but exact index depends on token budget calculation
       expect(result).not.toBeNull();
-      expect(result!.fromPage).toBe(6);
+      expect(result!.segmentIndex).toBe(0);
+      expect(result!.fromPage).toBe(5);
+      expect(result!.pendingPosts.length).toBe(100);
     });
   });
 });

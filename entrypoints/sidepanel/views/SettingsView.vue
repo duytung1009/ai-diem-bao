@@ -910,6 +910,11 @@ async function exportCache() {
       </div>
     </div>
 
+    <!-- Config change warning -->
+    <div class="alert alert-warning text-xs leading-relaxed">
+      ⚠️ Thay đổi cấu hình model/segment sẽ khiến các thread đang tóm tắt dở phải tóm tắt và chia segment lại từ đầu.
+    </div>
+
     <!-- Actions -->
     <div class="flex gap-2">
       <button

@@ -291,6 +291,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
             postCount: fresh.summarizedPostCount ?? 0,
             summarizedAt: fresh.cachedAt ?? Date.now(),
           }];
+          dynamicSegmentBoundaries.value = [{
+            start: 1,
+            end: fresh.totalPages ?? 1,
+            label: `1–${fresh.totalPages ?? 1}`,
+          }];
         }
         cacheFreshness.value = evaluateFreshness(fresh, liveCount);
 
@@ -541,6 +546,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     pl.pipeline.value?.steps.forEach(s => {
       if (s.id === scrapeStepId) pl.markRunning(s.id);
     });
+    // Set ETA for scrape step: pages × delay
+    const segPages = seg.end - seg.start + 1;
+    if (segPages > 0 && pl.pipeline.value) {
+      const step = pl.pipeline.value.steps.find(s => s.id === scrapeStepId);
+      if (step) step.etaMs = segPages * (currentConfig.value?.scrapeDelayMs ?? 2000);
+    }
     const thisId = summarizeGuard.begin();
     store.setSummarizing(topic.url);
 
@@ -757,6 +768,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const budget = await computeDynamicBudget();
       const resumeMode = forceRegenerate ? { mode: 'fresh' as const } : computeResumeMode();
 
+      console.log('[runSummarizeJob] Resume mode:', {
+        mode: resumeMode.mode,
+        segmentSummariesCount: segmentSummaries.value.length,
+        dynamicBoundariesCount: dynamicSegmentBoundaries.value.length,
+        completedSegments: segmentSummaries.value.filter(isCompletedSegment).length,
+        ...(resumeMode.mode === 'resume' ? {
+          fromPage: resumeMode.resume.fromPage,
+          segmentIndex: resumeMode.resume.segmentIndex,
+          pendingPosts: resumeMode.resume.pendingPosts.length,
+        } : {}),
+      });
+
       if (resumeMode.mode === 'skip') {
         await generateOverallSummary();
         return;
@@ -779,6 +802,15 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       // Phase 2: Scrape pages
       const resumeStartPage = isResume ? resumeMode.resume.fromPage : 1;
       const startPage = resumeStartPage > totalPages ? 1 : resumeStartPage;
+      // Set ETA for scrape step: pages × delay
+      {
+        const scrapePages = totalPages - startPage + 1;
+        const delay = currentConfig.value?.scrapeDelayMs ?? 2000;
+        if (pl.pipeline.value && scrapePages > 0) {
+          const step = pl.pipeline.value.steps.find(s => s.id === 'scrape');
+          if (step) step.etaMs = scrapePages * delay;
+        }
+      }
 
       // When resume fromPage exceeds totalPages (all pages already covered),
       // we're re-scraping from page 1 — old segments are stale and
@@ -795,22 +827,26 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
       if (isResume && resumeStartPage <= totalPages) {
         // ── Incremental update path ──
-        // Existing summarized segments are preserved.
-        // Only new pages are scraped; plan segments for new posts only.
-        const mergeIntoLast = resumeMode.resume.segmentIndex < existingCompletedSegments.length
-          && resumeMode.resume.pendingPosts.length > 0;
+        // Always merge into last segment: combine pendingPosts with newly scraped posts,
+        // then let planDynamicSegments decide boundaries. Resume-optimization (skip
+        // segments with matching boundaries + existing summary) avoids unnecessary LLM calls.
 
-        // Posts to plan segments for: last segment's posts (if merging) + new posts
-        const postsToPlan = mergeIntoLast
-          ? [...resumeMode.resume.pendingPosts, ...newPosts]
-          : newPosts;
+        // Deduplicate by postNumber: pendingPosts (old) + newPosts may overlap on re-scraped page
+        const seenPostNums = new Set<number>();
+        const postsToPlan: ScrapedPost[] = [];
+        for (const p of [...resumeMode.resume.pendingPosts, ...newPosts]) {
+          if (!seenPostNums.has(p.postNumber)) {
+            seenPostNums.add(p.postNumber);
+            postsToPlan.push(p);
+          }
+        }
 
         console.log('[runSummarizeJob] Incremental update:', {
           existingSegments: existingCompletedSegments.length,
           startPage,
           totalPages,
           newPostsCount: newPosts.length,
-          mergeIntoLast,
+          pendingPostsCount: resumeMode.resume.pendingPosts.length,
           postsToPlanCount: postsToPlan.length,
           pageDistribution: Object.entries(postsToPlan.reduce((acc, p) => { const pg = p.page ?? 1; acc[pg] = (acc[pg] || 0) + 1; return acc; }, {} as Record<number, number>)).map(([k, v]) => `p${k}=${v}`).join(', '),
         });
@@ -823,52 +859,64 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           boundaries: newBoundaries.map(b => ({ start: b.start, end: b.end })),
         });
 
-        // Merge new boundaries with existing ones
+        // Merge: replace last existing boundary with new boundaries
         const existingBoundaries = dynamicSegmentBoundaries.value.length > 0
           ? dynamicSegmentBoundaries.value.map(b => ({ start: b.start, end: b.end }))
           : existingCompletedSegments.map(s => ({ start: s.startPage, end: s.endPage }));
 
-        let allBoundaries: { start: number; end: number }[];
-        let firstNewSegIdx: number;
+        console.log('[runSummarizeJob] Existing boundaries:', {
+          fromDynamicBoundaries: dynamicSegmentBoundaries.value.length,
+          fromCompletedSegments: existingCompletedSegments.length,
+          existingBoundaryCount: existingBoundaries.length,
+          existingBoundaries: existingBoundaries.map(b => `${b.start}-${b.end}`),
+        });
 
-        if (mergeIntoLast) {
-          // Replace last boundary with the first new boundary (which covers old+new pages)
-          allBoundaries = [
-            ...existingBoundaries.slice(0, -1),
-            ...newBoundaries,
-          ];
-          firstNewSegIdx = existingBoundaries.length - 1;
-        } else {
-          allBoundaries = [...existingBoundaries, ...newBoundaries];
-          firstNewSegIdx = existingBoundaries.length;
-        }
+        const allBoundaries: { start: number; end: number }[] = [
+          ...existingBoundaries.slice(0, -1),
+          ...newBoundaries,
+        ];
+        const firstNewSegIdx = existingBoundaries.length - 1;
+
+        console.log('[runSummarizeJob] Merged boundaries:', {
+          allBoundaries: allBoundaries.map(b => `${b.start}-${b.end}`),
+          firstNewSegIdx,
+          totalSegments: allBoundaries.length,
+        });
 
         dynamicSegmentBoundaries.value = allBoundaries.map(b => ({ start: b.start, end: b.end, label: `${b.start}–${b.end}` }));
-        pl.rebuildWithSegments(allBoundaries);
+        pl.rebuildWithSegments(allBoundaries, firstNewSegIdx);
         pl.markDone('plan');
 
-        // Summarize only the new segments
+        // Summarize new/changed segments; skip if boundary matches existing completed segment
         for (let j = 0; j < newBoundaries.length; j++) {
           if (summarizeGuard.isStale(thisId) || error.value) return;
 
           const segIdx = firstNewSegIdx + j;
           const segId = allBoundaries.length <= 1 ? 'summarize' : `summarize_${segIdx}`;
-          pl.markRunning(segId);
-
           const boundary = newBoundaries[j];
+
           const segPosts = postsToPlan.filter(p => {
             const pg = p.page ?? 1;
             return pg >= boundary.start && pg <= boundary.end;
           });
 
-          console.log(`[runSummarizeJob] Incremental segment ${segIdx}: boundary=${boundary.start}-${boundary.end}, segPosts=${segPosts.length}`);
+          // Resume optimization: skip LLM call if matching segment already summarized
+          // and post count hasn't changed (no new posts in this boundary)
+          const existingSeg = segmentSummaries.value[segIdx];
+          const isAlreadyDone = existingSeg?.summary
+            && existingSeg.startPage === boundary.start
+            && existingSeg.endPage === boundary.end
+            && existingSeg.postCount === segPosts.length;
 
-          // If merging into last segment, clear its old summary first
-          if (mergeIntoLast && j === 0 && segmentSummaries.value[segIdx]) {
-            const cleared = [...segmentSummaries.value];
-            cleared[segIdx] = { ...cleared[segIdx], summary: '', summarizedAt: 0 };
-            segmentSummaries.value = cleared as TopicSegment[];
+          if (isAlreadyDone) {
+            pl.markDone(segId);
+            console.log(`[runSummarizeJob] Skipped segment ${segIdx}: boundary=${boundary.start}-${boundary.end} (already done)`);
+            continue;
           }
+
+          pl.markRunning(segId);
+
+          console.log(`[runSummarizeJob] Incremental segment ${segIdx}: boundary=${boundary.start}-${boundary.end}, segPosts=${segPosts.length}`);
 
           await summarizeAndSaveSegment(segIdx, boundary.start, boundary.end, segPosts, false, thisId);
           if (error.value || summarizeGuard.isStale(thisId)) return;
@@ -876,9 +924,14 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           pl.markDone(segId);
         }
 
-        // Phase 6: Overall summary
+        // Phase 6: Overall summary (incremental)
         if (!summarizeGuard.isStale(thisId) && !error.value) {
           const completed = segmentSummaries.value.filter(isCompletedSegment).length;
+          console.log('[runSummarizeJob] Incremental — before generateOverallSummary:', {
+            completedSegments: completed,
+            totalSegments: segmentSummaries.value.length,
+            segmentSummaries: segmentSummaries.value.map((s, i) => ({ i, pages: s ? `${s.startPage}-${s.endPage}` : 'null', hasSummary: !!s?.summary })),
+          });
           if (completed >= 1) {
             pl.markRunning('overall');
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
@@ -936,7 +989,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           const existingSeg = segmentSummaries.value[i];
           const isAlreadyDone = existingSeg?.summary
             && existingSeg.startPage === boundary.start
-            && existingSeg.endPage === boundary.end;
+            && existingSeg.endPage === boundary.end
+            && existingSeg.postCount === segPosts.length;
 
           if (isAlreadyDone) {
             pl.markDone(segId);
@@ -949,9 +1003,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           pl.markDone(segId);
         }
 
-        // Phase 6: Overall summary
+        // Phase 6: Overall summary (fresh)
         if (!summarizeGuard.isStale(thisId) && !error.value) {
           const completed = segmentSummaries.value.filter(isCompletedSegment).length;
+          console.log('[runSummarizeJob] Fresh — before generateOverallSummary:', {
+            completedSegments: completed,
+            totalSegments: segmentSummaries.value.length,
+          });
           if (completed >= 1) {
             pl.markRunning('overall');
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
@@ -1068,7 +1126,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const segTask = summarize(posts);
     llmTaskId.value = segTask.taskId;
     const st3 = getTaskState(segTask.taskId);
-    if (st3 && pl.pipeline.value) st3.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
+    if (st3 && pl.pipeline.value) {
+      const snapshot = JSON.parse(JSON.stringify(pl.pipeline.value));
+      if (st3.estimatedTotalMs > 0) {
+        for (let i = 0; i < snapshot.steps.length; i++) {
+          if (snapshot.steps[i].status === 'running') {
+            snapshot.steps[i].etaMs = st3.estimatedTotalMs;
+            break;
+          }
+        }
+      }
+      st3.pipeline = snapshot;
+    }
     const segResult = await segTask.result;
     // Sync pipeline with final task state
     if (pl.pipeline.value) {
@@ -1112,24 +1181,30 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
     segmentSummaries.value = updated as TopicSegment[];
 
+    const isSingleSeg = dynamicSegmentBoundaries.value.length <= 1
+      && updated.filter(isCompletedSegment).length <= 1;
+
     const savePayload = buildSegmentSavePayload({
       topic: { url: topic.url, title: topic.title, version: topic.version, totalPages: topic.totalPages, totalPosts: topic.totalPosts },
       updatedSegments: updated,
       newSeg,
       forumPostCount: forumCount,
-      isSingleSegment: true, // dynamic mode always promotes
+      isSingleSegment: isSingleSeg,
       useMaxTotal: true,
     });
 
     await sendMessage('SAVE_CACHED_TOPIC', savePayload);
-    store.updateSelectedTopic({
+    const storeUpdate: Partial<CachedTopic> = {
       totalPosts: savePayload.totalPosts,
       forumPostCount: savePayload.forumPostCount,
       summarizedPostCount: savePayload.summarizedPostCount,
-      segments: savePayload.segments,
-      summary: savePayload.summary,
-      summaryJson: savePayload.summaryJson,
-    } as Partial<CachedTopic>);
+      segments: savePayload.segments as TopicSegment[],
+    };
+    if (isSingleSeg) {
+      storeUpdate.summary = savePayload.summary;
+      storeUpdate.summaryJson = savePayload.summaryJson;
+    }
+    store.updateSelectedTopic(storeUpdate);
     activeSegmentIndex.value = segmentIndex;
 
     simpleLoadingText.value = '';
@@ -1161,16 +1236,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   function computeResumeState(): DynamicResumeState | null {
     return computeResumeStateFromModule({
       segments: segmentSummaries.value,
-      model: currentConfig.value?.model ?? 'gpt-4o-mini',
-      summaryPromptTokens: estimateTokens(SUMMARY_PROMPT),
-      maxTokens: currentConfig.value?.maxTokens,
-      contextWindow: currentConfig.value?.contextWindow,
-      thinkingEnabled: currentConfig.value?.thinkingEnabled,
-      thinkingBudget: currentConfig.value?.thinkingBudget,
-      totalPages: Math.max(
-        store.activeTabDetect.value?.pageCount ?? 0,
-        topicInfo.value?.pageCount ?? 0,
-      ),
     });
   }
 

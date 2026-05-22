@@ -17,15 +17,11 @@ export function usePipeline() {
 
   /**
    * Rebuild the pipeline after dynamic segment planning.
-   * Called once after planDynamicSegments determines the boundaries.
    *
-   * Replaces the entire pipeline with a deterministic set of steps:
-   *   scrape (done) → plan (done) → summarize_0 (pending) → ... → overall (pending)
-   *
-   * Single-segment case: steps = scrape, plan, summarize, overall
-   * Multi-segment case:  steps = scrape, plan, summarize_0..N, overall
+   * @param boundaries — segment boundaries
+   * @param alreadyDoneCount — number of segments from the start that are already done (incremental)
    */
-  function rebuildWithSegments(boundaries: { start: number; end: number }[]): void {
+  function rebuildWithSegments(boundaries: { start: number; end: number }[], alreadyDoneCount: number = 0): void {
     const steps: PipelineStep[] = [
       { id: 'scrape', label: 'Scrape tất cả trang', status: 'done' },
       { id: 'plan', label: 'Tạo segment động', status: 'done' },
@@ -34,13 +30,13 @@ export function usePipeline() {
     if (boundaries.length === 0) {
       // No segments — no summarize step needed
     } else if (boundaries.length === 1) {
-      steps.push({ id: 'summarize', label: 'Tóm tắt segment', status: 'pending' });
+      steps.push({ id: 'summarize', label: 'Tóm tắt segment', status: alreadyDoneCount > 0 ? 'done' : 'pending' });
     } else {
       for (let i = 0; i < boundaries.length; i++) {
         steps.push({
           id: `summarize_${i}`,
           label: `Tóm tắt Segment ${i + 1}/${boundaries.length}`,
-          status: 'pending',
+          status: i < alreadyDoneCount ? 'done' : 'pending',
         });
       }
     }

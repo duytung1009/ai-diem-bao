@@ -796,17 +796,16 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
   });
 
   describe('BUG: resume with fromPage > totalPages re-scrapes from page 1 but keeps stale segments', () => {
-    it('must clear stale segments and call LLM when resume fromPage > totalPages', async () => {
-      // Scenario: topic was previously summarized (9 pages, single segment).
+    it('must re-summarize when last page has new posts (fromPage = lastSeg.endPage)', async () => {
+      // Scenario: topic was previously summarized (9 pages, 180 posts, single segment 1-9).
       // User clicks "Tóm tắt toàn bộ" (not force regenerate).
-      // hasNewPosts=true → computeResumeMode returns 'resume' with fromPage=10.
-      // totalPages=9 → startPage reset to 1 → all pages re-scraped.
-      // OLD BUG: segmentSummaries not cleared → isAlreadyDone matches → no LLM calls.
-      // FIX: when resumeStartPage > totalPages, clear stale segments.
+      // forumPostCount=200 → hasNewPosts → computeResumeMode returns 'resume'.
+      // fromPage = lastSeg.endPage = 9 → re-scrape page 9.
+      // Page 9 now has 20 new posts (181-200) that weren't in the old segment.
+      // The incremental path merges old posts + new posts, plans, and re-summarizes.
       await setupComposable({ totalPages: 9, totalPosts: 180, forumPostCount: 200 });
 
-      // Simulate previously summarized single segment (pages 1-9)
-      const oldPosts = postFactory.shortThread(180);
+      const oldPosts = postFactory.custom({ count: 180, startPostNumber: 1 });
       composable.segmentSummaries.value = [{
         startPage: 1,
         endPage: 9,
@@ -819,7 +818,11 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       }];
       composable.dynamicSegmentBoundaries.value = [{ start: 1, end: 9, label: '1–9' }];
 
-      h.scrapePageRange.mockResolvedValue(makeScrapeResult(postFactory.shortThread(20)));
+      // Scrape page 9 returns 20 posts that overlap with old page 9 posts (161-180)
+      // plus 20 genuinely new posts (181-200). In a real forum, page 9 might now have
+      // 40 posts total. We simulate by returning posts 161-200 with page manually set to 9.
+      const newPage9Posts = postFactory.custom({ count: 40, startPostNumber: 161 }).map(p => ({ ...p, page: 9 }));
+      h.scrapePageRange.mockResolvedValue(makeScrapeResult(newPage9Posts));
       h.summarize.mockReturnValue({
         taskId: 'resume-llm-task',
         result: Promise.resolve(makeLLMResult(mockSummaryResponses.singleSegment)),
@@ -832,16 +835,20 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
 
       await composable.handleAutoSummarizeAll(false);
 
-      // KEY ASSERTION: LLM calls must happen (old segments cleared, isAlreadyDone=false)
       expect(h.summarize).toHaveBeenCalled();
       expect(composable.summary.value).toBeTruthy();
       expect(composable.isProcessing.value).toBe(false);
     });
 
-    it('must NOT duplicate posts when resume fromPage > totalPages', async () => {
+    it('must NOT duplicate posts when re-scraping last page', async () => {
+      // Scenario: old segment has 180 posts (pages 1-9), page 9 had 10 posts.
+      // Now page 9 has 20 posts (10 new). Re-scrape page 9 → 20 posts.
+      // pendingPosts (old) has posts 1-180 from pages 1-9.
+      // newPosts (scrape page 9) has posts 161-180 (same as old page 9) + 181-190 (new).
+      // After dedup, total = 190 posts, not 200 (no duplicates).
       await setupComposable({ totalPages: 9, totalPosts: 180, forumPostCount: 200 });
 
-      const oldPosts = postFactory.shortThread(180);
+      const oldPosts = postFactory.custom({ count: 180, startPostNumber: 1 });
       composable.segmentSummaries.value = [{
         startPage: 1,
         endPage: 9,
@@ -854,10 +861,10 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       }];
       composable.dynamicSegmentBoundaries.value = [{ start: 1, end: 9, label: '1–9' }];
 
-      // Only 1 page should be scraped (last page re-scrape), not all 9
       let scrapeCallCount = 0;
       h.scrapePageRange.mockImplementation(async (_version, _url, startPage, _endPage) => {
         scrapeCallCount++;
+        // Page 9 now has 20 posts: old 161-180 + new 181-200
         const posts = postFactory.custom({ count: 20, startPostNumber: (startPage - 1) * 20 + 1 });
         return makeScrapeResult(posts);
       });
@@ -875,7 +882,6 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
 
       await composable.handleAutoSummarizeAll(false);
 
-      // Should only scrape the last page, not all 9
       expect(scrapeCallCount).toBe(1);
       expect(h.scrapePageRange).toHaveBeenCalled();
     });

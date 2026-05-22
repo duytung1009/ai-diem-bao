@@ -164,7 +164,7 @@ onActivated(async () => {
       <StepTimeline
         v-if="isProcessing && activePipeline"
         :pipeline="activePipeline"
-        :show-cancel="isScraping"
+        :show-cancel="isProcessing"
         @cancel="handleCancel"
       />
       <ProgressIndicator
@@ -174,7 +174,7 @@ onActivated(async () => {
         :scrape-delay-ms="currentConfig?.scrapeDelayMs ?? 2000"
         :message="simpleLoadingText || undefined"
         fallback-message="Đang tóm tắt..."
-        :show-cancel="isScraping"
+        :show-cancel="isProcessing"
         @cancel="handleCancel"
       />
 

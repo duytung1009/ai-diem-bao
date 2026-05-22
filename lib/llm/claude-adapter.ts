@@ -1,16 +1,14 @@
 import type { ScrapedPost, LLMConfig } from '../types';
-import type { LLMProvider, LLMResponse } from './types';
+import type { LLMProvider, LLMResponse, LLMOptions } from './types';
 import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
 import { withRetry } from './retry';
-import { mergeAbortSignals } from './utils';
+import { mergeAbortSignals, formatPostsForLLM } from './utils';
 
 export class ClaudeAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
 
-  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal): Promise<LLMResponse> {
-    const userContent = posts
-      .map((p) => `[${p.author}] (#${p.postNumber}):\n${p.content}`)
-      .join('\n\n---\n\n');
+  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal, _options?: LLMOptions): Promise<LLMResponse> {
+    const userContent = formatPostsForLLM(posts);
 
     const response = await this.chatCompletion([
       { role: 'user', content: userContent },

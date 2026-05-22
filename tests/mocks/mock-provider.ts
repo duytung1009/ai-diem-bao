@@ -1,5 +1,5 @@
 import type { ScrapedPost } from '@/lib/types';
-import type { LLMProvider, LLMResponse } from '@/lib/llm/types';
+import type { LLMProvider, LLMResponse, LLMOptions } from '@/lib/llm/types';
 
 export interface MockProviderOptions {
   responses?: string[];
@@ -29,7 +29,7 @@ export class MockLLMProvider implements LLMProvider {
     this.abortAfter = options.abortAfter ?? Infinity;
   }
 
-  async summarize(_posts: ScrapedPost[], _systemPrompt: string, _signal?: AbortSignal): Promise<LLMResponse> {
+  async summarize(_posts: ScrapedPost[], _systemPrompt: string, _signal?: AbortSignal, _options?: LLMOptions): Promise<LLMResponse> {
     this.callCount++;
     this._lastPosts = _posts;
 

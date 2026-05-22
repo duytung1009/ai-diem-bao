@@ -1,21 +1,20 @@
 import type { ScrapedPost, LLMConfig } from '../types';
-import type { LLMProvider, LLMResponse } from './types';
+import type { LLMProvider, LLMResponse, LLMOptions } from './types';
+import { JSON_SCHEMAS } from './json-schemas';
 import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
 import { withRetry } from './retry';
-import { mergeAbortSignals } from './utils';
+import { mergeAbortSignals, formatPostsForLLM } from './utils';
 
 export class OpenAIAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
 
-  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal): Promise<LLMResponse> {
-    const userContent = posts
-      .map((p) => `[${p.author}] (#${p.postNumber}):\n${p.content}`)
-      .join('\n\n---\n\n');
+  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal, options?: LLMOptions): Promise<LLMResponse> {
+    const userContent = formatPostsForLLM(posts);
 
     const response = await this.chatCompletion([
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userContent },
-    ], signal);
+    ], signal, options);
 
     return response;
   }
@@ -24,7 +23,7 @@ export class OpenAIAdapter implements LLMProvider {
     try {
       await this.chatCompletion([
         { role: 'user', content: 'Respond with "OK" only.' },
-      ]);
+      ], undefined, { jsonMode: false });
       return true;
     } catch {
       return false;
@@ -34,6 +33,7 @@ export class OpenAIAdapter implements LLMProvider {
   private async chatCompletion(
     messages: Array<{ role: string; content: string }>,
     externalSignal?: AbortSignal,
+    options?: LLMOptions,
   ): Promise<LLMResponse> {
     return withRetry(async () => {
       const baseUrl = this.config.baseUrl.replace(/\/+$/, '');
@@ -42,6 +42,15 @@ export class OpenAIAdapter implements LLMProvider {
       const timeoutCtrl = new AbortController();
       const timeoutId = setTimeout(() => timeoutCtrl.abort(), this.config.timeoutMs ?? 120000);
       const merged = mergeAbortSignals(timeoutCtrl.signal, externalSignal);
+
+      const jsonMode = options?.jsonMode !== false;
+      const responseFormat = jsonMode
+        ? this.config.provider === 'openai'
+          ? { response_format: { type: 'json_object' as const } }
+          : this.config.provider === 'custom' && options?.schemaName
+            ? { response_format: JSON_SCHEMAS[options.schemaName] }
+            : undefined
+        : undefined;
 
       try {
         const res = await fetch(url, {
@@ -55,6 +64,7 @@ export class OpenAIAdapter implements LLMProvider {
             messages,
             temperature: this.config.temperature,
             max_tokens: this.config.maxTokens ?? 4096,
+            ...(responseFormat ?? {}),
           }),
           signal: merged.signal,
         });

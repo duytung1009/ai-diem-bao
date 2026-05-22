@@ -1,18 +1,16 @@
 import type { ScrapedPost, LLMConfig } from '../types';
-import type { LLMProvider, LLMResponse } from './types';
+import type { LLMProvider, LLMResponse, LLMOptions } from './types';
 import { llmErrorFromStatus, LLMError, LLMErrorCode } from '../errors';
 import { withRetry } from './retry';
-import { mergeAbortSignals } from './utils';
+import { mergeAbortSignals, formatPostsForLLM } from './utils';
 
 export class GeminiAdapter implements LLMProvider {
   constructor(private config: LLMConfig) {}
 
-  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal): Promise<LLMResponse> {
-    const userContent = posts
-      .map((p) => `[${p.author}] (#${p.postNumber}):\n${p.content}`)
-      .join('\n\n---\n\n');
+  async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal, options?: LLMOptions): Promise<LLMResponse> {
+    const userContent = formatPostsForLLM(posts);
 
-    return this.generateContent(systemPrompt, userContent, signal);
+    return this.generateContent(systemPrompt, userContent, signal, options?.jsonMode !== false);
   }
 
   async testConnection(): Promise<boolean> {
@@ -20,6 +18,8 @@ export class GeminiAdapter implements LLMProvider {
       await this.generateContent(
         'You are a helpful assistant.',
         'Respond with "OK" only.',
+        undefined,
+        false,
       );
       return true;
     } catch {
@@ -31,6 +31,7 @@ export class GeminiAdapter implements LLMProvider {
     systemInstruction: string,
     userMessage: string,
     externalSignal?: AbortSignal,
+    jsonMode: boolean = true,
   ): Promise<LLMResponse> {
     const apiKey = this.config.apiKey;
     if (!apiKey) {
@@ -71,6 +72,7 @@ export class GeminiAdapter implements LLMProvider {
             generationConfig: {
               temperature: this.config.temperature,
               maxOutputTokens: this.config.maxTokens ?? 4096,
+              ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
               ...(this.config.thinkingEnabled === false
                 ? { thinkingConfig: { thinkingBudget: 0 } }
                 : {

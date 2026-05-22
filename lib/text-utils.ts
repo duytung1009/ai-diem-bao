@@ -8,3 +8,7 @@ export function normalizeWhitespace(text: string): string {
     .join('\n')
     .trim();
 }
+
+export function sanitizeQuotesForLLM(text: string): string {
+  return text.replace(/"/g, '\u201C').replace(/"/g, '\u201D').replace(/"/g, '\u201C');
+}

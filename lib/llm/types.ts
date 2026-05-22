@@ -1,7 +1,13 @@
 import type { ScrapedPost } from '../types';
+import type { SchemaName } from './json-schemas';
+
+export interface LLMOptions {
+  jsonMode?: boolean;
+  schemaName?: SchemaName;
+}
 
 export interface LLMProvider {
-  summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal): Promise<LLMResponse>;
+  summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal, options?: LLMOptions): Promise<LLMResponse>;
   testConnection(): Promise<boolean>;
 }
 

@@ -1,62 +1,48 @@
 // ─── Summary Prompt — Section Defaults ───────────────────────────
 // Each section is independently editable. Build with buildSummaryPrompt().
 
-export const SUMMARY_DEFAULT_RULES = `BẮT BUỘC:
-- Output PHẢI là JSON hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
-- Viết bằng tiếng Việt
-- Giữ bản tóm tắt dưới {wordCap} từ
-- Không thêm thông tin ngoài nội dung các bài viết
-- BẮT BUỘC giữ tên tác giả khi đề cập quan điểm
-- Trích dẫn PHẢI là câu nguyên văn từ bài viết (1-2 câu), kèm số bài (#N)
-- Mỗi quan điểm PHẢI có ít nhất 1 trích dẫn
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
+export const SUMMARY_DEFAULT_RULES = `Yêu cầu:
+- Giữ toàn bộ nội dung tóm tắt dưới {wordCap} từ.
+- Trích dẫn nguyên bản: Trường text trong quotes bắt buộc phải copy-paste nguyên văn 100% từ bài viết. KHÔNG tự ý sửa chữ, KHÔNG chuyển câu nói của tác giả sang ngôi thứ ba.
 {authorCrossRef}`;
 
 export const SUMMARY_DEFAULT_STRUCTURE = `Trả về JSON theo đúng format sau:
 {
-  "summary": "Tóm tắt nội dung chính (2-3 đoạn ngắn)",
+  "summary": "Tóm tắt nội dung chính và cốt truyện của thớt drama (2-3 đoạn ngắn, mô tả rõ ai đang phốt ai, vấn đề cốt lõi là gì)",
   "opinions": [
     {
-      "title": "Tên/mô tả quan điểm",
-      "description": "Mô tả chi tiết quan điểm (2-3 câu)",
+      "title": "Tên hoặc mô tả ngắn gọn về phe/luồng quan điểm (ví dụ: 'Phe bênh chủ thớt', 'Phe anti/bóc phốt', 'Phe trung lập hóng biến/tấu hài')",
+      "description": "Mô tả chi tiết luận điểm vật nhau của phe này (2-3 câu)",
       "supporters": ["Tên tác giả 1", "Tên tác giả 2"],
       "quotes": [
-        {"author": "Tên tác giả", "postNumber": 5, "text": "Trích dẫn nguyên văn từ bài viết"}
+        {"author": "Tên tác giả", "postNumber": 5, "text": "Trích dẫn nguyên văn câu nói của tác giả này từ bài viết, không lệch một ly"}
       ]
     }
   ],
-  "conclusion": "Kết luận hoặc đồng thuận chung (nếu có)"
+  "conclusion": "Kết luận hoặc cục diện hiện tại của thớt (Ví dụ: Thớt vẫn đang vật nhau chưa hồi kết, hoặc các phe đã quay xe chuyển sang tấu hài...)"
 }`;
 
 export const SUMMARY_DEFAULT_TASKS: Record<'direct' | 'map' | 'reduce', string> = {
-  direct: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
-
-Nhiệm vụ: Đọc các bài viết trong topic và tóm tắt thành JSON có cấu trúc.
-
-QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
-- KHÔNG chỉ đọc nghĩa đen. Hãy phân tích ý định thực sự của tác giả đằng sau mỗi bài viết.
-- Khi tác giả dùng giọng điệu mỉa mai, châm biếm, hoặc kể lại hành động của người khác — đó thường là PHÊ PHÁN hoặc TỐ CÁO, không phải đồng tình.
-- Ví dụ: "Nó chạy dàn bot trên OFFB. Lấy ảnh Hồng Kông bảo Hà Nội sau này cũng thế" → Ý tác giả là TỐ CÁO có người thao túng thông tin, KHÔNG phải đang so sánh quy hoạch.
-- Phân biệt rõ: (1) Người BỊ tố cáo/làm trò cười vs (2) Người TỐ CÁO/phê phán hành vi đó.
-- Khi một tác giả "kể lại" việc người khác làm gì đó (vd: "thấy nó đăng...", "bọn nó đang..."), thường là đang PHÊ PHÁN hành vi đó.
-- Chú ý các từ khóa暗示: "lại còn", "thảo nào", "hèn gì", "chém gió", "tẩy trắng", "định hướng", "ném đá", "gây war" — báo hiệu giọng điệu không trung lập.`,
+  direct: `Bạn là một Vozer lâu năm, hãy đọc các bài viết trong thớt drama dưới đây để trích xuất dữ liệu. Để nội dung chính xác và đậm chất VOZ, hãy áp dụng các tư duy sau:
+  - Gom nhóm theo phe "vật nhau": Diễn đàn VOZ luôn có các phe đối lập. Khi bóc tách các thực thể vào mảng opinions, hãy coi mỗi "quan điểm" là một phe (Ví dụ: Phe bênh chủ thớt, Phe anti/bóc phốt, Phe trung lập hóng biến/tấu hài). Gom tất cả các user cùng chung tiếng nói vào mảng supporters tương ứng.
+  - Bắt bài kháy đểu (Sarcasm): Các câu viết có từ ngữ như "À ra là...", "Hay ho nhỉ...", "Thảo nào...", "Chém gió", "Định hướng" hoặc kể lại lời người khác thường mang ý nghĩa PHÊ PHÁN, MỈA MAI. Đừng đọc nghĩa đen kẻo xếp nhầm phe.
+  - Văn phong: Sử dụng linh hoạt các thuật ngữ VOZ (chủ thớt, seeder, lội thớt, ngược dòng, văn mẫu, acc clone) trong phần summary và description để bản tóm tắt tự nhiên nhất.
+`,
 
   map: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
 
-Nhiệm vụ: Đây là một phần của topic lớn — đọc các bài viết và tóm tắt thành JSON có cấu trúc. Giữ đủ chi tiết để gộp sau.
+Nhiệm vụ: Đây là một đoạn (segment) ngắn trích từ một topic lớn — đọc các bài viết và tóm tắt thành JSON có cấu trúc.  Hãy đọc và bóc tách dữ liệu theo các tiêu chí:
+  - Gom nhóm phe phái vào "opinions": Diễn đàn VOZ luôn chia phe vật nhau. Hãy coi mỗi luồng quan điểm là một phe (Ví dụ: Phe anti, Phe bênh vực, Phe tấu hài).
+  - Bắt bài kháy đểu (Sarcasm): Các câu có từ ngữ như 'À ra là...', 'Hay ho nhỉ...', 'Thảo nào...', 'Chém gió' thường mang ý nghĩa PHÊ PHÁN, MỈA MAI. Đừng đọc nghĩa đen kẻo xếp nhầm user vào sai phe.
+  - Thu thập tối đa: Giữ đầy đủ các chi tiết, luận điểm của các bên và các trích dẫn đắt giá nhất trong phân đoạn này để phục vụ cho việc tổng hợp ở bước sau.
+`,
 
-QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
-- KHÔNG chỉ đọc nghĩa đen. Hãy phân tích ý định thực sự của tác giả đằng sau mỗi bài viết.
-- Khi tác giả dùng giọng điệu mỉa mai, châm biếm, hoặc kể lại hành động của người khác — đó thường là PHÊ PHÁN hoặc TỐ CÁO, không phải đồng tình.
-- Phân biệt rõ: (1) Người BỊ tố cáo/làm trò cười vs (2) Người TỐ CÁO/phê phán hành vi đó.`,
-
-  reduce: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
-
-Nhiệm vụ: Bạn nhận nhiều bản tóm tắt từ các phần khác nhau của cùng một topic. Hãy gộp thành 1 JSON hoàn chỉnh.
-
-QUAN TRỌNG — ĐỌC HIỂU ẨN Ý:
-- Khi gộp, nếu cùng một tác giả xuất hiện ở nhiều phần với cùng quan điểm — chỉ đếm 1 lần.
-- Phân biệt rõ: (1) Người BỊ tố cáo/làm trò cười vs (2) Người TỐ CÁO/phê phán hành vi đó.`,
+  reduce: `Bạn là một Vozer lão thành. Bạn nhận được danh sách các bản tóm tắt JSON (từ các phân đoạn khác nhau của cùng một thớt). Hãy hợp nhất chúng thành MỘT bản JSON duy nhất theo các logic sau:
+  - Gộp "opinions": Tìm các quan điểm/phe phái tương đồng giữa các đoạn để hợp nhất lại. Viết lại "title" và "description" của phe đó một cách bao quát và mạch lạc nhất cho toàn thớt.
+  - Lọc trùng "supporters": Gom danh sách các tác giả thuộc cùng một phe lại với nhau. Nếu một tác giả xuất hiện ở nhiều phân đoạn với cùng một quan điểm, CHỈ đếm và giữ lại tên người đó 1 lần duy nhất (Deduplicate).
+  - Hợp nhất "quotes": Gom các trích dẫn tương ứng của phe đó vào mảng "quotes". Loại bỏ bớt các trích dẫn trùng lặp hoặc mờ nhạt để tránh quá tải dung lượng.
+  - Chuẩn hóa văn phong VOZ: Viết lại trường "summary" và "conclusion" cho toàn bộ thớt một cách tự nhiên, hấp dẫn, sử dụng linh hoạt các từ ngữ diễn đàn (vật nhau, phốt, seeder, lội thớt, acc clone).
+`,
 };
 
 /** Build a complete summary prompt from 3 independently-editable sections.
@@ -102,15 +88,13 @@ Yêu cầu:
 // ─── Knowledge Prompt — Section Defaults ─────────────────────────
 // Each section is independently editable. Build with buildKnowledgePrompt().
 
-export const KNOWLEDGE_DEFAULT_RULES = `BẮT BUỘC:
-- Output PHẢI là JSON array hợp lệ, KHÔNG có text nào khác ngoài JSON (không có markdown code fence)
+export const KNOWLEDGE_DEFAULT_RULES = `Yêu cầu:
 - Viết bằng tiếng Việt
 - Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
 - Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
 - Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
 - category: phân loại kiến thức vào nhóm ngắn gọn (1-3 từ, vd: "Phương pháp nuôi con", "Dinh dưỡng", "Sức khỏe", "Tài chính", "Kỹ thuật", "Kinh nghiệm cá nhân", v.v.)
-- Tối đa {cap} entries (ưu tiên chất lượng hơn số lượng)
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế`;
+- Tối đa {cap} entries (ưu tiên chất lượng hơn số lượng)`;
 
 export const KNOWLEDGE_DEFAULT_STRUCTURE = `Trả về JSON array theo đúng format sau:
 [
@@ -165,9 +149,7 @@ Input bạn sẽ nhận:
 - Bản tóm tắt JSON (SummaryJSON: summary, opinions, conclusion)
 
 BẮT BUỘC:
-- Output PHẢI là JSON thuần (KHÔNG có markdown code fence, KHÔNG có text ngoài JSON)
 - Tất cả nội dung bằng tiếng Việt, trừ quote giữ nguyên gốc
-- TUYỆT ĐỐI không dùng dấu ngoặc kép (") trong nội dung text — dùng dấu nháy đơn (') thay thế
 - notableComments PHẢI có đúng 3 items: 1 'defining' + 1 'insightful' + 1 'meme'
 - conclusion.breakdown: các percent phải cộng đúng 100
 - userProfiles: 2-4 nhóm

@@ -225,7 +225,7 @@ export async function summarizeTopic(
   }
 
   // Direct summarization for small topics
-  const response = await provider.summarize(posts, systemPrompt, signal);
+  const response = await provider.summarize(posts, systemPrompt, signal, { schemaName: 'summary' });
   const json = parseSummaryJSON(response.content);
   return json ? JSON.stringify(json) : response.content;
 }
@@ -263,11 +263,11 @@ export async function researchTopic(
       { author: 'CONTEXT', content: mapResult, timestamp: '', postNumber: 0 },
       questionPost,
     ] as ScrapedPost[];
-    const response = await provider.summarize(condensedPosts, systemPrompt, signal);
+    const response = await provider.summarize(condensedPosts, systemPrompt, signal, { jsonMode: false });
     return response.content;
   }
 
-  const response = await provider.summarize(allPosts, systemPrompt, signal);
+  const response = await provider.summarize(allPosts, systemPrompt, signal, { jsonMode: false });
   return response.content;
 }
 
@@ -296,7 +296,7 @@ export async function extractKnowledge(
   };
 
   onProgress?.('Đang trích xuất kiến thức...');
-  const response = await provider.summarize([topicContextPost, ...posts], systemPrompt, signal);
+  const response = await provider.summarize([topicContextPost, ...posts], systemPrompt, signal, { schemaName: 'knowledge' });
   return response.content;
 }
 
@@ -326,7 +326,7 @@ export async function extractKnowledgeChunk(
   };
 
   onProgress?.('Đang trích xuất kiến thức...');
-  const response = await provider.summarize([topicContextPost, ...chunkPosts], systemPrompt, signal);
+  const response = await provider.summarize([topicContextPost, ...chunkPosts], systemPrompt, signal, { schemaName: 'knowledge' });
   return response.content;
 }
 
@@ -361,7 +361,7 @@ export async function reduceKnowledgeChunks(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([combinedPost], systemPrompt, signal);
+  const response = await provider.summarize([combinedPost], systemPrompt, signal, { schemaName: 'knowledge' });
   return response.content;
 }
 
@@ -479,7 +479,7 @@ export async function generateThreadAnalysis(
     postNumber: 0,
   };
 
-  const response = await provider.summarize([inputPost], systemPrompt, signal);
+  const response = await provider.summarize([inputPost], systemPrompt, signal, { schemaName: 'analysis' });
   const result = parseThreadAnalysisJSON(response.content);
   if (!result) {
     throw new Error('Không thể parse kết quả phân tích thread. LLM trả về dữ liệu không hợp lệ.');
@@ -563,7 +563,7 @@ async function summaryChunks(
 
   if (chunks.length === 1) {
     // No chunking needed
-    const response = await provider.summarize(chunks[0], resolvedMapPrompt, signal);
+    const response = await provider.summarize(chunks[0], resolvedMapPrompt, signal, { schemaName: 'summary' });
     return response.content;
   }
 
@@ -573,7 +573,7 @@ async function summaryChunks(
   const partialSummaries: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(`Đang tóm tắt phần ${i + 1}/${chunks.length}...`, i + 1, total);
-    const response = await provider.summarize(chunks[i], resolvedMapPrompt, signal);
+    const response = await provider.summarize(chunks[i], resolvedMapPrompt, signal, { schemaName: 'summary' });
     partialSummaries.push(response.content);
 
     // Small delay between requests to avoid rate limiting
@@ -613,7 +613,7 @@ async function summaryChunks(
     } as ScrapedPost,
   ];
 
-  const finalResponse = await provider.summarize(reduceChunks, resolvedReducePrompt, signal);
+  const finalResponse = await provider.summarize(reduceChunks, resolvedReducePrompt, signal, { schemaName: 'summary' });
   return finalResponse.content;
 }
 
@@ -738,7 +738,7 @@ async function reduceSegmentSummaries(
     const label = depth === 0 ? 'Đang tạo tóm tắt tổng quan...' : `Đang gộp tóm tắt (lớp ${depth + 1})...`;
     onProgress?.(label);
     const post: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content, timestamp: '', postNumber: 0 }];
-    const response = await provider.summarize(post, reduceSummaryPrompt, signal);
+    const response = await provider.summarize(post, reduceSummaryPrompt, signal, { schemaName: 'summary' });
     return response.content;
   }
 
@@ -756,7 +756,7 @@ async function reduceSegmentSummaries(
     onProgress?.(`Đang gộp nhóm ${g + 1}/${groups.length} (lớp ${depth + 1})...`, g + 1, groups.length);
     const groupContent = buildReduceContent(groups[g]);
     const groupPost: ScrapedPost[] = [{ author: 'PARTIAL_SUMMARIES', content: groupContent, timestamp: '', postNumber: 0 }];
-    const response = await provider.summarize(groupPost, reduceSummaryPrompt, signal);
+    const response = await provider.summarize(groupPost, reduceSummaryPrompt, signal, { schemaName: 'summary' });
     const json = parseSummaryJSON(response.content);
     intermediates.push(json ? JSON.stringify(json) : response.content);
 

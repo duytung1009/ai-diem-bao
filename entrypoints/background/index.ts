@@ -2,9 +2,10 @@ import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/c
 import { summarizeTopic, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
+import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats } from '@/lib/notebook-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep } from '@/lib/types';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon
@@ -90,7 +91,7 @@ export default defineBackground(() => {
           fetch(url, { credentials: 'include' })
             .then(async (res) => {
               if (!res.ok) {
-                sendResponse({ ok: false, status: res.status, html: '' });
+                sendResponse({ ok: false, status: res.status, html: '', finalUrl: res.url });
                 return;
               }
               const html = await res.text();
@@ -145,6 +146,69 @@ case 'SAVE_CACHED_TOPIC': {
             .then(sendResponse)
             .catch(() => sendResponse([]));
           return true;
+
+        case 'GET_NOTEBOOK_ENTRIES': {
+          const filters = message.payload as { topicUrl?: string; category?: string; tag?: string; search?: string; orphanOnly?: boolean } | undefined;
+          const promise = filters?.topicUrl
+            ? notebookGetByTopic(filters.topicUrl)
+            : notebookGetAll();
+          promise.then(async entries => {
+            // Lazy orphan: group by sourceTopicUrl, check in parallel
+            const urlToEntries = new Map<string, typeof entries>();
+            entries.forEach(e => {
+              if (e.orphaned) return;
+              const existing = urlToEntries.get(e.sourceTopicUrl);
+              if (existing) existing.push(e);
+              else urlToEntries.set(e.sourceTopicUrl, [e]);
+            });
+            if (urlToEntries.size > 0) {
+              const results = await Promise.all(
+                [...urlToEntries.keys()].map(url =>
+                  dbGet(url).then(exists => ({ url, exists })).catch(() => ({ url, exists: null as unknown }))
+                )
+              );
+              for (const { url, exists } of results) {
+                if (!exists) await notebookOrphanByTopic(url).catch(() => {});
+              }
+            }
+            let filtered = entries;
+            if (filters?.category) filtered = filtered.filter(e => e.category === filters.category);
+            if (filters?.tag) filtered = filtered.filter(e => e.tags.includes(filters.tag!));
+            if (filters?.orphanOnly) filtered = filtered.filter(e => e.orphaned);
+            if (filters?.search) {
+              const q = filters.search.toLowerCase();
+              filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.content.toLowerCase().includes(q));
+            }
+            sendResponse(filtered);
+          }).catch(() => sendResponse([]));
+          return true;
+        }
+
+        case 'GET_NOTEBOOK_STATS':
+          notebookGetStats().then(sendResponse).catch(() => sendResponse({ totalEntries: 0, topicCount: 0, orphanCount: 0, categories: [] }));
+          return true;
+
+        case 'UPSERT_NOTEBOOK_ENTRY':
+          notebookPut(message.payload as NotebookEntry).then(() => sendResponse({ success: true })).catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+
+        case 'DELETE_NOTEBOOK_ENTRY': {
+          const { id } = message.payload as { id: string };
+          notebookDelete(id).then(() => sendResponse({ success: true })).catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+        }
+
+        case 'ORPHAN_NOTEBOOK_BY_TOPIC': {
+          const { topicUrl } = message.payload as { topicUrl: string };
+          notebookOrphanByTopic(topicUrl).then(() => sendResponse({ success: true })).catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+        }
+
+        case 'DELETE_NOTEBOOK_BY_TOPIC': {
+          const { topicUrl } = message.payload as { topicUrl: string };
+          notebookDeleteByTopic(topicUrl).then(() => sendResponse({ success: true })).catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+        }
 
         default:
           return false;
@@ -271,7 +335,7 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
     case 'reduce_knowledge_chunks':
       return { workflow: 'knowledge', steps: [pendingStep('reduce', 'Tổng hợp kiến thức')] };
     case 'thread_analysis':
-      return { workflow: 'knowledge', steps: [pendingStep('analyze', 'Phân tích chủ đề')] };
+      return { workflow: 'knowledge', steps: [pendingStep('analyze', 'Phân tích thớt')] };
     default:
       return null;
   }
@@ -404,9 +468,26 @@ async function updateModelSpeedStats(model: string, totalTokens: number, elapsed
 function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const text = (fenceMatch ? fenceMatch[1] : raw).trim();
+  if (text.length < 10) {
+    throw new Error('LLM trả về dữ liệu quá ngắn, không thể parse kiến thức. Thử tăng "Max tokens" trong Cài đặt hoặc giảm số bài trong 1 lần trích xuất.');
+  }
   try {
-    let parsed: unknown[] = JSON.parse(text);
-    if (!Array.isArray(parsed)) return [];
+    const rawParsed: unknown = JSON.parse(text);
+    // Handle wrapped format { entries: [...] } from OpenAI Structured Outputs
+    // (root-level arrays are not supported by the API, so we wrap in an object).
+    let parsed: unknown[];
+    if (
+      rawParsed !== null &&
+      typeof rawParsed === 'object' &&
+      !Array.isArray(rawParsed) &&
+      Array.isArray((rawParsed as Record<string, unknown>).entries)
+    ) {
+      parsed = (rawParsed as Record<string, unknown>).entries as unknown[];
+    } else if (Array.isArray(rawParsed)) {
+      parsed = rawParsed;
+    } else {
+      return [];
+    }
     parsed = parsed.flat();
     const now = Date.now();
     return parsed
@@ -428,6 +509,9 @@ function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
         extractedAt: now,
       }));
   } catch {
+    if (text.length > 50) {
+      throw new Error('LLM trả về JSON không hợp lệ, không thể parse kiến thức. Dữ liệu có thể bị lỗi — thử lại hoặc tăng "Max tokens" trong Cài đặt.');
+    }
     return [];
   }
 }

@@ -44,3 +44,6 @@ export const FRESHNESS_ONE_WEEK_MS = 7 * FRESHNESS_ONE_DAY_MS;
 // Knowledge reduce — output overflow prevention
 export const TOKENS_PER_KNOWLEDGE_ENTRY = 100;
 export const REDUCE_OUTPUT_FRACTION = 0.35;
+// Knowledge chunks — hard cap on post tokens per chunk to prevent LLM overload
+// (models with 128K+ context would otherwise get 80K+ token chunks, degrading output quality)
+export const KNOWLEDGE_MAX_CHUNK_BUDGET = 12_000;

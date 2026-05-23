@@ -8,10 +8,10 @@ export const SUMMARY_DEFAULT_RULES = `Yêu cầu:
 
 export const SUMMARY_DEFAULT_STRUCTURE = `Trả về JSON theo đúng format sau:
 {
-  "summary": "Tóm tắt nội dung chính và cốt truyện của thớt drama (2-3 đoạn ngắn, mô tả rõ ai đang phốt ai, vấn đề cốt lõi là gì)",
+  "summary": "Tóm tắt nội dung chính và cốt truyện của thread drama (2-3 đoạn ngắn, mô tả rõ ai đang phốt ai, vấn đề cốt lõi là gì)",
   "opinions": [
     {
-      "title": "Tên hoặc mô tả ngắn gọn về phe/luồng quan điểm (ví dụ: 'Phe bênh chủ thớt', 'Phe anti/bóc phốt', 'Phe trung lập hóng biến/tấu hài')",
+      "title": "Tên hoặc mô tả ngắn gọn về phe/luồng quan điểm (ví dụ: 'Phe bênh chủ thread', 'Phe anti/bóc phốt', 'Phe trung lập hóng biến/tấu hài')",
       "description": "Mô tả chi tiết luận điểm vật nhau của phe này (2-3 câu)",
       "supporters": ["Tên tác giả 1", "Tên tác giả 2"],
       "quotes": [
@@ -19,29 +19,29 @@ export const SUMMARY_DEFAULT_STRUCTURE = `Trả về JSON theo đúng format sau
       ]
     }
   ],
-  "conclusion": "Kết luận hoặc cục diện hiện tại của thớt (Ví dụ: Thớt vẫn đang vật nhau chưa hồi kết, hoặc các phe đã quay xe chuyển sang tấu hài...)"
+  "conclusion": "Kết luận hoặc cục diện hiện tại của thread (Ví dụ: Thớt vẫn đang vật nhau chưa hồi kết, hoặc các phe đã quay xe chuyển sang tấu hài...)"
 }`;
 
 export const SUMMARY_DEFAULT_TASKS: Record<'direct' | 'map' | 'reduce', string> = {
-  direct: `Bạn là một Vozer lâu năm, hãy đọc các bài viết trong thớt drama dưới đây để trích xuất dữ liệu. Để nội dung chính xác và đậm chất VOZ, hãy áp dụng các tư duy sau:
-  - Gom nhóm theo phe "vật nhau": Diễn đàn VOZ luôn có các phe đối lập. Khi bóc tách các thực thể vào mảng opinions, hãy coi mỗi "quan điểm" là một phe (Ví dụ: Phe bênh chủ thớt, Phe anti/bóc phốt, Phe trung lập hóng biến/tấu hài). Gom tất cả các user cùng chung tiếng nói vào mảng supporters tương ứng.
+  direct: `Bạn là một Vozer lâu năm, hãy đọc các bài viết trong thread drama dưới đây để trích xuất dữ liệu. Để nội dung chính xác và đậm chất VOZ, hãy áp dụng các tư duy sau:
+  - Gom nhóm theo phe "vật nhau": Diễn đàn VOZ luôn có các phe đối lập. Khi bóc tách các thực thể vào mảng opinions, hãy coi mỗi "quan điểm" là một phe (Ví dụ: Phe bênh chủ thread, Phe anti/bóc phốt, Phe trung lập hóng biến/tấu hài). Gom tất cả các user cùng chung tiếng nói vào mảng supporters tương ứng.
   - Bắt bài kháy đểu (Sarcasm): Các câu viết có từ ngữ như "À ra là...", "Hay ho nhỉ...", "Thảo nào...", "Chém gió", "Định hướng" hoặc kể lại lời người khác thường mang ý nghĩa PHÊ PHÁN, MỈA MAI. Đừng đọc nghĩa đen kẻo xếp nhầm phe.
-  - Văn phong: Sử dụng linh hoạt các thuật ngữ VOZ (chủ thớt, seeder, lội thớt, ngược dòng, văn mẫu, acc clone) trong phần summary và description để bản tóm tắt tự nhiên nhất.
+  - Văn phong: Sử dụng linh hoạt các thuật ngữ VOZ (chủ thread, seeder, lội thread, ngược dòng, văn mẫu, acc clone) trong phần summary và description để bản tóm tắt tự nhiên nhất.
 `,
 
   map: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
 
-Nhiệm vụ: Đây là một đoạn (segment) ngắn trích từ một topic lớn — đọc các bài viết và tóm tắt thành JSON có cấu trúc.  Hãy đọc và bóc tách dữ liệu theo các tiêu chí:
+Nhiệm vụ: Đây là một đoạn (segment) ngắn trích từ một thread lớn — đọc các bài viết và tóm tắt thành JSON có cấu trúc.  Hãy đọc và bóc tách dữ liệu theo các tiêu chí:
   - Gom nhóm phe phái vào "opinions": Diễn đàn VOZ luôn chia phe vật nhau. Hãy coi mỗi luồng quan điểm là một phe (Ví dụ: Phe anti, Phe bênh vực, Phe tấu hài).
   - Bắt bài kháy đểu (Sarcasm): Các câu có từ ngữ như 'À ra là...', 'Hay ho nhỉ...', 'Thảo nào...', 'Chém gió' thường mang ý nghĩa PHÊ PHÁN, MỈA MAI. Đừng đọc nghĩa đen kẻo xếp nhầm user vào sai phe.
   - Thu thập tối đa: Giữ đầy đủ các chi tiết, luận điểm của các bên và các trích dẫn đắt giá nhất trong phân đoạn này để phục vụ cho việc tổng hợp ở bước sau.
 `,
 
-  reduce: `Bạn là một Vozer lão thành. Bạn nhận được danh sách các bản tóm tắt JSON (từ các phân đoạn khác nhau của cùng một thớt). Hãy hợp nhất chúng thành MỘT bản JSON duy nhất theo các logic sau:
-  - Gộp "opinions": Tìm các quan điểm/phe phái tương đồng giữa các đoạn để hợp nhất lại. Viết lại "title" và "description" của phe đó một cách bao quát và mạch lạc nhất cho toàn thớt.
+  reduce: `Bạn là một Vozer lão thành. Bạn nhận được danh sách các bản tóm tắt JSON (từ các phân đoạn khác nhau của cùng một thread). Hãy hợp nhất chúng thành MỘT bản JSON duy nhất theo các logic sau:
+  - Gộp "opinions": Tìm các quan điểm/phe phái tương đồng giữa các đoạn để hợp nhất lại. Viết lại "title" và "description" của phe đó một cách bao quát và mạch lạc nhất cho toàn thread.
   - Lọc trùng "supporters": Gom danh sách các tác giả thuộc cùng một phe lại với nhau. Nếu một tác giả xuất hiện ở nhiều phân đoạn với cùng một quan điểm, CHỈ đếm và giữ lại tên người đó 1 lần duy nhất (Deduplicate).
   - Hợp nhất "quotes": Gom các trích dẫn tương ứng của phe đó vào mảng "quotes". Loại bỏ bớt các trích dẫn trùng lặp hoặc mờ nhạt để tránh quá tải dung lượng.
-  - Chuẩn hóa văn phong VOZ: Viết lại trường "summary" và "conclusion" cho toàn bộ thớt một cách tự nhiên, hấp dẫn, sử dụng linh hoạt các từ ngữ diễn đàn (vật nhau, phốt, seeder, lội thớt, acc clone).
+  - Chuẩn hóa văn phong VOZ: Viết lại trường "summary" và "conclusion" cho toàn bộ thread một cách tự nhiên, hấp dẫn, sử dụng linh hoạt các từ ngữ diễn đàn (vật nhau, phốt, seeder, lội thread, acc clone).
 `,
 };
 
@@ -74,13 +74,13 @@ export const SUMMARY_PROMPT = buildSummaryPrompt('direct', {}, 500);
 
 export const RESEARCH_PROMPT = `Bạn là trợ lý AI tra cứu thông tin trong các cuộc thảo luận trên diễn đàn.
 
-Nhiệm vụ: Dựa vào các bài viết trong topic, hãy trả lời câu hỏi của người dùng một cách chính xác và có trích dẫn nguồn.
+Nhiệm vụ: Dựa vào các bài viết trong thread, hãy trả lời câu hỏi của người dùng một cách chính xác và có trích dẫn nguồn.
 
 Yêu cầu:
 - Viết bằng tiếng Việt
 - Trả lời trực tiếp, súc tích
 - Trích dẫn bài viết liên quan (ví dụ: "Theo [Tên tác giả] (#số bài):...")
-- Nếu topic không có thông tin liên quan, hãy nói rõ "Không tìm thấy thông tin về vấn đề này trong topic."
+- Nếu thread không có thông tin liên quan, hãy nói rõ "Không tìm thấy thông tin về vấn đề này trong thread."
 - Format Markdown, có thể dùng danh sách hoặc tiêu đề nếu phù hợp`;
 
 
@@ -89,38 +89,36 @@ Yêu cầu:
 // Each section is independently editable. Build with buildKnowledgePrompt().
 
 export const KNOWLEDGE_DEFAULT_RULES = `Yêu cầu:
-- Viết bằng tiếng Việt
-- Mỗi entry là một kiến thức độc lập, có thể hiểu mà không cần đọc toàn bộ topic
-- Chỉ trích xuất kiến thức thực sự hữu ích, bỏ qua chat rác, reaction đơn giản, off-topic
-- Tags phải từ danh sách: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'
-- category: phân loại kiến thức vào nhóm ngắn gọn (1-3 từ, vd: "Phương pháp nuôi con", "Dinh dưỡng", "Sức khỏe", "Tài chính", "Kỹ thuật", "Kinh nghiệm cá nhân", v.v.)
-- Tối đa {cap} entries (ưu tiên chất lượng hơn số lượng)`;
+- Mỗi entry phải là một kiến thức độc lập, hoàn chỉnh. Người đọc phải hiểu được nội dung đó mà không cần lội ngược lại thớt để tìm ngữ cảnh.
+- Chỉ trích xuất kiến thức thực sự có giá trị thực tế (thông số kỹ thuật, quy trình pháp lý, kinh nghiệm xử lý lỗi, hướng dẫn mua sắm, cảnh báo rủi ro). Bỏ qua hoàn toàn các comment rác, thảo luận cảm tính, toxic, seeder hoặc off-topic.
+- Toàn bộ tag trong mảng "tags" BẮT BUỘC phải chọn từ danh sách cố định sau, không tự chế tag mới: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'.
+- Trích xuất tối đa {cap} entries. Ưu tiên chất lượng và độ sâu của kiến thức hơn số lượng.
+- Viết bằng tiếng Việt toàn diện, mạch lạc, nghiêm túc.`;
 
 export const KNOWLEDGE_DEFAULT_STRUCTURE = `Trả về JSON array theo đúng format sau:
 [
   {
-    "title": "Tiêu đề ngắn gọn mô tả kiến thức (dưới 80 ký tự)",
-    "content": "Nội dung chi tiết 2-5 câu. Phải tự đứng được mà không cần context từ topic.",
-    "tags": ["tag1", "tag2"],
-    "category": "Tên nhóm",
+    "title": "Tiêu đề viết ở dạng khẳng định, mô tả trực tiếp kiến thức (dưới 80 ký tự)",
+    "content": "Nội dung chi tiết (từ 2 đến 5 câu). Phải chứa đầy đủ số liệu, giải pháp hoặc bài học kinh nghiệm để tự đứng độc lập được.",
+    "tags": ["kinh nghiệm", "cảnh báo"],
+    "category": "Tên nhóm chuyên mục ngắn gọn từ 1-3 từ (Ví dụ: 'Pháp lý', 'Kỹ thuật ô tô', 'Tài chính')",
     "source": { "author": "Tên tác giả", "postNumber": 5 }
   }
 ]`;
 
 export const KNOWLEDGE_DEFAULT_TASKS: Record<'extract' | 'chunk' | 'reduce', string> = {
-  extract: `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
+  extract: `Bạn là một chuyên gia phân tích dữ liệu, có nhiệm vụ "đãi cát tìm vàng" để trích xuất tri thức từ thớt thảo luận trên diễn đàn. Hãy đọc toàn bộ thớt và thực hiện:
+  - Quét qua các bài viết để nhặt ra những chia sẻ mang tính chuyên môn, thủ thuật thực tế hoặc bài học kinh nghiệm xương máu của người dùng.
+  - Đóng gói các thông tin đó thành các khối kiến thức tự đứng vững được, làm sạch các từ lóng diễn đàn không cần thiết trong phần "content" để đảm bảo tính lưu trữ lâu dài.`,
 
-Nhiệm vụ: Đọc các bài viết và trích xuất các kiến thức, mẹo, kinh nghiệm, thông tin quan trọng được chia sẻ.`,
+  chunk: `Bạn là một chuyên gia phân tích dữ liệu. Đây là một đoạn (segment) ngắn được cắt ra từ một thớt thảo luận lớn trên diễn đàn. Hãy thực hiện trích xuất dữ liệu trong đoạn này:
+  - Tìm và nhặt ra các kiến thức, mẹo, kinh nghiệm hoặc số liệu quan trọng xuất hiện riêng trong phân đoạn này.
+  - Vì đây là một phân đoạn nhỏ, hãy đảm bảo viết phần "content" thật đầy đủ và chi tiết, không viết vắn tắt, để chuẩn bị cho việc gộp dữ liệu ở bước sau không bị mất thông tin.`,
 
-  chunk: `Bạn là trợ lý AI chuyên trích xuất kiến thức hữu ích từ các cuộc thảo luận trên diễn đàn.
-
-Nhiệm vụ: Đọc các bài viết và trích xuất các kiến thức, mẹo, kinh nghiệm, thông tin quan trọng được chia sẻ.
-
-Lưu ý: Đây là một phần của topic, có thể có thêm bài viết ở các phần khác.`,
-
-  reduce: `Bạn là trợ lý AI chuyên hợp nhất và tổng hợp kiến thức.
-
-Nhiệm vụ: Nhận nhiều danh sách kiến thức (JSON arrays) được trích xuất từ các phần khác nhau của cùng một topic, sau đó merge, dedup và chọn lọc thành 1 danh sách cuối cùng.`,
+  reduce: `Bạn là một bộ lọc logic dữ liệu nâng cao, nhiệm vụ của bạn là hợp nhất các danh sách kiến thức (JSON arrays) được trích xuất từ các phân đoạn khác nhau của thớt thành một danh sách tối ưu duy nhất. Hãy thực hiện gộp dữ liệu theo các thuật toán sau:
+  - Hợp nhất & Lọc trùng (Deduplicate): Nếu có các kiến thức tương đồng hoặc trùng lặp về nội dung giữa các đoạn, hãy gộp chúng lại làm một. Viết lại "title" và "content" sao cho bao quát và đầy đủ chi tiết nhất từ các nguồn.
+  - Đồng bộ hóa mảng "tags" và "category" để chúng nhất quán sau khi gộp.
+  - Sắp xếp và chọn lọc lại để giữ lại tối đa {cap} entries có giá trị cao nhất theo đúng cấu trúc yêu cầu.`,
 };
 
 /** Build a complete knowledge prompt from 3 independently-editable sections.

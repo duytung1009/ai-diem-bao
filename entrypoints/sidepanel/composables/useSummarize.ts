@@ -646,11 +646,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const completedSegments = segmentSummaries.value.filter(isCompletedSegment);
     if (completedSegments.length === 0) return;
 
-    // Mark scrape step as done, set overall step to running
-    if (pl.pipeline.value) {
-      const scrapeStep = pl.pipeline.value.steps.find(s => s.status === 'running' && s.id.startsWith('scrape'));
-      if (scrapeStep) pl.pipeline.value = pl.markNextRunning(scrapeStep.id);
-    }
+    pl.markRunning('overall');
 
     const thisId = guardToken ?? summarizeGuard.begin();
     await reduceOverall(thisId);

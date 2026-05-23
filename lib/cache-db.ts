@@ -1,13 +1,14 @@
 import type { CachedTopic } from './types';
 
 const DB_NAME = 'ai-diem-bao-cache';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'topics';
+const NOTEBOOK_STORE_NAME = 'notebookEntries';
 
 let db: IDBDatabase | null = null;
 let openingPromise: Promise<IDBDatabase> | null = null;
 
-function getDB(): Promise<IDBDatabase> {
+export function getDB(): Promise<IDBDatabase> {
   if (db) return Promise.resolve(db);
   if (openingPromise) return openingPromise;
   openingPromise = new Promise((resolve, reject) => {
@@ -24,6 +25,14 @@ function getDB(): Promise<IDBDatabase> {
         if (!store.indexNames.contains('by-bookmarked')) {
           store.createIndex('by-bookmarked', 'bookmarked', { unique: false });
         }
+      }
+      if (oldVersion < 3) {
+        const store = database.createObjectStore(NOTEBOOK_STORE_NAME, { keyPath: 'id' });
+        store.createIndex('by-topicUrl', 'sourceTopicUrl', { unique: false, multiEntry: false });
+        store.createIndex('by-savedAt', 'savedAt', { unique: false, multiEntry: false });
+        store.createIndex('by-category', 'category', { unique: false, multiEntry: false });
+        store.createIndex('by-tags', 'tags', { unique: false, multiEntry: true });
+        store.createIndex('by-orphaned', 'orphaned', { unique: false, multiEntry: false });
       }
     };
     request.onsuccess = () => {

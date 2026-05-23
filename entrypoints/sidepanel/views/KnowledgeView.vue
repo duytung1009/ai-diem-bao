@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onActivated, computed } from 'vue';
-import type { CachedTopic, KnowledgeEntry, KnowledgeChunk, LLMConfig, ScrapedPost } from '@/lib/types';
-import { sendMessage } from '@/lib/messaging';
+import { ref, onActivated, computed, watch, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { CachedTopic, KnowledgeEntry, KnowledgeChunk, LLMConfig, ScrapedPost, NotebookEntry } from '@/lib/types';
+import { sendMessage, sendMessageQuiet } from '@/lib/messaging';
 import { estimateTokens, calculateSegmentBudget, getContextLimit, getThinkingOverhead } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
 import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
-import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION } from '@/lib/constants';
+import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION, KNOWLEDGE_MAX_CHUNK_BUDGET } from '@/lib/constants';
 import { buildKnowledgePrompt } from '@/lib/prompts';
 import { buildKnowledgePipeline, markFirstStepRunning } from '@/lib/pipeline-builder';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
@@ -33,6 +34,8 @@ const selectedCategory = ref<string | null>(null);
 const expandedIds = ref<Set<string>>(new Set());
 const showSavedOnly = ref(false);
 const confirmingExtract = ref(false);
+const confirmingRestore = ref(false);
+const showClearDataAction = ref(false);
 
 // F24: chunked flow state
 let activeExtractId = 0;
@@ -54,6 +57,57 @@ const estimatedExtractApiCalls = computed(() => {
   return estimateExtractCalls(chunks.length);
 });
 const showExtractCostWarning = computed(() => estimatedExtractApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
+
+/** Entries empty but knowledgeChunks exist → user can restore extracted entries without re-scraping */
+const canRestore = computed(() => {
+  const ct = cachedTopic.value;
+  return !!ct?.knowledgeChunks?.length && !entries.value.some(e => !e.saved);
+});
+
+const estimatedRestoreApiCalls = computed(() => {
+  if (!canRestore.value) return 0;
+  const len = cachedTopic.value?.knowledgeChunks?.length ?? 0;
+  return len <= 1 ? 0 : len;
+});
+const showRestoreCostWarning = computed(() => estimatedRestoreApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
+
+const route = useRoute();
+const router = useRouter();
+const focusId = computed(() => (route.query.focus as string | null) ?? null);
+const hasFocused = ref(false);
+
+watch(
+  () => [entries.value.length, focusId.value] as const,
+  async ([count, id]) => {
+    if (!id || count === 0 || hasFocused.value) return;
+    await nextTick();
+    const el = document.getElementById(`knowledge-entry-${id}`);
+    if (!el) return;
+    expandedIds.value = new Set([...expandedIds.value, id]);
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('ring-2', 'ring-blue-500');
+    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 2000);
+    hasFocused.value = true;
+    router.replace({ query: { ...route.query, focus: undefined } });
+  },
+  { immediate: true },
+);
+
+watch(() => route.fullPath, () => { hasFocused.value = false; });
+
+watch(() => route.query.restore, (val) => {
+  if (val === 'true' && canRestore.value) {
+    onRestoreClick();
+    router.replace({ query: { ...route.query, restore: undefined } });
+  }
+}, { immediate: true });
+
+watch(() => route.query.extract, (val) => {
+  if (val === 'true' && allPosts.value.length && !isLoading.value) {
+    onExtractClick();
+    router.replace({ query: { ...route.query, extract: undefined } });
+  }
+}, { immediate: true });
 
 const TAG_CLASSES: Record<string, string> = {
   'kinh nghiệm': 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
@@ -322,12 +376,13 @@ async function runDirectExtract(postsToProcess: ScrapedPost[], guardId: number, 
   const filteredNew = newEntries.filter(e => !excludedNums.has(e.source.postNumber));
   const merged = mergeSavedWithFresh(savedEntries, filteredNew);
 
+  const savedMerged = merged.filter(e => e.saved);
   entries.value = merged;
   expandedIds.value = new Set();
-  store.updateSelectedTopic({ knowledgeEntries: merged });
+  store.updateSelectedTopic({ knowledgeEntries: savedMerged });
   await sendMessage('SAVE_CACHED_TOPIC', {
     url: topicUrl,
-    knowledgeEntries: merged,
+    knowledgeEntries: savedMerged,
     knowledgeChunks: [chunk],
     lastKnowledgePostNumber: chunk.endPostNumber,
   }).catch(() => {});
@@ -341,6 +396,68 @@ function onExtractClick() {
   } else {
     handleExtract();
   }
+}
+
+function onRestoreClick() {
+  if (showRestoreCostWarning.value) {
+    confirmingRestore.value = true;
+  } else {
+    handleRestore();
+  }
+}
+
+async function handleRestore() {
+  confirmingRestore.value = false;
+  showClearDataAction.value = false;
+  const topicUrl = cachedTopic.value?.url;
+  if (!topicUrl) return;
+  const rawChunks = cachedTopic.value?.knowledgeChunks;
+  if (!rawChunks?.length) return;
+  const chunks = rawChunks.map(c => ({ ...c, entries: [...c.entries] })) as KnowledgeChunk[];
+  if (isLoading.value) return;
+
+  const thisId = ++activeExtractId;
+  error.value = '';
+  isLoading.value = true;
+  currentPhase.value = 'reducing';
+  currentChunkIndex.value = 0;
+  totalChunks.value = 0;
+
+  if (!currentConfig.value) {
+    const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
+    if (cfg) currentConfig.value = cfg;
+  }
+
+  try {
+    const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
+    await runReducePhase(chunks, excludedNums, thisId, topicUrl);
+  } catch (err) {
+    if (thisId !== activeExtractId) return;
+    const msg = err instanceof Error ? err.message : String(err);
+    error.value = msg;
+    if (msg.includes('Gộp kiến thức không trả về kết quả')) {
+      showClearDataAction.value = true;
+    }
+  } finally {
+    if (thisId === activeExtractId) {
+      isLoading.value = false;
+      llmTaskId.value = null;
+      currentPhase.value = 'idle';
+      currentChunkIndex.value = 0;
+      totalChunks.value = 0;
+    }
+  }
+}
+
+async function handleClearKnowledgeData() {
+  await optimisticUpdate({
+    knowledgeChunks: [],
+    knowledgeEntries: [],
+    lastKnowledgePostNumber: 0,
+    excludedKnowledgePostNumbers: [],
+  });
+  showClearDataAction.value = false;
+  error.value = '';
 }
 
 async function handleExtract() {
@@ -397,12 +514,13 @@ async function handleExtract() {
     }
 
     // 3. Decide path: direct (fits context, no existing chunks) or chunked
-    const budget = calculateSegmentBudget(
+    let budget = calculateSegmentBudget(
       currentConfig.value?.model ?? 'gpt-4o-mini',
       KNOWLEDGE_CHUNK_PROMPT_TOKENS,
       2000,
       currentConfig.value?.contextWindow,
     );
+    budget = Math.min(budget, KNOWLEDGE_MAX_CHUNK_BUDGET);
     const totalTokens = postsToProcess.reduce(
       (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
       0,
@@ -629,12 +747,13 @@ async function runReducePhase(
   const savedEntries = entries.value.filter(e => e.saved);
   const merged = mergeSavedWithFresh(savedEntries, filteredFinal);
 
+  const savedMerged = merged.filter(e => e.saved);
   entries.value = merged;
   expandedIds.value = new Set();
-  store.updateSelectedTopic({ knowledgeEntries: merged });
+  store.updateSelectedTopic({ knowledgeEntries: savedMerged });
   await sendMessage('SAVE_CACHED_TOPIC', {
     url: topicUrl,
-    knowledgeEntries: merged,
+    knowledgeEntries: savedMerged,
     knowledgeChunks: chunks,
     lastKnowledgePostNumber: chunks[chunks.length - 1].endPostNumber,
   }).catch(() => {});
@@ -652,11 +771,27 @@ function handleCancel() {
 }
 
 async function toggleSave(entry: KnowledgeEntry) {
+  const next = !entry.saved;
   const updated = entries.value.map(e =>
-    e.id === entry.id ? { ...e, saved: !e.saved } : e
+    e.id === entry.id ? { ...e, saved: next } : e
   ) as KnowledgeEntry[];
   entries.value = updated;
-  await optimisticUpdate({ knowledgeEntries: updated });
+  const saved = updated.filter(e => e.saved);
+  await optimisticUpdate({ knowledgeEntries: saved });
+
+  const topic = cachedTopic.value;
+  if (next && topic) {
+    const notebookEntry: NotebookEntry = {
+      ...entry,
+      saved: true,
+      sourceTopicUrl: topic.url,
+      sourceTopicTitle: topic.title,
+      savedAt: Date.now(),
+    };
+    sendMessageQuiet('UPSERT_NOTEBOOK_ENTRY', notebookEntry);
+  } else if (!next) {
+    sendMessageQuiet('DELETE_NOTEBOOK_ENTRY', { id: entry.id });
+  }
 }
 
 async function handleDelete(entry: KnowledgeEntry) {
@@ -666,7 +801,9 @@ async function handleDelete(entry: KnowledgeEntry) {
     entry.source.postNumber,
   ];
   entries.value = updated;
-  await optimisticUpdate({ knowledgeEntries: updated, excludedKnowledgePostNumbers: excluded });
+  const saved = updated.filter(e => e.saved);
+  await optimisticUpdate({ knowledgeEntries: saved, excludedKnowledgePostNumbers: excluded });
+  if (entry.saved) sendMessageQuiet('DELETE_NOTEBOOK_ENTRY', { id: entry.id });
 }
 
 async function handleClearTracking() {
@@ -682,7 +819,7 @@ async function handleClearTracking() {
   <div class="p-4 space-y-4">
     <!-- No topic selected -->
     <div v-if="!topicInfo" class="text-center py-8">
-      <p class="text-sm text-(--color-text-secondary)">Chưa chọn chủ đề.</p>
+      <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
       <button
         class="mt-3 text-sm text-blue-600 hover:text-blue-700"
         @click="$router.push('/')"
@@ -703,29 +840,48 @@ async function handleClearTracking() {
         </button>
       </div>
 
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">Kiến thức từ Topic</h2>
+      <h2 class="font-semibold text-sm text-(--color-text-primary)">Kiến thức từ thớt</h2>
 
       <!-- No posts warning -->
       <div v-if="!allPosts.length" class="alert alert-warning">
-        Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
+        Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
-      <!-- Extract button (no entries yet) — with optional confirm for high-cost topics -->
+      <!-- Restore button when entries empty but knowledgeChunks exist -->
       <template v-if="allPosts.length && !entries.length && !isLoading">
-        <button
-          v-if="!confirmingExtract"
-          class="w-full btn btn-primary"
-          @click="onExtractClick"
-        >
-          Trích xuất Kiến thức
-        </button>
-        <ConfirmInline
-          v-else
-          :message="`Trích xuất kiến thức từ topic này. Tiếp tục?`"
-          :warning="showExtractCostWarning ? `⚠️ Ước tính ~${estimatedExtractApiCalls} API calls. Chi phí có thể cao.` : undefined"
-          @confirm="handleExtract()"
-          @cancel="confirmingExtract = false"
-        />
+        <template v-if="canRestore">
+          <button
+            v-if="!confirmingRestore"
+            class="w-full btn btn-primary"
+            @click="onRestoreClick"
+          >
+            Khôi phục danh sách
+          </button>
+          <ConfirmInline
+            v-else
+            message="Khôi phục danh sách kiến thức từ dữ liệu đã trích xuất trước đó?"
+            :warning="showRestoreCostWarning ? `⚠️ Ước tính ~${estimatedRestoreApiCalls} API calls. Chi phí có thể cao.` : undefined"
+            @confirm="handleRestore()"
+            @cancel="confirmingRestore = false"
+          />
+        </template>
+        <!-- Extract button — only when no chunks to restore -->
+        <template v-else>
+          <button
+            v-if="!confirmingExtract"
+            class="w-full btn btn-primary"
+            @click="onExtractClick"
+          >
+            Trích xuất Kiến thức
+          </button>
+          <ConfirmInline
+            v-else
+            message="Trích xuất kiến thức từ thớt này. Tiếp tục?"
+            :warning="showExtractCostWarning ? `⚠️ Ước tính ~${estimatedExtractApiCalls} API calls. Chi phí có thể cao.` : undefined"
+            @confirm="handleExtract()"
+            @cancel="confirmingExtract = false"
+          />
+        </template>
       </template>
 
       <!-- Progress -->
@@ -743,15 +899,24 @@ async function handleClearTracking() {
       </template>
 
       <!-- Error -->
-      <div v-if="error" class="alert alert-error flex items-start gap-3">
-        <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <p class="text-sm flex-1">{{ error }}</p>
-        <button class="shrink-0 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors" @click="error = ''">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      <div v-if="error" class="alert alert-error">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
+          <p class="text-sm flex-1">{{ error }}</p>
+          <button class="shrink-0 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors" @click="error = ''; showClearDataAction = false">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <button
+          v-if="showClearDataAction"
+          class="btn btn-sm btn-danger mt-2 text-xs"
+          @click="handleClearKnowledgeData"
+        >
+          Xoá dữ liệu kiến thức và thử lại
         </button>
       </div>
 
@@ -831,13 +996,19 @@ async function handleClearTracking() {
               {{ cachedTopic.llmConfig.model }}
             </span>
           </span>
-          <button
-            v-if="allPosts.length"
-            class="text-blue-600 hover:text-blue-700"
-            @click="handleExtract"
+          <div class="flex items-center gap-2">
+            <button class="text-blue-600 hover:text-blue-700" @click="router.push('/notebook')">
+              Sổ tay
+            </button>
+            <span class="text-(--color-text-muted)">·</span>
+            <button
+              v-if="allPosts.length"
+              class="text-blue-600 hover:text-blue-700"
+              @click="handleExtract"
           >
             Trích xuất bài mới<span v-if="newPostsCount > 0"> ({{ newPostsCount }})</span>
           </button>
+          </div>
         </div>
 
         <!-- Clear tracking button -->
@@ -867,6 +1038,7 @@ async function handleClearTracking() {
                 <div
                   v-for="entry in group.entries"
                   :key="entry.id"
+                  :id="`knowledge-entry-${entry.id}`"
                   class="card"
                 >
             <!-- Header: always visible, click to expand -->
@@ -948,7 +1120,7 @@ async function handleClearTracking() {
 
       <!-- Empty state (has posts but no entries extracted) -->
       <div v-if="!isLoading && !entries.length && allPosts.length" class="text-center py-6">
-        <p class="text-xs text-(--color-text-muted)">Bấm nút phía trên để trích xuất kiến thức từ topic.</p>
+        <p class="text-xs text-(--color-text-muted)">Bấm nút phía trên để trích xuất kiến thức từ thớt.</p>
       </div>
     </template>
   </div>

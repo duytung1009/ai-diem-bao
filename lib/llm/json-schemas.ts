@@ -46,28 +46,37 @@ export const JSON_SCHEMAS = {
     json_schema: {
       name: 'KnowledgeArray',
       strict: true,
+      // OpenAI Structured Outputs requires root to be 'object' (arrays not supported at root level).
+      // We wrap in { entries: [...] } and unwrap in parseKnowledgeEntries.
       schema: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            title: { type: 'string' },
-            content: { type: 'string' },
-            tags: { type: 'array', items: { type: 'string' } },
-            category: { type: 'string' },
-            source: {
+        type: 'object',
+        properties: {
+          entries: {
+            type: 'array',
+            items: {
               type: 'object',
               properties: {
-                author: { type: 'string' },
-                postNumber: { type: 'integer' },
+                title: { type: 'string' },
+                content: { type: 'string' },
+                tags: { type: 'array', items: { type: 'string' } },
+                category: { type: 'string' },
+                source: {
+                  type: 'object',
+                  properties: {
+                    author: { type: 'string' },
+                    postNumber: { type: 'integer' },
+                  },
+                  required: ['author', 'postNumber'],
+                  additionalProperties: false,
+                },
               },
-              required: ['author', 'postNumber'],
+              required: ['title', 'content', 'tags', 'category', 'source'],
               additionalProperties: false,
             },
           },
-          required: ['title', 'content', 'tags', 'category', 'source'],
-          additionalProperties: false,
         },
+        required: ['entries'],
+        additionalProperties: false,
       },
     },
   },

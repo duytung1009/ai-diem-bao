@@ -2394,13 +2394,1002 @@
         "recommendedSubtasks": 3,
         "expansionPrompt": "Chia thành: (1) Test dynamic flow pipeline structure, (2) Test resume chỉ scrape trang thiếu, (3) Test không re-summarize segment cũ.",
         "updatedAt": "2026-05-18T08:29:56.326Z"
+      },
+      {
+        "id": "195",
+        "title": "Phase B: Sửa semantics knowledgeEntries và payload save trong KnowledgeView",
+        "description": "Đổi CachedTopic.knowledgeEntries chỉ lưu entries có saved=true. Trong KnowledgeView, khi save topic, gửi knowledgeEntries là mảng đã lọc. Khi load topic, entries được phục hồi chỉ từ saved entries.",
+        "details": "Sửa file `entrypoints/sidepanel/views/KnowledgeView.vue`:\n- Trong `saveCachedTopic`, thay `knowledgeEntries: entries.value` bằng `knowledgeEntries: entries.value.filter(e => e.saved)`.\n- Trong `loadTopicData`, set `entries.value = cachedTopic.knowledgeEntries` (chỉ saved).\n- Đảm bảo các hàm merge (mergeSavedWithFresh) vẫn hoạt động với entries mới (chưa saved).\n- Cập nhật kiểu CachedTopic trong types.ts: comment rõ semantics mới.",
+        "testStrategy": "Sau extract, save 2/5 entries. Đóng topic, mở lại → chỉ thấy 2 entries. Verify rằng knowledgeChunks vẫn lưu đầy đủ.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Sửa logic lọc entries trong saveCachedTopic và loadTopicData",
+            "description": "Thay đổi payload save để chỉ gửi entries có saved=true và khi load chỉ phục hồi từ saved entries.",
+            "dependencies": [],
+            "details": "Trong file KnowledgeView.vue, sửa hàm saveCachedTopic: thay knowledgeEntries: entries.value bằng knowledgeEntries: entries.value.filter(e => e.saved). Sửa loadTopicData: set entries.value = cachedTopic.knowledgeEntries.",
+            "status": "pending",
+            "testStrategy": "Sau khi sửa, save topic với 2/5 entries saved, load lại chỉ thấy 2 entries. Verify payload gửi lên backend.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật kiểu CachedTopic và đảm bảo merge functions hoạt động",
+            "description": "Cập nhật comment kiểu CachedTopic trong types.ts để làm rõ knowledgeEntries chỉ chứa saved entries. Kiểm tra các hàm merge như mergeSavedWithFresh vẫn hoạt động với entries mới (chưa saved).",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm comment giải thích semantics mới. Đảm bảo mergeSavedWithFresh xử lý đúng các entry chưa saved. Có thể cần sửa merge logic nếu cần.",
+            "status": "pending",
+            "testStrategy": "Chạy unit test hoặc manual test: tạo entries mới chưa saved, merge với saved entries, verify kết quả.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Thay đổi logic lọc entries khi save và load topic, đảm bảo chỉ lưu entries có saved=true. Cập nhật kiểu dữ liệu.",
+        "updatedAt": "2026-05-22T15:11:04.527Z"
+      },
+      {
+        "id": "196",
+        "title": "Phase B: Thêm nút 'Khôi phục danh sách' và handler handleRestore",
+        "description": "Thêm nút trong KnowledgeView khi entries trống nhưng knowledgeChunks tồn tại. Click gọi reduceKnowledgeChunksTask với chunks hiện có, có cost warning nếu vượt ngưỡng.",
+        "details": "Sửa `KnowledgeView.vue`:\n- Thêm computed `canRestore` dựa trên `cachedTopic.knowledgeChunks?.length > 0 && entries.value.length === 0`.\n- Render nút \"Khôi phục danh sách\" nếu canRestore.\n- Handler `handleRestore`: gọi `runReducePhase` với `entries = []` và `existingChunks = cachedTopic.knowledgeChunks`.\n- Trước khi gọi, hiển thị confirm nếu cost vượt threshold (dùng pattern confirmingExtract từ F26).",
+        "testStrategy": "Topic có 0 saved + có chunks → thấy nút. Click → reduce LLM call → entries hiện về (unsaved). Topic có chunks trống → nút disabled.",
+        "priority": "high",
+        "dependencies": [
+          "195"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm computed canRestore trong KnowledgeView",
+            "description": "Tạo computed property `canRestore` dựa trên `cachedTopic.knowledgeChunks?.length > 0 && entries.value.length === 0`.",
+            "dependencies": [],
+            "details": "Trong script setup hoặc options API của KnowledgeView.vue, thêm computed property `canRestore` kiểm tra điều kiện: cachedTopic.knowledgeChunks tồn tại và có length > 0, đồng thời entries (danh sách hiện tại) trống (entries.value.length === 0).",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "null"
+          },
+          {
+            "id": 2,
+            "title": "Render nút 'Khôi phục danh sách' theo điều kiện",
+            "description": "Hiển thị nút khi canRestore là true. Nút có thể là button hoặc element phù hợp.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong template của KnowledgeView.vue, thêm block v-if=\"canRestore\" chứa nút 'Khôi phục danh sách'. Nút nên có sự kiện click gọi handleRestore. Đảm bảo styling phù hợp với giao diện.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "null"
+          },
+          {
+            "id": 3,
+            "title": "Handler handleRestore với confirm cost",
+            "description": "Tạo handler handleRestore kiểm tra cost và hiển thị confirm nếu vượt ngưỡng, sau đó gọi runReducePhase.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong script, thêm function handleRestore. Sử dụng confirmingExtract pattern từ F26 để kiểm tra cost. Nếu cost vượt threshold, hiển thị confirm dialog. Sau đó gọi runReducePhase với entries=[] và existingChunks=cachedTopic.knowledgeChunks. Đảm bảo cập nhật UI sau khi restore.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "null"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thêm computed canRestore, hiển thị nút, và handler gọi reduceKnowledgeChunksTask với confirm nếu cost vượt ngưỡng.",
+        "updatedAt": "2026-05-22T15:19:40.960Z"
+      },
+      {
+        "id": "197",
+        "title": "Phase C: Bump DB_VERSION và thêm object store notebookEntries trong cache-db.ts",
+        "description": "Nâng DB_VERSION từ 2 lên 3, tạo object store `notebookEntries` với các index: by-topicUrl (dựa trên trường sourceTopicUrl), by-savedAt, by-category, by-tags (multiEntry: true), by-orphaned.",
+        "status": "done",
+        "dependencies": [
+          "195"
+        ],
+        "priority": "high",
+        "details": "Sửa `lib/cache-db.ts`:\n- Tăng DB_VERSION lên 3.\n- Trong `onupgradeneeded`, tạo store `notebookEntries` với keyPath là 'id'.\n- Tạo index 'by-topicUrl' dựa trên field 'sourceTopicUrl' (non-unique, multiEntry: false).\n- Tạo index 'by-savedAt' (non-unique, multiEntry: false).\n- Tạo index 'by-category' (non-unique, multiEntry: false).\n- Tạo index 'by-tags' (non-unique, multiEntry: true).\n- Tạo index 'by-orphaned' (non-unique, multiEntry: false).\n- Không touch store cũ. Đã hoàn tất việc compile và vượt qua 285 bài kiểm tra.",
+        "testStrategy": "Chạy extension, kiểm tra upgrade thành công. Dùng indexedDB dev tool verify store và indexes tồn tại. Chạy bộ test suite (285 tests) để đảm bảo không có regression.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tăng DB_VERSION lên 3 và thêm object store notebookEntries",
+            "description": "Sửa file lib/cache-db.ts: tăng DB_VERSION từ 2 lên 3, trong hàm onupgradeneeded tạo store notebookEntries với keyPath 'id' và các index: by-topicUrl (sourceTopicUrl), by-savedAt, by-category, by-tags (multiEntry: true), by-orphaned.",
+            "dependencies": [],
+            "details": "Thực hiện thay đổi trong lib/cache-db.ts: tăng hằng số DB_VERSION lên 3, và trong onupgradeneeded, nếu event.oldVersion < 3, tạo object store notebookEntries với { keyPath: 'id' }. Đã tạo các index: store.createIndex('by-topicUrl', 'sourceTopicUrl', { unique: false, multiEntry: false }), store.createIndex('by-savedAt', 'savedAt', { unique: false, multiEntry: false }), store.createIndex('by-category', 'category', { unique: false, multiEntry: false }), store.createIndex('by-tags', 'tags', { unique: false, multiEntry: true }), store.createIndex('by-orphaned', 'orphaned', { unique: false, multiEntry: false }).",
+            "status": "completed",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm tra upgrade và verify cấu trúc store notebookEntries",
+            "description": "Chạy extension để kích hoạt upgrade từ version 2 lên 3, sau đó dùng IndexedDB dev tool để verify store notebookEntries và các indexes tồn tại và đúng cấu hình.",
+            "dependencies": [
+              1
+            ],
+            "details": "Mở DevTools > Application > IndexedDB > cache-db, kiểm tra DB_VERSION là 3. Verify store 'notebookEntries' có keyPath 'id'. Kiểm tra danh sách indexes: by-topicUrl (ánh xạ tới sourceTopicUrl), by-savedAt, by-category, by-tags (multiEntry: true), by-orphaned. Kết quả: đã vượt qua 285 tests.",
+            "status": "completed",
+            "testStrategy": "Sử dụng Chrome DevTools IndexedDB tab để inspect và chạy npm run test.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tăng DB_VERSION lên 3, tạo object store notebookEntries với các index cần thiết.",
+        "updatedAt": "2026-05-22T15:33:25.845Z"
+      },
+      {
+        "id": "198",
+        "title": "Phase C: Tạo lib/notebook-db.ts với các hàm CRUD và tìm kiếm",
+        "description": "Viết wrapper functions cho notebookEntries store: get, getAll, getByTopic, getByTag, getByCategory, getOrphans, put, delete, orphanByTopic, deleteByTopic, getStats.",
+        "details": "Tạo `lib/notebook-db.ts`:\n- `notebookGet(id)` → read by key.\n- `notebookGetAll()` → getAll.\n- `notebookGetByTopic(topicUrl)` → use 'by-topicUrl' index.\n- `notebookGetByTag(tag)` → use 'by-tags' index with IDBKeyRange.only(tag).\n- `notebookGetByCategory(category)` → use 'by-category' index.\n- `notebookGetOrphans()` → use 'by-orphaned' index với key 1.\n- `notebookPut(entry)` → put (upsert).\n- `notebookDelete(id)` → delete.\n- `notebookOrphanByTopic(topicUrl)` → dùng index lấy entries, update từng cái orphaned=true, orphanedAt=Date.now().\n- `notebookDeleteByTopic(topicUrl)` → dùng index lấy entries, xoá từng cái.\n- `notebookGetStats()` → hứng tất cả entries trả về { totalEntries, topicCount (distinct topicUrls), orphanCount, categories }.",
+        "testStrategy": "Unit test các hàm với mock IDB. Integration test: save entry, get, update, delete, verify index queries.",
+        "priority": "high",
+        "dependencies": [
+          "197"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo các hàm CRUD cơ bản cho notebookEntries",
+            "description": "Viết các hàm notebookGet, notebookGetAll, notebookPut, notebookDelete trong lib/notebook-db.ts.",
+            "dependencies": [],
+            "details": "Sử dụng IDBTransaction để thực hiện get, getAll, put, delete trên notebookEntries store. Đảm bảo put hoạt động upsert.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo các hàm truy vấn theo index cho notebookEntries",
+            "description": "Viết các hàm notebookGetByTopic, notebookGetByTag, notebookGetByCategory, notebookGetOrphans sử dụng các index tương ứng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng index 'by-topicUrl', 'by-tags' với IDBKeyRange.only(tag), 'by-category', 'by-orphaned' với key 1.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tạo các hàm orphanByTopic và deleteByTopic",
+            "description": "Viết các hàm notebookOrphanByTopic và notebookDeleteByTopic để cập nhật hoặc xóa entries theo topicUrl.",
+            "dependencies": [
+              2
+            ],
+            "details": "Dùng index 'by-topicUrl' để lấy entries, sau đó update từng entry với orphaned=true, orphanedAt=Date.now() hoặc xóa từng entry.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Tạo hàm getStats để thống kê notebook entries",
+            "description": "Viết hàm notebookGetStats trả về tổng số entries, số topic duy nhất, số orphan và danh sách categories.",
+            "dependencies": [
+              1
+            ],
+            "details": "Dùng notebookGetAll để lấy tất cả entries, tính toán totalEntries, topicCount (distinct sourceTopicUrl), orphanCount, categories (mảng category không trùng).",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Viết wrapper functions cho notebookEntries store: get, getAll, getByTopic, getByTag, getByCategory, getOrphans, put, delete, orphanByTopic, deleteByTopic, getStats.",
+        "updatedAt": "2026-05-22T15:41:36.411Z"
+      },
+      {
+        "id": "199",
+        "title": "Phase C: Thêm NotebookEntry interface và message types trong types.ts",
+        "description": "Thêm interface NotebookEntry kế thừa KnowledgeEntry, thêm 5 message types mới cho notebook operations.",
+        "details": "Sửa `lib/types.ts`:\n- Thêm interface `NotebookEntry` extends `KnowledgeEntry`:\n```typescript\nexport interface NotebookEntry extends KnowledgeEntry {\n  sourceTopicUrl: string;\n  sourceTopicTitle: string;\n  savedAt: number;\n  orphaned?: boolean;\n  orphanedAt?: number;\n}\n```\n- Thêm message types:\n```typescript\nexport type ExtensionMessage = ... | \n  | { type: 'GET_NOTEBOOK_ENTRIES'; payload: { topicUrl?, category?, tag?, search?, orphanOnly? } }\n  | { type: 'GET_NOTEBOOK_STATS' }\n  | { type: 'UPSERT_NOTEBOOK_ENTRY'; payload: NotebookEntry }\n  | { type: 'DELETE_NOTEBOOK_ENTRY'; payload: { id } }\n  | { type: 'ORPHAN_NOTEBOOK_BY_TOPIC'; payload: { topicUrl } }\n  | { type: 'DELETE_NOTEBOOK_BY_TOPIC'; payload: { topicUrl } }\n```",
+        "testStrategy": "Compile không lỗi, types xuất hiện trong IDE.",
+        "priority": "high",
+        "dependencies": [
+          "197",
+          "198"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm interface NotebookEntry trong types.ts",
+            "description": "Thêm interface NotebookEntry kế thừa KnowledgeEntry với các trường sourceTopicUrl, sourceTopicTitle, savedAt, orphaned, orphanedAt.",
+            "dependencies": [],
+            "details": "Mở file lib/types.ts, thêm interface NotebookEntry với đúng cấu trúc và xuất khẩu để sử dụng toàn cục.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra compile không lỗi, interface hiển thị trong IDE.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thêm 5 message types mới cho notebook operations",
+            "description": "Thêm các message types GET_NOTEBOOK_ENTRIES, GET_NOTEBOOK_STATS, UPSERT_NOTEBOOK_ENTRY, DELETE_NOTEBOOK_ENTRY, ORPHAN_NOTEBOOK_BY_TOPIC, DELETE_NOTEBOOK_BY_TOPIC vào union type ExtensionMessage.",
+            "dependencies": [
+              1
+            ],
+            "details": "Mở rộng type ExtensionMessage trong lib/types.ts bằng cách thêm các union member tương ứng với payload phù hợp, đảm bảo gõ đúng.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra compile không lỗi, các message types có sẵn khi sử dụng.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Thêm interface NotebookEntry và 5 message types mới cho notebook operations.",
+        "updatedAt": "2026-05-22T15:44:19.897Z"
+      },
+      {
+        "id": "200",
+        "title": "Phase C: Thêm message handlers cho notebook trong background/index.ts",
+        "description": "Xử lý 5 message types mới, gọi notebook-db.ts functions và trả kết quả. Đảm bảo async handling.",
+        "details": "Sửa `entrypoints/background/index.ts`:\n- Import functions từ notebook-db.ts.\n- Trong `onMessage`, thêm case cho từng type:\n  - GET_NOTEBOOK_ENTRIES: gọi notebookGetAll hoặc notebookGetByTopic, etc., filter client-side nếu có search/tag/category.\n  - GET_NOTEBOOK_STATS: gọi notebookGetStats.\n  - UPSERT_NOTEBOOK_ENTRY: notebookPut(payload).\n  - DELETE_NOTEBOOK_ENTRY: notebookDelete(id).\n  - ORPHAN_NOTEBOOK_BY_TOPIC: notebookOrphanByTopic(topicUrl).\n  - DELETE_NOTEBOOK_BY_TOPIC: notebookDeleteByTopic(topicUrl).\n- Mỗi handler là async, return promise.",
+        "testStrategy": "Mock messaging, gửi từng message và kiểm tra response. Idb manipulation OK.",
+        "priority": "high",
+        "dependencies": [
+          "199"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xử lý message handlers cho GET_NOTEBOOK_ENTRIES và GET_NOTEBOOK_STATS",
+            "description": "Thêm import hàm từ notebook-db.ts và xử lý hai message types truy vấn: GET_NOTEBOOK_ENTRIES và GET_NOTEBOOK_STATS trong onMessage.",
+            "dependencies": [
+              199
+            ],
+            "details": "- Import notebookGetAll, notebookGetByTopic, notebookGetStats từ notebook-db.ts.\n- Thêm case GET_NOTEBOOK_ENTRIES: gọi notebookGetAll hoặc notebookGetByTopic tùy payload, filter client-side nếu có search/tag/category.\n- Thêm case GET_NOTEBOOK_STATS: gọi notebookGetStats.\n- Mỗi handler là async, return promise kết quả.",
+            "status": "pending",
+            "testStrategy": "Mock gửi message GET_NOTEBOOK_ENTRIES và GET_NOTEBOOK_STATS, kiểm tra response đúng cấu trúc và dữ liệu.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý message handlers cho UPSERT_NOTEBOOK_ENTRY và DELETE_NOTEBOOK_ENTRY",
+            "description": "Thêm handler cho UPSERT_NOTEBOOK_ENTRY (thêm/sửa entry) và DELETE_NOTEBOOK_ENTRY (xóa entry) trong onMessage.",
+            "dependencies": [
+              199,
+              1
+            ],
+            "details": "- Import notebookPut và notebookDelete từ notebook-db.ts.\n- Thêm case UPSERT_NOTEBOOK_ENTRY: gọi notebookPut(payload) với dữ liệu từ message.\n- Thêm case DELETE_NOTEBOOK_ENTRY: gọi notebookDelete(id) với id từ payload.\n- Cả hai handler là async, return promise.",
+            "status": "pending",
+            "testStrategy": "Mock gửi message UPSERT_NOTEBOOK_ENTRY và DELETE_NOTEBOOK_ENTRY, kiểm tra response success/fail và DB thay đổi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý message handlers cho ORPHAN_NOTEBOOK_BY_TOPIC và DELETE_NOTEBOOK_BY_TOPIC",
+            "description": "Thêm handler cho ORPHAN_NOTEBOOK_BY_TOPIC (đánh dấu orphan) và DELETE_NOTEBOOK_BY_TOPIC (xóa theo topic) trong onMessage.",
+            "dependencies": [
+              199,
+              1
+            ],
+            "details": "- Import notebookOrphanByTopic và notebookDeleteByTopic từ notebook-db.ts.\n- Thêm case ORPHAN_NOTEBOOK_BY_TOPIC: gọi notebookOrphanByTopic(topicUrl).\n- Thêm case DELETE_NOTEBOOK_BY_TOPIC: gọi notebookDeleteByTopic(topicUrl).\n- Cả hai handler là async, return promise.",
+            "status": "pending",
+            "testStrategy": "Mock gửi message ORPHAN_NOTEBOOK_BY_TOPIC và DELETE_NOTEBOOK_BY_TOPIC, kiểm tra response và DB thay đổi.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Xử lý 5 message types mới: GET_NOTEBOOK_ENTRIES, GET_NOTEBOOK_STATS, UPSERT_NOTEBOOK_ENTRY, DELETE_NOTEBOOK_ENTRY, ORPHAN_NOTEBOOK_BY_TOPIC, DELETE_NOTEBOOK_BY_TOPIC.",
+        "updatedAt": "2026-05-22T15:47:57.618Z"
+      },
+      {
+        "id": "201",
+        "title": "Phase C: Tích hợp toggleSave với notebook sync (fire-and-forget)",
+        "description": "Sửa toggleSave trong KnowledgeView để khi save entry, gửi UPSERT_NOTEBOOK_ENTRY; khi unsave, gửi DELETE_NOTEBOOK_ENTRY. Dùng sendMessageQuiet. Thêm helper sendMessageQuiet vào lib/messaging.ts.",
+        "details": "Sửa `entrypoints/sidepanel/views/KnowledgeView.vue`:\n- Thêm import sendMessageQuiet từ lib/messaging.\n- Trong `toggleSave(entry)`: \n  - Update local entries.\n  - Optimistic update topic cache (chỉ saved entries).\n  - Nếu next = true: tạo NotebookEntry từ entry + sourceTopicUrl, sourceTopicTitle, savedAt, gọi `sendMessageQuiet('UPSERT_NOTEBOOK_ENTRY', notebookEntry)`.\n  - Nếu next = false: gọi `sendMessageQuiet('DELETE_NOTEBOOK_ENTRY', { id: entry.id })`.\n\nThêm `sendMessageQuiet` trong `lib/messaging.ts`:\n```typescript\nexport function sendMessageQuiet(type: string, payload?: unknown): void {\n  try {\n    const p = browser.runtime.sendMessage({ type, payload });\n    if (p && typeof p.catch === 'function') p.catch(() => {});\n  } catch {}\n}\n```",
+        "testStrategy": "Save entry → check IDB notebookEntries có entry. Unsaved → xoá. Gửi nhiều requests liên tục → không lỗi. Check SW lifecycle: close sidepanel ngay → reopen → dữ liệu đồng bộ.",
+        "priority": "high",
+        "dependencies": [
+          "195",
+          "200"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm helper sendMessageQuiet vào lib/messaging.ts",
+            "description": "Tạo hàm sendMessageQuiet trong lib/messaging.ts để gửi message fire-and-forget, xử lý lỗi im lặng.",
+            "dependencies": [],
+            "details": "Thêm hàm sendMessageQuiet như sau:\n\nexport function sendMessageQuiet(type: string, payload?: unknown): void {\n  try {\n    const p = browser.runtime.sendMessage({ type, payload });\n    if (p && typeof p.catch === 'function') p.catch(() => {});\n  } catch {}\n}",
+            "status": "pending",
+            "testStrategy": "Kiểm tra hàm gọi không throw lỗi khi runtime.sendMessage thành công hoặc thất bại.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật toggleSave trong KnowledgeView.vue để gửi UPSERT_NOTEBOOK_ENTRY",
+            "description": "Trong toggleSave, khi next = true, tạo NotebookEntry và gọi sendMessageQuiet('UPSERT_NOTEBOOK_ENTRY', notebookEntry).",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm import sendMessageQuiet từ lib/messaging. Trong toggleSave, sau khi update local entries và optimistic update, nếu next = true, tạo notebookEntry với sourceTopicUrl, sourceTopicTitle, savedAt, gọi sendMessageQuiet('UPSERT_NOTEBOOK_ENTRY', notebookEntry).",
+            "status": "pending",
+            "testStrategy": "Save entry → kiểm tra message được gửi đến background script với type UPSERT_NOTEBOOK_ENTRY.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật toggleSave trong KnowledgeView.vue để gửi DELETE_NOTEBOOK_ENTRY",
+            "description": "Trong toggleSave, khi next = false, gọi sendMessageQuiet('DELETE_NOTEBOOK_ENTRY', { id: entry.id }).",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong toggleSave, nếu next = false, gọi sendMessageQuiet với type DELETE_NOTEBOOK_ENTRY và payload chứa id.",
+            "status": "pending",
+            "testStrategy": "Unsaved entry → kiểm tra message được gửi đến background script với type DELETE_NOTEBOOK_ENTRY.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Sửa toggleSave để gửi UPSERT_NOTEBOOK_ENTRY khi save và DELETE_NOTEBOOK_ENTRY khi unsave, dùng sendMessageQuiet.",
+        "updatedAt": "2026-05-22T15:50:20.676Z"
+      },
+      {
+        "id": "202",
+        "title": "Phase C: Tạo NotebookView.vue với route và composable",
+        "description": "Xây dựng view hiển thị tất cả notebook entries, cho phép search, filter (category/tag/topic/orphan), các chế độ xem (By topic, By category, By tag, Timeline). Mỗi entry card có nút unsave, open source, open in extension (focus).",
+        "details": "Tạo `entrypoints/sidepanel/views/NotebookView.vue`:\n- Setup: fetch entries via `sendMessage('GET_NOTEBOOK_ENTRIES', filters)`.\n- Composable `useNotebook` (optional) để quản lý state.\n- Template:\n  - Header: search input, stats (\"42 kiến thức từ 8 thớt · 5 mồ côi\").\n  - Filter bar: category pills (lấy từ stats), tag pills (lấy từ entries), topic dropdown, toggle \"Chỉ mồ côi\".\n  - View modes: button group.\n  - Entry cards: giống card KnowledgeView + dòng source topic (link mở URL + router push) + orphan badge.\n  - Empty state.\n- Action unsave: gọi DELETE_NOTEBOOK_ENTRY + cập nhật topic cache (gửi message RELOAD? hoặc dùng topic cache query param).\n- Action open source: `browser.tabs.create({ url: postLink })`.\n- Action open in extension: `router.push(\\`/knowledge?focus=${entry.id}\\`)`.\n\nThêm route trong `entrypoints/sidepanel/main.ts`:\n```typescript\n{ path: '/notebook', name: 'notebook', component: () => import('./views/NotebookView.vue') }\n```",
+        "testStrategy": "Save entries từ 2 topic → mở Notebook → thấy đúng count, filter by topic hoạt động, unsave không lỗi, open source mở tab, open in extension chuyển route (focus cần test riêng).",
+        "priority": "high",
+        "dependencies": [
+          "200",
+          "201"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết lập route và tạo composable useNotebook cho NotebookView",
+            "description": "Tạo route cho /notebook trong sidepanel/main.ts và phát triển composable useNotebook để quản lý state, fetch entries từ background qua sendMessage.",
+            "dependencies": [],
+            "details": "Thêm route { path: '/notebook', name: 'notebook', component: () => import('./views/NotebookView.vue') } trong entrypoints/sidepanel/main.ts. Tạo composable useNotebook trong file useNotebook.ts với các reactive state: entries, stats, filters, loading, error. Hàm loadEntries(filters) gọi sendMessage('GET_NOTEBOOK_ENTRIES', filters) và cập nhật state. Hàm removeEntry(id) gọi sendMessage('DELETE_NOTEBOOK_ENTRY', {id}). Sử dụng composable trong NotebookView.vue.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra route hoạt động, composable fetch dữ liệu khi view mount.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xây dựng Header và Stats cho NotebookView",
+            "description": "Tạo phần header hiển thị thanh tìm kiếm và thống kê số lượng entries, topics, orphans.",
+            "dependencies": [
+              1
+            ],
+            "details": "Phần header có search input (v-model với filters.query) và stats text format: '42 kiến thức từ 8 thớt · 5 mồ côi'. Sử dụng computed từ composable để tính stats. Stats gồm total entries, total topics (số topic khác nhau), total orphans.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra giao diện hiển thị đúng số liệu từ mock data.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xây dựng Filter Bar và View Modes",
+            "description": "Tạo thanh lọc với category pills, tag pills, topic dropdown, toggle orphan, và các nút chọn chế độ xem (By topic, By category, By tag, Timeline).",
+            "dependencies": [
+              1
+            ],
+            "details": "Filter bar: category pills được sinh ra từ stats.categories, tag pills từ entries tags (có thể lấy từ tất cả tags), topic dropdown (populate từ entries topics), toggle 'Chỉ mồ côi'. View modes: button group với 4 chế độ: 'Theo chủ đề', 'Theo danh mục', 'Theo thẻ', 'Dòng thời gian', mỗi chế độ render entries khác nhau (có thể xử lý sau). Khi chọn filter, cập nhật filters và gọi loadEntries.",
+            "status": "pending",
+            "testStrategy": "Click filter pills, chọn topic, toggle orphan, kiểm tra danh sách entries thay đổi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Xây dựng Entry Cards và Empty State với các hành động",
+            "description": "Hiển thị danh sách entry cards, mỗi card có nút unsave, open source, open in extension. Thêm empty state khi không có entries.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Entry card: thiết kế giống KnowledgeView card, thêm dòng source topic (link mở URL + router push), orphan badge nếu entry.orphaned. Nút Unsave: gọi removeEntry(id) và cập nhật topic cache (gửi message RELOAD hoặc dùng query param). Nút Open Source: browser.tabs.create({url: entry.postLink}). Nút Open in Extension: router.push('/knowledge?focus=' + entry.id). Empty state: hiển thị thông báo 'Chưa có kiến thức nào được lưu' kèm icon.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra hiển thị card, click các nút unsave, open source, open in extension hoạt động đúng.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Xây dựng view hiển thị tất cả notebook entries, cho phép search, filter, các chế độ xem và thao tác unsave, open source, open in extension.",
+        "updatedAt": "2026-05-22T15:57:54.027Z"
+      },
+      {
+        "id": "203",
+        "title": "Phase C: Cập nhật TopicHubView khi xoá topic – confirm dialog với 2 lựa chọn",
+        "description": "Thêm confirm dialog khi xoá topic có entries trong notebook: 2 lựa chọn (giữ kiến thức/ xoá cả). Nếu không có entries dùng dialog cũ. Xử lý orphan và cleanup.",
+        "details": "Sửa `entrypoints/sidepanel/views/TopicHubView.vue`:\n- Khi user click delete topic, kiểm tra `cachedTopic.knowledgeEntries` (saved) để biết số entries trong notebook. Nếu >0:\n  - Hiển thị custom confirm dialog (dùng ConfirmInline component) với 2 nút:\n    \"Chỉ xoá thớt — giữ kiến thức\" (default) -> gọi `sendMessage('ORPHAN_NOTEBOOK_BY_TOPIC', { topicUrl })`, sau đó deleteCachedTopic.\n    \"Xoá cả thớt và kiến thức\" -> gọi `sendMessage('DELETE_NOTEBOOK_BY_TOPIC', { topicUrl })` và deleteCachedTopic.\n  - Nếu entries=0: dùng confirm đơn giản như cũ.",
+        "testStrategy": "Topic có 2 saved entries: delete → dialog 2 lựa chọn hiển thị đúng count. Chọn orphan → topic bị xoá, notebook entries vẫn còn với orphan badge. Chọn xoá cả → entries xoá. Topic không có entries → không dialog 2 lựa chọn.",
+        "priority": "high",
+        "dependencies": [
+          "201"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Kiểm tra số lượng knowledgeEntries trong cachedTopic",
+            "description": "Trong TopicHubView.vue, khi user click delete topic, kiểm tra cachedTopic.knowledgeEntries (saved) để biết số entries. Nếu >0 thì hiển thị dialog 2 lựa chọn, nếu không thì dùng dialog cũ.",
+            "dependencies": [],
+            "details": "Tại file entrypoints/sidepanel/views/TopicHubView.vue, trong hàm xử lý delete topic, thêm logic kiểm tra cachedTopic.knowledgeEntries.length. Nếu length > 0, gọi hàm hiển thị dialog 2 lựa chọn; ngược lại, gọi confirm thông thường.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo custom confirm dialog với 2 lựa chọn",
+            "description": "Sử dụng ConfirmInline component để tạo dialog với 2 nút: 'Chỉ xoá thớt — giữ kiến thức' (default) và 'Xoá cả thớt và kiến thức'. Đảm bảo dialog hiển thị đúng số entries và có hành động tương ứng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong cùng file, thêm xử lý hiển thị ConfirmInline với nội dung tùy chỉnh. Gán sự kiện click cho mỗi nút: nút đầu gọi orphan, nút sau gọi delete. Đảm bảo nút mặc định được focus.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý gọi sendMessage với ORPHAN_NOTEBOOK_BY_TOPIC hoặc DELETE_NOTEBOOK_BY_TOPIC",
+            "description": "Khi người dùng chọn một trong hai lựa chọn, gọi sendMessage tương ứng và sau đó gọi deleteCachedTopic. Đảm bảo orphan entries vẫn còn với badge, xoá cả thì xoá hết.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong hàm xử lý của mỗi nút, gọi sendMessage('ORPHAN_NOTEBOOK_BY_TOPIC', { topicUrl }) hoặc sendMessage('DELETE_NOTEBOOK_BY_TOPIC', { topicUrl }) tùy theo lựa chọn. Sau khi nhận response, gọi deleteCachedTopic(topicUrl) để cập nhật UI. Kiểm tra lỗi nếu có.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thêm confirm dialog với 2 lựa chọn khi xoá topic có entries trong notebook: giữ kiến thức hoặc xoá cả.",
+        "updatedAt": "2026-05-22T15:53:20.264Z"
+      },
+      {
+        "id": "204",
+        "title": "Phase A: Thêm knowledge teaser CTA trong SummaryView",
+        "description": "Sau khi summaryJson render, hiển thị CTA phù hợp: chưa extract → 'Trích xuất', có saved → 'Xem tab Kiến thức', có chunks nhưng chưa save → 'Khôi phục danh sách'. Click chuyển hướng hoặc trigger hành động tương ứng.",
+        "details": "Sửa `entrypoints/sidepanel/views/SummaryView.vue`:\n- Thêm block dưới SummaryContent, được render khi `summaryJson` có content, `allPosts.length > 0`, không isProcessing.\n- Sử dụng computed để xác định trạng thái:\n  - `hasSavedEntries`: `cachedTopic.knowledgeEntries?.length > 0`\n  - `hasChunks`: `cachedTopic.knowledgeChunks?.length > 0`\n  - `hasNoSavedAndNoChunks`: `!hasSavedEntries && !hasChunks` (hoặc chunks chưa complete? theo PRD là \"chưa có knowledgeEntries saved và chưa có knowledgeChunks complete\").\n- Quyết định UI:\n  - Nếu hasNoSavedAndNoChunks: hiển thị CTA \"Trích xuất kiến thức\".\n  - Nếu hasSavedEntries: hiển thị \"Đã lưu {n} kiến thức. [Xem trong tab Kiến thức →]\".\n  - Nếu hasChunks && !hasSavedEntries: hiển thị \"Đã có dữ liệu kiến thức nhưng chưa lưu. [Khôi phục danh sách →]\".\n- Click \"Trích xuất\": router.push('/knowledge') và set `confirmingExtract = true` (dùng event bus hoặc store).\n- Click \"Xem trong tab Kiến thức\": router.push('/knowledge').\n- Click \"Khôi phục danh sách\": router.push('/knowledge') và trigger restore (cần truyền tham số query ?restore=true).",
+        "testStrategy": "Summarize topic xong → thấy CTA đúng trạng thái. Click Trích xuất → vào KnowledgeView với confirm box. Save entry → CTA đổi trạng thái. Xoá saved → CTA đổi. Test khi chunks tồn tại mà ko save.",
+        "priority": "medium",
+        "dependencies": [
+          "195",
+          "200"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo computed trạng thái knowledge cache",
+            "description": "Trong SummaryView.vue, thêm computed properties: hasSavedEntries (dựa vào cachedTopic.knowledgeEntries), hasChunks (dựa vào cachedTopic.knowledgeChunks), hasNoSavedAndNoChunks (khi cả hai đều falsy).",
+            "dependencies": [],
+            "details": "Sửa `entrypoints/sidepanel/views/SummaryView.vue`, thêm các computed để xác định trạng thái knowledge cache theo PRD. Đảm bảo sử dụng `cachedTopic` từ store hoặc composable.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thêm UI block CTA dưới SummaryContent",
+            "description": "Chèn một block HTML dưới SummaryContent, chỉ hiển thị khi summaryJson có content, allPosts.length > 0 và không isProcessing. Dùng v-if/v-else-if dựa trên computed trạng thái để hiển thị CTA tương ứng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm template với v-if=\"hasNoSavedAndNoChunks\" hiển thị 'Trích xuất kiến thức', v-else-if=\"hasSavedEntries\" hiển thị 'Đã lưu {n} kiến thức. [Xem trong tab Kiến thức →]' và v-else-if=\"hasChunks\" hiển thị 'Đã có dữ liệu kiến thức nhưng chưa lưu. [Khôi phục danh sách →]'.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý sự kiện click cho từng CTA",
+            "description": "Gắn sự kiện click cho các CTA: nút 'Trích xuất' chuyển tới /knowledge và set confirmingExtract, nút 'Xem trong tab Kiến thức' chuyển tới /knowledge, nút 'Khôi phục danh sách' chuyển tới /knowledge?restore=true.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng router.push và event bus/store để set confirmingExtract. Đảm bảo trigger restore khi có query param restore=true.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thêm CTA dựa trên trạng thái knowledge cache: Trích xuất, Xem tab Kiến thức, Khôi phục danh sách. Xử lý router push và trigger actions.",
+        "updatedAt": "2026-05-22T16:04:54.370Z"
+      },
+      {
+        "id": "205",
+        "title": "F27 Bug: IDB by-orphaned index dùng boolean — orphan query trả rỗng",
+        "description": "BUG: IDB index \by-orphaned sử dụng boolean key, nhưng IndexedDB không index được boolean. NotebookEntry.orphaned?: boolean nên getAll(1) trên index này luôn trả [].\n\nFIX:\n1. Đổi NotebookEntry.orphaned từ boolean sang number (0 | 1) trong lib/types.ts\n2. Đổi NotebookEntry.orphanedAt? giữ nguyên number\n3. Cập nhật notebook-db.ts: notebookGetOrphans() vẫn dùng getAll(1)\n4. Cập nhật mọi nơi set orphaned=true → orphaned=1\n5. Cập nhật TopicHubView và NotebookView: check orphaned → check orphaned === 1 hoặc leaked truthy\n6. Cập nhật background handler ORPHAN_NOTEBOOK_BY_TOPIC: set orphaned=1, orphanedAt=Date.now()\n7. Cập nhật useNotebook.ts: filter orphanOnly → check e.orphaned === 1 hoặc truthy",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Đổi kiểu orphaned từ boolean sang number trong types.ts và cập nhật database layer",
+            "description": "Thay đổi kiểu dữ liệu của trường orphaned trong NotebookEntry từ boolean sang number (0 | 1) trong lib/types.ts. Giữ nguyên orphanedAt là number. Cập nhật hàm notebookGetOrphans() trong notebook-db.ts vẫn dùng getAll(1).",
+            "dependencies": [],
+            "details": "Sửa interface NotebookEntry trong lib/types.ts: orphaned?: boolean → orphaned?: number (0 | 1). Trong notebook-db.ts, đảm bảo notebookGetOrphans() dùng getAll(1) (chỉ số 1). Cần kiểm tra index vẫn hoạt động với key number.",
+            "status": "pending",
+            "testStrategy": "Biên dịch không lỗi, getAll(1) trả về entries có orphaned=1.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật logic set orphaned và kiểm tra orphaned trong toàn bộ codebase",
+            "description": "Cập nhật tất cả nơi set orphaned=true thành orphaned=1. Cập nhật TopicHubView, NotebookView, background handler ORPHAN_NOTEBOOK_BY_TOPIC, và useNotebook.ts để kiểm tra orphaned === 1 hoặc truthy.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm và thay thế set orphaned=true bằng orphaned=1. Trong các view, thay check orphaned thành check orphaned === 1. Trong background handler, set orphaned=1, orphanedAt=Date.now(). Trong useNotebook.ts filter, check e.orphaned === 1.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra giao diện hiển thị đúng các mục orphan. Orphan query trả về kết quả mong đợi.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Sửa lỗi IndexedDB index không index được boolean: đổi orphaned từ boolean sang number (0|1), cập nhật kiểu dữ liệu, logic kiểm tra, và các component liên quan.",
+        "updatedAt": "2026-05-23T04:41:37.478Z"
+      },
+      {
+        "id": "206",
+        "title": "F27 Bug: KnowledgeView không xử lý ?focus={id} và ?restore=true query params",
+        "description": "MISSING: KnowledgeView không đọc query params từ router.\n\nPlanning C9a yêu cầu:\n- ?focus={id}: scroll + expand + highlight entry khi mở từ NotebookView 'Open in extension'\n- ?restore=true: auto-trigger confirm box khôi phục khi click từ SummaryView CTA 'Khôi phục danh sách'\n- Planning A2: click 'Trích xuất' → push /knowledge + auto-trigger confirmingExtract\n\nFIX需要在 KnowledgeView setup():\n1. Thêm const route = useRoute() và const router = useRouter()\n2. Watch route.query.focus → scroll + expandEntry + highlight ring 2s + router.replace clear query (theo planning C9a pattern)\n3. Watch route.query.restore → nếu truthy, set confirmingRestore = true\n4. SummaryView handleKnowledgeCTA('extract') → nên push /knowledge?extract=true; KnowledgeView watch → set confirmingExtract = true\n5. Card DOM cần id=knowledge-entry-{entry.id} để query được",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "205"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm route và router trong KnowledgeView và xử lý query param ?focus={id}",
+            "description": "Trong KnowledgeView setup(), thêm const route = useRoute() và const router = useRouter(). Watch route.query.focus, nếu có, scroll đến entry, expand nếu cần, highlight ring 2s, sau đó router.replace để xóa query param.",
+            "dependencies": [],
+            "details": "Thực hiện theo pattern planning C9a. Sử dụng scrollIntoView, expandEntry (nếu chưa expand), thêm class highlight-ring trong 2s, sau đó remove và router.replace.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý query params ?restore=true và ?extract=true trong KnowledgeView",
+            "description": "Watch route.query.restore: nếu truthy, set confirmingRestore = true. Watch route.query.extract: nếu truthy, set confirmingExtract = true. Đảm bảo các flag được reset sau khi xử lý nếu cần.",
+            "dependencies": [
+              1
+            ],
+            "details": "Khi watch trigger, set biến confirmingRestore/confirmingExtract tương ứng. Có thể cần router.replace để clear query sau khi xử lý.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Thêm DOM id cho card entries và cập nhật SummaryView push query params",
+            "description": "Gán id=knowledge-entry-{entry.id} cho mỗi card entry trong KnowledgeView. Cập nhật SummaryView handleKnowledgeCTA('extract') để push /knowledge?extract=true.",
+            "dependencies": [
+              2
+            ],
+            "details": "Đảm bảo id tồn tại để scroll và highlight hoạt động. SummaryView: sửa router.push để thêm query param extract=true khi gọi handleKnowledgeCTA('extract').",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thêm xử lý query params trong KnowledgeView setup: watch focus và restore, scroll/expand/highlight entry, và trigge confirmingExtract.",
+        "updatedAt": "2026-05-23T04:41:26.363Z"
+      },
+      {
+        "id": "207",
+        "title": "F27 Bug: NotebookView openInExtension silent fail cho orphan entries",
+        "description": "MISSING: Khi user click 'Open in extension' cho orphan entry trong NotebookView, GET_CACHED_TOPIC trả null (topic đã xoá), function silently fails — không có feedback cho user.\n\nPlanning C8 spec: đối với orphan entry, nút 'Open in extension' phải disabled hoặc đổi label thành 'Tạo lại topic từ kiến thức' (scope F28, deferred).\n\nFIX cần 2 phần:\n1. NotebookView.vue: disable nút 'Open in extension' cho orphan entries (entry.orphaned === 1) hoặc hiện tooltip 'Thớt gốc đã xoá'\n2. Cho non-orphan entries: giữ logic hiện tại (GET_CACHED_TOPIC + selectTopic + push /knowledge)\n3. Bonus: hiển thị rõ '(đã xoá)' bên cạnh sourceTopicTitle cho orphan entries trong card header",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "205"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Vô hiệu hoá nút 'Open in Extension' cho orphan entries trong NotebookView",
+            "description": "Khi entry.orphaned === 1, nút 'Open in Extension' bị disabled và hiển thị tooltip 'Thớt gốc đã xoá'.",
+            "dependencies": [
+              205
+            ],
+            "details": "Trong NotebookView.vue, trong phần template của entry card, kiểm tra entry.orphaned === 1. Nếu đúng, thêm thuộc tính disabled cho button và thêm tooltip. Đảm bảo non-orphan entries vẫn giữ logic hiện tại (GET_CACHED_TOPIC, selectTopic, push /knowledge).",
+            "status": "pending",
+            "testStrategy": "Kiểm tra orphan entry: nút Open in Extension bị mờ, hover có tooltip. Kiểm tra non-orphan entry: nút hoạt động bình thường.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Hiển thị '(đã xoá)' bên cạnh sourceTopicTitle cho orphan entries",
+            "description": "Thêm label '(đã xoá)' sau sourceTopicTitle trong card header của orphan entries để người dùng biết topic gốc đã bị xoá.",
+            "dependencies": [
+              205
+            ],
+            "details": "Trong NotebookView.vue, trong phần hiển thị sourceTopicTitle, nếu entry.orphaned === 1, thêm text '(đã xoá)' với style phù hợp (màu đỏ hoặc xám). Đảm bảo không ảnh hưởng đến non-orphan entries.",
+            "status": "pending",
+            "testStrategy": "Mở NotebookView, xác nhận orphan entries có label '(đã xoá)', non-orphan không có.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Cập nhật NotebookView để disable nút Open in Extension cho orphan entries hoặc hiện tooltip, và hiển thị trạng thái đã xoá.",
+        "updatedAt": "2026-05-23T04:41:15.776Z"
+      },
+      {
+        "id": "208",
+        "title": "F27 Missing: 'Xem sổ tay' button trong KnowledgeView header",
+        "description": "MISSING: Planning C11 yêu cầu nút 'Xem sổ tay' (hoặc icon) ở góc phải KnowledgeView header, cho phép user navigate sang NotebookView nhanh.\n\nHiện tại KnowledgeView không có link nào sang notebook. User phải tự tìm tab 'Sổ tay' trong nav bar.\n\nFIX: Thêm button/text link 'Xem sổ tay →' ở KnowledgeView header (cùng hàng với title 'Tổng hợp kiến thức' hoặc gần đó). Click → router.push('/notebook').",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm nút 'Xem sổ tay' trong KnowledgeView header",
+            "description": "Thêm button 'Xem sổ tay →' vào vị trí header của KnowledgeView, cho phép điều hướng đến NotebookView khi click.",
+            "dependencies": [],
+            "details": "Trong KnowledgeView.vue, thêm một button hoặc router-link với text 'Xem sổ tay →' ở vị trí header, cùng hàng với title. Xử lý sự kiện click để gọi router.push('/notebook'). Đảm bảo button có style phù hợp.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Thêm nút 'Xem sổ tay' trong KnowledgeView header để chuyển hướng đến NotebookView.",
+        "updatedAt": "2026-05-23T04:41:04.870Z"
+      },
+      {
+        "id": "209",
+        "title": "F27 Missing: Timeline view mode trong NotebookView",
+        "description": "MISSING: Planning C8 spec yêu cầu 4 view modes: 'By topic | By category | By tag | Timeline'. Hiện tại NotebookView chỉ có 3 modes (topic, category, tag).\n\nTimeline mode nên sort entries theo savedAt timestamp (mới nhất trước) và group theo ngày/tuần.\n\nFIX:\n1. Thêm 'timeline' vào ViewMode type trong useNotebook.ts\n2. Thêm viewMode button thứ 4 'Dòng thời gian' trong NotebookView.vue\n3. Thêm case 'timeline' trong groupedEntries computed — group theo savedAt date (format YYYY-MM-DD hoặc 'Hôm nay', 'Hôm qua', etc.)\n4. Timeline mode: sort entries theo savedAt descending, group theo ngày",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm 'timeline' vào ViewMode type trong useNotebook.ts",
+            "description": "Cập nhật type ViewMode trong useNotebook.ts để bao gồm giá trị 'timeline'.",
+            "dependencies": [],
+            "details": "Sửa file useNotebook.ts, thêm 'timeline' vào union type ViewMode, ví dụ: type ViewMode = 'topic' | 'category' | 'tag' | 'timeline'. Kiểm tra không gây lỗi TypeScript.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thêm nút 'Dòng thời gian' vào NotebookView.vue",
+            "description": "Thêm nút chuyển đổi view mode thứ 4 trong giao diện NotebookView để chọn timeline mode.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong NotebookView.vue, bổ sung một button cho timeline mode tương tự các button hiện có. Đặt label là 'Dòng thời gian' và gán giá trị 'timeline'. Đảm bảo button được highlight khi active.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Thêm case 'timeline' trong groupedEntries computed và xử lý sort",
+            "description": "Cập nhật computed property groupedEntries để hỗ trợ timeline mode: sort entries theo savedAt giảm dần, group theo ngày.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong useNotebook.ts, thêm case 'timeline' vào groupedEntries. Sử dụng thư viện date (moment/luxon) để format các nhóm 'Hôm nay', 'Hôm qua', 'Tuần này', v.v. Sort entries theo savedAt descending.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra giao diện hiển thị đúng group và thứ tự sau khi chọn timeline mode.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thêm timeline view mode trong NotebookView: sort theo savedAt, group theo ngày, thêm nút chọn mode.",
+        "updatedAt": "2026-05-23T04:40:53.019Z"
+      },
+      {
+        "id": "210",
+        "title": "F27 UX: Đảo style nút trong TopicHubView delete confirm",
+        "description": "UX BUG: Trong TopicHubView 2-choice delete dialog, nút 'Chỉ xoá thớt — giữ kiến thức' (option an toàn) dùng btn-danger (đỏ), nút 'Xoá cả thớt và kiến thức' (option destructive) dùng btn-secondary (xám). Thứ tự highlight ngược với危险性.\n\nFIX: Đổi style:\n- 'Chỉ xoá thớt — giữ kiến thức' → btn-secondary (option mặc định, an toàn)\n- 'Xoá cả thớt và kiến thức' → btn-danger (option destructive, cần cảnh báo)\nHoặc theo planning C7: default highlight cho option an toàn, dùng visual distinction thay vì đảo highlight.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Phân tích code hiện tại của TopicHubView delete dialog",
+            "description": "Xem xét file TopicHubView.vue để xác định nút và class CSS hiện tại trên mỗi nút.",
+            "dependencies": [],
+            "details": "Đọc file entrypoints/sidepanel/views/TopicHubView.vue, tìm đoạn code hiển thị dialog xoá và ghi chú class btn-danger, btn-secondary.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Đổi class CSS của nút an toàn thành btn-secondary",
+            "description": "Thay class btn-danger trên nút 'Chỉ xoá thớt — giữ kiến thức' thành btn-secondary.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong template của dialog, sửa :class=\"'btn-danger'\" thành :class=\"'btn-secondary'\" cho nút an toàn.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Đổi class CSS của nút destructive thành btn-danger",
+            "description": "Thay class btn-secondary trên nút 'Xoá cả thớt và kiến thức' thành btn-danger.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong template của dialog, sửa :class=\"'btn-secondary'\" thành :class=\"'btn-danger'\" cho nút destructive.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra giao diện dialog sau khi đổi style",
+            "description": "Chạy ứng dụng và kiểm tra dialog xoá topic có 2 nút với màu sắc chính xác.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Mở sidepanel, chọn topic có entries, nhấn xoá, xác nhận nút 'Chỉ xoá…' xám (btn-secondary) và nút 'Xoá cả…' đỏ (btn-danger).",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Cập nhật tài liệu hoặc comment code mô tả thay đổi",
+            "description": "Thêm comment giải thích lý do đổi style để tránh nhầm lẫn sau này.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Thêm ghi chú trong phần template của dialog rằng style đã được đảo để phản ánh mức độ nguy hiểm.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Đổi style nút trong delete dialog: option an toàn thành btn-secondary, option destructive thành btn-danger.",
+        "updatedAt": "2026-05-23T04:40:25.156Z"
+      },
+      {
+        "id": "211",
+        "title": "F27 Cleanup: Xoá debug console.log trong background/index.ts và page-loader.ts",
+        "description": "CLEANUP: Có 3 debug console.log statements left trong staged code:\n\n1. background/index.ts: console.log('[BG] FETCH_HTML request URL:', url) (line ~91)\n2. background/index.ts: console.log('[BG] FETCH_HTML response:', { requestUrl, status, finalUrl, redirected }) (line ~93)\n3. page-loader.ts: console.log('[scrapePageRange] Sending FETCH_HTML:', { page, pageUrl }) (line ~63)\n\nFIX: Xoá 3 dòng console.log này. KHÔNG thay đổi logic nào khác.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xác định vị trí 3 dòng console.log cần xoá",
+            "description": "Tìm và xác định chính xác 3 dòng console.log trong background/index.ts (dòng ~91 và ~93) và page-loader.ts (dòng ~63).",
+            "dependencies": [],
+            "details": "Mở các tệp background/index.ts và page-loader.ts, dùng chức năng tìm kiếm để định vị các dòng console.log cụ thể.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xoá console.log ở background/index.ts dòng ~91",
+            "description": "Xoá dòng console.log('[BG] FETCH_HTML request URL:', url) khỏi background/index.ts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm dòng chứa console.log('[BG] FETCH_HTML request URL:', url) và xoá toàn bộ dòng đó. Đảm bảo không ảnh hưởng đến logic xung quanh.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xoá console.log ở background/index.ts dòng ~93",
+            "description": "Xoá dòng console.log('[BG] FETCH_HTML response:', { requestUrl, status, finalUrl, redirected }) khỏi background/index.ts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm dòng chứa console.log('[BG] FETCH_HTML response:', { requestUrl, status, finalUrl, redirected }) và xoá toàn bộ dòng đó. Đảm bảo không ảnh hưởng đến logic xung quanh.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Xoá console.log ở page-loader.ts dòng ~63",
+            "description": "Xoá dòng console.log('[scrapePageRange] Sending FETCH_HTML:', { page, pageUrl }) khỏi page-loader.ts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm dòng chứa console.log('[scrapePageRange] Sending FETCH_HTML:', { page, pageUrl }) và xoá toàn bộ dòng đó. Đảm bảo không ảnh hưởng đến logic xung quanh.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra và xác nhận xoá đúng",
+            "description": "Xác nhận rằng các dòng console.log đã được xoá và không có thay đổi logic nào khác.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Mở lại các tệp đã sửa, dùng tìm kiếm để đảm bảo không còn console.log nào trong số đó. Đồng thời chạy lint hoặc build để kiểm tra không có lỗi cú pháp.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Xoá các dòng console.log debug trong background/index.ts và page-loader.ts.",
+        "updatedAt": "2026-05-23T04:40:41.120Z"
+      },
+      {
+        "id": "212",
+        "title": "F27 Enhancement: Lazy orphan check trong GET_NOTEBOOK_ENTRIES handler",
+        "description": "OPTIONAL (Planning C7 note): Khi user xoá topic bằng đường khác (không qua TopicHubView), notebook entries của topic đó không tự cập nhật orphan status.\n\nPlanning đề xuất: trong GET_NOTEBOOK_ENTRIES handler, check topicUrl có còn trong topics store không. Nếu không và entry chưa orphaned → tự lazy-orphan (set orphaned=1, orphanedAt=Date.now()).\n\nFIX:\n1. Trong background/index.ts GET_NOTEBOOK_ENTRIES handler, trước khi sendResponse, check từng entry có sourceTopicUrl không còn trong topics store (dùng getCachedTopic hoặc dbGet)\n2. Nếu entry.orphaned !== 1 và topic không còn → update entry orphaned=1, orphanedAt=Date.now() qua notebookPut\n3. Return entries đã được orphan-marked\n4. Performance note: chỉ check khi load ALL entries (no filter), hoặc check lazy khi orphanOnly=true",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "205"
+        ],
+        "priority": "low",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai logic lazy orphan check trong handler GET_NOTEBOOK_ENTRIES",
+            "description": "Trong background/index.ts, tại handler GET_NOTEBOOK_ENTRIES, duyệt từng entry, kiểm tra sourceTopicUrl có tồn tại trong topics store không (dùng getCachedTopic hoặc dbGet). Nếu entry.orphaned !== 1 và topic không còn, cập nhật orphaned=1 và orphanedAt=Date.now().",
+            "dependencies": [],
+            "details": "Sửa file entrypoints/background/index.ts: trong khối xử lý GET_NOTEBOOK_ENTRIES, sau khi lấy entries từ notebook store, thêm vòng lặp for...of để kiểm tra từng entry. Gọi hàm getCachedTopic hoặc dbGet để lấy topic từ topics store. Nếu topic không tồn tại và entry.orphaned !== 1, gọi notebookPut để cập nhật entry với orphaned=true và orphanedAt=Date.now(). Đảm bảo cập nhật cả entry trong mảng trả về.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tối ưu hiệu năng: chỉ thực hiện lazy check khi cần thiết",
+            "description": "Chỉ thực hiện lazy orphan check khi load tất cả entries (không có filter) hoặc khi orphanOnly=true. Tránh check khi có filter topic/category/tag để giảm overhead.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong handler GET_NOTEBOOK_ENTRIES, thêm điều kiện: nếu payload có bất kỳ filter nào (topicUrl, category, tag, search) và orphanOnly không phải true, thì bỏ qua bước lazy check. Ngược lại, thực hiện check như subtask 1. Điều này đảm bảo hiệu năng khi người dùng filter cụ thể.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết unit test cho lazy orphan check",
+            "description": "Tạo test case kiểm tra handler GET_NOTEBOOK_ENTRIES tự động cập nhật orphaned status khi topic bị xóa. Đảm bảo các trường hợp: entry chưa orphaned với topic không còn, entry đã orphaned, entry với topic còn, và filter không kích hoạt lazy check.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Thêm file test hoặc cập nhật test hiện có trong thư mục tests/background. Mô phỏng topics store và notebook store. Gửi message GET_NOTEBOOK_ENTRIES và kiểm tra entries trả về có orphaned flag đúng. Kiểm tra cả trường hợp không filter (thực hiện lazy check) và có filter (bỏ qua lazy check).",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thêm lazy orphan check trong GET_NOTEBOOK_ENTRIES handler: kiểm tra topic còn tồn tại không, nếu không và entry chưa orphaned thì tự cập nhật orphan status.",
+        "updatedAt": "2026-05-23T04:39:58.931Z"
+      },
+      {
+        "id": "213",
+        "title": "F27-R-C2: Fix double-filter trong useNotebook — load all entries, client filter",
+        "description": "Critical (Review C2): useNotebook.loadEntries() gửi filters sang background (backend đã filter), rồi filteredEntries computed filter lại client-side. Khi user đổi filter (vd: topicUrl=A → clear), entries.value không reload → client filter chạy trên dataset đã bị backend cắt sẵn → sai kết quả.\n\nFix: loadEntries() không gửi filters, tải tất cả. Mọi filter xử lý client-side trong filteredEntries computed. Phù hợp scale ≤2000 entries.\n\nFiles: entrypoints/sidepanel/composables/useNotebook.ts (lines 91-106)",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-23T05:57:46.569Z"
+      },
+      {
+        "id": "214",
+        "title": "F27-R-C4+C5: Fix sync gaps — handleDelete + unsaveEntry 2 chiều",
+        "description": "Critical (Review C4+C5): \nC4: KnowledgeView handleDelete (nút thùng rác) không sync notebook. Entry saved=true bị delete khỏi topic cache nhưng notebook vẫn giữ entry.\nC5: NotebookView unsaveEntry không sync topic cache. Entry unsave khỏi notebook nhưng knowledgeEntries trong topic cache vẫn coi entry là saved.\n\nFiles:\n- entrypoints/sidepanel/views/KnowledgeView.vue (~770-795): handleDelete — thêm sendMessageQuiet('DELETE_NOTEBOOK_ENTRY', { id })\n- entrypoints/sidepanel/composables/useNotebook.ts (~152-157): unsaveEntry — gọi GET_CACHED_TOPIC, nếu tồn tại thì SAVE_CACHED_TOPIC với knowledgeEntries đã loại entry",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-23T05:58:57.025Z"
+      },
+      {
+        "id": "215",
+        "title": "F27-R-C1+C3: Fix lazy orphan O(N²) + IDB non-atomic tx",
+        "description": "Critical (Review C1+C3):\nC1: Lazy orphan trong GET_NOTEBOOK_ENTRIES handler O(N²) — vòng lặp lồng nhau + await notebookPut mỗi entry. \nC3: notebookOrphanByTopic + notebookDeleteByTopic dùng 2 transaction riêng (readonly + readwrite), dễ race.\n\nFix C1: Thay bằng (a) Map group entries by sourceTopicUrl, (b) Promise.all dbGet parallel, (c) orphan bằng notebookOrphanByTopic (single tx).\nFix C3: Đổi sang cursor-based approach — openCursor trên by-topicUrl index, modify/delete in-place trong 1 tx.\n\nFiles: entrypoints/background/index.ts (~155-175), lib/notebook-db.ts (~86-113)",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-23T06:00:06.818Z"
+      },
+      {
+        "id": "216",
+        "title": "F27-R-M1+M2: Fix type safety — sendMessageQuiet + background casts",
+        "description": "Major (Review M1+M2):\nM1: sendMessageQuiet dùng type: string thay vì MessageType union — mất compile-time check.\nM2: background UPSERT_NOTEBOOK_ENTRY handler dùng \u0007s any cast.\n\nFix M1: Đổi signature thành sendMessageQuiet(type: MessageType, ...). File: lib/messaging.ts\nFix M2: Đổi \u0007s any thành \u0007s NotebookEntry và thêm validate cơ bản. File: entrypoints/background/index.ts (~191)",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-23T06:01:32.699Z"
+      },
+      {
+        "id": "217",
+        "title": "F27-R-M3+M4+M5+minors: Legacy count, watcher immediate, CTA dup, minor fixes",
+        "description": "M3: TopicHubView delete count dùng knowledgeEntries.length (saved-only sau Phase B) thay vì notebook real count.\nM4: KnowledgeView watcher cho route.query.restore/extract không có immediate:true — không fire lúc load.\nM5: SummaryView CTA block duplicate (2 nhánh isSegmentMode).\nMinors: m1 (xoá dead computed), m5 (move import), m6 (openInExtension null handling), m9 (tag group note), m10 (error messages), m11 (logging)",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-23T06:05:34.831Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-18T08:29:56.328Z",
-      "taskCount": 40,
-      "completedCount": 35,
+      "lastModified": "2026-05-23T06:05:34.833Z",
+      "taskCount": 63,
+      "completedCount": 58,
       "tags": [
         "master"
       ]

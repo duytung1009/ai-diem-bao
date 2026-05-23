@@ -71,7 +71,15 @@ export class ClaudeAdapter implements LLMProvider {
         }
 
         const data = await res.json();
+        const stopReason = data.stop_reason as string | undefined;
         const content = data.content?.[0]?.text || '';
+
+        if (stopReason === 'max_tokens') {
+          throw new LLMError(
+            LLMErrorCode.INCOMPLETE_RESPONSE,
+            'Phản hồi bị cắt ngắn: output vượt giới hạn max tokens. Tăng "Max tokens" trong Cài đặt.',
+          );
+        }
 
         return {
           content,

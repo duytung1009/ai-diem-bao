@@ -163,7 +163,7 @@ function navigateTo(path: string) {
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/')">
-        Chủ đề
+        Thớt
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'summary'
           ? 'text-blue-600 border-b-2 border-blue-600'
@@ -180,6 +180,12 @@ function navigateTo(path: string) {
             : 'text-(--color-text-muted) cursor-not-allowed'
         " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/knowledge')">
         Kiến thức
+      </button>
+      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'notebook'
+          ? 'text-blue-600 border-b-2 border-blue-600'
+          : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
+        " @click="navigateTo('/notebook')">
+        Sổ tay
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'research'
           ? 'text-blue-600 border-b-2 border-blue-600'

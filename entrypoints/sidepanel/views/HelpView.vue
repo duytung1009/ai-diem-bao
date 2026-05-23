@@ -140,17 +140,17 @@
         <ol class="space-y-1.5">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
-            <span>Mở tab <strong class="text-(--color-text-primary)">Chủ đề</strong> — hiển thị danh sách topic đã scrape từ XenForo forums</span>
+            <span>Mở tab <strong class="text-(--color-text-primary)">Thớt</strong> — hiển thị danh sách thớt đã scrape từ XenForo forums</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
-            <span>Duyệt danh sách, click vào topic muốn xem — extension tự động chuyển sang tab <strong class="text-(--color-text-primary)">Tóm tắt</strong></span>
+            <span>Duyệt danh sách, click vào thớt muốn xem — extension tự động chuyển sang tab <strong class="text-(--color-text-primary)">Tóm tắt</strong></span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
-            <span>Nếu topic chưa có tóm tắt, nhấn nút <strong class="text-(--color-text-primary)">"Tóm tắt"</strong> — extension sẽ:
-              <br>— Scrape nội dung topic từ forum
-              <br>— Chia thành các segments (nếu topic dài)
+            <span>Nếu thớt chưa có tóm tắt, nhấn nút <strong class="text-(--color-text-primary)">"Tóm tắt"</strong> — extension sẽ:
+              <br>— Scrape nội dung thớt từ forum
+              <br>— Chia thành các segments (nếu thớt dài)
               <br>— Gửi từng segment đến LLM để tóm tắt
               <br>— Gộp kết quả thành tóm tắt hoàn chỉnh
             </span>
@@ -171,7 +171,7 @@
     <div>
       <h2 class="font-semibold text-sm text-(--color-text-primary)">3. Sau tóm tắt</h2>
       <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
-        Sau khi topic đã được tóm tắt, bạn có thể khai thác thêm với hai tính năng sau.
+        Sau khi thớt đã được tóm tắt, bạn có thể khai thác thêm với hai tính năng sau.
       </p>
 
       <!-- Knowledge -->
@@ -183,11 +183,11 @@
         <ul class="space-y-1 pl-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
-            <span>Truy cập tab <strong class="text-(--color-text-primary)">Kiến thức</strong> sau khi topic đã được tóm tắt</span>
+            <span>Truy cập tab <strong class="text-(--color-text-primary)">Kiến thức</strong> sau khi thớt đã được tóm tắt</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
-            <span>Nhấn "Tổng hợp kiến thức" — LLM sẽ extract key points, facts, information từ toàn bộ topic</span>
+            <span>Nhấn "Tổng hợp kiến thức" — LLM sẽ extract key points, facts, information từ toàn bộ thớt</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
@@ -195,7 +195,7 @@
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">4</span>
-            <span>Kiến thức được lưu vào IndexedDB cùng với topic — truy cập lại bất cứ lúc nào</span>
+            <span>Kiến thức được lưu vào IndexedDB cùng với thớt — truy cập lại bất cứ lúc nào</span>
           </li>
         </ul>
       </div>
@@ -209,7 +209,7 @@
         <ul class="space-y-1 pl-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
-            <span>Truy cập tab <strong class="text-(--color-text-primary)">Tra cứu</strong> sau khi topic đã được tóm tắt</span>
+            <span>Truy cập tab <strong class="text-(--color-text-primary)">Tra cứu</strong> sau khi thớt đã được tóm tắt</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
@@ -217,7 +217,7 @@
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
-            <span>LLM sẽ phân tích nội dung topic và trả lời dựa trên context của thread</span>
+            <span>LLM sẽ phân tích nội dung thớt và trả lời dựa trên context của thớt</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-[10px] font-bold flex items-center justify-center mt-0.5">4</span>

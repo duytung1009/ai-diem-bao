@@ -90,7 +90,13 @@ export type MessageType =
   | 'SAVE_CACHED_TOPIC'
   | 'DELETE_CACHED_TOPIC'
   | 'GET_CACHE_SIZE'
-  | 'GET_ALL_CACHED_TOPICS';
+  | 'GET_ALL_CACHED_TOPICS'
+  | 'GET_NOTEBOOK_ENTRIES'
+  | 'GET_NOTEBOOK_STATS'
+  | 'UPSERT_NOTEBOOK_ENTRY'
+  | 'DELETE_NOTEBOOK_ENTRY'
+  | 'ORPHAN_NOTEBOOK_BY_TOPIC'
+  | 'DELETE_NOTEBOOK_BY_TOPIC';
 
 export interface LLMTaskRequest {
   taskId: string;
@@ -164,6 +170,7 @@ export interface CachedTopic {
   overallSummary?: string;
   summaryJson?: SummaryJSON;
   bookmarked?: boolean;
+  /** Only entries with saved=true are persisted to cache; unsaved entries are in-memory only */
   knowledgeEntries?: KnowledgeEntry[];
   knowledgeChunks?: KnowledgeChunk[];     // raw chunks, persistent (F24)
   lastKnowledgePostNumber?: number;
@@ -204,6 +211,14 @@ export interface KnowledgeEntry {
   };
   extractedAt: number;
   saved?: boolean;
+}
+
+export interface NotebookEntry extends KnowledgeEntry {
+  sourceTopicUrl: string;
+  sourceTopicTitle: string;
+  savedAt: number;
+  orphaned?: number;
+  orphanedAt?: number;
 }
 
 export interface KnowledgeChunk {

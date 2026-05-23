@@ -70,6 +70,24 @@ const newPostCount = computed(() => {
   return Math.max(0, totalRef - summarized);
 });
 
+const hasSavedKnowledgeEntries = computed(() => (cachedTopic.value?.knowledgeEntries?.length ?? 0) > 0);
+const hasKnowledgeChunks = computed(() => (cachedTopic.value?.knowledgeChunks?.length ?? 0) > 0);
+const savedKnowledgeCount = computed(() => cachedTopic.value?.knowledgeEntries?.length ?? 0);
+const allPostsForCTA = computed(() => {
+  if (!cachedTopic.value) return [];
+  return cachedTopic.value.posts?.length ? cachedTopic.value.posts : cachedTopic.value.segments?.flatMap(s => s?.posts ?? []) ?? [];
+});
+
+function handleKnowledgeCTA(action: 'extract' | 'view' | 'restore') {
+  if (action === 'extract') {
+    router.push('/knowledge?extract=true');
+  } else if (action === 'view') {
+    router.push('/knowledge');
+  } else if (action === 'restore') {
+    router.push('/knowledge?restore=true');
+  }
+}
+
 const modelLabel = computed(() => {
   const cfg = cachedTopic?.value?.llmConfig;
   if (!cfg?.provider || !cfg?.model) return null;
@@ -139,7 +157,7 @@ onActivated(async () => {
   <div class="p-4 space-y-4">
     <!-- No topic selected -->
     <div v-if="!topicInfo" class="text-center py-8">
-      <p class="text-sm text-(--color-text-secondary)">Chưa chọn chủ đề.</p>
+      <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
       <button
         class="mt-3 text-sm text-blue-600 hover:text-blue-700"
         @click="$router.push('/')"
@@ -216,7 +234,7 @@ onActivated(async () => {
       <template v-if="isSegmentMode && !isProcessing">
         <!-- Info banner: chỉ hiển thị khi > 1 segment -->
         <div v-if="segments.length > 1" class="alert alert-info text-xs">
-          <p class="font-medium">Chủ đề dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
+          <p class="font-medium">Thớt dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
           <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần theo độ dài nội dung. Tóm tắt từng phần rồi tạo tổng quan.</p>
           <p v-else class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần, mỗi phần ~{{ formatNumber(segmentSize) }} trang. Tóm tắt từng phần rồi tạo tổng quan.</p>
         </div>
@@ -382,6 +400,30 @@ onActivated(async () => {
                     </button>
                   </template>
                 </SummaryContent>
+                <!-- Knowledge CTA -->
+                <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="pt-1">
+                  <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
+                    <button class="w-full btn btn-primary text-xs" @click="handleKnowledgeCTA('extract')">
+                      Trích xuất kiến thức
+                    </button>
+                  </template>
+                  <template v-else-if="hasSavedKnowledgeEntries">
+                    <p class="text-xs text-(--color-text-secondary)">
+                      Đã lưu <strong>{{ savedKnowledgeCount }}</strong> kiến thức.
+                      <button class="text-blue-600 hover:text-blue-700 underline" @click="handleKnowledgeCTA('view')">
+                        Xem trong tab Kiến thức →
+                      </button>
+                    </p>
+                  </template>
+                  <template v-else-if="hasKnowledgeChunks">
+                    <p class="text-xs text-(--color-text-secondary)">
+                      Đã có dữ liệu kiến thức nhưng chưa lưu.
+                      <button class="text-blue-600 hover:text-blue-700 underline" @click="handleKnowledgeCTA('restore')">
+                        Khôi phục danh sách →
+                      </button>
+                    </p>
+                  </template>
+                </div>
               </div>
               <div v-else class="flex flex-col items-center gap-3 py-8">
                 <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
@@ -444,6 +486,30 @@ onActivated(async () => {
                     </button>
                   </template>
                 </SummaryContent>
+                <!-- Knowledge CTA -->
+                <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="pt-1">
+                  <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
+                    <button class="w-full btn btn-primary text-xs" @click="handleKnowledgeCTA('extract')">
+                      Trích xuất kiến thức
+                    </button>
+                  </template>
+                  <template v-else-if="hasSavedKnowledgeEntries">
+                    <p class="text-xs text-(--color-text-secondary)">
+                      Đã lưu <strong>{{ savedKnowledgeCount }}</strong> kiến thức.
+                      <button class="text-blue-600 hover:text-blue-700 underline" @click="handleKnowledgeCTA('view')">
+                        Xem trong tab Kiến thức →
+                      </button>
+                    </p>
+                  </template>
+                  <template v-else-if="hasKnowledgeChunks">
+                    <p class="text-xs text-(--color-text-secondary)">
+                      Đã có dữ liệu kiến thức nhưng chưa lưu.
+                      <button class="text-blue-600 hover:text-blue-700 underline" @click="handleKnowledgeCTA('restore')">
+                        Khôi phục danh sách →
+                      </button>
+                    </p>
+                  </template>
+                </div>
               </div>
               <div v-else class="flex flex-col items-center gap-3 py-8">
                 <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
@@ -454,7 +520,7 @@ onActivated(async () => {
                 >
                   Tóm tắt toàn bộ
                 </button>
-                <p class="text-xs text-(--color-text-muted)">Chủ đề dài, thời gian tóm tắt có thể lâu</p>
+                <p class="text-xs text-(--color-text-muted)">Thớt dài, thời gian tóm tắt có thể lâu</p>
               </div>
             </template>
           </template>

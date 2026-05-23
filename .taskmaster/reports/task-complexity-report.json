@@ -1,93 +1,117 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-18T06:58:14.001Z",
-		"tasksAnalyzed": 10,
-		"totalTasks": 40,
-		"analysisCount": 10,
+		"generatedAt": "2026-05-23T04:27:43.632Z",
+		"tasksAnalyzed": 13,
+		"totalTasks": 58,
+		"analysisCount": 13,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
 		"usedResearch": true
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 185,
-			"taskTitle": "Tạo hàm thuần `planDynamicSegments` trong `lib/segment-planner.ts`",
-			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Nhiệm vụ đã được mô tả chi tiết. Không cần chia nhỏ thêm.",
-			"reasoning": "Công việc tập trung vào việc tạo một hàm thuần, đơn giản với thuật toán được xác định rõ. Cần tham khảo code hiện có và đảm bảo tính xác định. Độ phức tạp trung bình thấp."
+			"taskId": 169,
+			"taskTitle": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token.",
+			"reasoning": "Module thuần túy nhưng yêu cầu tích hợp stale-guard và xử lý nhiều trường hợp lưu trữ; snapshot test đảm bảo tính tương thích."
 		},
 		{
-			"taskId": 186,
-			"taskTitle": "Viết unit test cho `planDynamicSegments`",
-			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Nhiệm vụ đã đầy đủ: tạo file test, viết các test case theo mô tả.",
-			"reasoning": "Viết unit test cho một hàm thuần, có sẵn các kịch bản test. Công việc có độ phức tạp thấp."
+			"taskId": 170,
+			"taskTitle": "Refactor logic scraping thành Composable useTopicScraper (R4)",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady).",
+			"reasoning": "Tách logic phức tạp thành composable, cần đảm bảo dedup và xử lý lỗi mạng; kiểm tra qua mock scraper."
 		},
 		{
-			"taskId": 187,
-			"taskTitle": "Thêm `buildDynamicScrapePipeline` vào `lib/pipeline-builder.ts`",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Nhiệm vụ đơn giản, chỉ cần thêm một hàm trả về mảng tĩnh.",
-			"reasoning": "Thêm một hàm đơn giản trả về mảng các step dựa trên tham số đầu vào. Rất ít phức tạp."
-		},
-		{
-			"taskId": 188,
-			"taskTitle": "Thêm `rebuildWithSegments` vào `usePipeline.ts` và xóa `reconcile`",
+			"taskId": 171,
+			"taskTitle": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
 			"complexityScore": 6,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia thành các bước: (1) Thêm method `rebuildWithSegments` trong `usePipeline.ts`, (2) Xóa hàm `reconcile` và mọi call site, (3) Xóa block `.splice()` tại `useSummarize.ts:1156-1165`, (4) Viết unit test.",
-			"reasoning": "Công việc bao gồm thêm method mới, xóa code cũ trên nhiều file, và đảm bảo tính nhất quán. Có độ phức tạp trung bình, cần kiểm tra kỹ."
+			"expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState.",
+			"reasoning": "Quản lý pipeline động, cần xử lý trường hợp số segment thay đổi; phải loại bỏ legacy code."
 		},
 		{
-			"taskId": 189,
-			"taskTitle": "Tách hàm `scrapeAllPages` trong `useSummarize.ts`",
-			"complexityScore": 5,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Nhiệm vụ đã được mô tả đầy đủ, chỉ cần thực hiện tách code và đảm bảo giữ nguyên xử lý.",
-			"reasoning": "Tách logic scrape từ một hàm lớn thành hàm riêng. Cần chú ý giữ nguyên các xử lý ngoại lệ, progress, abort. Độ phức tạp trung bình."
-		},
-		{
-			"taskId": 190,
-			"taskTitle": "Kết nối 2-phase flow trong `runSummarizeJob` và cập nhật `handleSegmentUpdate`",
-			"complexityScore": 8,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Chia thành: (1) Sửa `runSummarizeJob` cho dynamic mode: gọi `buildDynamicScrapePipeline`, scrape, plan, rebuild, loop summarize, overall, (2) Cập nhật `handleSegmentUpdate`, (3) Kiểm soát trạng thái pipeline, (4) Viết E2E test.",
-			"reasoning": "Công việc tích hợp nhiều module mới vào luồng điều khiển chính, thay đổi logic nhiều. Độ phức tạp cao, cần kiểm thử kỹ lưỡng."
-		},
-		{
-			"taskId": 191,
-			"taskTitle": "Cơ chế persist post trong `scrapeAllPages` để hỗ trợ resume an toàn",
-			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chia thành: (1) Triển khai lưu cache định kỳ trong `scrapeAllPages`, (2) Triển khai load cache và resume logic, (3) Viết test cho persist và resume.",
-			"reasoning": "Thêm cơ chế lưu trữ tạm thời và khôi phục. Cần xử lý lưu trữ đồng bộ, đọc ghi cache. Độ phức tạp trung bình."
-		},
-		{
-			"taskId": 192,
-			"taskTitle": "Logic resume re-plan với deterministic planner",
+			"taskId": 172,
+			"taskTitle": "Xây dựng các hàm Primitive trong useSummarize",
 			"complexityScore": 7,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia thành: (1) So sánh boundaries cũ và mới để xác định segment cần re-summarize, (2) Tích hợp logic re-plan vào `runSummarizeJob`, (3) Viết test cho kịch bản resume thay đổi segment.",
-			"reasoning": "Yêu cầu logic so sánh và quyết định segment nào cần tóm tắt lại dựa trên boundary. Có độ phức tạp cao vì liên quan đến trạng thái cache và tính nhất quán."
+			"expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới.",
+			"reasoning": "Hàm cốt lõi xử lý LLM call và persist, cần tuân thủ stale-guard và xử lý lỗi; kiểm tra race condition."
 		},
 		{
-			"taskId": 193,
-			"taskTitle": "Đảm bảo fixed mode và giao diện StepTimeline không bị ảnh hưởng",
+			"taskId": 173,
+			"taskTitle": "Triển khai Driver trung tâm runSummarizeJob (R7)",
+			"complexityScore": 8,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng.",
+			"reasoning": "Hợp nhất nhiều flow, điều phối phức tạp; yêu cầu tích hợp nhiều module và characterization tests."
+		},
+		{
+			"taskId": 205,
+			"taskTitle": "F27 Bug: IDB by-orphaned index dùng boolean — orphan query trả rỗng",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Nhiệm vụ kiểm tra và xác nhận không có lỗi phát sinh. Không cần chia nhỏ.",
-			"reasoning": "Công việc mang tính kiểm thử hồi quy, không thay đổi code nhiều. Độ phức tạp thấp."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Sửa lỗi IndexedDB index không index được boolean: đổi orphaned từ boolean sang number (0|1), cập nhật kiểu dữ liệu, logic kiểm tra, và các component liên quan.",
+			"reasoning": "Bug rõ ràng, cần thay đổi kiểu dữ liệu và cập nhật nhiều file nhưng không phức tạp."
 		},
 		{
-			"taskId": 194,
-			"taskTitle": "E2E test cho dynamic flow và resume",
+			"taskId": 206,
+			"taskTitle": "F27 Bug: KnowledgeView không xử lý ?focus={id} và ?restore=true query params",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Thêm xử lý query params trong KnowledgeView setup: watch focus và restore, scroll/expand/highlight entry, và trigge confirmingExtract.",
+			"reasoning": "Missing feature cần implement routing, DOM query, và tương tác; có nhiều trường hợp cần xử lý."
+		},
+		{
+			"taskId": 207,
+			"taskTitle": "F27 Bug: NotebookView openInExtension silent fail cho orphan entries",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Cập nhật NotebookView để disable nút Open in Extension cho orphan entries hoặc hiện tooltip, và hiển thị trạng thái đã xoá.",
+			"reasoning": "Bug UI cần thay đổi logic và giao diện; đơn giản nhưng ảnh hưởng đến UX."
+		},
+		{
+			"taskId": 208,
+			"taskTitle": "F27 Missing: 'Xem sổ tay' button trong KnowledgeView header",
+			"complexityScore": 2,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "Thêm nút 'Xem sổ tay' trong KnowledgeView header để chuyển hướng đến NotebookView.",
+			"reasoning": "Thêm một button và router.push, không có logic phức tạp."
+		},
+		{
+			"taskId": 209,
+			"taskTitle": "F27 Missing: Timeline view mode trong NotebookView",
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia thành: (1) Test dynamic flow pipeline structure, (2) Test resume chỉ scrape trang thiếu, (3) Test không re-summarize segment cũ.",
-			"reasoning": "Viết E2E test cần mô phỏng nhiều kịch bản, nhưng không đòi hỏi thuật toán phức tạp. Độ phức tạp trung bình thấp."
+			"expansionPrompt": "Thêm timeline view mode trong NotebookView: sort theo savedAt, group theo ngày, thêm nút chọn mode.",
+			"reasoning": "Cần thêm view mode mới, xử lý group và sort; có thể tương tác với computed property."
+		},
+		{
+			"taskId": 210,
+			"taskTitle": "F27 UX: Đảo style nút trong TopicHubView delete confirm",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Đổi style nút trong delete dialog: option an toàn thành btn-secondary, option destructive thành btn-danger.",
+			"reasoning": "Chỉ thay đổi CSS class, không ảnh hưởng logic."
+		},
+		{
+			"taskId": 211,
+			"taskTitle": "F27 Cleanup: Xoá debug console.log trong background/index.ts và page-loader.ts",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Xoá các dòng console.log debug trong background/index.ts và page-loader.ts.",
+			"reasoning": "Task đơn giản: xoá vài dòng code, không cần test."
+		},
+		{
+			"taskId": 212,
+			"taskTitle": "F27 Enhancement: Lazy orphan check trong GET_NOTEBOOK_ENTRIES handler",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Thêm lazy orphan check trong GET_NOTEBOOK_ENTRIES handler: kiểm tra topic còn tồn tại không, nếu không và entry chưa orphaned thì tự cập nhật orphan status.",
+			"reasoning": "Cần logic kiểm tra và cập nhật bất đồng bộ, có cân nhắc hiệu năng; tương đối phức tạp."
 		}
 	]
 }

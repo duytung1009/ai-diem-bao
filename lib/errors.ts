@@ -11,7 +11,7 @@ const SCRAPING_MESSAGES: Record<ScrapingErrorCode, string> = {
   [ScrapingErrorCode.NOT_XENFORO]: 'Trang này không phải forum XenForo.',
   [ScrapingErrorCode.LOGIN_REQUIRED]: 'Vui lòng đăng nhập vào forum trước.',
   [ScrapingErrorCode.TIMEOUT]: 'Không thể tải trang, vui lòng thử lại.',
-  [ScrapingErrorCode.EMPTY_TOPIC]: 'Topic này không có bài viết nào.',
+  [ScrapingErrorCode.EMPTY_TOPIC]: 'Thớt này không có bài viết nào.',
 };
 
 export class ScrapingError extends Error {

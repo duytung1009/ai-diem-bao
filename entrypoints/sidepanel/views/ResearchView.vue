@@ -123,7 +123,7 @@ function formatDate(ts: number): string {
   <div class="p-4 space-y-4">
     <!-- No topic selected -->
     <div v-if="!cachedTopic" class="text-center py-8">
-      <p class="text-sm text-(--color-text-secondary)">Chưa chọn chủ đề.</p>
+      <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
       <button class="mt-3 text-sm text-blue-600 hover:text-blue-700" @click="$router.push('/')">
         ← Quay lại danh sách
       </button>
@@ -138,17 +138,17 @@ function formatDate(ts: number): string {
         </button>
       </div>
 
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu Topic</h2>
+      <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu thớt</h2>
 
       <!-- No cache warning -->
       <div v-if="!allPosts.length" class="alert alert-warning">
-        Chưa có dữ liệu bài viết. Vui lòng tóm tắt topic ở tab "Tóm tắt" trước.
+        Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
       <template v-if="allPosts.length">
         <!-- Question input -->
         <div class="space-y-2">
-          <textarea v-model="question" rows="2" class="input resize-none" placeholder="Đặt câu hỏi về nội dung topic..." :disabled="isLoading"
+          <textarea v-model="question" rows="2" class="input resize-none" placeholder="Đặt câu hỏi về nội dung thớt..." :disabled="isLoading"
             @keydown.ctrl.enter="handleResearch" />
           <button class="w-full btn btn-primary" :disabled="isLoading || !question.trim()" @click="handleResearch">
             {{ isLoading ? 'Đang tra cứu...' : 'Tra cứu (Ctrl+Enter)' }}

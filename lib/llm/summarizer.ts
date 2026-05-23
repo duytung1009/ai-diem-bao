@@ -7,11 +7,18 @@ import {
   THREAD_ANALYSIS_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget, getThinkingOverhead } from '../token-estimator';
-import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO } from '../constants';
+import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO, KNOWLEDGE_MAX_CHUNK_BUDGET } from '../constants';
 import { LLMError, LLMErrorCode } from '../errors';
 
 // Pre-computed prompt token count (module-level, computed once)
 export const KNOWLEDGE_CHUNK_PROMPT_TOKENS = estimateTokens(buildKnowledgePrompt('chunk', {}, 20));
+
+/**
+ * Conservative token estimate per knowledge entry in JSON output.
+ * Includes title + content + tags + category + source (author, postNumber, timestamp) + structural overhead.
+ * Must match the divisor used in computeKnowledgeEntryCap.
+ */
+const TOKENS_PER_KNOWLEDGE_ENTRY_JSON = 300;
 
 /** Resolve custom knowledge parts for a specific mode from CustomPrompts.
  * Handles both legacy string (ignored) and new KnowledgePromptSections object.
@@ -47,11 +54,11 @@ function computeReduceWordCap(maxTokens: number | undefined): number {
 }
 
 /** Compute entry cap for knowledge extract/chunk prompts based on maxTokens.
- * Each knowledge entry ≈ 150 tokens (title + content + tags + source in JSON).
- * Clamped to [5, 20].
+ * Each knowledge entry ≈ 300 tokens in JSON (title + content + tags + source + overhead).
+ * Clamped to [5, 50].
  */
 function computeKnowledgeEntryCap(maxTokens: number | undefined): number {
-  return Math.max(5, Math.min(50, Math.floor((maxTokens ?? 2000) / 150)));
+  return Math.max(5, Math.min(50, Math.floor((maxTokens ?? 2000) / TOKENS_PER_KNOWLEDGE_ENTRY_JSON)));
 }
 
 /**
@@ -378,9 +385,11 @@ export function planKnowledgeChunks(
   thinkingEnabled?: boolean,
   thinkingBudget?: number,
 ): { startIndex: number; endIndex: number }[] {
-  const responseBuffer = Math.max(2000, maxTokens ?? 0);
+  const estimatedResponse = computeKnowledgeEntryCap(maxTokens) * TOKENS_PER_KNOWLEDGE_ENTRY_JSON;
+  const responseBuffer = Math.max(RESPONSE_BUFFER_TOKENS, estimatedResponse);
   const thinkingOverhead = getThinkingOverhead(model, thinkingEnabled, thinkingBudget);
-  const budget = calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, responseBuffer, contextWindowOverride, thinkingOverhead);
+  let budget = calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, responseBuffer, contextWindowOverride, thinkingOverhead);
+  budget = Math.min(budget, KNOWLEDGE_MAX_CHUNK_BUDGET);
 
   const chunks: { startIndex: number; endIndex: number }[] = [];
   let chunkStart = 0;
@@ -617,8 +626,9 @@ async function summaryChunks(
   return finalResponse.content;
 }
 
+
 /**
- * Build a cross-reference table of authors appearing in ≥2 segments.
+ * Build a cross-reference table of authors appearing in >=2 segments.
  * Returns a formatted string to prepend to the combined content, or '' if none.
  */
 function buildAuthorCrossReference(segmentJsons: (SummaryJSON | null)[]): string {

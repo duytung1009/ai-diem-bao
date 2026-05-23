@@ -5,7 +5,7 @@ import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl, normalizeUrl } from '@/lib/cache-manager';
 import { topicSummaryStatus, formatTopicDate } from '@/lib/topic-utils';
 import { formatNumber } from '@/lib/format';
-import type { CachedTopic, TopicSegment, KnowledgeEntry } from '@/lib/types';
+import type { CachedTopic, TopicSegment, KnowledgeEntry, NotebookEntry } from '@/lib/types';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -16,6 +16,7 @@ const { optimisticUpdate } = useOptimisticUpdate(store);
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
 const pendingDeleteUrl = ref<string | null>(null);
+const pendingDeleteNotebookCount = ref<number | undefined>(undefined);
 const searchQuery = ref('');
 const sortBy = ref<'recent' | 'posts' | 'title'>('recent');
 const showBookmarkedOnly = ref(false);
@@ -162,27 +163,62 @@ function selectTopic(topic: CachedTopic) {
 
 function confirmDelete(topic: CachedTopic) {
   pendingDeleteUrl.value = topic.url;
+  pendingDeleteNotebookCount.value = undefined;
+  sendMessage<NotebookEntry[]>('GET_NOTEBOOK_ENTRIES', { topicUrl: topic.url })
+    .then(entries => { pendingDeleteNotebookCount.value = entries.length; })
+    .catch(() => {});
 }
 
 function cancelDelete() {
   pendingDeleteUrl.value = null;
+  pendingDeleteNotebookCount.value = undefined;
 }
 
 async function executeDelete() {
   if (!pendingDeleteUrl.value) return;
   try {
-    await sendMessage('DELETE_CACHED_TOPIC', pendingDeleteUrl.value);
-    allTopics.value = allTopics.value.filter(
-      t => t.url !== pendingDeleteUrl.value
-    );
-    // Nếu topic đang selected trong store, clear selection
-    if (store.selectedTopic.value?.url === pendingDeleteUrl.value) {
-      store.clearSelection();
-    }
+    const url = pendingDeleteUrl.value;
+    const entries = allTopics.value.find(t => t.url === url)?.knowledgeEntries ?? [];
+    if (entries.length > 0) return; // use executeDeleteOrphan / executeDeleteAll instead
+    await deleteCachedTopic(url);
   } catch {
     // Silently fail — topic list sẽ refresh khi onActivated
   } finally {
     pendingDeleteUrl.value = null;
+  }
+}
+
+async function executeDeleteOrphan() {
+  if (!pendingDeleteUrl.value) return;
+  try {
+    const url = pendingDeleteUrl.value;
+    await sendMessage('ORPHAN_NOTEBOOK_BY_TOPIC', { topicUrl: url });
+    await deleteCachedTopic(url);
+  } catch {
+    // Silently fail
+  } finally {
+    pendingDeleteUrl.value = null;
+  }
+}
+
+async function executeDeleteAll() {
+  if (!pendingDeleteUrl.value) return;
+  try {
+    const url = pendingDeleteUrl.value;
+    await sendMessage('DELETE_NOTEBOOK_BY_TOPIC', { topicUrl: url });
+    await deleteCachedTopic(url);
+  } catch {
+    // Silently fail
+  } finally {
+    pendingDeleteUrl.value = null;
+  }
+}
+
+async function deleteCachedTopic(url: string) {
+  await sendMessage('DELETE_CACHED_TOPIC', url);
+  allTopics.value = allTopics.value.filter(t => t.url !== url);
+  if (store.selectedTopic.value?.url === url) {
+    store.clearSelection();
   }
 }
 
@@ -241,7 +277,7 @@ async function toggleBookmark(topic: CachedTopic) {
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Tìm kiếm topic..."
+            placeholder="Tìm kiếm thớt..."
             class="input pl-8 pr-8 text-xs w-full"
           />
           <!-- Bookmark filter toggle -->
@@ -461,7 +497,7 @@ async function toggleBookmark(topic: CachedTopic) {
                   </button>
                   <button
                     class="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
-                    title="Xóa topic"
+                    title="Xoá thớt"
                     @click.stop="confirmDelete(topic)"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,23 +510,54 @@ async function toggleBookmark(topic: CachedTopic) {
               <!-- Inline confirmation -->
               <div
                 v-if="pendingDeleteUrl === topic.url"
-                class="alert alert-error flex items-center justify-between mt-1"
+                class="alert alert-error mt-1"
               >
-                <span class="text-xs">Xóa topic này?</span>
-                <div class="flex gap-2">
-                  <button
-                    class="btn btn-sm btn-danger"
-                    @click.stop="executeDelete"
-                  >
-                    Xóa
-                  </button>
-                  <button
-                    class="btn btn-sm btn-secondary"
-                    @click.stop="cancelDelete"
-                  >
-                    Hủy
-                  </button>
-                </div>
+                <!-- 2-choice dialog when topic has saved knowledge entries -->
+                <template v-if="((pendingDeleteNotebookCount ?? topic.knowledgeEntries?.length) ?? 0) > 0">
+                  <p class="text-xs mb-2">
+                    Thớt này có <strong>{{ pendingDeleteNotebookCount ?? topic.knowledgeEntries?.length ?? 0 }}</strong> kiến thức đã lưu.
+                  </p>
+                  <div class="space-y-1.5">
+                    <button
+                      class="w-full btn btn-sm btn-secondary text-xs"
+                      @click.stop="executeDeleteOrphan"
+                    >
+                      Chỉ xoá thớt — giữ kiến thức
+                    </button>
+                    <button
+                      class="w-full btn btn-sm btn-danger text-xs"
+                      @click.stop="executeDeleteAll"
+                    >
+                      Xoá cả thớt và kiến thức
+                    </button>
+                    <button
+                      class="w-full text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors py-1"
+                      @click.stop="cancelDelete"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </template>
+                <!-- Simple confirm when no saved entries -->
+                <template v-else>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs">Xoá thớt này?</span>
+                    <div class="flex gap-2">
+                      <button
+                        class="btn btn-sm btn-danger"
+                        @click.stop="executeDelete"
+                      >
+                        Xóa
+                      </button>
+                      <button
+                        class="btn btn-sm btn-secondary"
+                        @click.stop="cancelDelete"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -503,7 +570,7 @@ async function toggleBookmark(topic: CachedTopic) {
         class="text-center py-6"
       >
         <p class="text-xs text-(--color-text-muted)">
-          Không tìm thấy topic nào khớp "{{ searchQuery }}"
+          Không tìm thấy thớt nào khớp "{{ searchQuery }}"
         </p>
       </div>
 
@@ -514,7 +581,7 @@ async function toggleBookmark(topic: CachedTopic) {
       >
         <div class="text-3xl">📰</div>
         <p class="text-sm text-(--color-text-secondary)">
-          Chưa có chủ đề nào. Mở một topic XenForo để bắt đầu.
+          Chưa có thớt nào. Mở một thớt XenForo để bắt đầu.
         </p>
       </div>
     </template>

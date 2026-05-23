@@ -15,6 +15,13 @@ export function sendTabMessage<TResponse = unknown>(
   return browser.tabs.sendMessage(tabId, { type, payload } satisfies Message);
 }
 
+export function sendMessageQuiet(type: MessageType, payload?: unknown): void {
+  try {
+    const p = browser.runtime.sendMessage({ type, payload } satisfies Message);
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch { /* ignore */ }
+}
+
 export function onMessage(
   type: MessageType,
   handler: (payload: unknown, sender: Browser.runtime.MessageSender) => unknown | Promise<unknown>,

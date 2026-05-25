@@ -99,7 +99,7 @@ export function useTopicScraper() {
       const newsCheck = detectNewsThread(posts, forumDomain);
       if (!newsCheck.isNews || !newsCheck.articleUrls.length) return posts;
 
-      callbacks?.onStatus('Phát hiện chủ đề tin tức — đang tải bài báo gốc...');
+      callbacks?.onStatus('Phát hiện thớt tin tức — đang tải bài báo gốc...');
       const articles = (await Promise.all(
         newsCheck.articleUrls.map(url =>
           sendMessage<ArticleContent | null>('SCRAPE_ARTICLE', { url }).catch(() => null),

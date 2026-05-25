@@ -152,11 +152,12 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
     if (singleBacktickMatch) text = singleBacktickMatch[1].trim();
   }
   // Normalize non-standard whitespace (e.g. NBSP \u00A0) to regular space.
-  // NBSP at structural positions (outside strings) causes JSON.parse to fail
-  // since only \u0020, \t, \n, \r are valid JSON whitespace.
   text = text.replace(/\u00A0/g, ' ');
-  // Sanitize invalid JSON escape sequences (e.g. \N, \T produced by LLMs)
-  text = text.replace(/\\([^"\\\/bfnrtu])/g, (_, ch) => ch);
+  // Fix broken Unicode escape sequences where \u is not followed by 4 hex digits
+  // (e.g. \usage, \update, \user in forum text — JSON.parse treats \u as escape prefix)
+  text = text.replace(/\\u(?![0-9a-fA-F]{4})/g, 'u');
+  // Sanitize other invalid JSON escape sequences (e.g. \N, \T produced by LLMs)
+  text = text.replace(/\\([^"\\\/bfnrtu0-9])/g, (_, ch) => ch);
 
   const isValidSummaryJSON = (parsed: unknown): parsed is SummaryJSON => {
     const obj = parsed as SummaryJSON;
@@ -173,13 +174,20 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
   try {
     const parsed = JSON.parse(text);
     return isValidSummaryJSON(parsed) ? parsed : null;
-  } catch {
+  } catch (firstErr) {
     // Fallback: try repairing unescaped quotes inside string values
     try {
       const repaired = repairUnescapedQuotes(text);
       const parsed = JSON.parse(repaired);
       return isValidSummaryJSON(parsed) ? parsed : null;
-    } catch {
+    } catch (secondErr) {
+      console.warn('[parseSummaryJSON] Parse failed:', {
+        firstError: (firstErr as Error).message,
+        secondError: (secondErr as Error).message,
+        textLen: text.length,
+        textStart: text.slice(0, 120),
+        textEnd: text.slice(-120),
+      });
       return null;
     }
   }
@@ -279,37 +287,9 @@ export async function researchTopic(
 }
 
 /**
- * Direct single-call knowledge extraction (for small topics that fit in context).
- * Chunking + reduce is handled at the composable/orchestration layer (F24).
- */
-export async function extractKnowledge(
-  posts: ScrapedPost[],
-  title: string,
-  config: LLMConfig,
-  onProgress?: LLMProgressCallback,
-  customPrompts?: CustomPrompts,
-  signal?: AbortSignal,
-): Promise<string> {
-  const provider = createProvider(config);
-  const entryCap = computeKnowledgeEntryCap(config.maxTokens);
-  const parts = resolveKnowledgeParts(customPrompts, 'extract');
-  const systemPrompt = buildKnowledgePrompt('extract', parts, entryCap);
-
-  const topicContextPost: ScrapedPost = {
-    author: 'CONTEXT',
-    content: `Topic: ${title}`,
-    timestamp: '',
-    postNumber: 0,
-  };
-
-  onProgress?.('Đang trích xuất kiến thức...');
-  const response = await provider.summarize([topicContextPost, ...posts], systemPrompt, signal, { schemaName: 'knowledge' });
-  return response.content;
-}
-
-/**
- * Map phase: extract knowledge entries from a single chunk of posts.
- * Used by the orchestration layer in KnowledgeView (F24 chunked flow).
+ * Knowledge extraction from posts. When mode='extract' uses the full-thread prompt;
+ * when mode='chunk' uses the chunk-specific prompt (be extra detailed, this is a segment).
+ * Chunking + reduce is handled at the composable/orchestration layer.
  */
 export async function extractKnowledgeChunk(
   chunkPosts: ScrapedPost[],
@@ -318,12 +298,13 @@ export async function extractKnowledgeChunk(
   onProgress?: LLMProgressCallback,
   customPrompts?: CustomPrompts,
   signal?: AbortSignal,
+  mode: 'extract' | 'chunk' = 'chunk',
 ): Promise<string> {
-  const provider = createProvider(config);
-
-  const entryCap = computeKnowledgeEntryCap(config.maxTokens);
-  const parts = resolveKnowledgeParts(customPrompts, 'chunk');
-  const systemPrompt = buildKnowledgePrompt('chunk', parts, entryCap);
+  const effectiveConfig = { ...config, maxTokens: config.knowledgeMaxTokens ?? config.maxTokens };
+  const provider = createProvider(effectiveConfig);
+  const entryCap = computeKnowledgeEntryCap(effectiveConfig.maxTokens);
+  const parts = resolveKnowledgeParts(customPrompts, mode);
+  const systemPrompt = buildKnowledgePrompt(mode, parts, entryCap);
 
   const topicContextPost: ScrapedPost = {
     author: 'CONTEXT',
@@ -349,7 +330,8 @@ export async function reduceKnowledgeChunks(
   customPrompts?: CustomPrompts,
   entryCap?: number,
 ): Promise<string> {
-  const provider = createProvider(config);
+  const effectiveConfig = { ...config, maxTokens: config.knowledgeMaxTokens ?? config.maxTokens };
+  const provider = createProvider(effectiveConfig);
 
   onProgress?.('Đang gộp kiến thức...');
 

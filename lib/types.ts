@@ -63,6 +63,7 @@ export interface LLMConfig {
   baseUrl: string;
   temperature: number;
   maxTokens?: number;
+  knowledgeMaxTokens?: number;
   contextWindow?: number;  // Override context window (tokens) for models not in PRICING_TABLE (e.g. local LLMs)
   timeoutMs?: number;
   scrapeDelayMs?: number;
@@ -100,7 +101,7 @@ export type MessageType =
 
 export interface LLMTaskRequest {
   taskId: string;
-  taskType: 'summarize' | 'analyze_opinions' | 'research' | 'extract_knowledge' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks' | 'thread_analysis';
+  taskType: 'summarize' | 'analyze_opinions' | 'research' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks' | 'thread_analysis';
   payload: unknown;
 }
 

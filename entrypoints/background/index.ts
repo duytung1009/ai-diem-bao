@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
-import { summarizeTopic, researchTopic, extractKnowledge, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
+import { summarizeTopic, researchTopic, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats } from '@/lib/notebook-db';
@@ -111,7 +111,7 @@ export default defineBackground(() => {
           return true;
         }
 
-case 'SAVE_CACHED_TOPIC': {
+        case 'SAVE_CACHED_TOPIC': {
           const partial = message.payload as Partial<CachedTopic> & { url?: string };
           const urlPromise = partial.url ? Promise.resolve(partial.url) : getActiveTabUrl();
           urlPromise
@@ -328,10 +328,8 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
 
     case 'research':
       return { workflow: 'research', steps: [pendingStep('research', 'Tra cứu và phân tích')] };
-    case 'extract_knowledge':
-      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Trích xuất kiến thức')] };
     case 'extract_knowledge_chunk':
-      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Tổng hợp Segment kiến thức')] };
+      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Trích xuất kiến thức')] };
     case 'reduce_knowledge_chunks':
       return { workflow: 'knowledge', steps: [pendingStep('reduce', 'Tổng hợp kiến thức')] };
     case 'thread_analysis':
@@ -385,17 +383,10 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         result = { answer: await researchTopic(posts, question, config, onProgress, prompts, signal) };
         break;
       }
-      case 'extract_knowledge': {
-        const { posts, title } = payload as { posts: ScrapedPost[]; title: string };
-        inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        const raw = await extractKnowledge(posts, title, config, onProgress, prompts, signal);
-        result = { entries: parseKnowledgeEntries(raw) };
-        break;
-      }
       case 'extract_knowledge_chunk': {
-        const { posts, title } = payload as { posts: ScrapedPost[]; title: string };
+        const { posts, title, mode } = payload as { posts: ScrapedPost[]; title: string; mode?: 'extract' | 'chunk' };
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        const raw = await extractKnowledgeChunk(posts, title, config, onProgress, prompts, signal);
+        const raw = await extractKnowledgeChunk(posts, title, config, onProgress, prompts, signal, mode ?? 'chunk');
         result = { entries: parseKnowledgeEntries(raw) };
         break;
       }
@@ -467,10 +458,12 @@ async function updateModelSpeedStats(model: string, totalTokens: number, elapsed
 
 function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const text = (fenceMatch ? fenceMatch[1] : raw).trim();
+  let text = (fenceMatch ? fenceMatch[1] : raw).trim();
   if (text.length < 10) {
     throw new Error('LLM trả về dữ liệu quá ngắn, không thể parse kiến thức. Thử tăng "Max tokens" trong Cài đặt hoặc giảm số bài trong 1 lần trích xuất.');
   }
+  // Fix broken \u sequences (same as parseSummaryJSON)
+  text = text.replace(/\\u(?![0-9a-fA-F]{4})/g, 'u');
   try {
     const rawParsed: unknown = JSON.parse(text);
     // Handle wrapped format { entries: [...] } from OpenAI Structured Outputs

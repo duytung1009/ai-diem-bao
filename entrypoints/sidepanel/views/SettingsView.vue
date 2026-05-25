@@ -118,6 +118,13 @@ function resetSummaryMode(mode: 'direct' | 'map' | 'reduce') {
   summarySections.value[mode] = { task: '', rules: '', structure: '' };
 }
 
+function resetAllSummarySections() {
+  const modes: ('direct' | 'map' | 'reduce')[] = ['direct', 'map', 'reduce'];
+  for (const mode of modes) {
+    summarySections.value[mode] = { task: '', rules: '', structure: '' };
+  }
+}
+
 function buildSummarySectionsForSave(): SummaryPromptSections {
   const result: SummaryPromptSections = {};
   const modes: ('direct' | 'map' | 'reduce')[] = ['direct', 'map', 'reduce'];
@@ -194,6 +201,13 @@ function resetKnowledgeSection(mode: 'extract' | 'chunk' | 'reduce', section: 't
 
 function resetKnowledgeMode(mode: 'extract' | 'chunk' | 'reduce') {
   knowledgeSections.value[mode] = { task: '', rules: '', structure: '' };
+}
+
+function resetAllKnowledgeSections() {
+  const modes: ('extract' | 'chunk' | 'reduce')[] = ['extract', 'chunk', 'reduce'];
+  for (const mode of modes) {
+    knowledgeSections.value[mode] = { task: '', rules: '', structure: '' };
+  }
 }
 
 function buildKnowledgeSectionsForSave(): KnowledgePromptSections {
@@ -727,25 +741,59 @@ async function exportCache() {
       </div>
     </div>
 
-    <!-- Max output tokens -->
+    <!-- Max output tokens (Tóm tắt) -->
     <div>
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
-        Max output tokens: {{ config.maxTokens ?? 16384 }}
+        Max output tokens (Tóm tắt): {{ (config.maxTokens ?? 16384).toLocaleString() }}
       </label>
       <p class="text-[11px] text-(--color-text-muted) mb-1">
-        Giới hạn số token LLM có thể trả về trong một lần gọi. Tăng nếu tóm tắt bị cắt ngắn.
+        Giới hạn số token LLM có thể trả về trong một lần gọi tóm tắt. Tăng nếu tóm tắt bị cắt ngắn.
       </p>
-      <input
-        v-model.number="config.maxTokens"
-        type="range"
-        min="2048"
-        max="1024000"
-        step="2048"
-        class="w-full"
-      />
-      <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
-        <span>2048</span>
-        <span>1024000</span>
+      <div class="flex gap-2 items-center">
+        <input
+          v-model.number="config.maxTokens"
+          type="number"
+          min="1024"
+          step="1024"
+          placeholder="16384"
+          class="input flex-1"
+        />
+        <button
+          v-if="config.maxTokens"
+          class="btn btn-sm btn-secondary"
+          @click="config.maxTokens = undefined"
+          title="Reset về mặc định"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Max output tokens (Kiến thức) -->
+    <div>
+      <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
+        Max output tokens (Kiến thức): {{ (config.knowledgeMaxTokens ?? config.maxTokens ?? 16384).toLocaleString() }}
+      </label>
+      <p class="text-[11px] text-(--color-text-muted) mb-1">
+        Giới hạn riêng cho flow trích xuất kiến thức. Để trống = dùng giá trị của Tóm tắt ở trên.
+      </p>
+      <div class="flex gap-2 items-center">
+        <input
+          v-model.number="config.knowledgeMaxTokens"
+          type="number"
+          min="1024"
+          step="1024"
+          placeholder="Dùng giá trị Tóm tắt"
+          class="input flex-1"
+        />
+        <button
+          v-if="config.knowledgeMaxTokens"
+          class="btn btn-sm btn-secondary"
+          @click="config.knowledgeMaxTokens = undefined"
+          title="Reset về giá trị Tóm tắt"
+        >
+          Reset
+        </button>
       </div>
     </div>
 
@@ -1036,59 +1084,47 @@ async function exportCache() {
 
       <!-- Prompt editor -->
       <div class="p-3 space-y-2">
-        <!-- Summary tab: 3-section editor with sub-tabs -->
+        <!-- Summary tab: show all 3 modes at once, task only -->
         <template v-if="activePromptTab === 'summary'">
-          <!-- Sub-tabs: Direct / Chunk / Reduce -->
-          <div class="flex border border-(--color-border) rounded-lg overflow-hidden">
-            <button
-              v-for="mode in (['direct', 'map', 'reduce'] as const)"
-              :key="mode"
-              class="flex-1 py-1 text-xs font-medium transition-colors"
-              :class="activeSummaryMode === mode
-                ? 'text-(--color-accent) bg-(--color-bg-surface)'
-                : 'text-(--color-text-secondary) hover:text-(--color-text-primary) bg-(--color-bg-muted)'"
-              @click="activeSummaryMode = mode"
-            >
-              {{ { direct: 'Trực tiếp', map: 'Chunk', reduce: 'Gộp' }[mode] }}
-            </button>
-          </div>
-
-          <!-- 3 sections per mode -->
-          <div v-for="section in (['task', 'rules', 'structure'] as const)" :key="section" class="space-y-1">
+          <div
+            v-for="mode in (['direct', 'map', 'reduce'] as const)"
+            :key="mode"
+            class="border border-(--color-border) rounded-lg p-2 space-y-1"
+          >
             <div class="flex items-center justify-between">
-              <label class="text-xs font-medium text-(--color-text-secondary)">
-                {{ { task: 'Nhiệm vụ', rules: 'Quy tắc bắt buộc', structure: 'Cấu trúc JSON' }[section] }}
-              </label>
+              <span class="text-xs font-semibold text-(--color-text-primary)">
+                {{ { direct: 'Trực tiếp', map: 'Chunk', reduce: 'Gộp' }[mode] }}
+              </span>
               <div class="flex gap-2">
                 <button
                   type="button"
                   class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
-                  @click="showSummaryDefault[section] = !showSummaryDefault[section]"
+                  @click="showSummaryDefault[mode] = !showSummaryDefault[mode]"
                 >
-                  {{ showSummaryDefault[section] ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
+                  {{ showSummaryDefault[mode] ? '▾ Ẩn mặc định' : '▸ Xem mặc định' }}
                 </button>
                 <button
                   type="button"
                   class="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
-                  :disabled="!summarySections[activeSummaryMode][section]"
-                  @click="resetSummarySectionAndSave(activeSummaryMode, section)"
+                  :disabled="!summarySections[mode].task"
+                  @click="resetSummarySection(mode, 'task')"
                 >
                   Reset
                 </button>
               </div>
             </div>
             <textarea
-              :value="getSummarySectionValue(activeSummaryMode, section)"
-              @input="setSummarySectionValue(activeSummaryMode, section, ($event.target as HTMLTextAreaElement).value)"
-              :rows="section === 'structure' ? 5 : 10"
+              :value="summarySections[mode].task || getSummaryDefault(mode, 'task')"
+              @input="setSummarySectionValue(mode, 'task', ($event.target as HTMLTextAreaElement).value)"
+              rows="6"
               class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
-              :placeholder="'Nhập phần ' + { task: 'nhiệm vụ', rules: 'quy tắc', structure: 'cấu trúc' }[section] + ' tuỳ chỉnh...'"
+              :placeholder="'Nhập prompt ' + { direct: 'Trực tiếp', map: 'Chunk', reduce: 'Gộp' }[mode] + '...'"
             />
             <div
-              v-if="showSummaryDefault[section]"
+              v-if="showSummaryDefault[mode]"
               class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-36 overflow-y-auto"
             >
-              <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ getSummaryDefault(activeSummaryMode, section) }}</pre>
+              <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ getSummaryDefault(mode, 'task') }}</pre>
             </div>
           </div>
 
@@ -1096,67 +1132,55 @@ async function exportCache() {
             <button class="flex-1 btn btn-sm btn-primary" @click="savePrompts">Lưu Prompts</button>
             <button
               class="btn btn-sm btn-secondary"
-              :disabled="!summarySections[activeSummaryMode].task && !summarySections[activeSummaryMode].rules && !summarySections[activeSummaryMode].structure"
-              @click="resetPrompt"
+              :disabled="!summarySections.direct.task && !summarySections.map.task && !summarySections.reduce.task"
+              @click="resetAllSummarySections"
             >
               Reset mặc định
             </button>
           </div>
         </template>
 
-        <!-- Knowledge tab: 3-section editor with sub-tabs -->
+        <!-- Knowledge tab: show all 3 modes at once, task only -->
         <template v-else-if="activePromptTab === 'knowledge'">
-          <!-- Sub-tabs: Extract / Chunk / Reduce -->
-          <div class="flex border border-(--color-border) rounded-lg overflow-hidden">
-            <button
-              v-for="mode in (['extract', 'chunk', 'reduce'] as const)"
-              :key="mode"
-              class="flex-1 py-1 text-xs font-medium transition-colors"
-              :class="activeKnowledgeMode === mode
-                ? 'text-(--color-accent) bg-(--color-bg-surface)'
-                : 'text-(--color-text-secondary) hover:text-(--color-text-primary) bg-(--color-bg-muted)'"
-              @click="activeKnowledgeMode = mode"
-            >
-              {{ { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] }}
-            </button>
-          </div>
-
-          <!-- 3 sections per mode -->
-          <div v-for="section in (['task', 'rules', 'structure'] as const)" :key="section" class="space-y-1">
+          <div
+            v-for="mode in (['extract', 'chunk', 'reduce'] as const)"
+            :key="mode"
+            class="border border-(--color-border) rounded-lg p-2 space-y-1"
+          >
             <div class="flex items-center justify-between">
-              <label class="text-xs font-medium text-(--color-text-secondary)">
-                {{ { task: 'Nhiệm vụ', rules: 'Quy tắc bắt buộc', structure: 'Cấu trúc JSON' }[section] }}
-              </label>
+              <span class="text-xs font-semibold text-(--color-text-primary)">
+                {{ { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] }}
+              </span>
               <div class="flex gap-2">
                 <button
                   type="button"
                   class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
-                  @click="showKnowledgeDefault[section] = !showKnowledgeDefault[section]"
+                  @click="showKnowledgeDefault[mode] = !showKnowledgeDefault[mode]"
                 >
-                  {{ showKnowledgeDefault[section] ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
+                  {{ showKnowledgeDefault[mode] ? '▾ Ẩn mặc định' : '▸ Xem mặc định' }}
                 </button>
                 <button
                   type="button"
                   class="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
-                  :disabled="!knowledgeSections[activeKnowledgeMode][section]"
-                  @click="resetKnowledgeSectionAndSave(activeKnowledgeMode, section)"
+                  :disabled="!knowledgeSections[mode].task"
+                  @click="resetKnowledgeSection(mode, 'task')"
                 >
                   Reset
                 </button>
               </div>
             </div>
             <textarea
-              :value="getSectionValue(activeKnowledgeMode, section)"
-              @input="setSectionValue(activeKnowledgeMode, section, ($event.target as HTMLTextAreaElement).value)"
-              :rows="section === 'structure' ? 5 : 10"
+              :value="knowledgeSections[mode].task || getKnowledgeDefault(mode, 'task')"
+              @input="setSectionValue(mode, 'task', ($event.target as HTMLTextAreaElement).value)"
+              rows="6"
               class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
-              :placeholder="'Nhập phần ' + { task: 'nhiệm vụ', rules: 'quy tắc', structure: 'cấu trúc' }[section] + ' tuỳ chỉnh...'"
+              :placeholder="'Nhập prompt ' + { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] + '...'"
             />
             <div
-              v-if="showKnowledgeDefault[section]"
+              v-if="showKnowledgeDefault[mode]"
               class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-36 overflow-y-auto"
             >
-              <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ getKnowledgeDefault(activeKnowledgeMode, section) }}</pre>
+              <pre class="text-xs text-(--color-text-secondary) whitespace-pre-wrap font-mono leading-relaxed">{{ getKnowledgeDefault(mode, 'task') }}</pre>
             </div>
           </div>
 
@@ -1164,8 +1188,8 @@ async function exportCache() {
             <button class="flex-1 btn btn-sm btn-primary" @click="savePrompts">Lưu Prompts</button>
             <button
               class="btn btn-sm btn-secondary"
-              :disabled="!knowledgeSections[activeKnowledgeMode].task && !knowledgeSections[activeKnowledgeMode].rules && !knowledgeSections[activeKnowledgeMode].structure"
-              @click="resetPrompt"
+              :disabled="!knowledgeSections.extract.task && !knowledgeSections.chunk.task && !knowledgeSections.reduce.task"
+              @click="resetAllKnowledgeSections"
             >
               Reset mặc định
             </button>

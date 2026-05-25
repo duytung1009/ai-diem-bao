@@ -1,76 +1,41 @@
 <script setup lang="ts">
 import { ref, onActivated, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { CachedTopic, KnowledgeEntry, KnowledgeChunk, LLMConfig, ScrapedPost, NotebookEntry } from '@/lib/types';
-import { sendMessage, sendMessageQuiet } from '@/lib/messaging';
-import { estimateTokens, calculateSegmentBudget, getContextLimit, getThinkingOverhead } from '@/lib/token-estimator';
-import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
-import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
-import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION, KNOWLEDGE_MAX_CHUNK_BUDGET } from '@/lib/constants';
-import { buildKnowledgePrompt } from '@/lib/prompts';
-import { buildKnowledgePipeline, markFirstStepRunning } from '@/lib/pipeline-builder';
+import type { CachedTopic, KnowledgeEntry, LLMConfig } from '@/lib/types';
+import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import ConfirmInline from '../components/ConfirmInline.vue';
-import { useLLM } from '../composables/useLLM';
+import { useKnowledge } from '../composables/useKnowledge';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
-import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 
-const { extractKnowledge: runExtract, extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask, getTaskState } = useLLM();
 const store = useTopicStore();
+const knowledge = useKnowledge(store);
 const { topicInfo } = useSummarize(store);
-const { optimisticUpdate } = useOptimisticUpdate(store);
-const cachedTopic = computed(() => store.selectedTopic.value);
 
-const entries = ref<KnowledgeEntry[]>([]);
-const loadedTopicUrl = ref<string | null>(null);
-const isLoading = ref(false);
-const error = ref('');
-const llmTaskId = ref<string | null>(null);
+const {
+  entries, loadedTopicUrl, isLoading, error, llmTaskId,
+  currentChunkIndex, totalChunks, currentPhase, currentConfig,
+  confirmingExtract, confirmingRestore, showClearDataAction,
+  cachedTopic, activePipeline, canRestore,
+  estimatedExtractApiCalls, showExtractCostWarning,
+  estimatedRestoreApiCalls, showRestoreCostWarning,
+  allPosts,
+  handleExtract, handleRestore, handleCancel,
+  handleClearKnowledgeData, toggleSave, handleDelete, handleClearTracking,
+  onExtractClick, onRestoreClick,
+  knowledgeGuard,
+} = knowledge;
+
+// UI state (local to view)
 const searchQuery = ref('');
 const selectedTags = ref<string[]>([]);
 const selectedCategory = ref<string | null>(null);
 const expandedIds = ref<Set<string>>(new Set());
 const showSavedOnly = ref(false);
-const confirmingExtract = ref(false);
-const confirmingRestore = ref(false);
-const showClearDataAction = ref(false);
 
-// F24: chunked flow state
-let activeExtractId = 0;
-const currentChunkIndex = ref(0);
-const totalChunks = ref(0);
-const currentPhase = ref<'idle' | 'extracting' | 'reducing'>('idle');
-const currentConfig = ref<LLMConfig | null>(null);
-
-const activePipeline = computed(() => {
-  if (!llmTaskId.value) return null;
-  return getTaskState(llmTaskId.value)?.pipeline ?? null;
-});
-
-// Cost estimate for extract — skip during active extraction (warning is hidden then anyway)
-const estimatedExtractApiCalls = computed(() => {
-  if (!allPosts.value.length || !currentConfig.value || isLoading.value) return 0;
-  const model = currentConfig.value.model ?? 'gpt-4o-mini';
-  const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow, currentConfig.value.maxTokens, currentConfig.value.thinkingEnabled, currentConfig.value.thinkingBudget);
-  return estimateExtractCalls(chunks.length);
-});
-const showExtractCostWarning = computed(() => estimatedExtractApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
-
-/** Entries empty but knowledgeChunks exist → user can restore extracted entries without re-scraping */
-const canRestore = computed(() => {
-  const ct = cachedTopic.value;
-  return !!ct?.knowledgeChunks?.length && !entries.value.some(e => !e.saved);
-});
-
-const estimatedRestoreApiCalls = computed(() => {
-  if (!canRestore.value) return 0;
-  const len = cachedTopic.value?.knowledgeChunks?.length ?? 0;
-  return len <= 1 ? 0 : len;
-});
-const showRestoreCostWarning = computed(() => estimatedRestoreApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
-
+// Focus scroll / route state
 const route = useRoute();
 const router = useRouter();
 const focusId = computed(() => (route.query.focus as string | null) ?? null);
@@ -135,7 +100,7 @@ function openPostLink(postNumber: number) {
   const post = allPosts.value.find(p => p.postNumber === postNumber);
   const base = cachedTopic.value.url.replace(/\/$/, '');
   const pageSegment = post?.page && post.page > 1 ? `/page-${post.page}` : '';
-  browser.tabs.create({ url: `${base}${pageSegment}#post-${postNumber}` });
+  browser.tabs.create({ url: `${base}${pageSegment}/post-${postNumber}` });
 }
 
 function formatTimestamp(ts: string): string {
@@ -150,13 +115,6 @@ function toggleTag(tag: string) {
   if (idx >= 0) selectedTags.value.splice(idx, 1);
   else selectedTags.value.push(tag);
 }
-
-// Posts may live in segments[].posts (segment mode) or top-level posts (legacy)
-const allPosts = computed(() => {
-  if (!cachedTopic.value) return [];
-  const posts = cachedTopic.value.posts?.length ? cachedTopic.value.posts : cachedTopic.value.segments?.flatMap(s => s?.posts ?? []) ?? [];
-  return [...posts]; // mutable copy for LLM functions
-});
 
 const allTags = computed(() => {
   const tags = new Set<string>();
@@ -218,7 +176,6 @@ const groupedEntries = computed(() => {
     if (!groups[cat]) groups[cat] = [];
     groups[cat].push(e);
   }
-  // Sort categories alphabetically, 'Khác' last
   const keys = Object.keys(groups).sort((a, b) => {
     if (a === 'Khác') return 1;
     if (b === 'Khác') return -1;
@@ -228,8 +185,7 @@ const groupedEntries = computed(() => {
 });
 
 async function loadTopicData() {
-  // Cancel any in-progress extract (mirrors F23 invariant in useSummarize)
-  activeExtractId++;
+  knowledgeGuard.begin();
   isLoading.value = false;
   llmTaskId.value = null;
   currentPhase.value = 'idle';
@@ -248,7 +204,7 @@ async function loadTopicData() {
 
   try {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
-    if (loadedTopicUrl.value !== url) return; // topic switched during await — discard stale result
+    if (loadedTopicUrl.value !== url) return;
     if (fresh) {
       store.updateSelectedTopic(fresh);
       if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
@@ -257,7 +213,6 @@ async function loadTopicData() {
 }
 
 onActivated(async () => {
-  // Reload settings in case user changed them
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
     if (cfg) currentConfig.value = cfg;
   }).catch(() => {});
@@ -267,7 +222,6 @@ onActivated(async () => {
   if (url !== loadedTopicUrl.value) {
     await loadTopicData();
   } else {
-    // Same topic — refresh from cache in case entries were updated elsewhere
     try {
       const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
       if (fresh) {
@@ -277,542 +231,6 @@ onActivated(async () => {
     } catch { /* ignore */ }
   }
 });
-
-/** Enrich entries with timestamp from allPosts */
-function enrichEntries(newEntries: KnowledgeEntry[]): KnowledgeEntry[] {
-  const postMap = new Map(allPosts.value.map(p => [p.postNumber, p]));
-  return newEntries.map(e => {
-    const post = postMap.get(e.source.postNumber);
-    return post?.timestamp ? { ...e, source: { ...e.source, timestamp: post.timestamp } } : e;
-  });
-}
-
-/** Merge saved entries from previous results with fresh entries — saved entries survive re-extract */
-function mergeSavedWithFresh(saved: KnowledgeEntry[], fresh: KnowledgeEntry[]): KnowledgeEntry[] {
-  const freshByPostNum = new Set(fresh.map(e => e.source.postNumber));
-  const savedNotInFresh = saved.filter(e => !freshByPostNum.has(e.source.postNumber));
-  return [...savedNotInFresh, ...fresh];
-}
-
-/** Determine resume state from existing knowledgeChunks */
-function computeKnowledgeResumeState(): {
-  startFromPostNumber: number;
-  existingChunks: KnowledgeChunk[];
-} {
-  const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
-  if (chunks.length === 0) return { startFromPostNumber: 0, existingChunks: [] };
-
-  const lastChunk = chunks[chunks.length - 1];
-  if (lastChunk.complete === false) {
-    // Last chunk incomplete → drop it, resume from its startPostNumber
-    return {
-      startFromPostNumber: lastChunk.startPostNumber,
-      existingChunks: chunks.slice(0, -1),
-    };
-  }
-  // All complete → resume from after last post
-  return {
-    startFromPostNumber: lastChunk.endPostNumber + 1,
-    existingChunks: [...chunks],
-  };
-}
-
-/** Persist chunks to cache without updating entries.value (entries only update after reduce) */
-async function persistChunks(chunks: KnowledgeChunk[], guardId: number, topicUrl: string): Promise<void> {
-  if (guardId !== activeExtractId) return;
-  await sendMessage('SAVE_CACHED_TOPIC', {
-    url: topicUrl,
-    knowledgeChunks: chunks,
-  }).catch(() => {});
-
-  if (cachedTopic.value?.url === topicUrl) {
-    store.updateSelectedTopic({
-      knowledgeChunks: [...chunks],
-      lastKnowledgePostNumber: chunks.length > 0
-        ? chunks[chunks.length - 1].endPostNumber
-        : cachedTopic.value.lastKnowledgePostNumber,
-    });
-  }
-}
-
-/** Direct path: single LLM call for small topics that fit in context */
-async function runDirectExtract(postsToProcess: ScrapedPost[], guardId: number, topicUrl: string, topicTitle: string): Promise<void> {
-  currentPhase.value = 'extracting';
-  const pipeline = buildKnowledgePipeline(1);
-  markFirstStepRunning(pipeline);
-  const { taskId, result } = runExtract(postsToProcess, topicTitle);
-  llmTaskId.value = taskId;
-  const st = getTaskState(taskId);
-  if (st) st.pipeline = JSON.parse(JSON.stringify(pipeline));
-  const llmResult = await result;
-  if (guardId !== activeExtractId) return;
-
-  const newEntries = enrichEntries(
-    ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
-  );
-
-  // Create single chunk record for consistency (QD4)
-  const budget = calculateSegmentBudget(
-    currentConfig.value?.model ?? 'gpt-4o-mini',
-    KNOWLEDGE_CHUNK_PROMPT_TOKENS,
-    2000,
-    currentConfig.value?.contextWindow,
-  );
-  const chunkTokens = postsToProcess.reduce(
-    (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-    0,
-  );
-  const chunk: KnowledgeChunk = {
-    index: 0,
-    startPostNumber: postsToProcess[0].postNumber,
-    endPostNumber: postsToProcess[postsToProcess.length - 1].postNumber,
-    entries: newEntries,
-    extractedAt: Date.now(),
-    complete: chunkTokens >= budget * 0.8,
-  };
-
-  const savedEntries = entries.value.filter(e => e.saved);
-  const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
-  const filteredNew = newEntries.filter(e => !excludedNums.has(e.source.postNumber));
-  const merged = mergeSavedWithFresh(savedEntries, filteredNew);
-
-  const savedMerged = merged.filter(e => e.saved);
-  entries.value = merged;
-  expandedIds.value = new Set();
-  store.updateSelectedTopic({ knowledgeEntries: savedMerged });
-  await sendMessage('SAVE_CACHED_TOPIC', {
-    url: topicUrl,
-    knowledgeEntries: savedMerged,
-    knowledgeChunks: [chunk],
-    lastKnowledgePostNumber: chunk.endPostNumber,
-  }).catch(() => {});
-}
-
-/** Determine resume state from existing knowledgeChunks */
-
-function onExtractClick() {
-  if (showExtractCostWarning.value) {
-    confirmingExtract.value = true;
-  } else {
-    handleExtract();
-  }
-}
-
-function onRestoreClick() {
-  if (showRestoreCostWarning.value) {
-    confirmingRestore.value = true;
-  } else {
-    handleRestore();
-  }
-}
-
-async function handleRestore() {
-  confirmingRestore.value = false;
-  showClearDataAction.value = false;
-  const topicUrl = cachedTopic.value?.url;
-  if (!topicUrl) return;
-  const rawChunks = cachedTopic.value?.knowledgeChunks;
-  if (!rawChunks?.length) return;
-  const chunks = rawChunks.map(c => ({ ...c, entries: [...c.entries] })) as KnowledgeChunk[];
-  if (isLoading.value) return;
-
-  const thisId = ++activeExtractId;
-  error.value = '';
-  isLoading.value = true;
-  currentPhase.value = 'reducing';
-  currentChunkIndex.value = 0;
-  totalChunks.value = 0;
-
-  if (!currentConfig.value) {
-    const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
-    if (cfg) currentConfig.value = cfg;
-  }
-
-  try {
-    const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
-    await runReducePhase(chunks, excludedNums, thisId, topicUrl);
-  } catch (err) {
-    if (thisId !== activeExtractId) return;
-    const msg = err instanceof Error ? err.message : String(err);
-    error.value = msg;
-    if (msg.includes('Gộp kiến thức không trả về kết quả')) {
-      showClearDataAction.value = true;
-    }
-  } finally {
-    if (thisId === activeExtractId) {
-      isLoading.value = false;
-      llmTaskId.value = null;
-      currentPhase.value = 'idle';
-      currentChunkIndex.value = 0;
-      totalChunks.value = 0;
-    }
-  }
-}
-
-async function handleClearKnowledgeData() {
-  await optimisticUpdate({
-    knowledgeChunks: [],
-    knowledgeEntries: [],
-    lastKnowledgePostNumber: 0,
-    excludedKnowledgePostNumbers: [],
-  });
-  showClearDataAction.value = false;
-  error.value = '';
-}
-
-async function handleExtract() {
-  confirmingExtract.value = false;
-  if (!allPosts.value.length) return;
-  if (isLoading.value) return;
-
-  const thisId = ++activeExtractId;
-  error.value = '';
-  isLoading.value = true;
-  currentPhase.value = 'extracting';
-  currentChunkIndex.value = 0;
-  totalChunks.value = 0;
-
-  // Ensure config is loaded
-  if (!currentConfig.value) {
-    const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
-    if (cfg) currentConfig.value = cfg;
-  }
-
-  try {
-    // 0. Snapshot topic identity at call time (Layer 2 guard — topic switch also caught by activeExtractId++ in loadTopicData)
-    const topicUrl = cachedTopic.value?.url;
-    const topicTitle = cachedTopic.value?.title;
-    if (!topicUrl || !topicTitle) return;
-
-    // 1. Determine resume state
-    const resume = computeKnowledgeResumeState();
-
-    // Reset search/filter on a fresh extract (no prior chunks)
-    if (resume.existingChunks.length === 0 && resume.startFromPostNumber === 0) {
-      searchQuery.value = '';
-      selectedTags.value = [];
-    }
-
-    const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
-
-    // 2. Filter posts: >= startFromPostNumber, not excluded
-    const postsToProcess = allPosts.value
-      .filter(p => p.postNumber >= resume.startFromPostNumber && !excludedNums.has(p.postNumber))
-      .sort((a, b) => a.postNumber - b.postNumber);
-
-    if (postsToProcess.length === 0) {
-      // Check if all chunks complete but no final reduce yet (resume reduce only)
-      const existingChunks = resume.existingChunks;
-      if (existingChunks.length > 0) {
-        // Re-run reduce with existing chunks
-        currentPhase.value = 'reducing';
-        await runReducePhase(existingChunks, excludedNums, thisId, topicUrl);
-      } else if (entries.value.length > 0) {
-        error.value = 'Không có bài viết mới để trích xuất kiến thức.';
-      }
-      return;
-    }
-
-    // 3. Decide path: direct (fits context, no existing chunks) or chunked
-    let budget = calculateSegmentBudget(
-      currentConfig.value?.model ?? 'gpt-4o-mini',
-      KNOWLEDGE_CHUNK_PROMPT_TOKENS,
-      2000,
-      currentConfig.value?.contextWindow,
-    );
-    budget = Math.min(budget, KNOWLEDGE_MAX_CHUNK_BUDGET);
-    const totalTokens = postsToProcess.reduce(
-      (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-      0,
-    );
-
-    if (totalTokens <= budget && resume.existingChunks.length === 0) {
-      // Direct path — single call, no reduce
-      await runDirectExtract(postsToProcess, thisId, topicUrl, topicTitle);
-      return;
-    }
-
-    // 4. Chunked path
-    const chunkPlan = planKnowledgeChunks(
-      postsToProcess,
-      currentConfig.value?.model ?? 'gpt-4o-mini',
-      currentConfig.value?.contextWindow,
-      currentConfig.value?.maxTokens,
-      currentConfig.value?.thinkingEnabled,
-      currentConfig.value?.thinkingBudget,
-    );
-    const newChunks: KnowledgeChunk[] = [...resume.existingChunks];
-    totalChunks.value = newChunks.length + chunkPlan.length;
-
-    // 5. Extract each chunk
-    for (let i = 0; i < chunkPlan.length; i++) {
-      if (thisId !== activeExtractId) return; // cancelled
-      currentChunkIndex.value = newChunks.length;
-      currentPhase.value = 'extracting';
-
-      const { startIndex, endIndex } = chunkPlan[i];
-      const chunkPosts = postsToProcess.slice(startIndex, endIndex + 1);
-      const isLastChunk = i === chunkPlan.length - 1;
-
-      const { taskId, result } = extractKnowledgeChunkTask(chunkPosts, topicTitle);
-      llmTaskId.value = taskId;
-      // Set detailed pipeline in task state for timeline display
-      const totalExtractSteps = newChunks.length + chunkPlan.length;
-      const st = getTaskState(taskId);
-      if (st) {
-        const p = buildKnowledgePipeline(totalExtractSteps);
-        markFirstStepRunning(p);
-        st.pipeline = JSON.parse(JSON.stringify(p));
-      }
-      const llmResult = await result;
-      if (thisId !== activeExtractId) return;
-
-      const chunkEntries = enrichEntries(
-        ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
-      );
-
-      const chunkTokens = chunkPosts.reduce(
-        (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-        0,
-      );
-
-      const chunkRecord: KnowledgeChunk = {
-        index: newChunks.length,
-        startPostNumber: chunkPosts[0].postNumber,
-        endPostNumber: chunkPosts[chunkPosts.length - 1].postNumber,
-        entries: chunkEntries,
-        extractedAt: Date.now(),
-        // Last chunk: incomplete if < 80% budget (allows appending new posts)
-        complete: isLastChunk ? (chunkTokens >= budget * 0.8) : true,
-      };
-      newChunks.push(chunkRecord);
-
-      // Persist per chunk (resume if cancelled/error)
-      await persistChunks(newChunks, thisId, topicUrl);
-    }
-
-    // 6. Reduce phase
-    if (thisId !== activeExtractId) return;
-    await runReducePhase(newChunks, excludedNums, thisId, topicUrl);
-  } catch (err) {
-    if (thisId !== activeExtractId) return; // cancelled, ignore
-    error.value = err instanceof Error ? err.message : String(err);
-  } finally {
-    if (thisId === activeExtractId) {
-      isLoading.value = false;
-      llmTaskId.value = null;
-      currentPhase.value = 'idle';
-      currentChunkIndex.value = 0;
-      totalChunks.value = 0;
-    }
-  }
-}
-
-/** Reduce phase: merge all chunk entries into final knowledgeEntries.
- *  Tree-reduces if total entry JSON exceeds the model's usable context budget.
- */
-function calcMaxOutputEntries(
-  contextLimit: number,
-  promptTokens: number,
-  inputTokens: number,
-): number {
-  void promptTokens; void inputTokens; // reserved for future precise budget
-  const outputBudget = contextLimit * REDUCE_OUTPUT_FRACTION;
-  return Math.max(10, Math.floor(outputBudget / TOKENS_PER_KNOWLEDGE_ENTRY));
-}
-
-function clientSideDedup(entries: KnowledgeEntry[]): KnowledgeEntry[] {
-  const seen = new Set<string>();
-  return entries.filter(e => {
-    const key = e.title.toLowerCase().replace(/[^\p{L}\d]/gu, '').trim();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-async function runReducePhase(
-  chunks: KnowledgeChunk[],
-  excludedNums: Set<number>,
-  guardId: number,
-  topicUrl: string,
-): Promise<void> {
-  currentPhase.value = 'reducing';
-  const allPartial = chunks.map(c => c.entries);
-  const dynamicMin = Math.max(chunks.length, 3);
-  const finalCap = Math.min(200, Math.max(dynamicMin, chunks.length * 4));
-
-  let finalEntries: KnowledgeEntry[];
-  if (allPartial.length === 1) {
-    // Single chunk — skip reduce call
-    finalEntries = enrichEntries(allPartial[0]);
-  } else {
-    // Estimate token budget for a single reduce call
-    const model = currentConfig.value?.model ?? 'gpt-4o-mini';
-    const contextLimit = getContextLimit(model, currentConfig.value?.contextWindow);
-    const promptOverhead = estimateTokens(buildKnowledgePrompt('reduce', {}, finalCap)) + RESPONSE_BUFFER_TOKENS;
-    const usableTokens = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
-    // Vietnamese/JSON text tokenizes ~1.35–1.40× more than char-based estimate; use 1.4 to keep groups safely within context
-    const totalTokens = estimateTokens(JSON.stringify(allPartial)) * 1.4;
-
-    let entriesToReduce = allPartial;
-
-    if (totalTokens > usableTokens && allPartial.length > 2) {
-      // Too large for one call — batch-reduce first, then do a final reduce
-      const groupCount = Math.max(2, Math.ceil(totalTokens / usableTokens));
-      const groupSize = Math.ceil(allPartial.length / groupCount);
-      const groupResults: KnowledgeEntry[][] = [];
-
-      for (let g = 0; g < allPartial.length; g += groupSize) {
-        if (guardId !== activeExtractId) return;
-        const group = allPartial.slice(g, g + groupSize);
-        const { taskId, result } = reduceKnowledgeChunksTask(group);
-        llmTaskId.value = taskId;
-        const st = getTaskState(taskId);
-        if (st) {
-          const p = buildKnowledgePipeline(1);
-          markFirstStepRunning(p);
-          st.pipeline = JSON.parse(JSON.stringify(p));
-        }
-        const groupResult = await result;
-        if (guardId !== activeExtractId) return;
-        groupResults.push(
-          ((groupResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
-        );
-        if (g + groupSize < allPartial.length) {
-          await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
-        }
-      }
-      entriesToReduce = groupResults;
-    }
-
-    // Determine if output would overflow context; if so, split into multiple calls
-    const promptTokens = estimateTokens(buildKnowledgePrompt('reduce', {}, finalCap));
-    const inputTokens = estimateTokens(JSON.stringify(entriesToReduce)) * 1.4;
-    const maxPerCall = calcMaxOutputEntries(contextLimit, promptTokens, inputTokens);
-
-    let rawFinalEntries: KnowledgeEntry[];
-    if (finalCap <= maxPerCall) {
-      // Fit in one call — existing path
-      const { taskId, result } = reduceKnowledgeChunksTask(entriesToReduce, finalCap);
-      llmTaskId.value = taskId;
-      const st = getTaskState(taskId);
-        if (st) {
-          const p = buildKnowledgePipeline(1);
-          markFirstStepRunning(p);
-          st.pipeline = JSON.parse(JSON.stringify(p));
-        }
-        const reduceResult = await result;
-        if (guardId !== activeExtractId) return;
-        rawFinalEntries = ((reduceResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [];
-      } else {
-      // Split output: multiple calls, each produces maxPerCall entries
-      const numCalls = Math.ceil(finalCap / maxPerCall);
-      const groupSize = Math.ceil(entriesToReduce.length / numCalls);
-      const allRaw: KnowledgeEntry[] = [];
-
-      for (let g = 0; g < entriesToReduce.length; g += groupSize) {
-        if (guardId !== activeExtractId) return;
-        const group = entriesToReduce.slice(g, g + groupSize);
-        const { taskId, result } = reduceKnowledgeChunksTask(group, maxPerCall);
-        llmTaskId.value = taskId;
-        const st = getTaskState(taskId);
-        if (st) {
-          const p = buildKnowledgePipeline(1);
-          markFirstStepRunning(p);
-          st.pipeline = JSON.parse(JSON.stringify(p));
-        }
-        const groupResult = await result;
-        if (guardId !== activeExtractId) return;
-        allRaw.push(
-          ...((groupResult.data as { entries?: KnowledgeEntry[] })?.entries ?? []),
-        );
-        if (g + groupSize < entriesToReduce.length) {
-          await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
-        }
-      }
-      rawFinalEntries = clientSideDedup(allRaw);
-    }
-    finalEntries = enrichEntries(rawFinalEntries);
-  }
-
-  if (finalEntries.length === 0) {
-    throw new Error('Gộp kiến thức không trả về kết quả. LLM có thể trả về dữ liệu không hợp lệ — vui lòng thử lại hoặc tăng Context window trong Cài đặt.');
-  }
-
-  // Filter excluded entries
-  const filteredFinal = finalEntries.filter(e => !excludedNums.has(e.source.postNumber));
-
-  // Merge strategy: saved entries survive re-extract
-  const savedEntries = entries.value.filter(e => e.saved);
-  const merged = mergeSavedWithFresh(savedEntries, filteredFinal);
-
-  const savedMerged = merged.filter(e => e.saved);
-  entries.value = merged;
-  expandedIds.value = new Set();
-  store.updateSelectedTopic({ knowledgeEntries: savedMerged });
-  await sendMessage('SAVE_CACHED_TOPIC', {
-    url: topicUrl,
-    knowledgeEntries: savedMerged,
-    knowledgeChunks: chunks,
-    lastKnowledgePostNumber: chunks[chunks.length - 1].endPostNumber,
-  }).catch(() => {});
-}
-
-function handleCancel() {
-  if (llmTaskId.value) cancelTask(llmTaskId.value);
-  activeExtractId++;
-  isLoading.value = false;
-  llmTaskId.value = null;
-  currentPhase.value = 'idle';
-  currentChunkIndex.value = 0;
-  totalChunks.value = 0;
-  // Partial progress already persisted per-chunk → auto-resume on next click
-}
-
-async function toggleSave(entry: KnowledgeEntry) {
-  const next = !entry.saved;
-  const updated = entries.value.map(e =>
-    e.id === entry.id ? { ...e, saved: next } : e
-  ) as KnowledgeEntry[];
-  entries.value = updated;
-  const saved = updated.filter(e => e.saved);
-  await optimisticUpdate({ knowledgeEntries: saved });
-
-  const topic = cachedTopic.value;
-  if (next && topic) {
-    const notebookEntry: NotebookEntry = {
-      ...entry,
-      saved: true,
-      sourceTopicUrl: topic.url,
-      sourceTopicTitle: topic.title,
-      savedAt: Date.now(),
-    };
-    sendMessageQuiet('UPSERT_NOTEBOOK_ENTRY', notebookEntry);
-  } else if (!next) {
-    sendMessageQuiet('DELETE_NOTEBOOK_ENTRY', { id: entry.id });
-  }
-}
-
-async function handleDelete(entry: KnowledgeEntry) {
-  const updated = entries.value.filter(e => e.id !== entry.id) as KnowledgeEntry[];
-  const excluded = [
-    ...(cachedTopic.value?.excludedKnowledgePostNumbers ?? []),
-    entry.source.postNumber,
-  ];
-  entries.value = updated;
-  const saved = updated.filter(e => e.saved);
-  await optimisticUpdate({ knowledgeEntries: saved, excludedKnowledgePostNumbers: excluded });
-  if (entry.saved) sendMessageQuiet('DELETE_NOTEBOOK_ENTRY', { id: entry.id });
-}
-
-async function handleClearTracking() {
-  await optimisticUpdate({
-    excludedKnowledgePostNumbers: [],
-    lastKnowledgePostNumber: 0,
-    knowledgeChunks: [],
-  });
-}
 </script>
 
 <template>
@@ -839,8 +257,6 @@ async function handleClearTracking() {
           ← Quay lại danh sách
         </button>
       </div>
-
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">Kiến thức từ thớt</h2>
 
       <!-- No posts warning -->
       <div v-if="!allPosts.length" class="alert alert-warning">
@@ -888,15 +304,16 @@ async function handleClearTracking() {
       <StepTimeline
         v-if="isLoading && activePipeline"
         :pipeline="activePipeline"
-        :show-cancel="true"
+        :show-cancel="isLoading"
         @cancel="handleCancel"
       />
-      <template v-else-if="isLoading">
-        <ProgressIndicator :task-id="llmTaskId" :fallback-message="progressLabel" />
-        <button class="w-full btn btn-secondary mt-2 text-xs" @click="handleCancel">
-          Hủy
-        </button>
-      </template>
+      <ProgressIndicator 
+        v-else-if="isLoading" 
+        :task-id="llmTaskId" 
+        :fallback-message="progressLabel" 
+        :show-cancel="isLoading"
+        @cancel="handleCancel"
+      />
 
       <!-- Error -->
       <div v-if="error" class="alert alert-error">

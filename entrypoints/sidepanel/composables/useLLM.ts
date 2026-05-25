@@ -183,12 +183,8 @@ function summarizeSegmentsTask(segmentSummaries: string[]) {
   return createTask('summarize_segments', segmentSummaries);
 }
 
-function extractKnowledge(posts: ScrapedPost[], title: string) {
-  return createTask('extract_knowledge', { posts, title });
-}
-
-function extractKnowledgeChunkTask(posts: ScrapedPost[], title: string) {
-  return createTask('extract_knowledge_chunk', { posts, title });
+function extractKnowledgeChunkTask(posts: ScrapedPost[], title: string, mode: 'extract' | 'chunk' = 'chunk') {
+  return createTask('extract_knowledge_chunk', { posts, title, mode });
 }
 
 function reduceKnowledgeChunksTask(partialEntries: KnowledgeEntry[][], entryCap?: number) {
@@ -224,7 +220,6 @@ export function useLLM() {
     summarize,
     summarizeSegmentsTask,
     researchTopic,
-    extractKnowledge,
     extractKnowledgeChunkTask,
     reduceKnowledgeChunksTask,
     threadAnalysisTask,

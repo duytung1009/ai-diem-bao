@@ -16,7 +16,7 @@ function openPostLink(postNumber: number) {
   const page = props.postPageMap?.[postNumber];
   const base = props.topicUrl.replace(/\/$/, '');
   const pageSegment = page && page > 1 ? `/page-${page}` : '';
-  browser.tabs.create({ url: `${base}${pageSegment}#post-${postNumber}` });
+  browser.tabs.create({ url: `${base}${pageSegment}/post-${postNumber}` });
 }
 
 // --- Markdown fallback parse (backward compat for old cache entries) ---
@@ -26,6 +26,11 @@ interface Section { title: string; body: string; opinions?: Opinion[]; totalSupp
 
 const sections = computed<Section[]>(() => {
   const raw = props.content;
+  // Guard: if content looks like JSON (starts with { or [), don't parse as markdown
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    return [{ title: '', body: raw }];
+  }
   const parts = raw.split(/^## /m).filter((s) => s.trim());
 
   if (parts.length === 0) {
@@ -55,7 +60,9 @@ const sections = computed<Section[]>(() => {
         return { title, body: '', opinions, totalSupporters };
       }
     }
-
+    
+    console.log('Parsing section raw', props.content);
+    console.log('Parsed section:', { title, body });
     return { title, body };
   });
 });

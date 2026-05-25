@@ -122,7 +122,7 @@ export class XF2Scraper implements TopicScraper {
       const match = dataContent.match(/post-(\d+)/);
       if (match) return parseInt(match[1], 10);
     }
-    // Fallback: href of the attribution link, e.g. href=".../#post-41558917"
+    // Fallback: href of the attribution link, e.g. href=".../post-41558917"
     const headerLink = article.querySelector('.message-attribution-opposite a');
     if (headerLink) {
       const href = headerLink.getAttribute('href') || '';

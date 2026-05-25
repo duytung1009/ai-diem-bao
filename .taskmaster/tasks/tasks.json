@@ -717,8 +717,8 @@
           }
         ],
         "complexity": 5,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token.",
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
         "updatedAt": "2026-05-17T15:23:57.970Z"
       },
       {
@@ -796,8 +796,8 @@
           }
         ],
         "complexity": 6,
-        "recommendedSubtasks": 4,
-        "expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady).",
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
         "updatedAt": "2026-05-17T15:24:37.938Z"
       },
       {
@@ -861,8 +861,8 @@
           }
         ],
         "complexity": 6,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState.",
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
         "updatedAt": "2026-05-17T15:25:19.041Z"
       },
       {
@@ -928,8 +928,8 @@
           }
         ],
         "complexity": 7,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới.",
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
         "updatedAt": "2026-05-17T15:26:01.154Z"
       },
       {
@@ -1006,8 +1006,8 @@
           }
         ],
         "complexity": 8,
-        "recommendedSubtasks": 4,
-        "expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng.",
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
         "updatedAt": "2026-05-17T15:26:45.175Z"
       },
       {
@@ -2781,7 +2781,7 @@
             "dependencies": [
               1
             ],
-            "details": "Filter bar: category pills được sinh ra từ stats.categories, tag pills từ entries tags (có thể lấy từ tất cả tags), topic dropdown (populate từ entries topics), toggle 'Chỉ mồ côi'. View modes: button group với 4 chế độ: 'Theo chủ đề', 'Theo danh mục', 'Theo thẻ', 'Dòng thời gian', mỗi chế độ render entries khác nhau (có thể xử lý sau). Khi chọn filter, cập nhật filters và gọi loadEntries.",
+            "details": "Filter bar: category pills được sinh ra từ stats.categories, tag pills từ entries tags (có thể lấy từ tất cả tags), topic dropdown (populate từ entries topics), toggle 'Chỉ mồ côi'. View modes: button group với 4 chế độ: 'Theo thớt (chủ đề)', 'Theo danh mục', 'Theo thẻ', 'Dòng thời gian', mỗi chế độ render entries khác nhau (có thể xử lý sau). Khi chọn filter, cập nhật filters và gọi loadEntries.",
             "status": "pending",
             "testStrategy": "Click filter pills, chọn topic, toggle orphan, kiểm tra danh sách entries thay đổi.",
             "parentId": "undefined"
@@ -3383,13 +3383,798 @@
         "priority": "medium",
         "subtasks": [],
         "updatedAt": "2026-05-23T06:05:34.831Z"
+      },
+      {
+        "id": "218",
+        "title": "Tạo composable useKnowledge.ts với reactive state",
+        "description": "Tạo file mới useKnowledge.ts, định nghĩa function useKnowledge(store) với reactive state tương tự useSummarize.ts: entries, loadedTopicUrl, isLoading, error, llmTaskId, currentChunkIndex, totalChunks, currentPhase, currentConfig, confirmingExtract, confirmingRestore, showClearDataAction, activeExtractId (thay bằng run guard sau).",
+        "details": "Tạo file tại entrypoints/sidepanel/composables/useKnowledge.ts. Import vue, store. Định nghĩa useKnowledge function nhận store argument. Bên trong tạo các ref: entries = ref<KnowledgeEntry[]>([]), loadedTopicUrl = ref(''), isLoading = ref(false), error = ref<string | null>(null), llmTaskId = ref<number | null>(null), currentChunkIndex = ref(0), totalChunks = ref(0), currentPhase = ref<'idle' | 'extracting' | 'reducing'>('idle'), currentConfig = ref<KnowledgeConfig>({...}), confirmingExtract = ref(false), confirmingRestore = ref(false), showClearDataAction = ref(false). Thêm computed cachedTopic = computed(() => store.selectedTopic.value). Export useKnowledge.",
+        "testStrategy": "Kiểm tra file được tạo, function export có thể goi, reactive state khởi tạo đúng giá trị mặc định. Run compile passes.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa các reactive state cơ bản trong useKnowledge",
+            "description": "Tạo file useKnowledge.ts và định nghĩa function useKnowledge(store) với các ref: entries, loadedTopicUrl, isLoading, error, llmTaskId, currentChunkIndex, totalChunks, currentPhase, currentConfig, confirmingExtract, confirmingRestore, showClearDataAction.",
+            "dependencies": [],
+            "details": "Tạo file tại entrypoints/sidepanel/composables/useKnowledge.ts. Import Vue (ref). Định nghĩa function useKnowledge(store). Bên trong, khởi tạo các ref với giá trị mặc định như mô tả.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra function export có thể gọi và các ref khởi tạo đúng giá trị mặc định.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thêm computed properties cho useKnowledge",
+            "description": "Thêm computed property cachedTopic dựa trên store.selectedTopic.value, tương tự useSummarize.ts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong useKnowledge, thêm const cachedTopic = computed(() => store.selectedTopic.value). Đảm bảo import computed từ Vue.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra cachedTopic thay đổi khi store.selectedTopic thay đổi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Hoàn thiện export composable useKnowledge",
+            "description": "Export function useKnowledge từ file, đảm bảo tất cả state và computed được trả về.",
+            "dependencies": [
+              2
+            ],
+            "details": "Thêm export default useKnowledge hoặc export function useKnowledge. Trả về object gồm các ref và computed từ composable.",
+            "status": "pending",
+            "testStrategy": "Import composable vào file khác, destructuring hoạt động không lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 218,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tạo composable useKnowledge với reactive state gồm entries, loadedTopicUrl, isLoading, error, llmTaskId, currentChunkIndex, totalChunks, currentPhase, currentConfig, confirmingExtract, confirmingRestore, showClearDataAction. Đảm bảo sử dụng Vue ref và computed.",
+        "updatedAt": "2026-05-23T08:24:58.601Z"
+      },
+      {
+        "id": "219",
+        "title": "Triển khai các hàm orchestration chính trong useKnowledge.ts",
+        "description": "Di chuyển handleExtract, handleRestore, handleCancel, handleClearKnowledgeData, handleDelete, toggleSave từ KnowledgeView.vue vào composable. Các hàm sẽ sử dụng internal helpers được xây sau.",
+        "details": "Trong useKnowledge.ts, định nghĩa các async function: handleExtract (guard id, kiểm tra resume, chọn direct/chunked path), handleRestore (gọi reduce task), handleCancel (hủy LLM tasks, reset state), handleClearKnowledgeData (xóa cache), handleDelete(entry) (xóa entry và cập nhật store), toggleSave(entry) (toggle save status). Sử dụng store và các biến reactive. Tạm thời để body rỗng nếu cần helper chưa có.",
+        "testStrategy": "Kiểm tra các hàm được export, gọi thử với store mock, verify state thay đổi. Compile passes.",
+        "priority": "high",
+        "dependencies": [
+          "218"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai handleExtract với guard và phân luồng direct/chunked",
+            "description": "Định nghĩa async function handleExtract trong useKnowledge.ts, thực hiện guard id (dùng runGuard), kiểm tra resume, chọn direct hoặc chunked path. Sử dụng store và reactive state. Tạm thời để body rỗng nếu helper chưa có.",
+            "dependencies": [],
+            "details": "Trong useKnowledge.ts, thêm function handleExtract(id: string). Dùng runGuard để quản lý token. Kiểm tra entries và trạng thái hiện tại để quyết định path. Cập nhật state như currentPhase, currentChunkIndex, totalChunks.",
+            "status": "pending",
+            "testStrategy": "Gọi handleExtract với id hợp lệ, kiểm tra guard hoạt động, state chuyển đổi đúng. Dùng store mock.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai handleRestore và handleCancel",
+            "description": "Định nghĩa async function handleRestore (gọi reduce task) và handleCancel (hủy LLM tasks, reset state). Sử dụng store và reactive state. Tạm thời để body rỗng nếu helper chưa có.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong useKnowledge.ts, thêm handleRestore() gọi reduce task qua messaging, cập nhật state. handleCancel() dùng guard.begin() để invalidate token, reset state: currentPhase, error, llmTaskId, confirmingExtract, confirmingRestore.",
+            "status": "pending",
+            "testStrategy": "Gọi handleRestore, kiểm tra state chuyển sang 'reducing'. Gọi handleCancel, verify state reset và guard token thay đổi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Triển khai handleClearKnowledgeData và handleDelete",
+            "description": "Định nghĩa async function handleClearKnowledgeData (xóa cache) và handleDelete(entry) (xóa entry và cập nhật store). Sử dụng store và reactive state. Tạm thời để body rỗng nếu helper chưa có.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong useKnowledge.ts, handleClearKnowledgeData: gọi sendMessage('CLEAR_KNOWLEDGE_DATA') và reset entries, loadedTopicUrl. handleDelete(entry): xóa entry khỏi entries array, cập nhật store (nếu có). Dùng guard để tránh race.",
+            "status": "pending",
+            "testStrategy": "Gọi handleClearKnowledgeData, verify entries trống. Gọi handleDelete, kiểm tra entry bị xóa khỏi mảng và store update.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Triển khai toggleSave",
+            "description": "Định nghĩa async function toggleSave(entry) để toggle save status. Sử dụng store và reactive state. Tạm thời để body rỗng nếu helper chưa có.",
+            "dependencies": [
+              3
+            ],
+            "details": "Trong useKnowledge.ts, thêm toggleSave(entry). Cập nhật trạng thái save trong entries, gọi sendMessage với UPSERT hoặc DELETE tới notebook. Dùng optimistic update và fire-and-forget.",
+            "status": "pending",
+            "testStrategy": "Gọi toggleSave với entry chưa save, verify state thay đổi và message gửi đi. Gọi lại toggle để unsave, kiểm tra state revert.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 219,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Triển khai các hàm orchestration trong useKnowledge: handleExtract, handleRestore, handleCancel, handleClearKnowledgeData, handleDelete, toggleSave. Sử dụng store và reactive state.",
+        "updatedAt": "2026-05-23T08:29:19.242Z"
+      },
+      {
+        "id": "220",
+        "title": "Triển khai các helper internal trong useKnowledge.ts",
+        "description": "Tạo các private function: runDirectExtract, runReducePhase, persistChunks, computeKnowledgeResumeState, enrichEntries, mergeSavedWithFresh, clientSideDedup, calcMaxOutputEntries.",
+        "details": "Các hàm này lo xử lý LLM calls, chunk planning, reduce, persist. runDirectExtract(posts, guardId, topicUrl, topicTitle) gọi sendMessage(EXTRACT_KNOWLEDGE). runReducePhase(chunks, excludedNums, guardId, topicUrl) gọi reduce tasks. persistChunks lưu chunks vào IndexedDB qua cache-db. computeKnowledgeResumeState đọc existing chunks. enrichEntries thêm defaults. mergeSavedWithFresh merge saved entries với freshly extracted. clientSideDedup dựa trên title. calcMaxOutputEntries tính budget.",
+        "testStrategy": "Unit test từng hàm với mock store và mock LLM calls. Verify chunks được persist, resume state đúng.",
+        "priority": "high",
+        "dependencies": [
+          "218"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement LLM call helpers runDirectExtract and runReducePhase",
+            "description": "Create private functions runDirectExtract and runReducePhase to handle LLM extraction and reduction calls.",
+            "dependencies": [
+              218
+            ],
+            "details": "Implement runDirectExtract(posts, guardId, topicUrl, topicTitle) that calls sendMessage(EXTRACT_KNOWLEDGE). Implement runReducePhase(chunks, excludedNums, guardId, topicUrl) that calls reduce tasks. Ensure proper error handling and integration with store.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock LLM calls to verify correct messages are sent and responses handled.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement IndexedDB helpers persistChunks and computeKnowledgeResumeState",
+            "description": "Create functions to save and retrieve knowledge chunks from IndexedDB using cache-db.",
+            "dependencies": [
+              218
+            ],
+            "details": "persistChunks saves chunks to IndexedDB. computeKnowledgeResumeState reads existing chunks to allow resume. Handle serialization and error boundaries.",
+            "status": "pending",
+            "testStrategy": "Mock IndexedDB operations and verify chunks are stored and retrieved correctly.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement data enrichment and merging helpers enrichEntries and mergeSavedWithFresh",
+            "description": "Create functions to add default values to entries and merge saved entries with freshly extracted ones.",
+            "dependencies": [
+              218
+            ],
+            "details": "enrichEntries adds default fields like source, timestamps. mergeSavedWithFresh intelligently combines saved entries with new extractions while preserving user modifications.",
+            "status": "pending",
+            "testStrategy": "Test with example entry data to ensure proper merging logic.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement deduplication and budget calculation helpers clientSideDedup and calcMaxOutputEntries",
+            "description": "Create functions to deduplicate entries based on title and compute the maximum number of output entries within budget.",
+            "dependencies": [
+              218
+            ],
+            "details": "clientSideDedup removes duplicates by title. calcMaxOutputEntries calculates how many entries can be included based on token budget or constraints.",
+            "status": "pending",
+            "testStrategy": "Unit test with duplicate entries and verify dedup works; test budget calculation with various inputs.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 220,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Xây dựng các internal helper: runDirectExtract, runReducePhase, persistChunks, computeKnowledgeResumeState, enrichEntries, mergeSavedWithFresh, clientSideDedup, calcMaxOutputEntries. Đảm bảo xử lý chunk, resume, và merge dữ liệu.",
+        "updatedAt": "2026-05-23T08:29:34.511Z"
+      },
+      {
+        "id": "221",
+        "title": "Thêm computed properties và tích hợp pipeline dùng chung",
+        "description": "Thêm computed: canRestore, estimatedExtractApiCalls, showExtractCostWarning, estimatedRestoreApiCalls, showRestoreCostWarning, allPosts. Tích hợp usePipeline() thay vì inline pipeline",
+        "details": "Sử dụng computed từ @vue/runtime-core. canRestore = computed(() => entries.value.length === 0 && knowledgeChunksExist). allPosts = computed(() => cachedTopic.value?.segments?.flatMap(s => s.posts) ?? []). Cost estimates dựa trên số chunk. Thay thế buildKnowledgePipeline bằng usePipeline() từ composables. Import usePipeline từ '../../composables/usePipeline' (giả định).",
+        "testStrategy": "Kiểm tra computed trả về đúng giá trị dựa trên state mẫu. Pipeline hook hoạt động.",
+        "priority": "medium",
+        "dependencies": [
+          "218"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm các computed properties",
+            "description": "Thêm computed properties: canRestore, estimatedExtractApiCalls, showExtractCostWarning, estimatedRestoreApiCalls, showRestoreCostWarning, allPosts.",
+            "dependencies": [],
+            "details": "Sử dụng computed từ @vue/runtime-core. canRestore = computed(() => entries.value.length === 0 && knowledgeChunksExist). allPosts = computed(() => cachedTopic.value?.segments?.flatMap(s => s.posts) ?? []). Cost estimates dựa trên số chunk.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra computed trả về đúng giá trị dựa trên state mẫu.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp usePipeline() thay thế inline pipeline",
+            "description": "Thay thế buildKnowledgePipeline bằng usePipeline() từ composables. Import usePipeline từ '../../composables/usePipeline'.",
+            "dependencies": [],
+            "details": "Thay thế buildKnowledgePipeline bằng usePipeline() từ composables. Import usePipeline từ '../../composables/usePipeline' (giả định).",
+            "status": "pending",
+            "testStrategy": "Pipeline hook hoạt động.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 221,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Thêm computed properties canRestore, estimatedExtractApiCalls, showExtractCostWarning, allPosts. Tích hợp usePipeline thay cho inline pipeline.",
+        "updatedAt": "2026-05-23T08:29:51.082Z"
+      },
+      {
+        "id": "222",
+        "title": "Triển khai run guard pattern cho orchestration",
+        "description": "Sử dụng createRunGuard() thay cho activeExtractId, đặt tên knowledgeGuard. Tích hợp guard vào handleExtract và handleCancel.",
+        "details": "Import createRunGuard từ utilities. Tạo knowledgeGuard = createRunGuard(). Trong handleExtract, gọi guard.begin() để lấy guardId, kiểm tra guard.isStale() để cancel. Trong handleCancel, gọi guard.cancel(). Đảm bảo guard pattern ngăn chạy đồng thời.",
+        "testStrategy": "Mock concurrent calls, guard ngăn chặn execution mới khi đang chạy. Compile passes.",
+        "priority": "medium",
+        "dependencies": [
+          "218",
+          "220"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo knowledgeGuard từ createRunGuard",
+            "description": "Import createRunGuard từ utilities và tạo một guard instance mới với tên knowledgeGuard.",
+            "dependencies": [
+              218,
+              220
+            ],
+            "details": "Trong file useKnowledge.ts, import createRunGuard từ utilities. Khởi tạo knowledgeGuard = createRunGuard(). Đảm bảo guard có thể được sử dụng bởi các handler.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp knowledgeGuard vào handleExtract và handleCancel",
+            "description": "Sử dụng knowledgeGuard trong các hàm handleExtract và handleCancel để quản lý đồng thời orchestration.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong handleExtract, gọi guard.begin() để lấy guardId, kiểm tra guard.isStale() để quyết định cancel. Trong handleCancel, gọi guard.cancel() để hủy tiến trình hiện tại. Đảm bảo guard pattern ngăn chặn chạy đồng thời.",
+            "status": "pending",
+            "testStrategy": "Mock concurrent calls, guard ngăn chặn execution mới khi đang chạy. Compile passes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 222,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tích hợp createRunGuard vào useKnowledge để quản lý orchestration. Đảm bảo guard pattern ngăn chạy đồng thời.",
+        "updatedAt": "2026-05-23T08:30:06.699Z"
+      },
+      {
+        "id": "223",
+        "title": "Export composable hoàn chỉnh và tích hợp vào KnowledgeView.vue (chuẩn bị)",
+        "description": "Đảm bảo useKnowledge export tất cả state và functions cần thiết. Import vào KnowledgeView.vue và destructure các biến cần. Chưa xóa logic cũ.",
+        "details": "Tại KnowledgeView.vue, thêm import { useKnowledge } from '../composables/useKnowledge'. Trong setup, const knowledge = useKnowledge(store); const { entries, isLoading, ... } = knowledge;. Bắt đầu sử dụng các state mới song song với state cũ. Compile phải pass.",
+        "testStrategy": "Import không lỗi, destructuring hoạt động. Runtime không break.",
+        "priority": "high",
+        "dependencies": [
+          "218",
+          "219",
+          "220",
+          "221",
+          "222"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Import useKnowledge vào KnowledgeView.vue và sử dụng song song với logic cũ",
+            "description": "Thực hiện import composable useKnowledge vào KnowledgeView.vue. Trong setup, gọi useKnowledge(store) và destructure các state: entries, isLoading, error, loadedTopicUrl, llmTaskId, currentChunkIndex, totalChunks, currentPhase, currentConfig, confirmingExtract, confirmingRestore, showClearDataAction. Sử dụng các biến mới song song với logic cũ. Đảm bảo compile passes và không break runtime.",
+            "dependencies": [
+              218,
+              219,
+              220,
+              221,
+              222
+            ],
+            "details": "Mở file KnowledgeView.vue. Thêm import { useKnowledge } from '../composables/useKnowledge'. Trong setup function, thêm dòng: const knowledge = useKnowledge(store); const { entries, isLoading, error, loadedTopicUrl, llmTaskId, currentChunkIndex, totalChunks, currentPhase, currentConfig, confirmingExtract, confirmingRestore, showClearDataAction } = knowledge;. Không xóa logic cũ. Kiểm tra biên dịch.",
+            "status": "pending",
+            "testStrategy": "Chạy dự án, kiểm tra không có lỗi biên dịch. Vào KnowledgeView, kiểm tra console không có lỗi. Có thể log các biến mới để verify.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 223,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Import useKnowledge vào KnowledgeView.vue và sử dụng song song với logic cũ để đảm bảo không break.",
+        "updatedAt": "2026-05-23T08:40:03.135Z"
+      },
+      {
+        "id": "224",
+        "title": "Đơn giản hóa KnowledgeView.vue: Xóa orchestration logic",
+        "description": "Xóa tất cả orchestration functions cũ: handleExtract, handleRestore, handleCancel, handleClearKnowledgeData, handleDelete, toggleSave và các helper internal khỏi component. Giữ lại UI state (searchQuery, selectedTags, selectedCategory, expandedIds, showSavedOnly) và template.",
+        "details": "Sau khi đã dùng composable, xóa code thừa. update handlers gọi từ composable. Xóa variables: currentPhase, currentChunkIndex, totalChunks, currentConfig, confirmingExtract, confirmingRestore, activeExtractId, v.v. Xóa các function cũ. Kết quả file < 600 dòng.",
+        "testStrategy": "Compile passes, không lỗi template. Chạy thử manual extract/restore/cancel.",
+        "priority": "high",
+        "dependencies": [
+          "223"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xóa các orchestration functions cũ khỏi KnowledgeView.vue",
+            "description": "Xóa tất cả các hàm điều phối cũ như handleExtract, handleRestore, handleCancel, handleClearKnowledgeData, handleDelete, toggleSave và các helper internal khác. Cập nhật các handler trong template để gọi trực tiếp từ composable đã được tích hợp.",
+            "dependencies": [],
+            "details": "Mở file KnowledgeView.vue, xóa toàn bộ khối methods hoặc các function khai báo trong script setup. Đảm bảo các sự kiện trong template được chuyển sang gọi hàm từ composable (ví dụ: @click=\"extractHandler\"). Kiểm tra không còn tham chiếu đến các hàm cũ.",
+            "status": "pending",
+            "testStrategy": "Sau khi xóa, kiểm tra compile bằng lệnh npm run build hoặc lint. Đảm bảo template không có lỗi binding.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xóa các state variables cũ khỏi KnowledgeView.vue",
+            "description": "Xóa các biến trạng thái điều phối không còn dùng như currentPhase, currentChunkIndex, totalChunks, currentConfig, confirmingExtract, confirmingRestore, activeExtractId, v.v. Chỉ giữ lại UI state (searchQuery, selectedTags, selectedCategory, expandedIds, showSavedOnly).",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong phần khai báo reactive của script setup, xóa các biến state cũ liên quan đến orchestration. Đảm bảo không có lỗi tham chiếu undefined sau khi xóa. Kiểm tra file kết quả có dưới 600 dòng.",
+            "status": "pending",
+            "testStrategy": "Chạy compile và kiểm tra manual các chức năng extract, restore, cancel vẫn hoạt động bình thường thông qua composable.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 224,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Xóa các orchestration functions và state cũ từ KnowledgeView.vue, giữ lại UI logic và template.",
+        "updatedAt": "2026-05-23T08:40:27.971Z"
+      },
+      {
+        "id": "225",
+        "title": "Cập nhật UI state, route watchers và template cho phù hợp",
+        "description": "Giữ lại search, filter, tag categories, expandedIds. Đảm bảo route watchers (?restore, ?extract) hoạt động. Sử dụng computed filteredEntries dựa trên composable entries. Cập nhật display logic.",
+        "details": "Giữ local state và function liên quan UI. Sử dụng filteredEntries = computed(() => filterEntries(knowledge.entries.value, searchQuery, ...)). Route watcher: onMounted kiểm tra query param và gọi knowledge.handleRestore() hoặc handleExtract(). Focus scroll watch. Template không đổi.",
+        "testStrategy": "Kiểm tra filter hoạt động, restore từ URL param works. Không regression.",
+        "priority": "medium",
+        "dependencies": [
+          "224"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật computed filteredEntries và UI logic",
+            "description": "Giữ lại search, filter, tag categories, expandedIds. Sử dụng computed filteredEntries dựa trên composable entries.",
+            "dependencies": [],
+            "details": "Trong KnowledgeView.vue, replace filteredEntries cũ bằng computed sử dụng filterEntries(knowledge.entries.value, searchQuery, ...). Đảm bảo các UI logic liên quan đến filter hoạt động với state mới.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra filter hoạt động đúng: search, tag categories, expand/collapse entries. Không regression.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật route watchers (restore, extract) và template",
+            "description": "Đảm bảo route watchers cho query params ?restore và ?extract hoạt động với composable mới.",
+            "dependencies": [],
+            "details": "Sử dụng onMounted để kiểm tra query params và gọi knowledge.handleRestore() hoặc handleExtract(). Cập nhật focus scroll watch nếu cần. Template giữ nguyên nhưng đảm bảo gắn kết với state mới.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra restore từ URL param works, extract triggered đúng. Không regression.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 225,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Cập nhật filteredEntries, route watchers và các UI logic để dùng composable mới.",
+        "updatedAt": "2026-05-23T08:40:28.775Z"
+      },
+      {
+        "id": "226",
+        "title": "Dọn dẹp imports chết và kiểm tra consistency với useSummarize.ts",
+        "description": "Xóa import không dùng (buildKnowledgePipeline, planKnowledgeChunks, etc.). So sánh cấu trúc composable với useSummarize.ts, sửa điểm khác nếu cần. Đảm bảo naming pattern nhất quán.",
+        "details": "Kiểm tra KnowledgeView.vue imports, xóa các module không còn dùng. Trong useKnowledge.ts, đảm bảo hàm naming giống summary (knowledgeGuard, ...). compile && test pass.",
+        "testStrategy": "Code review side-by-side. Compile 0 errors, test 0 failures.",
+        "priority": "medium",
+        "dependencies": [
+          "225"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xóa imports không dùng và kiểm tra naming pattern với useSummarize.ts",
+            "description": "Xóa các import không dùng trong KnowledgeView.vue và useKnowledge.ts. So sánh cấu trúc composable useKnowledge.ts với useSummarize.ts để đảm bảo naming pattern nhất quán. Sửa các điểm khác biệt nếu cần.",
+            "dependencies": [],
+            "details": "Kiểm tra KnowledgeView.vue để xóa imports không dùng (buildKnowledgePipeline, planKnowledgeChunks,...). Trong useKnowledge.ts, đảm bảo các hàm như knowledgeGuard được naming nhất quán với summaryGuard trong useSummarize.ts. Chạy compile và test để đảm bảo không lỗi.",
+            "status": "pending",
+            "testStrategy": "Code review side-by-side. Compile 0 errors, test 0 failures.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 226,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Dọn dẹp imports không dùng, kiểm tra naming pattern nhất quán với useSummarize.",
+        "updatedAt": "2026-05-23T08:40:30.057Z"
+      },
+      {
+        "id": "227",
+        "title": "Viết unit test cho useKnowledge.ts và integration test cho flow",
+        "description": "Tạo test file useKnowledge.test.ts cover state, core functions, resume logic, error handling. Integration test cho toàn bộ knowledge flow từ extract đến delete.",
+        "details": "Dùng vitest. Mock store, background tasks, IndexedDB. Test: tạo composable, gọi handleExtract, kiểm tra state chuyển extracting, LLM call được gọi. Test resume: set chunks trong DB, gọi handleExtract, verify không extract lại chunks đã có. Test cancel, restore, delete, save. Integration test trong KnowledgeView.vue với môi trường thực tế.",
+        "testStrategy": "npm run test passes. Coverage >= 70% cho composable. Manual verification checklist hoàn tất.",
+        "priority": "low",
+        "dependencies": [
+          "226"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Viết unit test cho state của composable useKnowledge",
+            "description": "Kiểm tra khởi tạo state mặc định và các reactive values của composable useKnowledge",
+            "dependencies": [],
+            "details": "Sử dụng vitest. Tạo mock store và gọi useKnowledge. Kiểm tra các ref: entries khởi tạo rỗng, loadedTopicUrl rỗng, isLoading false, error null, llmTaskId null, currentChunkIndex 0, totalChunks 0, currentPhase 'idle', currentConfig mặc định, confirmingExtract false, confirmingRestore false, showClearDataAction false, activeExtractId null.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run test, coverage cho composable >= 70%.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Viết unit test cho core functions của useKnowledge",
+            "description": "Kiểm tra các hàm handleExtract, cancel, restore, delete, save, resume logic và xử lý lỗi",
+            "dependencies": [],
+            "details": "Mock store, background tasks, IndexedDB. Test gọi handleExtract: state chuyển extracting, LLM call được gọi. Test resume: set chunks trong DB, gọi handleExtract, verify không extract lại chunks đã có. Test cancel, restore, delete, save. Kiểm tra xử lý lỗi khi extract thất bại.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run test, tất cả test cases pass, coverage >= 70%.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết integration test cho toàn bộ knowledge flow",
+            "description": "Integration test từ extract đến delete trong KnowledgeView.vue với môi trường thực tế",
+            "dependencies": [],
+            "details": "Sử dụng vitest và mock store/background tasks. Test flow: tạo composable, gọi handleExtract, kiểm tra state chuyển extracting, LLM call được gọi, sau đó complete. Test resume với chunks đã có. Test cancel, restore, delete, save. Đảm bảo toàn bộ flow hoạt động đúng.",
+            "status": "pending",
+            "testStrategy": "Manual verification checklist hoàn tất. npm run test passes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 227,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Viết unit test cho useKnowledge.ts và integration test cho toàn bộ flow knowledge.",
+        "updatedAt": "2026-05-23T08:43:25.406Z"
+      },
+      {
+        "id": "228",
+        "title": "Xây dựng pipeline reactive khi bắt đầu handleExtract",
+        "description": "Trong hàm handleExtract, sau khi tính toán chunkPlan, xây dựng pipeline bằng buildKnowledgePipeline và gán vào pl.pipeline.value, sau đó gọi markFirstRunning.",
+        "details": "Thêm code trong handleExtract:\nconst totalSteps = chunks.length + 1; // extract steps + reduce\npl.pipeline.value = buildKnowledgePipeline(totalSteps);\nif (pl.pipeline.value) pl.markFirstRunning();\nĐối với direct path, điều chỉnh totalSteps thành 1 hoặc 2 tùy trường hợp.",
+        "testStrategy": "Viết unit test: gọi handleExtract với mock chunkPlan, kiểm tra pl.pipeline.value được set và không null. Kiểm tra step đầu tiên ở trạng thái running.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai code xây dựng pipeline trong handleExtract",
+            "description": "Thực hiện thêm code xây dựng pipeline bằng buildKnowledgePipeline và gán vào pl.pipeline.value, sau đó gọi markFirstRunning. Bao gồm cả xử lý direct path với totalSteps phù hợp.",
+            "dependencies": [],
+            "details": "Trong hàm handleExtract, sau khi tính toán chunkPlan, tính totalSteps = chunks.length + 1. Nếu là direct path, điều chỉnh totalSteps thành 1 hoặc 2 tùy trường hợp. Gán pl.pipeline.value = buildKnowledgePipeline(totalSteps) và nếu có giá trị thì gọi pl.markFirstRunning().",
+            "status": "pending",
+            "testStrategy": "Viết unit test kiểm tra pl.pipeline.value được set và step đầu tiên ở trạng thái running.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Self-review cho subtask 1",
+            "description": "Tự kiểm tra lại code đã triển khai, đảm bảo logic đúng và không có lỗi.",
+            "dependencies": [
+              1
+            ],
+            "details": "Xem xét mã nguồn handleExtract, kiểm tra xử lý direct path, đảm bảo buildKnowledgePipeline được gọi đúng cách và markFirstRunning hoạt động. Đồng thời kiểm tra unit test.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Triển khai code xây dựng pipeline trong handleExtract, bao gồm cả direct path, và đảm bảo step đầu tiên ở trạng thái running. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:21:00.269Z"
+      },
+      {
+        "id": "229",
+        "title": "Xây dựng pipeline reactive khi bắt đầu handleRestore",
+        "description": "Trong handleRestore, xây dựng pipeline với tổng số chunk, đánh dấu các extract steps đã có là done, và đánh dấu reduce là running.",
+        "details": "Code mẫu:\nconst totalSteps = existingChunks.length + 1;\npl.pipeline.value = buildKnowledgePipeline(totalSteps);\nexistingChunks.forEach((_, i) => pl.markDone(`extract_${i}`));\nif (pl.pipeline.value) pl.markRunning('reduce');",
+        "testStrategy": "Unit test kiểm tra pipeline được tạo với đúng số steps, các steps extract cũ là done, reduce là running.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai xây dựng pipeline trong handleRestore",
+            "description": "Trong handleRestore, cài đặt pipeline với tổng số chunk, đánh dấu các extract steps đã có là done và reduce là running.",
+            "dependencies": [],
+            "details": "Viết code để tính totalSteps = existingChunks.length + 1, gọi buildKnowledgePipeline(totalSteps) gán vào pl.pipeline.value, sau đó dùng pl.markDone cho từng extract step và pl.markRunning cho reduce.",
+            "status": "pending",
+            "testStrategy": "Unit test kiểm tra pipeline được tạo với đúng số steps, các steps extract cũ là done, reduce là running.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Self-review code và kiểm tra logic",
+            "description": "Tự kiểm tra lại code vừa triển khai, đảm bảo đúng logic và không có lỗi.",
+            "dependencies": [
+              1
+            ],
+            "details": "Xem xét các biến, điều kiện (pl.pipeline.value tồn tại), và tính đúng đắn của việc đánh dấu step. Kiểm tra với các trường hợp mảng chunk rỗng, có chunk, v.v.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Triển khai xây dựng pipeline trong handleRestore, đánh dấu các extract steps đã có là done và reduce là running. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:21:10.889Z"
+      },
+      {
+        "id": "230",
+        "title": "Cập nhật trạng thái step cho từng chunk trong vòng lặp extraction",
+        "description": "Thay thế việc xây dựng pipeline mới mỗi lần gọi LLM bằng cách gọi pl.markRunning trước và pl.markDone sau mỗi lần xử lý chunk.",
+        "details": "Trong vòng lặp chunk, thêm:\nfor (let i = 0; i < chunks.length; i++) {\n  pl.markRunning(`extract_${i}`);\n  // copy snapshot to st.pipeline (sẽ làm ở task riêng)\n  await extractChunk(chunks[i]);\n  pl.markDone(`extract_${i}`);\n}",
+        "testStrategy": "Unit test mô phỏng extraction có 2 chunk, kiểm tra step extract_0 chuyển running->done, extract_1 chuyển running->done.",
+        "priority": "high",
+        "dependencies": [
+          "228"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 6,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Sửa vòng lặp extraction để sử dụng pl.markRunning/pl.markDone thay vì xây dựng pipeline mới, đảm bảo trạng thái step được cập nhật chính xác. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:21:21.749Z"
+      },
+      {
+        "id": "231",
+        "title": "Cập nhật trạng thái step cho reduce phase",
+        "description": "Trong runReducePhase, gọi pl.markRunning('reduce') trước reduce call và pl.markDone('reduce') sau khi hoàn tất.",
+        "details": "Thêm code:\npl.markRunning('reduce');\n// copy snapshot to st.pipeline\nawait runReduce();\npl.markDone('reduce');",
+        "testStrategy": "Unit test kiểm tra reduce step chuyển running->done.",
+        "priority": "high",
+        "dependencies": [
+          "228",
+          "229"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Thêm pl.markRunning và pl.markDone trong runReducePhase. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:21:32.647Z"
+      },
+      {
+        "id": "232",
+        "title": "Sao chép snapshot pipeline vào task state trước mỗi LLM call",
+        "description": "Trước mỗi lần gọi LLM trong extraction và reduce, sao chép pl.pipeline.value vào st.pipeline (deep clone) để background có thể cập nhật.",
+        "details": "Dùng JSON.parse(JSON.stringify(pl.pipeline.value)) để clone và gán st.pipeline = ... Đặt code này ngay sau pl.markRunning.",
+        "testStrategy": "Unit test kiểm tra st.pipeline được set trước LLM call và có nội dung giống pl.pipeline.",
+        "priority": "medium",
+        "dependencies": [
+          "230"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Thêm code sao chép snapshot pipeline vào task state trước mỗi LLM call. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:21:43.421Z"
+      },
+      {
+        "id": "233",
+        "title": "Đồng bộ pipeline từ task state trở về sau LLM call",
+        "description": "Sau mỗi LLM call, nếu st.pipeline đã được background cập nhật, copy ngược lại vào pl.pipeline.value.",
+        "details": "Sau khi gọi LLM, gán pl.pipeline.value = JSON.parse(JSON.stringify(st.pipeline)) nếu st.pipeline không null. Cẩn thận không overwrite nếu background null.",
+        "testStrategy": "Unit test mô phỏng background cập nhật st.pipeline và kiểm tra pl.pipeline được cập nhật.",
+        "priority": "medium",
+        "dependencies": [
+          "232"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Thêm code đồng bộ pipeline từ task state trở lại sau LLM call, kiểm tra điều kiện null. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:21:54.172Z"
+      },
+      {
+        "id": "234",
+        "title": "Sửa computed activePipeline để ưu tiên task state",
+        "description": "Cập nhật computed activePipeline để trả về st.pipeline nếu có, nếu không thì fallback vào pl.pipeline.",
+        "details": "Code:\nconst activePipeline = computed(() => st.pipeline ?? pl.pipeline.value);",
+        "testStrategy": "Unit test: khi st.pipeline null, activePipeline trả về pl.pipeline; khi st.pipeline có giá trị, trả về st.pipeline.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Sửa computed activePipeline để trả về st.pipeline nếu có, nếu không thì fallback vào pl.pipeline. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:22:05.035Z"
+      },
+      {
+        "id": "235",
+        "title": "Xử lý resume path - đánh dấu các step đã có là done",
+        "description": "Trong handleExtract, khi có các chunk đã được extract trước đó, đánh dấu các extract steps tương ứng là done trước khi bắt đầu extract mới.",
+        "details": "Thêm code:\nconst resumeFrom = existingChunks.length;\nfor (let i = 0; i < resumeFrom; i++) {\n  pl.markDone(`extract_${i}`);\n}",
+        "testStrategy": "Unit test khởi tạo pipeline với resume path, kiểm tra các step đã có là done.",
+        "priority": "high",
+        "dependencies": [
+          "228"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Thêm code đánh dấu các extract steps đã có là done trong resume path, dựa trên số lượng existingChunks. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:22:49.052Z"
+      },
+      {
+        "id": "236",
+        "title": "Xử lý direct extract path cho pipeline",
+        "description": "Đối với direct extract (runDirectExtract), xây dựng pipeline chỉ với 1 extract step và tùy chọn reduce step, đánh dấu trạng thái phù hợp.",
+        "details": "Trong handleExtract, nếu là direct path, totalSteps = 1 nếu không reduce, hoặc 2 nếu có reduce. Sau đó mark first running.",
+        "testStrategy": "Unit test direct extract path.",
+        "priority": "medium",
+        "dependencies": [
+          "228"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Xử lý direct extract path, điều chỉnh totalSteps và mark first running phù hợp. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:22:49.826Z"
+      },
+      {
+        "id": "237",
+        "title": "Viết unit tests cho toàn bộ fix timeline",
+        "description": "Viết các unit test bằng vitest cho các hàm đã sửa, đảm bảo npm run test passes.",
+        "details": "Tạo test file useKnowledge.test.ts với các test cases: pipeline được build, step status thay đổi, snapshot được copy và sync, activePipeline ưu tiên, resume, direct path.",
+        "testStrategy": "Chạy npm run test và xác nhận tất cả test pass.",
+        "priority": "medium",
+        "dependencies": [
+          "228",
+          "229",
+          "230",
+          "231",
+          "232",
+          "233",
+          "234",
+          "235",
+          "236"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 6,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo subtask 1: Viết unit test cho tất cả các thay đổi từ task 228 đến 236, đảm bảo npm run test pass. Subtask 2: Self-review.",
+        "updatedAt": "2026-05-24T03:22:50.552Z"
+      },
+      {
+        "id": "238",
+        "title": "Consolidate extract_knowledge và extract_knowledge_chunk thành 1 unified task",
+        "description": "Gộp 2 background task types extract_knowledge và extract_knowledge_chunk thành 1 task duy nhất với optional mode param. Giảm từ 3 task types xuống 2, đơn giản hoá useLLM.ts API, đồng nhất với summary workflow pattern (summarize_segments dùng 1 task type).",
+        "details": "Changes cần thực hiện:\n(1) lib/llm/summarizer.ts: thêm optional mode param (\"extract\"|\"chunk\") vào extractKnowledgeChunk(), khi mode=\"extract\" dùng prompt KNOWLEDGE_DEFAULT_TASKS.extract và không áp dụng giới hạn token của chunk; remove export extractKnowledge().\n(2) entrypoints/background/index.ts: remove case \"extract_knowledge\", update case \"extract_knowledge_chunk\" để đọc mode từ payload và truyền vào hàm.\n(3) entrypoints/sidepanel/composables/useLLM.ts: remove hàm extractKnowledge(), update extractKnowledgeChunkTask() để nhận thêm tham số mode (default: \"chunk\").\n(4) entrypoints/sidepanel/composables/useKnowledge.ts: trong runDirectExtract(), thay lời gọi extractKnowledge(...) bằng extractKnowledgeChunkTask(posts, title, \"extract\").\n(5) Cập nhật tests/mocks tương ứng.",
+        "testStrategy": "Chạy npm run test, verify direct extract path và chunked path vẫn hoạt động đúng với các provider khác nhau.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-24T03:28:14.070Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-23T06:05:34.833Z",
-      "taskCount": 63,
-      "completedCount": 58,
+      "lastModified": "2026-05-24T03:28:14.073Z",
+      "taskCount": 84,
+      "completedCount": 79,
       "tags": [
         "master"
       ]

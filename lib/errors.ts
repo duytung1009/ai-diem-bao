@@ -34,6 +34,7 @@ export enum LLMErrorCode {
   NETWORK_ERROR = 'NETWORK_ERROR',
   TIMEOUT = 'TIMEOUT',
   INCOMPLETE_RESPONSE = 'INCOMPLETE_RESPONSE',
+  CONTEXT_EXCEEDED = 'CONTEXT_EXCEEDED',
 }
 
 const LLM_MESSAGES: Record<LLMErrorCode, string> = {
@@ -44,6 +45,7 @@ const LLM_MESSAGES: Record<LLMErrorCode, string> = {
   [LLMErrorCode.NETWORK_ERROR]: 'Không thể kết nối đến API. Kiểm tra kết nối mạng của bạn.',
   [LLMErrorCode.TIMEOUT]: 'Kết nối LLM quá thời gian. Tăng timeout trong Cài đặt hoặc thử lại.',
   [LLMErrorCode.INCOMPLETE_RESPONSE]: 'Tóm tắt không hoàn chỉnh do model dừng sớm.',
+  [LLMErrorCode.CONTEXT_EXCEEDED]: 'Prompt vượt quá context window của model. Kiểm tra "Context window (tokens)" trong Cài đặt — nếu đang set thủ công, có thể model thực tế có giới hạn thấp hơn giá trị đã cấu hình. Thử Reset về "Tự động" hoặc giảm giá trị xuống.',
 };
 
 export class LLMError extends Error {
@@ -71,6 +73,10 @@ export function llmErrorFromStatus(status: number, body: string): LLMError {
     return new LLMError(LLMErrorCode.RATE_LIMITED, undefined, status);
   }
   if (status === 400) {
+    const bodyLower = body.toLowerCase();
+    if (bodyLower.includes('context length') || bodyLower.includes('maximum context') || bodyLower.includes('too long') || bodyLower.includes('token limit') || bodyLower.includes('max token')) {
+      return new LLMError(LLMErrorCode.CONTEXT_EXCEEDED, undefined, status);
+    }
     return new LLMError(LLMErrorCode.BAD_REQUEST, body || undefined, status);
   }
   if (status >= 500) {

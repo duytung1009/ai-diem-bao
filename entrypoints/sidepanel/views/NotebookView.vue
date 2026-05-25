@@ -22,7 +22,7 @@ function toggleExpand(id: string) {
 
 function openPostLink(entry: NotebookEntry) {
   const base = entry.sourceTopicUrl.replace(/\/$/, '');
-  const pageSegment = entry.source?.postNumber ? `#post-${entry.source.postNumber}` : '';
+  const pageSegment = entry.source?.postNumber ? `/post-${entry.source.postNumber}` : '';
   browser.tabs.create({ url: `${base}${pageSegment}` });
 }
 
@@ -61,7 +61,7 @@ function getTagClass(tag: string): string {
 }
 
 const viewModes: { value: ViewMode; label: string }[] = [
-  { value: 'topic', label: 'Theo chủ đề' },
+  { value: 'topic', label: 'Theo thớt' },
   { value: 'category', label: 'Theo danh mục' },
   { value: 'tag', label: 'Theo thẻ' },
   { value: 'timeline', label: 'Dòng thời gian' },

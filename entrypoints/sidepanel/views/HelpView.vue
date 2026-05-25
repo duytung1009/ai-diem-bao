@@ -134,7 +134,7 @@
     <div>
       <h2 class="font-semibold text-sm text-(--color-text-primary)">2. Flow tóm tắt</h2>
       <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
-        Các bước cơ bản để tóm tắt một chủ đề từ forum XenForo.
+        Các bước cơ bản để tóm tắt một thớt từ forum XenForo.
       </p>
       <div class="card space-y-1.5">
         <ol class="space-y-1.5">

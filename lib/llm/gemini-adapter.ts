@@ -95,7 +95,7 @@ export class GeminiAdapter implements LLMProvider {
         const finishReason = data.candidates?.[0]?.finishReason as string | undefined;
         if (finishReason && finishReason !== 'STOP') {
           const FINISH_REASON_MESSAGES: Record<string, string> = {
-            MAX_TOKENS: 'Tóm tắt bị cắt ngắn: model đạt giới hạn token đầu ra. Hãy tăng "Max tokens" trong Cài đặt. Nếu đang dùng model có thinking: giảm "Thinking budget" hoặc tăng Max tokens đủ lớn hơn thinking budget.',
+            MAX_TOKENS: 'Tóm tắt bị cắt ngắn: model đạt giới hạn token đầu ra. Tăng "Max output tokens" trong Cài đặt. Nếu prompt đã lớn gần context window, giảm "Context window (tokens)" hoặc Reset về Tự động. Nếu đang dùng model có thinking: giảm "Thinking budget" hoặc tăng Max output tokens.',
             SAFETY: 'Nội dung bị chặn bởi bộ lọc an toàn của Gemini.',
             RECITATION: 'Nội dung bị chặn do vi phạm chính sách trích dẫn.',
             LANGUAGE: 'Ngôn ngữ đầu ra không được hỗ trợ bởi Gemini.',

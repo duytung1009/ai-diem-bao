@@ -104,8 +104,10 @@ const postPageMap = computed<Record<number, number>>(() => {
       if (p.page !== undefined) map[p.postNumber] = p.page;
     }
   };
-  addPosts(topic.posts);
-  for (const seg of topic.segments ?? []) addPosts(seg.posts);
+  if (topic.posts) addPosts(topic.posts);
+  for (const seg of topic.segments ?? []) {
+    if (seg && seg.posts) addPosts(seg.posts);
+  }
   return map;
 });
 

@@ -1,9 +1,9 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-23T04:27:43.632Z",
-		"tasksAnalyzed": 13,
-		"totalTasks": 58,
-		"analysisCount": 13,
+		"generatedAt": "2026-05-23T16:27:04.869Z",
+		"tasksAnalyzed": 15,
+		"totalTasks": 83,
+		"analysisCount": 15,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
 		"usedResearch": true
@@ -13,105 +13,121 @@
 			"taskId": 169,
 			"taskTitle": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
 			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Xây dựng các hàm xây dựng payload cho SAVE_CACHED_TOPIC, xử lý các trường hợp single-segment vs multi-segment và tích hợp stale-guard token.",
-			"reasoning": "Module thuần túy nhưng yêu cầu tích hợp stale-guard và xử lý nhiều trường hợp lưu trữ; snapshot test đảm bảo tính tương thích."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 4 subtask, bao gồm các bước từ khởi tạo module, xây dựng hàm, tích hợp đến self-review. Do đó không cần mở rộng thêm."
 		},
 		{
 			"taskId": 170,
 			"taskTitle": "Refactor logic scraping thành Composable useTopicScraper (R4)",
 			"complexityScore": 6,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Thiết kế interface cho useTopicScraper bao gồm các phương thức cào dữ liệu theo range, xử lý enrichment và các callback trạng thái (onProgress, onSegmentReady).",
-			"reasoning": "Tách logic phức tạp thành composable, cần đảm bảo dedup và xử lý lỗi mạng; kiểm tra qua mock scraper."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 5 subtask, bao gồm thiết kế, triển khai vòng lặp, tích hợp enrichment, viết test và self-review. Không cần mở rộng thêm."
 		},
 		{
 			"taskId": 171,
 			"taskTitle": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
 			"complexityScore": 6,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Phát triển logic cho hàm reconcile để điều chỉnh StepTimeline khi dữ liệu thực tế thay đổi và đảm bảo đồng bộ hóa trạng thái task trong LLMTaskState.",
-			"reasoning": "Quản lý pipeline động, cần xử lý trường hợp số segment thay đổi; phải loại bỏ legacy code."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 4 subtask, bao gồm thiết kế composable, triển khai reconcile, tích hợp trạng thái và self-review. Không cần mở rộng thêm."
 		},
 		{
 			"taskId": 172,
 			"taskTitle": "Xây dựng các hàm Primitive trong useSummarize",
 			"complexityScore": 7,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Triển khai summarizeOneSegment và reduceOverall với cơ chế kiểm tra stale-guard nghiêm ngặt và tích hợp với hệ thống persistence mới.",
-			"reasoning": "Hàm cốt lõi xử lý LLM call và persist, cần tuân thủ stale-guard và xử lý lỗi; kiểm tra race condition."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 4 subtask, bao gồm triển khai hai hàm chính, tích hợp stale-guard và self-review. Không cần mở rộng thêm."
 		},
 		{
 			"taskId": 173,
 			"taskTitle": "Triển khai Driver trung tâm runSummarizeJob (R7)",
 			"complexityScore": 8,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Xây dựng luồng điều phối chính trong runSummarizeJob: từ khởi tạo pipeline, cào dữ liệu, tóm tắt từng đoạn đến gộp kết quả cuối cùng.",
-			"reasoning": "Hợp nhất nhiều flow, điều phối phức tạp; yêu cầu tích hợp nhiều module và characterization tests."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 5 subtask, bao gồm helper computeResumeMode, khởi tạo pipeline, tích hợp scraper, tổng hợp kết quả và self-review. Không cần mở rộng thêm."
 		},
 		{
-			"taskId": 205,
-			"taskTitle": "F27 Bug: IDB by-orphaned index dùng boolean — orphan query trả rỗng",
+			"taskId": 228,
+			"taskTitle": "Xây dựng pipeline reactive khi bắt đầu handleExtract",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Triển khai code xây dựng pipeline trong handleExtract, bao gồm cả direct path, và đảm bảo step đầu tiên ở trạng thái running. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ cụ thể và đã được mô tả chi tiết, có thể thực hiện trong một subtask code và một subtask self-review."
+		},
+		{
+			"taskId": 229,
+			"taskTitle": "Xây dựng pipeline reactive khi bắt đầu handleRestore",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Triển khai xây dựng pipeline trong handleRestore, đánh dấu các extract steps đã có là done và reduce là running. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ tương tự task 228, có thể chia thành code và self-review."
+		},
+		{
+			"taskId": 230,
+			"taskTitle": "Cập nhật trạng thái step cho từng chunk trong vòng lặp extraction",
+			"complexityScore": 6,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Sửa vòng lặp extraction để sử dụng pl.markRunning/pl.markDone thay vì xây dựng pipeline mới, đảm bảo trạng thái step được cập nhật chính xác. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ yêu cầu thay đổi logic vòng lặp, có độ phức tạp trung bình, nên chia làm code và self-review."
+		},
+		{
+			"taskId": 231,
+			"taskTitle": "Cập nhật trạng thái step cho reduce phase",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Thêm pl.markRunning và pl.markDone trong runReducePhase. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ đơn giản, chỉ thêm vài dòng code, có thể hoàn thành trong một subtask code và self-review."
+		},
+		{
+			"taskId": 232,
+			"taskTitle": "Sao chép snapshot pipeline vào task state trước mỗi LLM call",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Thêm code sao chép snapshot pipeline vào task state trước mỗi LLM call. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ đơn giản, thêm deep clone và gán giá trị, nên chia làm code và self-review."
+		},
+		{
+			"taskId": 233,
+			"taskTitle": "Đồng bộ pipeline từ task state trở về sau LLM call",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Thêm code đồng bộ pipeline từ task state trở lại sau LLM call, kiểm tra điều kiện null. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ đơn giản, thêm logic copy có điều kiện, nên chia làm code và self-review."
+		},
+		{
+			"taskId": 234,
+			"taskTitle": "Sửa computed activePipeline để ưu tiên task state",
 			"complexityScore": 3,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Sửa lỗi IndexedDB index không index được boolean: đổi orphaned từ boolean sang number (0|1), cập nhật kiểu dữ liệu, logic kiểm tra, và các component liên quan.",
-			"reasoning": "Bug rõ ràng, cần thay đổi kiểu dữ liệu và cập nhật nhiều file nhưng không phức tạp."
+			"expansionPrompt": "Tạo subtask 1: Sửa computed activePipeline để trả về st.pipeline nếu có, nếu không thì fallback vào pl.pipeline. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ rất đơn giản, chỉ thay đổi dòng computed, nên chia làm code và self-review."
 		},
 		{
-			"taskId": 206,
-			"taskTitle": "F27 Bug: KnowledgeView không xử lý ?focus={id} và ?restore=true query params",
+			"taskId": 235,
+			"taskTitle": "Xử lý resume path - đánh dấu các step đã có là done",
 			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Thêm xử lý query params trong KnowledgeView setup: watch focus và restore, scroll/expand/highlight entry, và trigge confirmingExtract.",
-			"reasoning": "Missing feature cần implement routing, DOM query, và tương tác; có nhiều trường hợp cần xử lý."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Thêm code đánh dấu các extract steps đã có là done trong resume path, dựa trên số lượng existingChunks. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ yêu cầu thêm vòng lặp đánh dấu, có độ phức tạp trung bình, nên chia làm code và self-review."
 		},
 		{
-			"taskId": 207,
-			"taskTitle": "F27 Bug: NotebookView openInExtension silent fail cho orphan entries",
+			"taskId": 236,
+			"taskTitle": "Xử lý direct extract path cho pipeline",
 			"complexityScore": 4,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Cập nhật NotebookView để disable nút Open in Extension cho orphan entries hoặc hiện tooltip, và hiển thị trạng thái đã xoá.",
-			"reasoning": "Bug UI cần thay đổi logic và giao diện; đơn giản nhưng ảnh hưởng đến UX."
+			"expansionPrompt": "Tạo subtask 1: Xử lý direct extract path, điều chỉnh totalSteps và mark first running phù hợp. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ tương tự task 228 nhưng đơn giản hơn, nên chia làm code và self-review."
 		},
 		{
-			"taskId": 208,
-			"taskTitle": "F27 Missing: 'Xem sổ tay' button trong KnowledgeView header",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Thêm nút 'Xem sổ tay' trong KnowledgeView header để chuyển hướng đến NotebookView.",
-			"reasoning": "Thêm một button và router.push, không có logic phức tạp."
-		},
-		{
-			"taskId": 209,
-			"taskTitle": "F27 Missing: Timeline view mode trong NotebookView",
-			"complexityScore": 4,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Thêm timeline view mode trong NotebookView: sort theo savedAt, group theo ngày, thêm nút chọn mode.",
-			"reasoning": "Cần thêm view mode mới, xử lý group và sort; có thể tương tác với computed property."
-		},
-		{
-			"taskId": 210,
-			"taskTitle": "F27 UX: Đảo style nút trong TopicHubView delete confirm",
-			"complexityScore": 1,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Đổi style nút trong delete dialog: option an toàn thành btn-secondary, option destructive thành btn-danger.",
-			"reasoning": "Chỉ thay đổi CSS class, không ảnh hưởng logic."
-		},
-		{
-			"taskId": 211,
-			"taskTitle": "F27 Cleanup: Xoá debug console.log trong background/index.ts và page-loader.ts",
-			"complexityScore": 1,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Xoá các dòng console.log debug trong background/index.ts và page-loader.ts.",
-			"reasoning": "Task đơn giản: xoá vài dòng code, không cần test."
-		},
-		{
-			"taskId": 212,
-			"taskTitle": "F27 Enhancement: Lazy orphan check trong GET_NOTEBOOK_ENTRIES handler",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Thêm lazy orphan check trong GET_NOTEBOOK_ENTRIES handler: kiểm tra topic còn tồn tại không, nếu không và entry chưa orphaned thì tự cập nhật orphan status.",
-			"reasoning": "Cần logic kiểm tra và cập nhật bất đồng bộ, có cân nhắc hiệu năng; tương đối phức tạp."
+			"taskId": 237,
+			"taskTitle": "Viết unit tests cho toàn bộ fix timeline",
+			"complexityScore": 6,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo subtask 1: Viết unit test cho tất cả các thay đổi từ task 228 đến 236, đảm bảo npm run test pass. Subtask 2: Self-review.",
+			"reasoning": "Nhiệm vụ viết test bao phủ nhiều thay đổi, có độ phức tạp trung bình cao do cần mock. Nên chia làm code test và self-review."
 		}
 	]
 }

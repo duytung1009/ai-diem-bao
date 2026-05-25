@@ -1,6 +1,6 @@
 # Cơ chế Tab Kiến thức (Knowledge Extraction)
 
-> Cập nhật: 2026-04-11
+> Cập nhật: 2026-05-23
 
 ## Tổng quan
 
@@ -66,26 +66,27 @@ interface KnowledgeChunk {
 
 | Export | Mục đích |
 |--------|----------|
-| `extractKnowledge()` | Direct path — 1 call, topic nhỏ fit context, dùng `KNOWLEDGE_EXTRACT_PROMPT` |
-| `extractKnowledgeChunk()` | Map phase — 1 chunk posts, dùng `KNOWLEDGE_CHUNK_PROMPT` |
+| `extractKnowledgeChunk(posts, title, mode?)` | Unified extract — mode `'extract'` (direct path, full-thread framing) hoặc `'chunk'` (map phase, segment framing). Default: `'chunk'` |
 | `reduceKnowledgeChunks()` | Reduce phase — merge N mảng entries thành final list |
 | `planKnowledgeChunks()` | Tính chunk boundaries theo token budget |
-| `KNOWLEDGE_CHUNK_PROMPT_TOKENS` | Pre-computed token count của `KNOWLEDGE_CHUNK_PROMPT` (tính 1 lần) |
+| `KNOWLEDGE_CHUNK_PROMPT_TOKENS` | Pre-computed token count của chunk prompt (tính 1 lần) |
+
+> **Lưu ý:** `extractKnowledge()` (direct path riêng biệt) đã được hợp nhất vào `extractKnowledgeChunk(mode='extract')`. Xem task #238.
 
 ### Background task types
 
 | `taskType` | Payload | Result |
 |-----------|---------|--------|
-| `extract_knowledge` | `{ posts, title }` | `{ entries: KnowledgeEntry[] }` |
-| `extract_knowledge_chunk` | `{ posts, title }` | `{ entries: KnowledgeEntry[] }` |
+| `extract_knowledge_chunk` | `{ posts, title, mode?: 'extract'\|'chunk' }` | `{ entries: KnowledgeEntry[] }` |
 | `reduce_knowledge_chunks` | `{ partialEntries: KnowledgeEntry[][] }` | `{ entries: KnowledgeEntry[] }` |
+
+> **Kế hoạch (task #238):** Gộp `extract_knowledge` vào `extract_knowledge_chunk` bằng param `mode`. Giảm từ 3 task types xuống 2, đồng nhất với summary workflow (dùng `summarize_segments` với 1 task type).
 
 ### `useLLM` wrappers
 
 ```typescript
-extractKnowledge(posts, title)          // → createTask('extract_knowledge', ...)
-extractKnowledgeChunkTask(posts, title) // → createTask('extract_knowledge_chunk', ...)
-reduceKnowledgeChunksTask(partialEntries) // → createTask('reduce_knowledge_chunks', ...)
+extractKnowledgeChunkTask(posts, title, mode?)  // → createTask('extract_knowledge_chunk', { ..., mode })
+reduceKnowledgeChunksTask(partialEntries)        // → createTask('reduce_knowledge_chunks', ...)
 ```
 
 ---
@@ -109,23 +110,26 @@ Budget dùng `calculateSegmentBudget(model, KNOWLEDGE_CHUNK_PROMPT_TOKENS, 2000,
 
 ---
 
-## Flow Extract (`handleExtract` trong `KnowledgeView.vue`)
+## Flow Extract (`handleExtract` trong `useKnowledge.ts`)
+
+Logic điều phối toàn bộ knowledge extraction được đặt trong composable `entrypoints/sidepanel/composables/useKnowledge.ts`. `KnowledgeView.vue` chỉ là thin wrapper gọi `useKnowledge(store)`.
 
 ### Cancel guard
 
-Giống `activeSummarizeId` ở tab Tóm tắt:
+Dùng `createRunGuard()` utility (thay thế manual counter):
 
 ```typescript
-let activeExtractId = 0; // non-reactive (không cần reactivity)
+// useKnowledge.ts
+const runGuard = createRunGuard();
 
 async function handleExtract() {
-  const thisId = ++activeExtractId;
+  const guard = runGuard.start();
   // ... await LLM ...
-  if (thisId !== activeExtractId) return; // đã cancel hoặc bắt đầu extract mới
+  if (guard.cancelled()) return; // đã cancel hoặc bắt đầu extract mới
 }
 
 function handleCancel() {
-  activeExtractId++; // invalidate guard
+  runGuard.cancel();
   // partial chunks đã persist → auto-resume khi click lại
 }
 ```
@@ -162,7 +166,7 @@ else:
 
 ### Direct path (topic nhỏ)
 
-1. Gọi `extract_knowledge` task (dùng `KNOWLEDGE_EXTRACT_PROMPT`)
+1. Gọi `extract_knowledge_chunk` task với `mode: 'extract'` (dùng `KNOWLEDGE_DEFAULT_TASKS.extract`, full-thread framing)
 2. Enrich entries với timestamp từ `allPosts`
 3. Tạo **1 chunk record** để resume logic đồng nhất (QD4)
    - `complete: chunkTokens >= budget × 0.8`
@@ -176,7 +180,7 @@ planKnowledgeChunks(posts)  →  [{startIndex, endIndex}, ...]
 
 for each chunkPlan[i]:
   1. slice posts từ startIndex..endIndex
-  2. gọi extract_knowledge_chunk task
+  2. gọi `extract_knowledge_chunk` task với `mode: 'chunk'` (mặc định)
   3. enrich entries với timestamp
   4. tạo KnowledgeChunk record:
        complete = i < last ? true
@@ -243,13 +247,13 @@ Lý do 80%: chừa 20% dư để append vài bài mới mà không vượt budge
 
 ### Trích xuất (Extract)
 
-- Lần đầu: gọi `handleExtract()` full flow từ đầu
+- Lần đầu: gọi `handleExtract()` (từ `useKnowledge`) full flow từ đầu
 - Có bài mới: nút "Trích xuất bài mới (N)" → cùng `handleExtract()`, resume tự động từ `lastKnowledgePostNumber`
-- Cancel: nút "Hủy" → `handleCancel()` → chunks đã persist được giữ lại
+- Cancel: nút "Hủy" → `handleCancel()` → `runGuard.cancel()` → chunks đã persist được giữ lại
 
 ### Save/Unsave entry
 
-`toggleSave(entry)` → update `entries.value`, persist `knowledgeEntries` ngay
+`toggleSave(entry)` (từ `useKnowledge`) → update `entries.value`, persist `knowledgeEntries` ngay
 
 ### Xóa entry (`handleDelete`)
 
@@ -314,4 +318,4 @@ Topics cũ (có `knowledgeEntries` nhưng không có `knowledgeChunks`):
 | 1 post > budget | Force vào chunk riêng, log warning, tiếp tục |
 | Không có posts | Hiện warning "Vui lòng tóm tắt topic trước" |
 | excludedNums lớn | Filter ở reduce step (sau LLM), không rebuild chunks |
-| Cancel trong reduce phase | `activeExtractId++` → reduce result bị bỏ qua; chunks đã persist; click lại → skip extract, chỉ re-run reduce |
+| Cancel trong reduce phase | `runGuard.cancel()` → reduce result bị bỏ qua; chunks đã persist; click lại → skip extract, chỉ re-run reduce |

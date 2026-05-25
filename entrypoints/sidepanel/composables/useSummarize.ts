@@ -60,6 +60,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   const isProcessing = computed(() => !!llmTaskId.value || !!scraper.scrapeProgress.value || !!simpleLoadingText.value);
 
+  watch(isProcessing, (val) => {
+    store.setCurrentOperation('summarize', val);
+  });
+
   const summarizedPostCount = computed(() => {
     if (!cachedTopic.value) return 0;
     return cachedTopic.value.summarizedPostCount ?? cachedTopic.value.totalPosts ?? 0;

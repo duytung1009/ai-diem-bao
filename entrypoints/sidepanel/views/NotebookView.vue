@@ -61,9 +61,9 @@ function getTagClass(tag: string): string {
 }
 
 const viewModes: { value: ViewMode; label: string }[] = [
-  { value: 'topic', label: 'Theo thớt' },
-  { value: 'category', label: 'Theo danh mục' },
-  { value: 'tag', label: 'Theo thẻ' },
+  { value: 'topic', label: 'Thớt' },
+  { value: 'category', label: 'Danh mục' },
+  { value: 'tag', label: 'Tag' },
   { value: 'timeline', label: 'Dòng thời gian' },
 ];
 
@@ -91,11 +91,22 @@ onActivated(async () => {
           placeholder="Tìm kiếm kiến thức..."
           class="input pl-8 pr-8 text-xs w-full"
         />
+        <!-- Orphan filter toggle -->
+        <button
+          class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
+          :class="filters.orphanOnly ? 'text-amber-600 dark:text-amber-500' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
+          :title="filters.orphanOnly ? 'Xem tất cả' : `Chỉ hiện kiến thức từ thớt đã xoá${stats.orphanCount > 0 ? ` (${stats.orphanCount})` : ''}`"
+          @click="filters.orphanOnly = !filters.orphanOnly"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+        </button>
       </div>
       <!-- Stats -->
       <p class="text-xs text-(--color-text-muted)">
         {{ stats.totalEntries }} kiến thức từ {{ stats.topicCount }} thớt
-        <span v-if="stats.orphanCount > 0"> · {{ stats.orphanCount }} mồ côi</span>
+        <span v-if="stats.orphanCount > 0"> · {{ stats.orphanCount }} từ thớt đã xoá</span>
       </p>
     </div>
 
@@ -164,26 +175,18 @@ onActivated(async () => {
           {{ tag }}
         </button>
       </div>
-      <!-- Orphan toggle -->
-      <label class="flex items-center gap-2 text-xs text-(--color-text-secondary) cursor-pointer">
-        <input
-          type="checkbox"
-          v-model="filters.orphanOnly"
-          class="rounded"
-        />
-        Chỉ mồ côi
-      </label>
     </div>
 
     <!-- View mode buttons -->
-    <div class="flex gap-1 bg-(--color-bg-muted) rounded-lg p-0.5">
+    <div class="flex items-center gap-2 text-xs">
+      <span class="text-(--color-text-secondary)">Sắp xếp:</span>
       <button
         v-for="vm in viewModes"
         :key="vm.value"
-        class="flex-1 text-center py-1 text-xs font-medium rounded-md transition-colors"
+        class="px-2 py-0.5 rounded-full transition-colors"
         :class="viewMode === vm.value
-          ? 'bg-white dark:bg-(--color-bg-surface) text-(--color-text-primary) shadow-sm'
-          : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'"
+          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
+          : 'text-(--color-text-secondary) hover:text-(--color-text-primary) hover:bg-(--color-bg-muted)'"
         @click="viewMode = vm.value"
       >
         {{ vm.label }}
@@ -271,8 +274,8 @@ onActivated(async () => {
                   </div>
                   <!-- Source info -->
                   <p class="text-xs text-(--color-text-muted)">
-                    — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài #{{ entry.source.postNumber }}</template>
-                    <span v-if="entry.source.timestamp">{{ formatTimestamp(entry.source.timestamp) }}</span>
+                    {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài #{{ entry.source.postNumber }}</template>
+                    <span v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp) }}</span>
                   </p>
                   <!-- Source topic link -->
                   <p class="text-xs">

@@ -1,4 +1,4 @@
-# Feature: Styling Rules — Design System cho AI Điểm Báo
+# Feature: Styling Rules — Design System cho Lội Thớt Hộ
 
 ## Mục tiêu
 Định nghĩa bộ quy tắc styling chung cho toàn bộ dự án. Đảm bảo UI đơn giản, nhất quán, dễ maintain. Sử dụng CSS custom properties (design tokens) thay vì hard-code Tailwind classes rải rác.
@@ -247,7 +247,7 @@ Thêm `@utility` rules cho patterns lặp lại nhiều nhất:
 Nội dung:
 
 ```markdown
-# AI Điểm Báo — Styling Guide
+# Lội Thớt Hộ — Styling Guide
 
 ## Nguyên tắc chung
 1. **Đơn giản** — Ít element, ít nesting, ít decoration

@@ -321,13 +321,12 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
     case 'summarize_segments':
       // Caller (useSummarize) đã build detailed pipeline → không cần generic
       return null;
-
+    case 'extract_knowledge_chunk':
+    case 'reduce_knowledge_chunks':
+      // Caller (useKnowledge) đã build detailed pipeline → không cần generic
+      return null;
     case 'research':
       return { workflow: 'research', steps: [pendingStep('research', 'Tra cứu và phân tích')] };
-    case 'extract_knowledge_chunk':
-      return { workflow: 'knowledge', steps: [pendingStep('extract', 'Trích xuất kiến thức')] };
-    case 'reduce_knowledge_chunks':
-      return { workflow: 'knowledge', steps: [pendingStep('reduce', 'Tổng hợp kiến thức')] };
     case 'thread_analysis':
       return { workflow: 'knowledge', steps: [pendingStep('analyze', 'Phân tích thớt')] };
     default:

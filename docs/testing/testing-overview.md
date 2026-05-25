@@ -1,4 +1,4 @@
-# Test Infrastructure — AI Điểm Báo
+# Test Infrastructure — Lội Thớt Hộ
 
 > Cập nhật: 2026-05-14
 

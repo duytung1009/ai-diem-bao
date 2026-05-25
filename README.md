@@ -1,7 +1,7 @@
-# AI Điểm Báo / AI Newspaper Digest
+# 🤖 Lội Thớt Hộ
 
-> Chrome Extension tự động tóm tắt và phân tích thảo luận trên diễn đàn XenForo bằng AI
-> *Chrome Extension that automatically summarizes and analyzes XenForo forum discussions using AI*
+> **Cho mấy thím lười lội page.** Gom phe kháy đểu, bắt bài seeder, nhặt mẹo hay bỏ túi.  
+> Lưu local, tự mang key LLM — hổng có kèm sẵn nha!
 
 ![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-blue)
 ![Vue 3](https://img.shields.io/badge/Vue-3-green)
@@ -11,59 +11,60 @@
 
 ---
 
-## Tính năng chính / Key Features
+*Sản phẩm của một lập trình viên cận, trĩ, nghèo, rảnh không có gì làm. Open-source 100%, không có backend thu thập dữ liệu, API key và sổ tay kiến thức lưu hoàn toàn dưới IndexedDB của trình duyệt. An tâm hóng biến không lo rò rỉ thông tin cá nhân.*
 
-- **Tóm tắt tự động** *(Auto Summarization)* — Đọc toàn bộ topic (kể cả nhiều trang) và tóm tắt nội dung thảo luận bằng AI
-- **Trích xuất kiến thức** *(Knowledge Extraction)* — Rút trích sự thật, mẹo, kinh nghiệm từ thảo luận thành kho kiến thức có cấu trúc
-- **Tra cứu / Q&A** *(Research)* — Đặt câu hỏi cụ thể về nội dung topic và nhận câu trả lời có trích dẫn
-- **Phân tích chuyên sâu** *(Thread Analysis)* — Phân tích động thái debate, profile người dùng, timeline, bình luận notable, và tóm tắt phong cách "võ hiệp"
-- **Export** — Sao chép Markdown, plain text, hoặc tải file `.md`
-- **Caching** — Lưu kết quả vào IndexedDB, phát hiện bài mới, hỗ trợ cập nhật incremental
-- **Custom prompts** — Tuỳ chỉnh system prompt cho từng loại phân tích
-- **Map-reduce pipeline** — Tự động chia nhỏ topic thành nhiều chunk để xử lý dựa trên cấu hình LLM tương ứng
-- **Phát hiện bài viết** *(News Detection)* — Tự động phân biệt discussion và news article, trích xuất nội dung bài báo
+---
 
-## Hỗ trợ / Support
+## Tính năng chính
+
+### 📰 Tóm tắt thớt — Không cần lội 47 trang
+Đọc toàn bộ topic (kể cả thớt kéo dài cả thập kỷ) rồi tóm lại trong vài dòng. Ý kiến nổi bật, tranh luận tâm điểm, kết luận chung — AI lo hết, thím chỉ cần API key.
+
+### 🧠 Trích xuất kiến thức — Nhặt mẹo hay bỏ túi
+Từ đống 700 bài reply lộn xộn, tự động rút ra các tips, kinh nghiệm, công thức, địa chỉ ngon — lưu thành kho kiến thức có cấu trúc. Không còn cảnh "mình đọc ở đâu đó mà không nhớ trang mấy".
+
+### 🔍 Tra cứu Q&A — Hỏi thẳng, khỏi Ctrl+F
+Đặt câu hỏi cụ thể về nội dung topic, AI trả lời kèm trích dẫn đến bài gốc. Kiểu "thím nào đề cập đến vụ X?" thay vì phải mò thủ công.
+
+### 🕵️ Phân tích thread — Đọc vị luồng tranh luận
+- **User profiling:** Gom user thành 2-4 nhóm theo hành vi trong thớt (phe ủng hộ, phe phản đối, nhóm kháy, nhóm hóng), kèm quote đại diện mỗi nhóm. AI phân loại dựa trên nội dung bài viết, không phải metadata account.
+- **Debate streams:** Gom các luồng tranh luận, xem phe nào thắng thế
+- **Timeline sự kiện:** Dòng thời gian diễn biến vụ việc
+- **Notable comments:** Các bình luận đáng chú ý nhất (kể cả mấy bài bị report)
+- **Tóm tắt phong cách võ hiệp:** Vì đời buồn, cần thêm chút drama kiếm hiệp
+
+### 💾 Cache thông minh — Cày một lần, xài mãi mãi
+Kết quả lưu vào IndexedDB, phát hiện bài mới tự động. Hôm nay tóm xong, tuần sau mở lại vẫn còn, không cần cày lại từ đầu.
+
+### 📤 Export đủ kiểu — Copy paste cho nhanh
+Markdown, plain text, hoặc tải file `.md` về. Dán vào Notion, Obsidian, hay nhóm Zalo tùy thím.
+
+### ⚙️ Map-Reduce tự động — Thớt 1000 bài cũng không sợ
+Tự chia nhỏ topic thành chunk phù hợp với context window của model. Xử lý song song rồi gộp lại. Thím không cần biết map-reduce là gì, chỉ cần bấm nút.
+
+---
+
+## Hỗ trợ
 
 | | |
 |---|---|
-| **Forum** | XenForo 1.x và XenForo 2.x |
-| **LLM Providers** | OpenAI, Anthropic Claude, Google Gemini, bất kỳ OpenAI-compatible API (LM Studio, Ollama, v.v.) |
+| **Diễn đàn** | XenForo 1.x và XenForo 2.x (Voz, Otofun, và mấy forum cùng engine) |
+| **LLM** | OpenAI, Gemini, hoặc bất kỳ API nào compatible OpenAI (LM Studio, Ollama, OpenRouter…) |
 | **Trình duyệt** | Chrome (Manifest V3), Firefox |
 
-## Tech Stack
+---
 
-| Layer | Công nghệ |
-|---|---|
-| **Extension Framework** | [WXT](https://wxt.dev/) v0.20 — Modern web extension build tool |
-| **UI Framework** | [Vue 3](https://vuejs.org/) với Composition API |
-| **Routing** | [Vue Router](https://router.vuejs.org/) v4 |
-| **Styling** | [Tailwind CSS](https://tailwindcss.com/) v4 với custom design tokens |
-| **Language** | [TypeScript](https://www.typescriptlang.org/) v5 |
-| **Build Tool** | [Vite](https://vitejs.dev/) (qua WXT) |
-| **Storage** | IndexedDB (cache topic) + `chrome.storage.sync` (settings) |
-| **Markdown** | [marked](https://marked.js.org/) v17 |
-| **Sanitization** | [DOMPurify](https://github.com/cure53/DOMPurify) v3 |
+## Cài đặt
 
-## Cài đặt / Installation
-
-### Yêu cầu / Requirements
-
+### Yêu cầu
 - Node.js 18+
 - npm
-
-### Các bước cài đặt / Setup Steps
+- API key của một LLM nào đó (thím tự lo phần này nhé, xin không được đâu)
 
 ```bash
-# Clone repo
 git clone <repo-url>
 cd ai-diem-bao
-
-# Cài đặt dependencies
 npm install
-
-# Copy file môi trường (tuỳ chọn)
-cp .env.example .env
 
 # Dev mode (hot reload)
 npm run dev
@@ -72,250 +73,124 @@ npm run dev
 npm run build
 ```
 
-### Load vào Chrome / Load into Chrome
+### Load vào Chrome
 
-1. Mở Chrome → `chrome://extensions/`
+1. Mở `chrome://extensions/`
 2. Bật **Developer mode** (góc trên phải)
 3. Bấm **Load unpacked**
 4. Chọn thư mục `.output/chrome-mv3/`
 
-## Cấu hình API Key / API Configuration
+Xong. Không cần cài thêm gì cả.
 
-1. Mở extension → tab **Cài đặt** *(Settings)*
+---
+
+## Cấu hình API Key
+
+1. Mở extension → tab **Cài đặt**
 2. Chọn Provider (OpenAI / Claude / Gemini / Custom)
-3. Nhập API Key
-4. (Tuỳ chọn) Điều chỉnh Base URL cho custom provider
-5. Chọn model và temperature
-6. Bấm **Test Connection** để kiểm tra
-7. Bấm **Lưu** *(Save)*
+3. Dán API Key vào
+4. Chọn model, chỉnh temperature nếu thích mấy bài tóm ảo diệu hơn
+5. Bấm **Test Connection** cho chắc
+6. **Lưu** là xong
 
-### Providers được hỗ trợ / Supported Providers
+### Provider nào dùng model nào?
 
-| Provider | Base URL | Model mẫu |
+| Provider | Model gợi ý | Ghi chú |
 |---|---|---|
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
-| Anthropic Claude | _(tự động)_ | `claude-sonnet-4-20250514` |
-| Google Gemini | _(tự động)_ | `gemini-2.5-flash` |
-| LM Studio | `http://localhost:1234/v1` | _(model đang chạy)_ |
-| Ollama | `http://localhost:11434/v1` | `llama3` |
-| OpenRouter | `https://openrouter.ai/api/v1` | _(tùy chọn)_ |
+| OpenAI | `gpt-4o-mini` | Rẻ, nhanh, đủ xài |
+| Google Gemini | `gemini-2.5-flash` | Context window siêu to, tóm thớt dài ngon lành |
+| LM Studio | *(model đang chạy)* | Chạy local, free 100%, tốc độ tùy máy thím |
+| Ollama | `llama3` | Như LM Studio nhưng CLI cho thím nào thích gõ lệnh |
+| OpenRouter | *(tùy chọn)* | Aggregator, pick model nào cũng được, tính phí từng model |
 
-> **Mẹo / Tip:** Dùng `.env` để quản lý API key trong development. Xem `.env.example` để biết các biến hỗ trợ.
+> **Mẹo thực tế:** Thớt thường thì Haiku/Flash là đủ. Thớt 500+ bài phức tạp mới cần đến Sonnet/GPT-4o. Dùng Haiku cho tiết kiệm — AI cũng biết đọc, không cần hàng xịn mới hiểu Voz nói gì.
 
-## Sử dụng / Usage
+---
+
+## Sử dụng
 
 1. Mở một topic XenForo bất kỳ
-2. Click icon extension để mở side panel
-3. **Topic Hub** — Xem danh sách các topic đã lưu, lọc, tìm kiếm
-4. **Tóm tắt** *(Summary)* → bấm "Tóm tắt" để bắt đầu
-5. **Ý kiến** *(Opinions)* → bấm "Phân tích Ý kiến" sau khi đã tóm tắt
-6. **Kiến thức** *(Knowledge)* → trích xuất và quản lý kho kiến thức từ topic
-7. **Phân tích Thread** *(Thread Analysis)* → phân tích sâu động thái debate
-8. **Tra cứu** *(Research)* → đặt câu hỏi cụ thể về topic
-9. Bấm nút **Xuất** *(Export)* để copy hoặc download kết quả
+2. Click icon extension → side panel bật ra bên phải
+3. **Danh sách** — Xem các topic đã lưu, tìm kiếm, lọc
+4. **Tóm tắt** → Bấm "Tóm tắt" → chờ AI cày (thớt càng dài càng lâu, đừng tắt tab)
+5. **Kiến thức** → Trích xuất tips hay, kinh nghiệm, thông tin hữu ích từ thớt
+6. **Phân tích** → Bắt bài, profile user, phân tích luồng tranh luận
+7. **Tra cứu** → Hỏi thẳng về nội dung topic, AI trả lời kèm nguồn
+8. **Xuất** → Copy Markdown hoặc download file `.md`
 
-## Cấu trúc dự án / Project Structure
+---
+
+## Tech Stack
+
+| Layer | Công nghệ |
+|---|---|
+| Extension Framework | [WXT](https://wxt.dev/) v0.20 |
+| UI | [Vue 3](https://vuejs.org/) Composition API |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) v4 |
+| Language | TypeScript 5 |
+| Storage | IndexedDB (cache topic) + `chrome.storage.sync` (settings) |
+
+---
+
+## Cấu trúc dự án
 
 ```
 ai-diem-bao/
 ├── entrypoints/
-│   ├── background/index.ts         # Service worker: LLM orchestration, messaging, cache
-│   ├── content/index.ts            # Content script: XF version detection, scraper dispatch
-│   └── sidepanel/                  # Vue 3 side panel app
-│       ├── App.vue                 # Root component với tab navigation
-│       ├── main.ts                 # Vue app + router setup
-│       ├── index.html              # Side panel HTML shell
-│       ├── views/
-│       │   ├── TopicHubView.vue    # Dashboard danh sách topic
-│       │   ├── SummaryView.vue     # Hiển thị tóm tắt + phân tích ý kiến
-│       │   ├── KnowledgeView.vue   # Trích xuất & quản lý kiến thức
-│       │   ├── ResearchView.vue    # Q&A / Research
-│       │   ├── SettingsView.vue    # Cấu hình LLM provider
-│       │   └── HelpView.vue        # Hướng dẫn sử dụng
-│       ├── components/             # 12 reusable UI components
-│       │   ├── TopicMeta.vue       # Topic metadata
-│       │   ├── SummaryContent.vue  # Summary rendering
-│       │   ├── ThreadAnalysisContent.vue  # Thread analysis rendering
-│       │   ├── StepTimeline.vue    # Progress step timeline
-│       │   ├── ExportButton.vue    # Export functionality
-│       │   ├── CacheIndicator.vue  # Cache freshness indicator
-│       │   ├── ProgressIndicator.vue  # Scraping/LLM progress
-│       │   ├── LoadingSpinner.vue  # Loading animation
-│       │   ├── ErrorDisplay.vue    # Error display
-│       │   ├── MarkdownContent.vue # Markdown rendering
-│       │   ├── AccordionItem.vue   # Collapsible sections
-│       │   └── ConfirmInline.vue   # Inline confirmation dialog
-│       └── composables/
-│           ├── useTopicStore.ts    # Reactive topic state management
-│           ├── useSummarize.ts     # Summarization orchestration
-│           ├── useLLM.ts           # LLM task communication
-│           ├── usePipeline.ts      # Pipeline state management
-│           ├── useTopicScraper.ts  # Scraping coordination
-│           ├── useOptimisticUpdate.ts  # Optimistic UI updates với auto-rollback
-│           └── useTheme.ts         # Dark mode theming
-│
+│   ├── background/       # Service worker: điều phối LLM, cache, messaging
+│   ├── content/          # Content script: detect XenForo, scrape bài viết
+│   └── sidepanel/        # Vue 3 app — toàn bộ UI
+│       ├── views/        # Các màn hình chính
+│       ├── components/   # 12 UI common components tái sử dụng
+│       └── composables/  # Logic state, LLM, scraping
 ├── lib/
-│   ├── types.ts                    # Tất cả TypeScript interfaces
-│   ├── constants.ts                # Configuration constants
-│   ├── prompts.ts                  # System prompts cho tất cả LLM tasks
-│   ├── errors.ts                   # Custom error classes
-│   ├── messaging.ts                # Chrome messaging helpers
-│   ├── cache-manager.ts            # Cache CRUD với URL normalization
-│   ├── cache-db.ts                 # IndexedDB wrapper
-│   ├── token-estimator.ts          # Token counting, cost estimation, context checking
-│   ├── pipeline-builder.ts         # Pipeline assembly và reconciliation
-│   ├── run-guard.ts                # Stale-run guard (monotonic token để cancel race)
-│   ├── segment-planner.ts          # Dynamic segment sizing dựa trên token budget
-│   ├── segment-persistence.ts      # Segment save payload builder
-│   ├── exporter.ts                 # Cache export (JSON) functionality
-│   ├── format.ts                   # Number formatting utilities
-│   ├── text-utils.ts               # Text processing utilities
-│   ├── topic-utils.ts              # Topic utility functions
-│   ├── detector.ts                 # XenForo version detection
-│   ├── llm/                        # LLM provider adapters
-│   │   ├── types.ts                # LLMProvider interface
-│   │   ├── factory.ts              # Provider factory
-│   │   ├── openai-adapter.ts       # OpenAI-compatible API adapter
-│   │   ├── claude-adapter.ts       # Anthropic Claude API adapter
-│   │   ├── gemini-adapter.ts       # Google Gemini API adapter
-│   │   ├── summarizer.ts           # Core summarization logic (map-reduce)
-│   │   ├── retry.ts                # Retry logic for rate limits
-│   │   ├── utils.ts                # LLM utilities
-│   │   └── cost-estimator.ts       # Cost estimation
-│   └── scrapers/                   # Forum scrapers
-│       ├── types.ts                # TopicScraper interface
-│       ├── xf1-scraper.ts          # XenForo 1.x scraper
-│       ├── xf2-scraper.ts          # XenForo 2.x scraper
-│       ├── page-loader.ts          # Multi-page loading
-│       ├── thread-status.ts        # Thread status detection
-│       ├── article-extractor.ts    # News article extraction
-│       └── news-detector.ts        # News vs discussion detection
-│
-├── docs/architecture/              # Architecture documentation (12 files)
-│   ├── summarization.md            # Map-reduce pipeline
-│   ├── scraping.md                 # Scraping mechanism
-│   ├── knowledge.md                # Knowledge extraction
-│   ├── opinions.md                 # Opinion analysis
-│   ├── research.md                 # Q&A / Research flow
-│   ├── thread-analysis.md          # Thread analysis pipeline
-│   ├── topic-hub.md                # Topic Hub view
-│   ├── messaging.md                # Chrome messaging architecture
-│   ├── cache.md                    # Caching layer
-│   ├── cost-estimator.md           # LLM cost estimation
-│   ├── dark-mode.md                # Dark mode implementation
-│   └── common-components.md        # Shared UI components
-│
-├── tests/
-│   ├── unit/                       # 14 unit test files
-│   ├── e2e/                        # 6 end-to-end test files
-│   ├── fixtures/                   # Mock data generators
-│   ├── mocks/                      # Mock providers & factories
-│   └── utils/                      # Test helpers
-│
-├── planning/                       # Feature planning docs với Decision Logs
-├── review/                         # Code review reports (tier 1/2/3)
-├── template/                       # Templates cho bug report, review, self-review
-├── .taskmaster/                    # Task Master AI — PRDs & workflow docs
-├── wxt.config.ts                   # WXT + manifest configuration
-├── vitest.config.ts                # Vitest test configuration
-├── package.json                    # Dependencies & scripts
-├── tsconfig.json                   # TypeScript config
-├── STYLE_GUIDE.md                  # UI styling conventions
-└── .env.example                    # API key template
+│   ├── llm/              # Adapter cho từng LLM provider
+│   ├── scrapers/         # Scraper XF1, XF2, page loader
+│   └── *.ts              # Utilities, cache, token estimator, prompts…
+├── docs/architecture/    # File tài liệu kiến trúc
+├── tests/                # Unit + E2E tests
+└── planning/             # Planning files với Decision Logs
 ```
 
-## Kiến trúc / Architecture
+### Kiến trúc đáng chú ý
 
-### Map-Reduce Pipeline
-Topic lớn được tự động chia thành các chunk phù hợp với context window của LLM. Mỗi chunk được tóm tắt riêng, sau đó kết quả được merge đệ quy (tree-reduce) cho đến khi đạt tóm tắt cuối cùng.
+**Map-Reduce Pipeline:** Thớt dài → chia chunk → tóm từng chunk song song → merge đệ quy → ra kết quả cuối. Không sợ thớt 1000 bài.
 
-### Strategy Pattern
-- **Scrapers:** XenForo 1.x và 2.x implement chung interface `TopicScraper`
-- **LLM Providers:** OpenAI, Claude, Gemini implement chung interface `LLMProvider`
+**Fire-and-Forget Messaging:** LLM task dispatch không block, progress gửi qua events — tránh timeout Chrome message channel cho tác vụ dài.
 
-### Fire-and-Forget Messaging
-LLM tasks được dispatch qua `START_LLM_TASK` — response ngay lập tức, sau đó progress/result được gửi qua `LLM_PROGRESS` và `LLM_RESULT`. Tránh timeout Chrome message channel cho các tác vụ dài.
+**Strategy Pattern:** Scraper (XF1/XF2) và LLM Provider đều implement interface chung. Thêm forum hay provider mới không cần đụng core logic.
 
-### Service Worker Keepalive
-Ping định kỳ `browser.storage.sync.get('')` giữ background service worker sống trong quá trình LLM hoạt động dài.
+**Service Worker Keepalive:** Ping định kỳ giữ background worker sống trong lúc AI đang cày thớt dài.
 
-### JSON Repair
-Parser robust xử lý LLM output bị lỗi: unescaped quotes, backtick fences, invalid escape sequences, NBSP characters.
+---
 
-## Data Models
-
-### CachedTopic
-Entity chính lưu trong IndexedDB:
-- `url`, `title`, `version` (xf1/xf2)
-- `posts: ScrapedPost[]` — raw scraped data
-- `summary`, `opinions`, `overallSummary`, `summaryJson`
-- `segments: TopicSegment[]` — cho topic dài
-- `knowledgeEntries`, `knowledgeChunks` — kiến thức trích xuất
-- `researchHistory: ResearchEntry[]` — lịch sử Q&A
-- `threadAnalysis: ThreadAnalysisJSON` — phân tích sâu
-- `totalPosts`, `totalPages`, `summarizedPostCount`, `lastPostNumber`
-- `cachedAt`, `llmConfig`, `bookmarked`, `topicType`
-
-### SummaryJSON
-Output tóm tắt có cấu trúc: `{ summary, opinions[], conclusion }`
-
-### ThreadAnalysisJSON
-Phân tích thread sâu: `{ overview, userProfiles[], debateStreams[], combats[], timeline[], notableComments[], conclusion, wuxia }`
-
-### KnowledgeEntry
-`{ id, title, content, tags[], source: { author, postNumber, timestamp }, extractedAt, saved }`
-
-## Development
-
-### Scripts
+## Scripts
 
 ```bash
 npm run dev          # Dev mode với hot reload
 npm run build        # Production build
-npm run compile      # Type check (vue-tsc --noEmit)
+npm run compile      # Type check (vue-tsc)
 ```
 
-### Workflow
+---
 
-Dự án sử dụng **Task Master** để quản lý task với:
-- 3-tier review system (Sonnet quick/standard, Opus deep)
-- Planning files trong `planning/` với Decision Logs
-- Review files trong `review/` với standardized templates
-- Self-review trước khi commit
+## Câu hỏi thường gặp
 
-### Biến môi trường / Environment Variables
+**Extension có gửi dữ liệu về server không?**  
+Không. Không có backend. Toàn bộ dữ liệu nằm trong browser của thím — IndexedDB cho cache topic, `chrome.storage.sync` cho settings. API key cũng vậy, lưu local, không đi qua server nào hết.
 
-Xem `.env.example` để biết danh sách đầy đủ các biến hỗ trợ:
+**Tại sao phải tự cung cấp API key?**  
+Vì tác giả không có tiền bao key cho cả Voz. Mỗi thím tự dùng key của mình, tự chịu phí. Fair enough.
 
-| Biến | Mô tả |
-|---|---|
-| `ANTHROPIC_API_KEY` | Anthropic Claude API key |
-| `OPENAI_API_KEY` | OpenAI API key |
-| `GOOGLE_API_KEY` | Google Gemini API key |
-| `OPENROUTER_API_KEY` | OpenRouter API key |
-| `OLLAMA_BASE_URL` | Ollama base URL |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint |
+**Hỗ trợ forum nào?**  
+Hiện tại là XenForo 1.x và 2.x. Tức là hầu hết các forum lớn ở VN chạy XenForo là xài được.
 
-## Documentation
+**Model nào tóm hay nhất?**  
+Tùy thớt. Gemini Flash có context window lớn nên tóm thớt dài tốt. Claude Haiku nhanh và rẻ cho thớt thường. GPT-4o nếu thím muốn chất lượng cao và không tiếc tiền.
 
-**Architecture:**
-- [Summarization (Map-Reduce)](docs/architecture/summarization.md)
-- [Scraping](docs/architecture/scraping.md)
-- [Knowledge Extraction](docs/architecture/knowledge.md)
-- [Opinion Analysis](docs/architecture/opinions.md)
-- [Research / Q&A](docs/architecture/research.md)
-- [Thread Analysis](docs/architecture/thread-analysis.md)
-- [Topic Hub](docs/architecture/topic-hub.md)
-- [Messaging Architecture](docs/architecture/messaging.md)
-- [Cache Layer](docs/architecture/cache.md)
-- [Cost Estimator](docs/architecture/cost-estimator.md)
-- [Dark Mode](docs/architecture/dark-mode.md)
-- [Common Components](docs/architecture/common-components.md)
-
-**Other:**
-- [Style Guide](STYLE_GUIDE.md)
-- [Example Summary](EXAMPLE_SUMMARY.md)
+---
 
 ## License
 
-MIT
+MIT — dùng thoải mái, fork thoải mái, đừng claim là của mình thôi.
+                                                                                                             

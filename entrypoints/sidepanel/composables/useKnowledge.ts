@@ -1,10 +1,10 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { KnowledgeEntry, KnowledgeChunk, LLMConfig, CachedTopic, ScrapedPost, NotebookEntry } from '@/lib/types';
 import { sendMessage, sendMessageQuiet } from '@/lib/messaging';
 import { estimateTokens, calculateSegmentBudget, getContextLimit } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
 import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
-import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, TOKENS_PER_KNOWLEDGE_ENTRY, REDUCE_OUTPUT_FRACTION, KNOWLEDGE_MAX_CHUNK_BUDGET } from '@/lib/constants';
+import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, KNOWLEDGE_MAX_CHUNK_BUDGET } from '@/lib/constants';
 import { buildKnowledgePrompt } from '@/lib/prompts';
 import { buildKnowledgePipeline } from '@/lib/pipeline-builder';
 import { createRunGuard } from '@/lib/run-guard';
@@ -22,6 +22,10 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   const entries = ref<KnowledgeEntry[]>([]);
   const loadedTopicUrl = ref<string | null>(null);
   const isLoading = ref(false);
+
+  watch(isLoading, (val) => {
+    store.setCurrentOperation('extract', val);
+  });
   const error = ref('');
   const llmTaskId = ref<string | null>(null);
   const currentChunkIndex = ref(0);
@@ -108,10 +112,12 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     });
   }
 
-  function calcMaxOutputEntries(contextLimit: number, promptTokens: number, inputTokens: number): number {
-    void promptTokens; void inputTokens;
-    const outputBudget = contextLimit * REDUCE_OUTPUT_FRACTION;
-    return Math.max(10, Math.floor(outputBudget / TOKENS_PER_KNOWLEDGE_ENTRY));
+  function calcMaxOutputEntries(maxOutputTokens: number): number {
+    // Dùng maxOutputTokens (knowledgeMaxTokens) thay vì contextLimit:
+    // contextLimit là input budget, không phải output budget.
+    // 0.8 safety margin + 500 tokens/entry (thực tế ~400-600) để tránh JSON bị cắt.
+    const TOKENS_PER_ENTRY_REDUCE = 500;
+    return Math.max(10, Math.floor(maxOutputTokens * 0.8 / TOKENS_PER_ENTRY_REDUCE));
   }
 
   function computeKnowledgeResumeState(): {
@@ -258,9 +264,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
         entriesToReduce = groupResults;
       }
 
-      const promptTokens = estimateTokens(buildKnowledgePrompt('reduce', {}, finalCap));
-      const inputTokens = estimateTokens(JSON.stringify(entriesToReduce)) * 1.4;
-      const maxPerCall = calcMaxOutputEntries(contextLimit, promptTokens, inputTokens);
+      const maxPerCall = calcMaxOutputEntries(knowledgeMaxTokens.value ?? currentConfig.value?.maxTokens ?? 2000);
 
       let rawFinalEntries: KnowledgeEntry[];
       if (finalCap <= maxPerCall) {

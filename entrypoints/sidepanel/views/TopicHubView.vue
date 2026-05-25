@@ -9,6 +9,7 @@ import type { CachedTopic, TopicSegment, KnowledgeEntry, NotebookEntry } from '@
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import SummaryStatus from '../components/SummaryStatus.vue';
 
 const router = useRouter();
 const store = useTopicStore();
@@ -336,39 +337,7 @@ async function toggleBookmark(topic: CachedTopic) {
         </p>
         <div class="flex items-center gap-2 justify-between">
           <div class="flex items-center gap-2 flex-wrap">
-            <span
-              v-if="activeTabStatus === 'in-progress'"
-              class="text-blue-700 dark:text-blue-400 animate-pulse font-medium"
-            >
-              ✨ Đang tóm tắt...
-            </span>
-            <span
-              v-else-if="activeTabStatus === 'done'"
-              class="text-(--color-success-text) font-medium"
-            >
-              ✓ Đã tóm tắt
-            </span>
-            <span
-              v-else-if="activeTabStatus === 'partial'"
-              class="text-yellow-700 dark:text-yellow-400 font-medium"
-            >
-              ~ Một phần
-            </span>
-            <span
-              v-else-if="activeTabStatus === 'locked'"
-              class="text-red-700 dark:text-red-400 font-medium"
-            >
-              🔒 Đã khóa
-            </span>
-            <span
-              v-else-if="activeTabStatus === 'deleted'"
-              class="text-gray-700 dark:text-gray-400 font-medium"
-            >
-              ❌ Đã ốp
-            </span>
-            <span v-else class="text-(--color-text-muted) font-medium">
-              ○ Chưa tóm tắt
-            </span>
+            <SummaryStatus :status="activeTabStatus" />
           </div>
         </div>
       </button>
@@ -409,42 +378,7 @@ async function toggleBookmark(topic: CachedTopic) {
                   <div class="flex flex-col items-start gap-2">
                     <div class="flex items-center gap-2 flex-wrap">
                       <!-- Status badge -->
-                      <span
-                        v-if="isSameTopicUrl(store.summarizingUrl.value, topic.url)"
-                        class="text-blue-700 dark:text-blue-400 animate-pulse font-medium"
-                      >
-                        ✨ Đang tóm tắt...
-                      </span>
-                      <span
-                        v-else-if="topicSummaryStatus(topic, false) === 'done'"
-                        class="text-(--color-success-text) font-medium"
-                      >
-                        ✓ Đã tóm tắt
-                      </span>
-                      <span
-                        v-else-if="topicSummaryStatus(topic, false) === 'partial'"
-                        class="text-yellow-700 dark:text-yellow-400 font-medium"
-                      >
-                        ~ Một phần
-                      </span>
-                      <span
-                        v-else-if="topicSummaryStatus(topic, false) === 'locked'"
-                        class="text-red-700 dark:text-red-400 font-medium"
-                      >
-                        🔒 Đã khóa
-                      </span>
-                      <span
-                        v-else-if="topicSummaryStatus(topic, false) === 'deleted'"
-                        class="text-gray-700 dark:text-gray-400 font-medium"
-                      >
-                        ❌ Đã ốp
-                      </span>
-                      <span
-                        v-else
-                        class="text-(--color-text-muted) font-medium"
-                      >
-                        ○ Chưa tóm tắt
-                      </span>
+                      <SummaryStatus :status="isSameTopicUrl(store.summarizingUrl.value, topic.url) ? 'in-progress' : topicSummaryStatus(topic, false)" />
                     </div>
                     
                     <div class="flex items-center gap-2 justify-start flex-wrap">

@@ -124,7 +124,7 @@ async function handleCopy() {
 </script>
 
 <template>
-  <div class="space-y-5 text-sm">
+  <div class="space-y-3 text-sm">
     <!-- Actions row: slot bên trái, Copy bên phải -->
     <div class="flex items-center justify-between">
       <div class="flex items-center justify-start gap-2">

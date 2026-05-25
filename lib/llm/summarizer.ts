@@ -16,9 +16,10 @@ export const KNOWLEDGE_CHUNK_PROMPT_TOKENS = estimateTokens(buildKnowledgePrompt
 /**
  * Conservative token estimate per knowledge entry in JSON output.
  * Includes title + content + tags + category + source (author, postNumber, timestamp) + structural overhead.
+ * Empirically ~400-600 tokens per entry in practice; 500 as a safe mid-point.
  * Must match the divisor used in computeKnowledgeEntryCap.
  */
-const TOKENS_PER_KNOWLEDGE_ENTRY_JSON = 300;
+const TOKENS_PER_KNOWLEDGE_ENTRY_JSON = 500;
 
 /** Resolve custom knowledge parts for a specific mode from CustomPrompts.
  * Handles both legacy string (ignored) and new KnowledgePromptSections object.
@@ -54,11 +55,13 @@ function computeReduceWordCap(maxTokens: number | undefined): number {
 }
 
 /** Compute entry cap for knowledge extract/chunk prompts based on maxTokens.
- * Each knowledge entry ≈ 300 tokens in JSON (title + content + tags + source + overhead).
- * Clamped to [5, 50].
+ *  Each knowledge entry ≈ 500 tokens in JSON (title + content + tags + source + overhead).
+ *  Applies 0.6 safety margin to avoid hitting max_tokens ceiling (JSON overhead + verbose entries + thinking tokens).
+ *  Clamped to [5, 50].
  */
 function computeKnowledgeEntryCap(maxTokens: number | undefined): number {
-  return Math.max(5, Math.min(50, Math.floor((maxTokens ?? 2000) / TOKENS_PER_KNOWLEDGE_ENTRY_JSON)));
+  const effectiveTokens = Math.floor((maxTokens ?? 2000) * 0.6);
+  return Math.max(5, Math.min(50, Math.floor(effectiveTokens / TOKENS_PER_KNOWLEDGE_ENTRY_JSON)));
 }
 
 /**

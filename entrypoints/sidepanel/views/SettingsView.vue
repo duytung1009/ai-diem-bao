@@ -5,6 +5,8 @@ import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFA
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
 import { buildCacheExport } from '@/lib/exporter';
 import { getModelThinkingBudget, modelSupportsThinking } from '@/lib/token-estimator';
+import PillTabs from '../components/PillTabs.vue';
+import ShowDefaultButton from '../components/ShowDefaultButton.vue';
 import {
   SUMMARY_DEFAULT_TASKS,
   SUMMARY_DEFAULT_RULES,
@@ -237,8 +239,8 @@ const isKnowledgeCustomized = computed(() => {
 const defaultPrompts = {
   summary: buildSummaryPrompt('direct', {}, 500),
   knowledge: buildKnowledgePrompt('extract', {}, 20),
-  research: RESEARCH_PROMPT,
   threadAnalysis: THREAD_ANALYSIS_PROMPT,
+  research: RESEARCH_PROMPT,
 };
 
 const promptTabLabels = {
@@ -546,19 +548,7 @@ async function exportCache() {
     <!-- Theme -->
     <div>
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Giao diện</label>
-      <div class="flex gap-2">
-        <button
-          v-for="option in themeOptions"
-          :key="option.value"
-          class="flex-1 py-1.5 text-xs rounded-lg border transition-colors"
-          :class="currentTheme === option.value
-            ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-            : 'border-(--color-border-strong) text-(--color-text-secondary) hover:bg-(--color-bg-muted)'"
-          @click="setTheme(option.value)"
-        >
-          {{ option.label }}
-        </button>
-      </div>
+      <PillTabs :tabs="themeOptions" :modelValue="currentTheme" @update:modelValue="setTheme" />
     </div>
 
     <h2 class="font-semibold text-sm text-(--color-text-primary)">Cấu hình LLM</h2>
@@ -714,7 +704,7 @@ async function exportCache() {
         min="0"
         max="1"
         step="0.1"
-        class="w-full"
+        class="input-range"
       />
       <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
         <span>0</span>
@@ -733,7 +723,7 @@ async function exportCache() {
         :min="30000"
         :max="3600000"
         :step="30000"
-        class="w-full"
+        class="input-range"
       />
       <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
         <span>30s</span>
@@ -834,7 +824,7 @@ async function exportCache() {
           :min="0"
           :max="modelMaxThinkingBudget"
           :step="2048"
-          class="w-full"
+          class="input-range"
         />
         <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
           <span>0 (tắt)</span>
@@ -912,7 +902,7 @@ async function exportCache() {
         min="500"
         max="10000"
         step="500"
-        class="w-full"
+        class="input-range"
       />
       <div class="flex justify-between text-xs text-(--color-text-muted)">
         <span>500ms</span>
@@ -950,7 +940,7 @@ async function exportCache() {
         min="10"
         max="200"
         step="10"
-        class="w-full"
+        class="input-range"
       />
       <div class="flex justify-between text-xs text-(--color-text-muted)">
         <span>10</span>
@@ -966,14 +956,14 @@ async function exportCache() {
     <!-- Actions -->
     <div class="flex gap-2">
       <button
-        class="flex-1 btn btn-primary"
+        class="flex-1 btn btn-sm btn-primary"
         :disabled="saving"
         @click="save"
       >
         {{ saving ? 'Đang lưu...' : 'Lưu' }}
       </button>
       <button
-        class="flex-1 btn btn-secondary"
+        class="flex-1 btn btn-sm btn-secondary"
         :disabled="testing || !config.apiKey"
         @click="testConnection"
       >
@@ -1096,13 +1086,7 @@ async function exportCache() {
                 {{ { direct: 'Trực tiếp', map: 'Chunk', reduce: 'Gộp' }[mode] }}
               </span>
               <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
-                  @click="showSummaryDefault[mode] = !showSummaryDefault[mode]"
-                >
-                  {{ showSummaryDefault[mode] ? '▾ Ẩn mặc định' : '▸ Xem mặc định' }}
-                </button>
+                <ShowDefaultButton :expanded="showSummaryDefault[mode]" @toggle="showSummaryDefault[mode] = !showSummaryDefault[mode]" />
                 <button
                   type="button"
                   class="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
@@ -1117,7 +1101,7 @@ async function exportCache() {
               :value="summarySections[mode].task || getSummaryDefault(mode, 'task')"
               @input="setSummarySectionValue(mode, 'task', ($event.target as HTMLTextAreaElement).value)"
               rows="6"
-              class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
+              class="input font-mono resize-y"
               :placeholder="'Nhập prompt ' + { direct: 'Trực tiếp', map: 'Chunk', reduce: 'Gộp' }[mode] + '...'"
             />
             <div
@@ -1152,13 +1136,7 @@ async function exportCache() {
                 {{ { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] }}
               </span>
               <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
-                  @click="showKnowledgeDefault[mode] = !showKnowledgeDefault[mode]"
-                >
-                  {{ showKnowledgeDefault[mode] ? '▾ Ẩn mặc định' : '▸ Xem mặc định' }}
-                </button>
+                <ShowDefaultButton :expanded="showKnowledgeDefault[mode]" @toggle="showKnowledgeDefault[mode] = !showKnowledgeDefault[mode]" />
                 <button
                   type="button"
                   class="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
@@ -1173,7 +1151,7 @@ async function exportCache() {
               :value="knowledgeSections[mode].task || getKnowledgeDefault(mode, 'task')"
               @input="setSectionValue(mode, 'task', ($event.target as HTMLTextAreaElement).value)"
               rows="6"
-              class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
+              class="input font-mono resize-y"
               :placeholder="'Nhập prompt ' + { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] + '...'"
             />
             <div
@@ -1201,17 +1179,11 @@ async function exportCache() {
           <textarea
             v-model="activePromptValue"
             rows="6"
-            class="w-full border border-(--color-border-strong) rounded-lg px-2 py-1.5 text-xs font-mono focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-y bg-(--color-bg-surface) text-(--color-text-primary)"
+            class="input font-mono resize-y"
             placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)"
           />
           <!-- Default prompt viewer -->
-          <button
-            type="button"
-            class="text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) transition-colors"
-            @click="showDefaultPrompt = !showDefaultPrompt"
-          >
-            {{ showDefaultPrompt ? '▾ Ẩn prompt mặc định' : '▸ Xem prompt mặc định' }}
-          </button>
+          <ShowDefaultButton :expanded="showDefaultPrompt" @toggle="showDefaultPrompt = !showDefaultPrompt" />
           <div
             v-if="showDefaultPrompt"
             class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-48 overflow-y-auto"

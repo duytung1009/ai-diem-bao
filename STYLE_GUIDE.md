@@ -1,4 +1,4 @@
-# AI Điểm Báo — Styling Guide
+# Lội Thớt Hộ — Styling Guide
 
 ## Nguyên tắc chung
 1. **Đơn giản** — Ít element, ít nesting, ít decoration

@@ -4,8 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
   manifest: {
-    name: 'Lười điểm báo',
-    description: 'Tóm tắt thread Voz bằng AI (hổng có kèm AI)',
+    name: 'Lội Thớt Hộ',
+    description: 'Cho mấy thím lười lội page. Gom phe kháy đểu, bắt bài seeder, nhặt mẹo hay bỏ túi. Lưu local, tự mang key LLM, hổng có kèm sẵn nha!',
     permissions: ['storage', 'sidePanel', 'activeTab'],
     host_permissions: [],
     action: {},

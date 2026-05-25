@@ -6,6 +6,7 @@ const selectedTopic = ref<CachedTopic | null>(null);
 const activeTabDetect = ref<DetectResult | null>(null);
 const activeTabUrl = ref<string | null>(null);
 const summarizingUrl = ref<string | null>(null);
+const currentOperation = ref<Set<string>>(new Set());
 
 export function useTopicStore() {
   function selectTopic(topic: CachedTopic) {
@@ -35,19 +36,25 @@ export function useTopicStore() {
     summarizingUrl.value = url;
   }
 
+  function setCurrentOperation(name: string, active: boolean) {
+    const next = new Set(currentOperation.value);
+    if (active) next.add(name);
+    else next.delete(name);
+    currentOperation.value = next;
+  }
+
   return {
-    // State (readonly để tránh mutation trực tiếp từ bên ngoài)
-    // Note: plan đề xuất expose `_selectedTopic` writable ref làm escape hatch,
-    // nhưng bỏ qua vì không có consumer nào cần — dùng updateSelectedTopic() thay thế.
     selectedTopic: readonly(selectedTopic),
     activeTabDetect: readonly(activeTabDetect),
     activeTabUrl: readonly(activeTabUrl),
     summarizingUrl: readonly(summarizingUrl),
+    currentOperation: readonly(currentOperation),
     // Actions
     selectTopic,
     clearSelection,
     setActiveTab,
     updateSelectedTopic,
     setSummarizing,
+    setCurrentOperation,
   };
 }

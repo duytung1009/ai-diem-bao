@@ -1,4 +1,4 @@
-# Tài liệu kiến trúc — AI Điểm Báo
+# Tài liệu kiến trúc — Lội Thớt Hộ
 
 Thư mục này chứa tài liệu mô tả chi tiết các cơ chế hoạt động chính của extension.
 

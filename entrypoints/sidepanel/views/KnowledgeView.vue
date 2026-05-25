@@ -5,10 +5,11 @@ import type { CachedTopic, KnowledgeEntry, LLMConfig } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
-import ConfirmInline from '../components/ConfirmInline.vue';
 import { useKnowledge } from '../composables/useKnowledge';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
+import BackButton from '../components/BackButton.vue';
+import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 
 const store = useTopicStore();
 const knowledge = useKnowledge(store);
@@ -34,6 +35,8 @@ const selectedTags = ref<string[]>([]);
 const selectedCategory = ref<string | null>(null);
 const expandedIds = ref<Set<string>>(new Set());
 const showSavedOnly = ref(false);
+const loadedTopicTitle = ref('');
+const pendingConflict = ref<{ newUrl: string; newTitle: string } | null>(null);
 
 // Focus scroll / route state
 const route = useRoute();
@@ -185,26 +188,33 @@ const groupedEntries = computed(() => {
 });
 
 async function loadTopicData() {
+  const topic = store.selectedTopic.value;
+  if (!topic) return;
+  const newUrl = topic.url;
+
+  // Show conflict alert if extraction running for a different topic
+  if (isLoading.value && loadedTopicUrl.value && newUrl !== loadedTopicUrl.value) {
+    pendingConflict.value = { newUrl, newTitle: topic.title ?? '...' };
+    return;
+  }
+
+  // Do NOT interfere if extraction is running for the same topic (CTA navigation)
+  if (isLoading.value) return;
+
   knowledgeGuard.begin();
-  isLoading.value = false;
-  llmTaskId.value = null;
-  currentPhase.value = 'idle';
   currentChunkIndex.value = 0;
   totalChunks.value = 0;
 
-  const topic = store.selectedTopic.value;
-  if (!topic) return;
-  const url = topic.url;
-
   entries.value = [];
-  loadedTopicUrl.value = url;
+  loadedTopicUrl.value = topic.url;
+  loadedTopicTitle.value = topic.title;
   expandedIds.value = new Set();
   showSavedOnly.value = false;
   if (topic.knowledgeEntries?.length) entries.value = topic.knowledgeEntries as KnowledgeEntry[];
 
   try {
-    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
-    if (loadedTopicUrl.value !== url) return;
+    const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
+    if (loadedTopicUrl.value !== topic.url) return;
     if (fresh) {
       store.updateSelectedTopic(fresh);
       if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
@@ -212,10 +222,21 @@ async function loadTopicData() {
   } catch { /* no cache */ }
 }
 
+function handleConflictCancel() {
+  handleCancel();
+  pendingConflict.value = null;
+  loadTopicData();
+}
+
+function handleConflictGoBack() {
+  pendingConflict.value = null;
+  router.push('/');
+}
+
 onActivated(async () => {
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
     if (cfg) currentConfig.value = cfg;
-  }).catch(() => {});
+  }).catch(() => { });
 
   const url = store.selectedTopic.value?.url;
   if (!url) return;
@@ -238,25 +259,28 @@ onActivated(async () => {
     <!-- No topic selected -->
     <div v-if="!topicInfo" class="text-center py-8">
       <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
-      <button
-        class="mt-3 text-sm text-blue-600 hover:text-blue-700"
-        @click="$router.push('/')"
-      >
-        ← Quay lại danh sách
-      </button>
+      <BackButton class="mt-3" />
     </div>
 
     <!-- Topic loaded -->
     <template v-else>
       <!-- Back button + Refresh -->
       <div class="flex items-center justify-between">
-        <button
-          class="text-xs text-blue-600 hover:text-blue-700"
-          @click="$router.push('/')"
-        >
-          ← Quay lại danh sách
-        </button>
+        <BackButton />
+        <h2 class="font-semibold text-sm text-(--color-text-primary)">Trích xuất kiến thức</h2>
       </div>
+
+      <!-- Conflict alert: running task for old topic -->
+      <OperationConflictAlert
+        v-if="pendingConflict"
+        operation="trích xuất kiến thức"
+        :oldTopicTitle="loadedTopicTitle"
+        :newTopicTitle="pendingConflict.newTitle"
+        @cancel="handleConflictCancel"
+        @goBack="handleConflictGoBack"
+      />
+
+      <template v-if="!pendingConflict">
 
       <!-- No posts warning -->
       <div v-if="!allPosts.length" class="alert alert-warning">
@@ -266,73 +290,45 @@ onActivated(async () => {
       <!-- Restore button when entries empty but knowledgeChunks exist -->
       <template v-if="allPosts.length && !entries.length && !isLoading">
         <template v-if="canRestore">
-          <button
-            v-if="!confirmingRestore"
-            class="w-full btn btn-primary"
-            @click="onRestoreClick"
-          >
+          <button class="btn-llm" @click="handleRestore">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
+            </svg>
             Khôi phục danh sách
           </button>
-          <ConfirmInline
-            v-else
-            message="Khôi phục danh sách kiến thức từ dữ liệu đã trích xuất trước đó?"
-            :warning="showRestoreCostWarning ? `⚠️ Ước tính ~${estimatedRestoreApiCalls} API calls. Chi phí có thể cao.` : undefined"
-            @confirm="handleRestore()"
-            @cancel="confirmingRestore = false"
-          />
         </template>
         <!-- Extract button — only when no chunks to restore -->
-        <template v-else>
-          <button
-            v-if="!confirmingExtract"
-            class="w-full btn btn-primary"
-            @click="onExtractClick"
-          >
+        <div v-else class="flex flex-col items-center space-y-2">
+          <p class="text-sm text-(--color-text-secondary)">Chưa trích xuất kiến thức cho thớt này.</p>
+          <button v-if="!confirmingExtract" class="btn-llm" @click="handleExtract">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
+            </svg>
             Trích xuất Kiến thức
           </button>
-          <ConfirmInline
-            v-else
-            message="Trích xuất kiến thức từ thớt này. Tiếp tục?"
-            :warning="showExtractCostWarning ? `⚠️ Ước tính ~${estimatedExtractApiCalls} API calls. Chi phí có thể cao.` : undefined"
-            @confirm="handleExtract()"
-            @cancel="confirmingExtract = false"
-          />
-        </template>
+        </div>
       </template>
 
       <!-- Progress -->
-      <StepTimeline
-        v-if="isLoading && activePipeline"
-        :pipeline="activePipeline"
-        :show-cancel="isLoading"
-        @cancel="handleCancel"
-      />
-      <ProgressIndicator 
-        v-else-if="isLoading" 
-        :task-id="llmTaskId" 
-        :fallback-message="progressLabel" 
-        :show-cancel="isLoading"
-        @cancel="handleCancel"
-      />
+      <StepTimeline v-if="isLoading && activePipeline" :pipeline="activePipeline" :show-cancel="isLoading" @cancel="handleCancel" />
+      <ProgressIndicator v-else-if="isLoading" :task-id="llmTaskId" :fallback-message="progressLabel" :show-cancel="isLoading" @cancel="handleCancel" />
 
       <!-- Error -->
       <div v-if="error" class="alert alert-error">
         <div class="flex items-start gap-3">
           <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <p class="text-sm flex-1">{{ error }}</p>
-          <button class="shrink-0 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors" @click="error = ''; showClearDataAction = false">
+          <button class="shrink-0 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
+            @click="error = ''; showClearDataAction = false">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <button
-          v-if="showClearDataAction"
-          class="btn btn-sm btn-danger mt-2 text-xs"
-          @click="handleClearKnowledgeData"
-        >
+        <button v-if="showClearDataAction" class="btn btn-sm btn-danger mt-2 text-xs" @click="handleClearKnowledgeData">
           Xoá dữ liệu kiến thức và thử lại
         </button>
       </div>
@@ -346,20 +342,11 @@ onActivated(async () => {
             <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Tìm kiến thức..."
-              class="input pl-8 pr-8 text-xs w-full"
-            />
+            <input v-model="searchQuery" type="text" placeholder="Tìm kiến thức..." class="input pl-8 pr-8 text-xs w-full" />
             <!-- Saved filter toggle -->
-            <button
-              v-if="savedCount > 0"
-              class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
+            <button v-if="savedCount > 0" class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
               :class="showSavedOnly ? 'text-amber-500' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
-              :title="showSavedOnly ? 'Xem tất cả' : `Chỉ hiện đã lưu (${savedCount})`"
-              @click="showSavedOnly = !showSavedOnly"
-            >
+              :title="showSavedOnly ? 'Xem tất cả' : `Chỉ hiện đã lưu (${savedCount})`" @click="showSavedOnly = !showSavedOnly">
               <svg v-if="showSavedOnly" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
               </svg>
@@ -370,72 +357,63 @@ onActivated(async () => {
           </div>
           <!-- Tag filter pills -->
           <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
-            <button
-              v-for="tag in allTags"
-              :key="tag"
-              class="px-2 py-0.5 rounded-full text-xs transition-colors"
-              :class="selectedTags.includes(tag)
-                ? getTagClass(tag)
-                : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
-              @click="toggleTag(tag)"
-            >
+            <button v-for="tag in allTags" :key="tag" class="px-2 py-0.5 rounded-full text-xs transition-colors" :class="selectedTags.includes(tag)
+              ? getTagClass(tag)
+              : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'" @click="toggleTag(tag)">
               {{ tag }}
             </button>
           </div>
           <!-- Category filter pills -->
           <div v-if="allCategories.length > 0" class="flex flex-wrap gap-1.5">
-            <button
-              v-if="selectedCategory"
+            <button v-if="selectedCategory"
               class="px-2 py-0.5 rounded-full text-xs transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
-              @click="selectedCategory = null"
-            >
+              @click="selectedCategory = null">
               Tất cả
             </button>
-            <button
-              v-for="cat in allCategories"
-              :key="cat"
-              class="px-2 py-0.5 rounded-full text-xs transition-colors"
-              :class="selectedCategory === cat
-                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
-                : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
-              @click="selectedCategory = selectedCategory === cat ? null : cat"
-            >
+            <button v-for="cat in allCategories" :key="cat" class="px-2 py-0.5 rounded-full text-xs transition-colors" :class="selectedCategory === cat
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
+              : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+              @click="selectedCategory = selectedCategory === cat ? null : cat">
               {{ cat }}
             </button>
           </div>
         </div>
 
-        <!-- Stats + re-extract -->
-        <div class="flex items-center justify-between text-xs text-(--color-text-muted)">
-          <span>
+        <div class="flex items-center justify-between">
+          <!-- Re-extract -->
+          <div class="flex items-center gap-2">
+            <button class="btn text-xs flex items-center gap-1" @click="router.push('/notebook')">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              Sổ tay
+            </button>
+            <button v-if="allPosts.length" class="btn text-xs flex items-center gap-1" @click="handleExtract">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Trích xuất bài mới<span v-if="newPostsCount > 0"> ({{ newPostsCount }})</span>
+            </button>
+          </div>
+          <!-- Clear tracking button -->
+          <div v-if="excludedCount > 0" class="flex items-center justify-end">
+            <button class="btn text-xs flex items-center gap-1 hover:text-red-600 dark:hover:text-red-400" @click="handleClearTracking">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Xóa tracking ({{ excludedCount }} bài đã loại)
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-(--color-text-muted)">
             {{ filteredEntries.length }}/{{ entries.length }} kiến thức
             <span v-if="cachedTopic?.llmConfig?.model" class="ml-2 italic opacity-70">
               {{ cachedTopic.llmConfig.model }}
             </span>
           </span>
-          <div class="flex items-center gap-2">
-            <button class="text-blue-600 hover:text-blue-700" @click="router.push('/notebook')">
-              Sổ tay
-            </button>
-            <span class="text-(--color-text-muted)">·</span>
-            <button
-              v-if="allPosts.length"
-              class="text-blue-600 hover:text-blue-700"
-              @click="handleExtract"
-          >
-            Trích xuất bài mới<span v-if="newPostsCount > 0"> ({{ newPostsCount }})</span>
-          </button>
-          </div>
-        </div>
-
-        <!-- Clear tracking button -->
-        <div v-if="excludedCount > 0" class="flex items-center justify-end text-xs text-(--color-text-muted)">
-          <button
-            class="w-full text-left text-xs text-(--color-text-muted) hover:text-red-500 transition-colors"
-            @click="handleClearTracking"
-          >
-            Xóa tracking ({{ excludedCount }} bài đã loại)
-          </button>
         </div>
 
         <!-- No results after filter -->
@@ -452,93 +430,66 @@ onActivated(async () => {
                 <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
               </h4>
               <div class="space-y-2">
-                <div
-                  v-for="entry in group.entries"
-                  :key="entry.id"
-                  :id="`knowledge-entry-${entry.id}`"
-                  class="card"
-                >
-            <!-- Header: always visible, click to expand -->
-            <div class="flex items-start gap-2 cursor-pointer" @click="toggleExpand(entry.id)">
-              <!-- Chevron icon -->
-              <svg
-                class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-muted)"
-                :class="expandedIds.has(entry.id) ? 'rotate-90' : ''"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-              <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
-              <!-- Save button -->
-              <button
-                class="p-0.5 transition-colors rounded"
-                :class="entry.saved 
-                  ? 'text-yellow-500 dark:text-yellow-400' 
-                  : 'text-gray-300 dark:text-gray-600 hover:text-yellow-500 dark:hover:text-yellow-400'"
-                :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'"
-                @click.stop="toggleSave(entry)"
-              >
-                <svg v-if="entry.saved" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
-                </svg>
-                <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
-                </svg>
-              </button>
-              <!-- Delete button -->
-              <button
-                class="p-0.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
-                title="Xóa kiến thức"
-                @click.stop="handleDelete(entry)"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
-
-            <!-- Body: collapsible with CSS Grid animation -->
-            <div
-              class="grid transition-[grid-template-rows] duration-200 ease-in-out"
-              :class="expandedIds.has(entry.id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
-            >
-              <div class="overflow-hidden">
-                <div class="pt-2 space-y-2">
-                  <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
-                  <!-- Tags -->
-                  <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
-                    <span
-                      v-for="tag in entry.tags"
-                      :key="tag"
-                      class="px-1.5 py-0.5 rounded text-xs"
-                      :class="getTagClass(tag)"
-                    >
-                      {{ tag }}
-                    </span>
+                <div v-for="entry in group.entries" :key="entry.id" :id="`knowledge-entry-${entry.id}`" class="card">
+                  <!-- Header: always visible, click to expand -->
+                  <div class="flex items-start gap-2 cursor-pointer" @click="toggleExpand(entry.id)">
+                    <!-- Chevron icon -->
+                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-muted)"
+                      :class="expandedIds.has(entry.id) ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
+                    <!-- Save button -->
+                    <button class="p-0.5 transition-colors rounded" :class="entry.saved
+                      ? 'text-yellow-500 dark:text-yellow-400'
+                      : 'text-gray-300 dark:text-gray-600 hover:text-yellow-500 dark:hover:text-yellow-400'" :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'"
+                      @click.stop="toggleSave(entry)">
+                      <svg v-if="entry.saved" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                      </svg>
+                      <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                      </svg>
+                    </button>
+                    <!-- Delete button -->
+                    <button class="p-0.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
+                      title="Xóa kiến thức" @click.stop="handleDelete(entry)">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
-                  <!-- Source citation with timestamp -->
-                  <p class="text-xs text-(--color-text-muted)">
-                    — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài <button
-                        class="font-mono hover:underline cursor-pointer"
-                        @click="openPostLink(entry.source.postNumber)"
-                      >#{{ entry.source.postNumber }}</button></template><span v-if="entry.source.timestamp">{{ formatTimestamp(entry.source.timestamp) }}</span>
-                  </p>
+
+                  <!-- Body: collapsible with CSS Grid animation -->
+                  <div class="grid transition-[grid-template-rows] duration-200 ease-in-out"
+                    :class="expandedIds.has(entry.id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
+                    <div class="overflow-hidden">
+                      <div class="pt-2 space-y-2">
+                        <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
+                        <!-- Tags -->
+                        <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
+                          <span v-for="tag in entry.tags" :key="tag" class="px-1.5 py-0.5 rounded text-xs" :class="getTagClass(tag)">
+                            {{ tag }}
+                          </span>
+                        </div>
+                        <!-- Source citation with timestamp -->
+                        <p class="text-xs text-(--color-text-muted)">
+                          — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài <button class="font-mono hover:underline cursor-pointer"
+                              @click="openPostLink(entry.source.postNumber)">#{{ entry.source.postNumber }}</button></template><span
+                            v-if="entry.source.timestamp">{{ formatTimestamp(entry.source.timestamp)
+                            }}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            </div>
-          </div>
+          </template>
         </div>
       </template>
-    </div>
-      </template>
-
-      <!-- Empty state (has posts but no entries extracted) -->
-      <div v-if="!isLoading && !entries.length && allPosts.length" class="text-center py-6">
-        <p class="text-xs text-(--color-text-muted)">Bấm nút phía trên để trích xuất kiến thức từ thớt.</p>
-      </div>
+    </template>
     </template>
   </div>
 </template>

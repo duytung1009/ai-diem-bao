@@ -7,6 +7,7 @@ import { sendMessage } from '@/lib/messaging';
 import { useTopicStore } from './composables/useTopicStore';
 import { useTheme } from './composables/useTheme';
 import TopicMeta from './components/TopicMeta.vue';
+import PillTabs from './components/PillTabs.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -62,6 +63,19 @@ const isSummarizingCurrentTopic = computed(() =>
     store.selectedTopic.value &&
     isSameTopicUrl(store.summarizingUrl.value, store.selectedTopic.value.url)),
 );
+
+const loadingSubTab = computed(() => {
+  const ops = store.currentOperation.value;
+  if (!ops.size) return undefined;
+  const result = new Set<string>();
+  for (const op of ops) {
+    if (op === 'summarize') result.add('summary');
+    else if (op === 'extract') result.add('knowledge');
+    else if (op === 'analyze') result.add('analysis');
+    else if (op === 'research') result.add('research');
+  }
+  return result;
+});
 
 async function detectActiveTabTopic() {
   try {
@@ -152,6 +166,28 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
   }
 }
 
+const subTabs = [
+  { value: 'hub', label: 'Danh sách' },
+  { value: 'summary', label: 'Tóm tắt' },
+  { value: 'knowledge', label: 'Kiến thức' },
+  { value: 'analysis', label: 'Phân tích' },
+  { value: 'research', label: 'Tra cứu' },
+];
+
+const activeSubTab = computed(() => (route.name as string) || 'hub');
+
+const subTabRoutes: Record<string, string> = {
+  hub: '/',
+  summary: '/summary',
+  knowledge: '/knowledge',
+  analysis: '/analysis',
+  research: '/research',
+};
+
+function onSubTabChange(value: string) {
+  router.push(subTabRoutes[value] || '/');
+}
+
 function navigateTo(path: string) {
   router.push(path);
 }
@@ -161,27 +197,37 @@ function navigateTo(path: string) {
   <div class="min-h-screen bg-(--color-bg-base) text-(--color-text-primary) flex flex-col">
     <!-- Header -->
     <!-- <header class="bg-(--color-bg-surface) border-b border-(--color-border) px-4 py-3">
-      <h1 class="text-lg font-bold text-blue-600">AI Điểm Báo</h1>
+      <h1 class="text-lg font-bold text-blue-600">Lội Thớt Hộ</h1>
     </header> -->
 
     <!-- Tab Navigation -->
     <nav class="bg-(--color-bg-surface) border-b border-(--color-border) flex">
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="isThreadActive
+      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors" :class="isThreadActive
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/')">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
         Thớt
       </button>
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'notebook'
+      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors" :class="route.name === 'notebook'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/notebook')">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
         Sổ tay
       </button>
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
+      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/settings')">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
         Cài đặt
       </button>
       <button title="Hướng dẫn sử dụng" class="w-8 text-center py-2.5 text-sm font-bold transition-colors shrink-0" :class="route.name === 'help'
@@ -193,42 +239,8 @@ function navigateTo(path: string) {
     </nav>
 
     <!-- Sub-tab bar: visible when a topic is selected -->
-    <nav v-if="hasSelectedTopic && isThreadActive" class="bg-(--color-bg-surface) border-b border-(--color-border) flex px-1">
-      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
-        :class="route.name === 'hub'
-          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-        @click="navigateTo('/')">
-        ← Danh sách
-      </button>
-      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
-        :class="route.name === 'summary'
-          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-        @click="navigateTo('/summary')">
-        Tóm tắt
-      </button>
-      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
-        :class="route.name === 'knowledge'
-          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-        @click="navigateTo('/knowledge')">
-        Kiến thức
-      </button>
-      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
-        :class="route.name === 'analysis'
-          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-        @click="navigateTo('/analysis')">
-        Phân tích
-      </button>
-      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
-        :class="route.name === 'research'
-          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-        @click="navigateTo('/research')">
-        Tra cứu
-      </button>
+    <nav v-if="hasSelectedTopic && isThreadActive" class="mx-4 mt-3">
+      <PillTabs :tabs="subTabs" :modelValue="activeSubTab" :loadingTabs="loadingSubTab" @update:modelValue="onSubTabChange" />
     </nav>
 
     <!-- Content -->

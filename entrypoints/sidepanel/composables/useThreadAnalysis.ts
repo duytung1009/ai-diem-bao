@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { ThreadAnalysisJSON, SummaryJSON } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import { createRunGuard } from '@/lib/run-guard';
@@ -9,6 +9,10 @@ export function useThreadAnalysis(store: ReturnType<typeof useTopicStore>) {
   const { threadAnalysisTask, cancelTask, getTaskState } = useLLM();
 
   const isAnalyzing = ref(false);
+
+  watch(isAnalyzing, (val) => {
+    store.setCurrentOperation('analyze', val);
+  });
   const error = ref('');
   const llmTaskId = ref<string | null>(null);
   const analysisGuard = createRunGuard();

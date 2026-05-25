@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onActivated, computed } from 'vue';
+import { ref, onActivated, computed, watch } from 'vue';
 import type { CachedTopic, ResearchEntry } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
@@ -11,6 +11,8 @@ import type { PipelineDefinition } from '@/lib/types';
 import { buildResearchPipeline, markFirstStepRunning } from '@/lib/pipeline-builder';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
+import BackButton from '../components/BackButton.vue';
+import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 
 const store = useTopicStore();
 const { optimisticUpdate } = useOptimisticUpdate(store);
@@ -25,10 +27,14 @@ const allPosts = computed(() => {
 });
 const question = ref('');
 const isLoading = ref(false);
+
+watch(isLoading, (val) => {
+  store.setCurrentOperation('research', val);
+});
 const error = ref<string | null>(null);
 const history = ref<ResearchEntry[]>([]);
 const llmTaskId = ref<string | null>(null);
-const { researchTopic: runResearch, getTaskState } = useLLM();
+const { researchTopic: runResearch, getTaskState, cancelTask } = useLLM();
 
 const activePipeline = computed<PipelineDefinition | null>(() => {
   if (!llmTaskId.value) return null;
@@ -40,19 +46,29 @@ const suggestedQuestions = computed(() => {
   const title = cachedTopic.value?.title;
   if (!title) return [];
   return [
-    `Kết luận chính của topic "${title}" là gì?`,
-    `Ai đề cập đến vấn đề quan trọng nhất trong topic này?`,
+    `Kết luận chính của thớt là gì?`,
+    `Ai đề cập đến vấn đề quan trọng nhất trong thớt này?`,
     `Các giải pháp nào được đề xuất?`,
     `Ai có quan điểm ủng hộ và ai phản đối?`,
   ];
 });
 
 const loadedTopicUrl = ref<string | null>(null);
+const loadedTopicTitle = ref('');
+const pendingConflict = ref<{ newUrl: string; newTitle: string } | null>(null);
 
 async function loadTopicData() {
   const topic = store.selectedTopic.value;
   if (!topic) return;
+
+  // Show conflict alert if research running for a different topic
+  if (isLoading.value && loadedTopicUrl.value && topic.url !== loadedTopicUrl.value) {
+    pendingConflict.value = { newUrl: topic.url, newTitle: topic.title ?? '...' };
+    return;
+  }
+
   loadedTopicUrl.value = topic.url;
+  loadedTopicTitle.value = topic.title ?? '';
   history.value = [...(topic.researchHistory ?? [])];
   try {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
@@ -114,6 +130,18 @@ function clearHistory() {
   optimisticUpdate({ researchHistory: [] });
 }
 
+function handleConflictCancel() {
+  if (llmTaskId.value) cancelTask(llmTaskId.value);
+  isLoading.value = false;
+  llmTaskId.value = null;
+  pendingConflict.value = null;
+  loadTopicData();
+}
+
+function handleConflictGoBack() {
+  pendingConflict.value = null;
+}
+
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
@@ -124,21 +152,28 @@ function formatDate(ts: number): string {
     <!-- No topic selected -->
     <div v-if="!cachedTopic" class="text-center py-8">
       <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
-      <button class="mt-3 text-sm text-blue-600 hover:text-blue-700" @click="$router.push('/')">
-        ← Quay lại danh sách
-      </button>
+      <BackButton class="mt-3" />
     </div>
 
     <!-- Topic loaded -->
     <template v-else>
       <!-- Back button + Refresh -->
       <div class="flex items-center justify-between">
-        <button class="text-xs text-blue-600 hover:text-blue-700" @click="$router.push('/')">
-          ← Quay lại danh sách
-        </button>
+        <BackButton />
+        <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu thớt</h2>
       </div>
 
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu thớt</h2>
+      <!-- Conflict alert: running task for old topic -->
+      <OperationConflictAlert
+        v-if="pendingConflict"
+        operation="tra cứu"
+        :oldTopicTitle="loadedTopicTitle"
+        :newTopicTitle="pendingConflict.newTitle"
+        @cancel="handleConflictCancel"
+        @goBack="handleConflictGoBack"
+      />
+
+      <template v-if="!pendingConflict">
 
       <!-- No cache warning -->
       <div v-if="!allPosts.length" class="alert alert-warning">
@@ -150,8 +185,11 @@ function formatDate(ts: number): string {
         <div class="space-y-2">
           <textarea v-model="question" rows="2" class="input resize-none" placeholder="Đặt câu hỏi về nội dung thớt..." :disabled="isLoading"
             @keydown.ctrl.enter="handleResearch" />
-          <button class="w-full btn btn-primary" :disabled="isLoading || !question.trim()" @click="handleResearch">
-            {{ isLoading ? 'Đang tra cứu...' : 'Tra cứu (Ctrl+Enter)' }}
+          <button class="btn-llm" :disabled="isLoading || !question.trim()" @click="handleResearch">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
+            </svg>
+            {{ isLoading ? 'Đang tra cứu...' : 'Tra cứu' }}
           </button>
         </div>
 
@@ -198,6 +236,7 @@ function formatDate(ts: number): string {
           </div>
         </div>
       </template>
+    </template>
     </template>
   </div>
 </template>

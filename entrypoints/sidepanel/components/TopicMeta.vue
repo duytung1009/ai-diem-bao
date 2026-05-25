@@ -4,6 +4,7 @@ import type { CachedTopic } from '@/lib/types';
 import { topicSummaryStatus, formatTopicDate } from '@/lib/topic-utils';
 import { formatNumber } from '@/lib/format';
 import { isSameTopicUrl } from '@/lib/cache-manager';
+import SummaryStatus from './SummaryStatus.vue';
 import { useTopicStore } from '../composables/useTopicStore';
 
 const props = defineProps<{
@@ -86,24 +87,7 @@ async function navigateToTopic() {
 
     <!-- Row 2: Summary status -->
     <div class="flex items-center gap-2 mt-2 text-xs">
-      <span v-if="summaryStatus === 'none'" class="text-(--color-text-muted) font-medium">
-        ○ Chưa tóm tắt
-      </span>
-      <span v-else-if="summaryStatus === 'in-progress'" class="text-blue-700 dark:text-blue-400 animate-pulse font-medium">
-        ✨ Đang tóm tắt...
-      </span>
-      <span v-else-if="summaryStatus === 'partial'" class="text-yellow-700 dark:text-yellow-400 font-medium">
-        ~ Một phần
-      </span>
-      <span v-else-if="summaryStatus === 'locked'" class="text-red-700 dark:text-red-400 font-medium">
-        🔒 Đã khóa
-      </span>
-      <span v-else-if="summaryStatus === 'deleted'" class="text-gray-700 dark:text-gray-400 font-medium">
-        ❌ Đã ốp
-      </span>
-      <span v-else class="text-(--color-success-text) font-medium">
-        ✓ Đã tóm tắt
-      </span>
+      <SummaryStatus :status="summaryStatus" />
     </div>
 
     <!-- Row 3: Metadata -->

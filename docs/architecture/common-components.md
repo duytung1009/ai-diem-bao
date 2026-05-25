@@ -1,6 +1,6 @@
 # Common Components
 
-> Cập nhật: 2026-04-29
+> Cập nhật: 2026-05-25
 
 ## Tổng quan
 
@@ -136,7 +136,7 @@ Hiển thị:
 
 ### `TopicMeta.vue`
 
-Thông tin topic — dùng ở cả `App.vue` (header) và `TopicHubView.vue` (card).
+Thông tin topic — dùng ở `App.vue` (bên trên sub-tab bar, shared cho tất cả detail tabs: summary/knowledge/analysis/research) và `TopicHubView.vue` (card).
 
 **Props:**
 | Prop | Type |
@@ -154,3 +154,37 @@ Thông tin topic — dùng ở cả `App.vue` (header) và `TopicHubView.vue` (c
 - Cached timestamp (relative format)
 - Xóa button (conditional)
 - URL button (conditional)
+
+## Navigation Structure (Phase 9)
+
+### Top-level Tabs
+
+```
+[Thớt]  [Sổ tay]  [Cài đặt]  [?]
+```
+
+- **Thớt** — active cho routes: `/`, `/summary`, `/knowledge`, `/analysis`, `/research`
+- **Sổ tay** — `/notebook`
+- **Cài đặt** — `/settings`
+- **?** — `/help`
+
+### Sub-tab Bar (trong tab Thớt, khi chọn thớt)
+
+```
+[← Danh sách]  [Tóm tắt]  [Kiến thức]  [Phân tích]  [Tra cứu]
+```
+
+Sub-tab bar được render trong `App.vue`, hiển thị khi `isTopicDetailRoute && hasSelectedTopic`. Mỗi sub-tab navigate đến route tương ứng: `/` (hub), `/summary`, `/knowledge`, `/analysis`, `/research`.
+
+### Views Map
+
+| View | Route | Composable |
+|------|-------|------------|
+| `TopicHubView.vue` | `/` | `useTopicStore` |
+| `SummaryView.vue` | `/summary` | `useSummarize` |
+| `KnowledgeView.vue` | `/knowledge` | `useKnowledge` |
+| `AnalysisView.vue` | `/analysis` | `useThreadAnalysis` |
+| `ResearchView.vue` | `/research` | `useLLM` + `useOptimisticUpdate` |
+| `NotebookView.vue` | `/notebook` | `useNotebook` |
+| `SettingsView.vue` | `/settings` | — |
+| `HelpView.vue` | `/help` | — |

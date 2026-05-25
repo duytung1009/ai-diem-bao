@@ -241,10 +241,19 @@ Side Panel (Vue): render summary, opinions, research
 
 ---
 
-**Phase 5 — Help Tab + Onboarding Guide**
+**Phase 5 — Help Tab + Onboarding Guide** [x]
 - Tab "Hướng dẫn" với nội dung text-only, chia sections:
   + Setup LLM Provider: 1.1 Local LLM (khuyến nghị), 1.2 Gemini Free Tier (có note warning rate limit), 1.3 API Pay-per-request (có note chi phí)
   + Flow tóm tắt (xem chủ đề → chọn → tóm tắt)
   + Sau tóm tắt (tổng hợp kiến thức, tra cứu)
 - Button `?` cạnh tab Cài đặt để truy cập
 - Route `/help` + `HelpView.vue`
+
+**Phase 9 — Tab Restructuring: Nhóm chức năng vào tab Thớt**
+- Top-level tabs chỉ còn: Thớt, Sổ tay, Cài đặt, ? (Hướng dẫn)
+- Các chức năng Tóm tắt, Kiến thức, Phân tích, Tra cứu → sub-tabs bên trong tab "Thớt"
+- Sub-tab bar hiển thị khi đã chọn thớt, có nút "← Danh sách" quay về hub
+- Tách "Phân tích" (thread analysis) thành tab riêng `/analysis` với AnalysisView.vue
+- Tạo composable `useThreadAnalysis.ts` để quản lý state phân tích
+- Xóa sub-tab "Tóm tắt / Phân tích" khỏi SummaryView
+- PRD: `.taskmaster/docs/prd-tab-restructure.md`

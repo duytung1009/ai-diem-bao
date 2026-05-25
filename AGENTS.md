@@ -49,12 +49,13 @@ All cross-context communication goes through typed messages in `lib/messaging.ts
 
 ### Sidepanel SPA Structure
 
-- **Router** (`main.ts`): hash-history, routes: `/` (hub), `/summary`, `/knowledge`, `/research`, `/settings`
+- **Router** (`main.ts`): hash-history, routes: `/` (hub), `/summary`, `/knowledge`, `/analysis`, `/research`, `/notebook`, `/settings`, `/help`
 - **`useTopicStore`** (`composables/useTopicStore.ts`): module-level singleton refs (not Pinia). State: `selectedTopic`, `activeTabDetect`, `activeTabUrl`, `summarizingUrl`. Always exposed as `readonly()` — mutate only via store actions like `updateSelectedTopic()`.
 - **`useSummarize`** (`composables/useSummarize.ts`): heavy composable managing the full summarize lifecycle — scraping, LLM task dispatch, segment state, cache save.
 - **`useLLM`** (`composables/useLLM.ts`): lower-level task manager that sends `START_LLM_TASK` and listens for `LLM_PROGRESS`/`LLM_RESULT`.
+- **`useThreadAnalysis`** (`composables/useThreadAnalysis.ts`): lightweight composable managing thread analysis state — reads `summaryJson` from store, calls `threadAnalysisTask`, persists result via `SAVE_CACHED_TOPIC`.
 - **`useOptimisticUpdate`** (`composables/useOptimisticUpdate.ts`): wraps `store.updateSelectedTopic + sendMessage(SAVE_CACHED_TOPIC)` with auto-rollback on save failure. Used in KnowledgeView, ResearchView, TopicHubView for user-triggered actions (bookmark, save, delete).
-- **`App.vue`**: mounts `<TopicMeta>` once above `<router-view>` (shared across summary/knowledge/research tabs). Handles tab detection and auto-update of cached topic metadata.
+- **`App.vue`**: 4 top-level tabs (Thớt, Sổ tay, Cài đặt, ?). When a topic is selected on a detail route, renders a sub-tab bar (← Danh sách, Tóm tắt, Kiến thức, Phân tích, Tra cứu). Mounts `<TopicMeta>` once above `<router-view>` (shared across summary/knowledge/analysis/research tabs). Handles tab detection and auto-update of cached topic metadata.
 
 ### Data Flow — Single Source of Truth
 
@@ -383,6 +384,15 @@ Khi user yêu cầu "implement task N" hoặc "tiếp tục":
 - Subtask **Self-review** (subtask cuối) PHẢI được thực hiện sau khi xong mọi subtask implement: chạy `template/self_review_checklist.md`, fix hết issue, rồi mới set task `--status=review`. Không skip subtask này dù task nhỏ.
 - Sau mỗi task done → `task-master next` → hỏi user có muốn tiếp tục không
 - Không tự commit code
+
+### Phase 5 — Documentation Sync (MANDATORY)
+
+**Sau mọi thay đổi về kiến trúc (route mới, component mới, thay đổi data flow, tái cấu trúc tab/nav), PHẢI cập nhật `docs/architecture/`:**
+
+1. Xác định file architecture nào bị ảnh hưởng (dùng glob `docs/architecture/*.md`)
+2. Đọc file liên quan, cập nhật nội dung phản ánh thay đổi
+3. Cập nhật ngày ở header `> Cập nhật: YYYY-MM-DD`
+4. Cập nhật thông tin tương ứng trong `AGENTS.md` (các section: Architecture Overview, Sidepanel SPA Structure, file paths)
 
 ### Phase 4 — Alignment (khi plan thay đổi)
 

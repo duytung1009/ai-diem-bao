@@ -1,10 +1,12 @@
 # Cơ chế Thread Analysis
 
-> Cập nhật: 2026-04-29
+> Cập nhật: 2026-05-25
 
 ## Tổng quan
 
 **Thread Analysis** (Feature 25) là phân tích sâu về động thái debate trong thread, gồm 8 sections với phong cách "võ hiệp" ở section cuối. Không scrape lại — dùng `summaryJson` đã có từ tab Tóm tắt.
+
+Từ Phase 9 (Tab Restructuring), **Phân tích được tách thành tab riêng** `/analysis` với `AnalysisView.vue` + composable `useThreadAnalysis.ts`, thay vì là sub-tab bên trong SummaryView như trước đây.
 
 ## Data Model (`ThreadAnalysisJSON`)
 
@@ -35,29 +37,63 @@ interface ThreadAnalysisJSON {
 
 ### Trigger
 
-User ở tab **Tóm tắt** → sub-tab **Phân tích** → bấm "Phân tích Thread".
+User chọn thớt → vào sub-tab **Phân tích** trong tab **Thớt** → bấm "Phân tích Thread".
 
 ### Luồng xử lý
 
 ```
-SummaryView.vue (sub-tab "Phân tích")
+AnalysisView.vue  (tab /analysis)
     │
-    ├── Check: cachedTopic.threadAnalysis có sẵn?
+    ├── useThreadAnalysis(store)
+    │   ├── threadAnalysis: computed từ store.selectedTopic.threadAnalysis
+    │   ├── summaryJson:   computed từ store.selectedTopic (top-level hoặc từ segments)
+    │   └── hasSummary:    computed — kiểm tra summaryJson có sẵn chưa
+    │
+    ├── Check: threadAnalysis có sẵn?
     │   └── Có → hiển thị ngay (không gọi LLM)
     │
-    ├── Gọi useLLM.threadAnalysisTask(summaryJson, meta)
-    │   └── createTask('thread_analysis', { summaryJson, meta })
-    │       └── sendMessage('START_LLM_TASK', ...)
+    ├── generateAnalysis()
+    │   └── useLLM.threadAnalysisTask(summaryJson, meta)
+    │       └── createTask('thread_analysis', { summaryJson, meta })
+    │           └── sendMessage('START_LLM_TASK', ...)
     │
     ├── Background processLLMTask()
     │   └── summarizer.generateThreadAnalysis(summaryJson, meta, config)
     │       └── Gửi THREAD_ANALYSIS_PROMPT + input → LLM
     │       └── Parse JSON output (parseSummaryJSON)
     │
-    ├── LLM_RESULT → threadAnalysis.value = data
+    ├── LLM_RESULT → store.updateSelectedTopic({ threadAnalysis })
     │
     └── SAVE_CACHED_TOPIC với threadAnalysis
 ```
+
+### `useThreadAnalysis` Composable
+
+```typescript
+export function useThreadAnalysis(store) {
+  const { threadAnalysisTask, cancelTask, getTaskState } = useLLM();
+
+  // Reactive state
+  const isAnalyzing = ref(false);
+  const error = ref('');
+
+  // Computed từ store (single source of truth)
+  const threadAnalysis = computed(() => cachedTopic.value?.threadAnalysis ?? null);
+  const summaryJson = computed(() => {
+    // Ưu tiên: top-level summaryJson → single-segment → overall segment
+  });
+  const hasSummary = computed(() => !!summaryJson.value);
+
+  // Actions
+  async function generateAnalysis(): Promise<void> {
+    // Gọi LLM → store.updateSelectedTopic({ threadAnalysis }) → SAVE_CACHED_TOPIC
+  }
+
+  return { threadAnalysis, isAnalyzing, error, summaryJson, hasSummary, generateAnalysis, cancelTask, getTaskState };
+}
+```
+
+Stale guard dùng `createRunGuard()` — nếu user navigate đi trong lúc đang phân tích, kết quả chỉ lưu vào IDB, không update UI.
 
 ### Prompt (`THREAD_ANALYSIS_PROMPT`)
 
@@ -111,12 +147,27 @@ Component nhận `ThreadAnalysisJSON` và render 8 sections với styling:
 
 `formatAnalysisAsText()` xuất toàn bộ analysis dưới dạng text thuần (không HTML) để copy clipboard.
 
-### Sub-tab trong SummaryView
+### Navigation
+
+**Top-level:** `[Thớt] [Sổ tay] [Cài đặt] [?]`
+
+**Sub-tab bar trong Thớt (khi chọn thớt):** `[← Danh sách] [Tóm tắt] [Kiến thức] [Phân tích] [Tra cứu]`
 
 ```
-SummaryView.vue
-├── [Tóm tắt]      ← SummaryContent component
-└── [Phân tích]    ← ThreadAnalysisContent component
+App.vue
+├── [Thớt]  ← active cho hub + summary/knowledge/analysis/research
+│   ├── TopicHubView.vue        ← / (khi chưa chọn thớt)
+│   └── [sub-tab bar]           ← hiển thị khi chọn thớt + đang ở detail route
+│       ├── SummaryView.vue     ← /summary
+│       ├── KnowledgeView.vue   ← /knowledge
+│       ├── AnalysisView.vue    ← /analysis
+│       └── ResearchView.vue    ← /research
+├── [Sổ tay]
+│   └── NotebookView.vue        ← /notebook
+├── [Cài đặt]
+│   └── SettingsView.vue        ← /settings
+└── [?]
+    └── HelpView.vue            ← /help
 ```
 
-Chuyển tab không trigger re-fetch — dùng `threadAnalysis.value` đã có sẵn.
+`AnalysisView.vue` dùng `ThreadAnalysisContent` component (giống như trước đây dùng trong SummaryView). Component này không thay đổi.

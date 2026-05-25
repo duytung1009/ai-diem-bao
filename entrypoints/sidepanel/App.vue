@@ -44,9 +44,14 @@ onUnmounted(() => {
 // Topic-specific tabs disabled when no topic selected
 const hasSelectedTopic = computed(() => !!store.selectedTopic.value);
 
+// "Thớt" top-level tab is active for hub + all topic detail routes
+const isThreadActive = computed(() =>
+  ['hub', 'summary', 'knowledge', 'analysis', 'research'].includes(route.name as string),
+);
+
 // Shared TopicMeta displayed once above router-view on all topic-detail tabs
 const isTopicDetailRoute = computed(() =>
-  ['summary', 'knowledge', 'research'].includes(route.name as string),
+  ['summary', 'knowledge', 'analysis', 'research'].includes(route.name as string),
 );
 const selectedTopicForMeta = computed<CachedTopic | null>(() =>
   isTopicDetailRoute.value ? store.selectedTopic.value as CachedTopic : null,
@@ -159,41 +164,17 @@ function navigateTo(path: string) {
 
     <!-- Tab Navigation -->
     <nav class="bg-(--color-bg-surface) border-b border-(--color-border) flex">
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'hub'
+      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="isThreadActive
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/')">
         Thớt
-      </button>
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'summary'
-          ? 'text-blue-600 border-b-2 border-blue-600'
-          : hasSelectedTopic
-            ? 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-            : 'text-(--color-text-muted) cursor-not-allowed'
-        " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/summary')">
-        Tóm tắt
-      </button>
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'knowledge'
-          ? 'text-blue-600 border-b-2 border-blue-600'
-          : hasSelectedTopic
-            ? 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-            : 'text-(--color-text-muted) cursor-not-allowed'
-        " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/knowledge')">
-        Kiến thức
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'notebook'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/notebook')">
         Sổ tay
-      </button>
-      <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'research'
-          ? 'text-blue-600 border-b-2 border-blue-600'
-          : hasSelectedTopic
-            ? 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-            : 'text-(--color-text-muted) cursor-not-allowed'
-        " :disabled="!hasSelectedTopic" @click="hasSelectedTopic && navigateTo('/research')">
-        Tra cứu
       </button>
       <button class="flex-1 text-center py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
           ? 'text-blue-600 border-b-2 border-blue-600'
@@ -206,6 +187,45 @@ function navigateTo(path: string) {
           : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
         " @click="navigateTo('/help')">
         ?
+      </button>
+    </nav>
+
+    <!-- Sub-tab bar: visible when a topic is selected -->
+    <nav v-if="hasSelectedTopic && isThreadActive" class="bg-(--color-bg-surface) border-b border-(--color-border) flex px-1">
+      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
+        :class="route.name === 'hub'
+          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
+        @click="navigateTo('/')">
+        ← Danh sách
+      </button>
+      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
+        :class="route.name === 'summary'
+          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
+        @click="navigateTo('/summary')">
+        Tóm tắt
+      </button>
+      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
+        :class="route.name === 'knowledge'
+          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
+        @click="navigateTo('/knowledge')">
+        Kiến thức
+      </button>
+      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
+        :class="route.name === 'analysis'
+          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
+        @click="navigateTo('/analysis')">
+        Phân tích
+      </button>
+      <button class="px-2.5 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
+        :class="route.name === 'research'
+          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+          : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
+        @click="navigateTo('/research')">
+        Tra cứu
       </button>
     </nav>
 

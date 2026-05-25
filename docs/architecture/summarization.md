@@ -1,6 +1,6 @@
 # Cơ chế Tóm tắt (Summarization)
 
-> Cập nhật: 2026-04-10
+> Cập nhật: 2026-05-25
 
 ## Tổng quan
 
@@ -14,6 +14,7 @@ Extension hỗ trợ 6 loại xử lý LLM:
 | `research` | `researchTopic()` | `RESEARCH_PROMPT` | `CHUNK_SUMMARY_PROMPT` | `RESEARCH_PROMPT` |
 | `extract_knowledge` | `extractKnowledge()` | `KNOWLEDGE_EXTRACT_PROMPT` | — | — |
 | `summarize_segments` | `summarizeSegments()` | `REDUCE_SUMMARY_PROMPT` | — | — |
+| `thread_analysis` | `generateThreadAnalysis()` | `THREAD_ANALYSIS_PROMPT` | — | — |
 
 Tất cả prompts nằm trong `lib/prompts.ts`.
 

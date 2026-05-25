@@ -15,14 +15,14 @@ import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
-import ThreadAnalysisContent from '../components/ThreadAnalysisContent.vue';
+
 import { useLLM } from '../composables/useLLM';
 import type { PipelineDefinition } from '@/lib/types';
 
 const router = useRouter();
 const store = useTopicStore();
 const {
-  summary, summaryJson, threadAnalysis, isAnalyzing,
+  summary, summaryJson,
   error, scrapeProgress, simpleLoadingText, llmTaskId,
   isScraping, scrapingWarnings, scrapingInfo,
   currentConfig, pipeline: summarizePipeline,
@@ -34,7 +34,6 @@ const {
   summarizedCount, progressPercent, nextPendingSegmentIndex,
   loadTopicData, handleCancel,
   handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
-  handleGenerateAnalysis,
 } = useSummarize(store);
 const { getTaskState } = useLLM();
 
@@ -49,7 +48,6 @@ const activePipeline = computed<PipelineDefinition | null>(() => {
 
 const segmentGridExpanded = ref(false);
 const confirmingAutoSummarize = ref(false);
-const activeSummaryView = ref<'summary' | 'analysis'>('summary');
 
 const summaryPromptTokens = estimateTokens(SUMMARY_PROMPT);
 const estimatedAutoSummarizeCalls = computed(() => {
@@ -148,7 +146,6 @@ onActivated(async () => {
   }
 
   if (!isSameTopicUrl(url, loadedTopicUrl.value ?? '')) {
-    activeSummaryView.value = 'summary';
     await loadTopicData();
   }
 });
@@ -358,30 +355,7 @@ onActivated(async () => {
 
         <!-- Overall summary view -->
         <template v-if="activeSegmentIndex === null">
-          <!-- Sub-tab buttons: Tóm tắt / Phân tích -->
-          <div class="flex gap-1 border-b border-(--color-border)">
-            <button
-              class="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
-              :class="activeSummaryView === 'summary'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-              @click="activeSummaryView = 'summary'"
-            >
-              Tóm tắt
-            </button>
-            <button
-              class="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px"
-              :class="activeSummaryView === 'analysis'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-              @click="activeSummaryView = 'analysis'"
-            >
-              Phân tích
-            </button>
-          </div>
-
           <!-- Tóm tắt tab -->
-          <template v-if="activeSummaryView === 'summary'">
             <!-- Single segment: hiển thị summary trực tiếp -->
             <template v-if="segments.length === 1">
               <div v-if="segmentSummaries[0]?.summary" class="space-y-3">
@@ -525,41 +499,7 @@ onActivated(async () => {
                 <p class="text-xs text-(--color-text-muted)">Thớt dài, thời gian tóm tắt có thể lâu</p>
               </div>
             </template>
-          </template>
 
-          <!-- Phân tích tab -->
-          <template v-else>
-            <ThreadAnalysisContent
-              v-if="threadAnalysis"
-              :analysis="threadAnalysis"
-              :thread-title="store.selectedTopic.value?.title ?? ''"
-              :total-pages="cachedTopic?.totalPages ?? 0"
-            >
-              <template #actions>
-                <button
-                  class="btn text-xs flex items-center gap-1"
-                  :disabled="isAnalyzing || isProcessing"
-                  @click="handleGenerateAnalysis"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  {{ isAnalyzing ? 'Đang phân tích...' : 'Phân tích lại' }}
-                </button>
-              </template>
-            </ThreadAnalysisContent>
-            <div v-else class="flex flex-col items-center gap-3 py-8">
-              <p class="text-sm text-(--color-text-secondary)">Chưa có phân tích cho thread này.</p>
-              <button
-                class="btn btn-primary"
-                :disabled="!summaryJson || isAnalyzing || isProcessing"
-                @click="handleGenerateAnalysis"
-              >
-                {{ isAnalyzing ? 'Đang phân tích...' : 'Phân tích thread' }}
-              </button>
-              <p v-if="!summaryJson" class="text-xs text-(--color-text-muted)">Tóm tắt trước để có thể phân tích</p>
-            </div>
-          </template>
         </template>
 
         <!-- Individual segment view -->

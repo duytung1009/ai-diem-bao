@@ -4168,13 +4168,495 @@
         "status": "done",
         "subtasks": [],
         "updatedAt": "2026-05-24T03:28:14.070Z"
+      },
+      {
+        "id": "239",
+        "title": "Create useThreadAnalysis composable",
+        "description": "Create a new composable 'useThreadAnalysis.ts' to manage thread analysis state, including reading from store, analyzing status, and generateAnalysis() function that calls LLM and saves to store.",
+        "details": "Create composable at src/composables/useThreadAnalysis.ts. It should:\n- Import necessary store, LLM composable, and IDB utilities.\n- Define reactive state: threadAnalysis (from store.selectedTopic.value?.threadAnalysis or null), isAnalyzing (ref boolean).\n- Compute summaryJson from store segments.\n- Implement generateAnalysis() which sets isAnalyzing=true, calls useLLM().threadAnalysisTask with summaryJson, then dispatches SAVE_CACHED_TOPIC to update the store and IDB.\n- Export { threadAnalysis, isAnalyzing, generateAnalysis }.",
+        "testStrategy": "Unit test composable in isolation: mock store and LLM, verify generateAnalysis updates threadAnalysis and isAnalyzing states correctly. Integration test with actual store/IDB to ensure data persistence.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa Interface và Reactive State",
+            "description": "Tạo interface cho ThreadAnalysis và định nghĩa reactive state: threadAnalysis, isAnalyzing.",
+            "dependencies": [],
+            "details": "Trong useThreadAnalysis.ts, import ref từ Vue. Khai báo threadAnalysis như một ref lấy từ store.selectedTopic.value?.threadAnalysis hoặc null. Khai báo isAnalyzing là ref false.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai logic lấy dữ liệu từ Store (summaryJson)",
+            "description": "Tạo computed summaryJson từ store segments để chuẩn bị dữ liệu cho LLM.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng computed từ Vue để tổng hợp summaryJson từ store.segments. Đảm bảo định dạng phù hợp cho LLM.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cài đặt hàm generateAnalysis gọi LLM Task và dispatch lưu trữ",
+            "description": "Triển khai generateAnalysis() để gọi LLM, cập nhật state và dispatch action lưu vào store và IDB.",
+            "dependencies": [
+              2
+            ],
+            "details": "Hàm generateAnalysis: set isAnalyzing=true, gọi useLLM().threadAnalysisTask(summaryJson), nhận kết quả, cập nhật threadAnalysis, dispatch SAVE_CACHED_TOPIC để lưu store và IDB.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết Unit test với mock LLM/Store",
+            "description": "Viết unit test cho composable, mock store và LLM để kiểm tra hoạt động của generateAnalysis và trạng thái.",
+            "dependencies": [
+              3
+            ],
+            "details": "Sử dụng vi.mock để mock store và LLM. Test rằng generateAnalysis cập nhật threadAnalysis và isAnalyzing đúng. Mock IDB dispatch nếu cần.",
+            "status": "pending",
+            "testStrategy": "Unit test với mock, kiểm tra trạng thái và gọi hàm.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 239,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Hãy chia nhỏ task 239 thành các bước: 1. Định nghĩa Interface và Reactive State. 2. Triển khai logic lấy dữ liệu từ Store (summaryJson). 3. Cài đặt hàm generateAnalysis gọi LLM Task và dispatch lưu trữ. 4. Viết Unit test với mock LLM/Store.",
+        "updatedAt": "2026-05-25T02:57:46.843Z"
+      },
+      {
+        "id": "240",
+        "title": "Create AnalysisView.vue component",
+        "description": "Create a new view component AnalysisView.vue that renders ThreadAnalysisContent and uses the useThreadAnalysis composable for state and actions.",
+        "details": "Create src/views/AnalysisView.vue. Template should include:\n- Use useThreadAnalysis composable to get threadAnalysis, isAnalyzing, generateAnalysis.\n- Render existing ThreadAnalysisContent component, passing threadAnalysis as prop.\n- Add a button to trigger generateAnalysis, disabled when isAnalyzing or no summaryJson.\n- Show loading indicator when isAnalyzing.\n- Style consistent with other detail views (e.g., padding, max-width).",
+        "testStrategy": "Component test: mock useThreadAnalysis, verify ThreadAnalysisContent receives correct prop. Test button states (disabled, loading). Integration test: navigate to route and verify component renders, generate button works with mock LLM.",
+        "priority": "high",
+        "dependencies": [
+          "239"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng template cơ bản và tích hợp useThreadAnalysis",
+            "description": "Tạo file AnalysisView.vue, import và sử dụng composable useThreadAnalysis để lấy threadAnalysis, isAnalyzing, generateAnalysis. Thiết lập template cơ bản với component ThreadAnalysisContent và button kích hoạt.",
+            "dependencies": [],
+            "details": "Chi tiết: Tạo file src/views/AnalysisView.vue. Sử dụng composable useThreadAnalysis từ '../../composables/useThreadAnalysis'. Khai báo template với div wrapper, gọi component ThreadAnalysisContent với prop threadAnalysis từ composable. Thêm button có v-on:click=\"generateAnalysis\".",
+            "status": "pending",
+            "testStrategy": "Test: Kiểm tra template render ThreadAnalysisContent với prop đúng từ composable mock.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý logic hiển thị các trạng thái loading, disabled và kết quả từ ThreadAnalysisContent",
+            "description": "Thêm logic để button bị disabled khi isAnalyzing hoặc không có summaryJson. Hiển thị spinner hoặc indicator khi isAnalyzing. Đảm bảo dữ liệu threadAnalysis được truyền đúng vào ThreadAnalysisContent.",
+            "dependencies": [
+              1
+            ],
+            "details": "Chi tiết: Sử dụng v-bind:disabled=\"isAnalyzing || !summaryJson\" cho button. Thêm v-if=\"isAnalyzing\" để hiển thị loading spinner. Đảm bảo computed property summaryJson được lấy từ store.",
+            "status": "pending",
+            "testStrategy": "Test: Mock useThreadAnalysis với các trạng thái khác nhau, kiểm tra button disabled và loading visibility.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Styling và kiểm tra tương thích giao diện",
+            "description": "Áp dụng CSS nhất quán với các view khác: padding, max-width, margin. Kiểm tra giao diện để đảm bảo hiển thị đúng trên các kích thước màn hình.",
+            "dependencies": [
+              2
+            ],
+            "details": "Chi tiết: Thêm class wrapper với padding: 20px, max-width: 1200px, margin: 0 auto. Đảm bảo sử dụng các biến CSS nếu có. Kiểm tra responsive.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 240,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Hãy chia nhỏ task 240 thành các bước: 1. Xây dựng template cơ bản và tích hợp useThreadAnalysis. 2. Xử lý logic hiển thị các trạng thái loading, disabled và kết quả từ ThreadAnalysisContent. 3. Styling và kiểm tra tương thích giao diện.",
+        "updatedAt": "2026-05-25T02:58:58.447Z"
+      },
+      {
+        "id": "241",
+        "title": "Add /analysis route in main.ts",
+        "description": "Register the /analysis route in the Vue Router configuration, pointing to AnalysisView.vue with lazy loading.",
+        "details": "In src/main.ts (or router file), add a new route object:\n{ path: '/analysis', name: 'analysis', component: () => import('./views/AnalysisView.vue') }.\nEnsure the route is placed appropriately in the route array (after /research or alongside other detail routes).",
+        "testStrategy": "Check that the route is properly registered by navigating to /analysis in a test environment. Verify component loads correctly using Vue Router's addRoute or by checking route configuration.",
+        "priority": "high",
+        "dependencies": [
+          "240"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xác định tệp cấu hình router",
+            "description": "Tìm tệp nơi Vue Router được cấu hình (src/main.ts hoặc src/router/index.ts) và mở để chỉnh sửa.",
+            "dependencies": [],
+            "details": "Kiểm tra cấu trúc dự án để xác định tệp chứa cấu hình route.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thêm route object cho /analysis với lazy loading",
+            "description": "Trong tệp router, thêm route object: { path: '/analysis', name: 'analysis', component: () => import('./views/AnalysisView.vue') }.",
+            "dependencies": [
+              1
+            ],
+            "details": "Đảm bảo cú pháp lazy loading chính xác và không thiếu dấu phảy.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Đảm bảo vị trí route phù hợp trong mảng routes",
+            "description": "Đặt route /analysis sau route /research hoặc cùng với các route chi tiết khác để duy trì thứ tự hợp lý.",
+            "dependencies": [
+              2
+            ],
+            "details": "Xem xét các route hiện có và chèn vào vị trí thích hợp, tránh làm hỏng thứ tự điều hướng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Xác thực cấu hình route bằng cách chạy ứng dụng",
+            "description": "Chạy ứng dụng (npm run dev) và kiểm tra console để đảm bảo không có lỗi router.",
+            "dependencies": [
+              3
+            ],
+            "details": "Quan sát lỗi khởi động, xác nhận route được đăng ký thành công.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra lỗi console và xác nhận route tồn tại bằng cách in routes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra điều hướng đến /analysis và xác nhận component tải",
+            "description": "Điều hướng đến /analysis trong trình duyệt và xác nhận AnalysisView.vue được tải thành công.",
+            "dependencies": [
+              4
+            ],
+            "details": "Mở ứng dụng, vào /analysis, kiểm tra không có lỗi và component hiển thị nội dung.",
+            "status": "pending",
+            "testStrategy": "Sử dụng Vue Devtools để xác nhận component mount hoặc kiểm tra console log.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 241,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-25T02:59:31.744Z"
+      },
+      {
+        "id": "242",
+        "title": "Verify AnalysisView functionality end-to-end",
+        "description": "Perform manual and automated verification that AnalysisView displays correctly, thread analysis generation works, and state is persisted across navigation.",
+        "details": "Test cases:\n- Navigate to /analysis before selecting a topic: should show empty state or redirect? (PRD says sub-tabs only visible when topic selected, but route exists). Ensure it handles gracefully (e.g., redirect to hub if no selected topic).\n- Select a topic, then navigate to /analysis: view renders with ThreadAnalysisContent.\n- Click generate: triggers LLM call, saves to store/IDB, updates view.\n- Navigate away and back: analysis persists if already generated.",
+        "testStrategy": "Write Cypress/e2e test for flow: select topic, go to Analysis, generate, verify content appears. Unit test for route guard if needed.",
+        "priority": "medium",
+        "dependencies": [
+          "241"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Viết kịch bản test cho trường hợp chưa chọn topic",
+            "description": "Xác định và viết test case cho hành vi khi người dùng điều hướng đến /analysis mà không có topic nào được chọn. Cần kiểm tra redirect đến hub hoặc hiển thị empty state theo PRD.",
+            "dependencies": [],
+            "details": "Sử dụng Cypress để kiểm tra route guard. Đảm bảo rằng khi chưa có topic, route /analysis xử lý gracefully (redirect hoặc empty state). Tham khảo Task 241 để biết implementation.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Viết test cho luồng generate thành công và hiển thị dữ liệu",
+            "description": "Viết test E2E cho luồng: chọn topic, vào /analysis, click generate, gọi LLM, lưu vào store/IDB và hiển thị ThreadAnalysisContent với dữ liệu.",
+            "dependencies": [],
+            "details": "Mock LLM call, kiểm tra button generate disabled khi đang loading, kiểm tra dữ liệu hiển thị chính xác sau khi generate. Sử dụng Cypress intercept.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra tính bền vững của dữ liệu khi điều hướng qua lại",
+            "description": "Kiểm tra rằng sau khi generate analysis, khi người dùng điều hướng sang view khác và quay lại /analysis, dữ liệu vẫn còn được hiển thị. Cần kiểm tra trạng thái persistence qua store hoặc IndexedDB.",
+            "dependencies": [],
+            "details": "Viết test E2E: navigate to /analysis, generate dữ liệu, navigate away (ví dụ đến /summary, /knowledge), sau đó quay lại /analysis và xác nhận ThreadAnalysisContent vẫn hiển thị dữ liệu cũ.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 242,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Hãy chia nhỏ task 242 thành các bước: 1. Viết kịch bản test cho trường hợp chưa chọn topic. 2. Viết test cho luồng generate thành công và hiển thị dữ liệu. 3. Kiểm tra tính bền vững của dữ liệu khi điều hướng qua lại.",
+        "updatedAt": "2026-05-25T02:59:52.432Z"
+      },
+      {
+        "id": "243",
+        "title": "Refactor SummaryView to remove sub-tabs and ThreadAnalysisContent",
+        "description": "Clean up SummaryView.vue by removing the sub-tab selection UI (activeSummaryView, sub-tab buttons) and the ThreadAnalysisContent block, leaving only summary content and segment tabs.",
+        "details": "Edit src/views/SummaryView.vue:\n- Remove the ref 'activeSummaryView' and any related watcher.\n- Remove the UI for switching between 'Tóm tắt' and 'Phân tích' (the sub-tab buttons).\n- Remove the '<ThreadAnalysisContent>' component render block.\n- Keep the main summary content (e.g., SummaryDisplay component) and segment tabs.\n- Ensure useSummarize composable remains unchanged (thread analysis state now handled by useThreadAnalysis).",
+        "testStrategy": "Component test: render SummaryView and verify no ThreadAnalysisContent or sub-tab buttons exist. Integration test: navigate to a topic's summary, ensure summary content still renders. Check no regression in segment switching.",
+        "priority": "high",
+        "dependencies": [
+          "239",
+          "242"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Loại bỏ ref và watcher liên quan đến tab phân tích cũ",
+            "description": "Xóa ref 'activeSummaryView' và watcher tương ứng trong phần script của SummaryView.vue để dọn dẹp state cũ.",
+            "dependencies": [],
+            "details": "Trong src/views/SummaryView.vue, tìm và xóa dòng khai báo 'const activeSummaryView = ref()' và bất kỳ watch nào liên quan đến nó. Đảm bảo không còn tham chiếu đến activeSummaryView trong script.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra bằng cách xem lại file sau khi chỉnh sửa, đảm bảo không còn lỗi biên dịch. Chạy unit test cho component để xác nhận không có lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Dọn dẹp template và xóa component không còn dùng",
+            "description": "Xóa UI chọn sub-tab (các nút 'Tóm tắt'/'Phân tích') và khối render '<ThreadAnalysisContent>' khỏi template, đồng thời xóa import không cần thiết.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong phần template của SummaryView.vue, xóa các nút sub-tab và điều kiện hiển thị liên quan đến activeSummaryView. Xóa hoàn toàn dòng '<ThreadAnalysisContent>'. Cập nhật phần import để loại bỏ ThreadAnalysisContent nếu nó không được dùng ở nơi khác. Giữ nguyên SummaryDisplay và segment tabs.",
+            "status": "pending",
+            "testStrategy": "Render component trong môi trường kiểm thử, xác nhận không còn sub-tab buttons hay ThreadAnalysisContent. Kiểm tra bằng snapshot test.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra hồi quy cho tính năng tóm tắt và chuyển đổi segment",
+            "description": "Đảm bảo sau khi xóa code cũ, chức năng hiển thị tóm tắt và chuyển đổi segment vẫn hoạt động chính xác.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Chạy các kiểm thử tích hợp: điều hướng đến trang tóm tắt của một chủ đề, kiểm tra nội dung tóm tắt hiển thị. Thực hiện chuyển đổi qua lại giữa các segment (nếu có) và xác nhận không có lỗi. Chạy lại toàn bộ test suite của module để phát hiện hồi quy.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công trên giao diện và chạy automation test (nếu có) cho SummaryView. Xác nhận không có lỗi console hay ngoại lệ.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 243,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Hãy chia nhỏ task 243 thành các bước: 1. Loại bỏ các ref và watcher liên quan đến tab phân tích cũ. 2. Dọn dẹp template và xóa các component không còn sử dụng. 3. Kiểm tra hồi quy cho tính năng tóm tắt và chuyển đổi segment.",
+        "updatedAt": "2026-05-25T03:02:50.248Z"
+      },
+      {
+        "id": "244",
+        "title": "Update top-level navigation in App.vue",
+        "description": "Modify App.vue to display only 4 top-level tabs: Thớt, Sổ tay, Cài đặt, ?, and update active logic.",
+        "details": "In App.vue template:\n- Remove the navigation buttons for Tóm tắt, Kiến thức, Tra cứu (if they were top-level).\n- Keep only buttons for Thớt, Sổ tay, Cài đặt, ?.\n- Update active class logic:\n  - 'Thớt' active when route name is 'hub' or isTopicDetailRoute.\n  - 'Sổ tay' active when route name is 'notebook'.\n- Adjust layout if needed (e.g., width of remaining tabs).",
+        "testStrategy": "Component test: check that only 4 tab buttons are rendered, each with correct label and active state based on route. E2e test: navigate between top-level tabs and verify highlights.",
+        "priority": "high",
+        "dependencies": [
+          "243"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 244,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-25T03:04:27.715Z"
+      },
+      {
+        "id": "245",
+        "title": "Add sub-tab bar in App.vue for detail views",
+        "description": "Add a sub-tab bar component in App.vue that appears only when on a topic detail route (summary, knowledge, analysis, research) and a topic is selected, with buttons: ← Danh sách, Tóm tắt, Kiến thức, Phân tích, Tra cứu.",
+        "details": "In App.vue template, between the top navigation and the router-view/TopicMeta, add a conditional div:\n- Condition: isTopicDetailRoute && hasSelectedTopic.\n- isTopicDetailRoute computed property: include 'analysis' (so it returns true for route names 'summary', 'knowledge', 'analysis', 'research').\n- hasSelectedTopic: from store.selectedTopic.\n- Sub-tab bar contains:\n  - '← Danh sách' button navigating to '/', with active class when route name is 'hub'.\n  - 'Tóm tắt' button navigating to '/summary', active when route.name === 'summary'.\n  - 'Kiến thức' button to '/knowledge'.\n  - 'Phân tích' button to '/analysis'.\n  - 'Tra cứu' button to '/research'.\n- Ensure sub-tab bar disappears when navigating to non-detail routes (Sổ tay, Cài đặt, ?).",
+        "testStrategy": "Component test: verify sub-tab bar renders only when on a detail route and topic selected. Test each button navigation and active state. E2e test: select topic, see sub-tabs, click each and verify route changes.",
+        "priority": "high",
+        "dependencies": [
+          "244"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 245,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Hãy chia nhỏ task 245 thành các bước: 1. Tạo computed property để xác định khi nào hiển thị thanh sub-tab. 2. Triển khai cấu trúc template cho thanh sub-tab mới. 3. Cài đặt logic active class dựa trên route name hiện tại. 4. CSS styling cho thanh điều hướng phụ.",
+        "updatedAt": "2026-05-25T03:04:37.868Z"
+      },
+      {
+        "id": "246",
+        "title": "Update isTopicDetailRoute to include 'analysis'",
+        "description": "Modify the computed isTopicDetailRoute in App.vue to include the 'analysis' route name, ensuring that sub-tab bar and TopicMeta visibility work for AnalysisView.",
+        "details": "In App.vue, update the computed property isTopicDetailRoute:\n- Currently likely ['summary', 'knowledge', 'research'] for old sub-tabs.\n- Add 'analysis' to the array.\n- Also update any related logic (e.g., showing TopicMeta on these routes).",
+        "testStrategy": "Check that when navigating to /analysis, isTopicDetailRoute returns true, sub-tab bar appears, and TopicMeta is rendered. Check that navigating to /sotay does not show them.",
+        "priority": "high",
+        "dependencies": [
+          "245"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 246,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-25T03:05:06.317Z"
+      },
+      {
+        "id": "247",
+        "title": "Verify cross-navigation across all views",
+        "description": "Ensure that existing cross-navigation links still work correctly after the navigation restructure, such as CTA buttons in SummaryView, KnowledgeView, NotebookView, etc.",
+        "details": "Review all views that contain navigation to other routes:\n- SummaryView: 'Xem kiến thức' button navigates to /knowledge?extract=true.\n- KnowledgeView: 'Xem sổ tay' navigates to /notebook.\n- NotebookView: 'Mở trong thớt' navigates to /knowledge?focus=<id>.\n- Also check any direct links in the hub or settings.\n- Ensure these links still work and the new navigation structure does not break them.",
+        "testStrategy": "Manual testing: go to each view, click each link, verify correct route and parameters. Automated e2e test: simulate clicks and assert route changes.",
+        "priority": "medium",
+        "dependencies": [
+          "246"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 247,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-25T03:06:39.355Z"
+      },
+      {
+        "id": "248",
+        "title": "Full verification: compile, test, and manual flow",
+        "description": "Run compilation and automated tests, then perform manual testing of the complete user flow: hub -> select topic -> toggle sub-tabs -> back to hub, ensuring no regression.",
+        "details": "Steps:\n1. Run npm run compile to check TypeScript and build errors.\n2. Run npm run test to execute unit and integration tests.\n3. Run e2e tests (if available) covering key flows.\n4. Manual test flow: open sidepanel, see 4 top-level tabs, click Thớt, see hub, select a topic, see sub-tab bar with 4 sub-tabs, click each, observe views render correctly, click '← Danh sách' to return to hub, then click other top-level tabs and confirm sub-tab bar disappears.\n5. Test edge cases: no topic selected (sub-tab bar hidden), direct URL navigation to detail routes without selection (should redirect or show proper state).",
+        "testStrategy": "Automated tests as above plus manual testing checklist. Document any issues found and fix before marking complete.",
+        "priority": "medium",
+        "dependencies": [
+          "247"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 248,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Hãy chia nhỏ task 248 thành các bước: 1. Chạy quy trình kiểm tra lỗi biên dịch và unit test tự động. 2. Thực hiện manual walkthrough toàn bộ luồng người dùng. 3. Kiểm tra các trường hợp biên (edge cases) như URL trực tiếp hoặc mất mạng.",
+        "updatedAt": "2026-05-25T03:07:52.966Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-24T03:28:14.073Z",
-      "taskCount": 84,
-      "completedCount": 79,
+      "lastModified": "2026-05-25T03:07:52.967Z",
+      "taskCount": 94,
+      "completedCount": 89,
       "tags": [
         "master"
       ]

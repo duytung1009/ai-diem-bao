@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-23T16:27:04.869Z",
+		"generatedAt": "2026-05-25T02:38:49.952Z",
 		"tasksAnalyzed": 15,
-		"totalTasks": 83,
+		"totalTasks": 94,
 		"analysisCount": 15,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -15,7 +15,7 @@
 			"complexityScore": 5,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 4 subtask, bao gồm các bước từ khởi tạo module, xây dựng hàm, tích hợp đến self-review. Do đó không cần mở rộng thêm."
+			"reasoning": "Task này đã có các subtask chi tiết bao quát việc tạo module, xử lý logic nén và tích hợp stale-guard. Độ phức tạp ở mức trung bình do cần đảm bảo tính tương đương dữ liệu với logic cũ qua snapshot testing."
 		},
 		{
 			"taskId": 170,
@@ -23,7 +23,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 5 subtask, bao gồm thiết kế, triển khai vòng lặp, tích hợp enrichment, viết test và self-review. Không cần mở rộng thêm."
+			"reasoning": "Đã có đầy đủ subtask. Việc tách logic scraping ra composable đòi hỏi xử lý tốt các callback và trạng thái lỗi (thread deleted/locked), cũng như đảm bảo cơ chế khử trùng dữ liệu trang cuối."
 		},
 		{
 			"taskId": 171,
@@ -31,7 +31,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 4 subtask, bao gồm thiết kế composable, triển khai reconcile, tích hợp trạng thái và self-review. Không cần mở rộng thêm."
+			"reasoning": "Đã có subtask. Độ phức tạp nằm ở cơ chế reconcile để điều chỉnh pipeline động khi số lượng segment thực tế thay đổi so với dự kiến ban đầu, yêu cầu quản lý trạng thái mảng phức tạp."
 		},
 		{
 			"taskId": 172,
@@ -39,7 +39,7 @@
 			"complexityScore": 7,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 4 subtask, bao gồm triển khai hai hàm chính, tích hợp stale-guard và self-review. Không cần mở rộng thêm."
+			"reasoning": "Đã có subtask. Các hàm này là nhân tố cốt lõi xử lý LLM và persistence. Việc đảm bảo stale-guard hoạt động đúng trong các điều kiện bất đồng bộ và logic short-circuit cho single-segment làm tăng độ phức tạp."
 		},
 		{
 			"taskId": 173,
@@ -47,87 +47,87 @@
 			"complexityScore": 8,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Nhiệm vụ đã được chia nhỏ thành 5 subtask, bao gồm helper computeResumeMode, khởi tạo pipeline, tích hợp scraper, tổng hợp kết quả và self-review. Không cần mở rộng thêm."
+			"reasoning": "Đã có subtask. Đây là task điều phối cao nhất, hợp nhất nhiều luồng xử lý (scraping, planning, summarizing). Yêu cầu khả năng quản lý luồng dữ liệu và trạng thái cực kỳ chặt chẽ để không xảy ra race condition."
 		},
 		{
-			"taskId": 228,
-			"taskTitle": "Xây dựng pipeline reactive khi bắt đầu handleExtract",
+			"taskId": 239,
+			"taskTitle": "Create useThreadAnalysis composable",
 			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Triển khai code xây dựng pipeline trong handleExtract, bao gồm cả direct path, và đảm bảo step đầu tiên ở trạng thái running. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ cụ thể và đã được mô tả chi tiết, có thể thực hiện trong một subtask code và một subtask self-review."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Hãy chia nhỏ task 239 thành các bước: 1. Định nghĩa Interface và Reactive State. 2. Triển khai logic lấy dữ liệu từ Store (summaryJson). 3. Cài đặt hàm generateAnalysis gọi LLM Task và dispatch lưu trữ. 4. Viết Unit test với mock LLM/Store.",
+			"reasoning": "Task này yêu cầu thiết lập một logic mới để xử lý phân tích thớt, bao gồm cả gọi LLM và tương tác với IndexedDB qua store. Tuy nhiên, cấu trúc composable khá tiêu chuẩn trong dự án."
 		},
 		{
-			"taskId": 229,
-			"taskTitle": "Xây dựng pipeline reactive khi bắt đầu handleRestore",
-			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Triển khai xây dựng pipeline trong handleRestore, đánh dấu các extract steps đã có là done và reduce là running. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ tương tự task 228, có thể chia thành code và self-review."
-		},
-		{
-			"taskId": 230,
-			"taskTitle": "Cập nhật trạng thái step cho từng chunk trong vòng lặp extraction",
-			"complexityScore": 6,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Sửa vòng lặp extraction để sử dụng pl.markRunning/pl.markDone thay vì xây dựng pipeline mới, đảm bảo trạng thái step được cập nhật chính xác. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ yêu cầu thay đổi logic vòng lặp, có độ phức tạp trung bình, nên chia làm code và self-review."
-		},
-		{
-			"taskId": 231,
-			"taskTitle": "Cập nhật trạng thái step cho reduce phase",
+			"taskId": 240,
+			"taskTitle": "Create AnalysisView.vue component",
 			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Thêm pl.markRunning và pl.markDone trong runReducePhase. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ đơn giản, chỉ thêm vài dòng code, có thể hoàn thành trong một subtask code và self-review."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Hãy chia nhỏ task 240 thành các bước: 1. Xây dựng template cơ bản và tích hợp useThreadAnalysis. 2. Xử lý logic hiển thị các trạng thái loading, disabled và kết quả từ ThreadAnalysisContent. 3. Styling và kiểm tra tương thích giao diện.",
+			"reasoning": "Việc tạo view mới chủ yếu là lắp ghép các component có sẵn và sử dụng composable đã tạo ở task trước. Độ phức tạp thấp hơn logic xử lý dữ liệu."
 		},
 		{
-			"taskId": 232,
-			"taskTitle": "Sao chép snapshot pipeline vào task state trước mỗi LLM call",
+			"taskId": 241,
+			"taskTitle": "Add /analysis route in main.ts",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Đây là một task cấu hình router đơn giản, không yêu cầu logic phức tạp."
+		},
+		{
+			"taskId": 242,
+			"taskTitle": "Verify AnalysisView functionality end-to-end",
 			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Thêm code sao chép snapshot pipeline vào task state trước mỗi LLM call. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ đơn giản, thêm deep clone và gán giá trị, nên chia làm code và self-review."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Hãy chia nhỏ task 242 thành các bước: 1. Viết kịch bản test cho trường hợp chưa chọn topic. 2. Viết test cho luồng generate thành công và hiển thị dữ liệu. 3. Kiểm tra tính bền vững của dữ liệu khi điều hướng qua lại.",
+			"reasoning": "Task này tập trung vào kiểm thử tích hợp và E2E để đảm bảo tính ổn định của tính năng mới."
 		},
 		{
-			"taskId": 233,
-			"taskTitle": "Đồng bộ pipeline từ task state trở về sau LLM call",
+			"taskId": 243,
+			"taskTitle": "Refactor SummaryView to remove sub-tabs and ThreadAnalysisContent",
 			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Thêm code đồng bộ pipeline từ task state trở lại sau LLM call, kiểm tra điều kiện null. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ đơn giản, thêm logic copy có điều kiện, nên chia làm code và self-review."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Hãy chia nhỏ task 243 thành các bước: 1. Loại bỏ các ref và watcher liên quan đến tab phân tích cũ. 2. Dọn dẹp template và xóa các component không còn sử dụng. 3. Kiểm tra hồi quy cho tính năng tóm tắt và chuyển đổi segment.",
+			"reasoning": "Việc dọn dẹp code cũ yêu cầu sự cẩn thận để không làm hỏng logic chuyển đổi segment hiện có."
 		},
 		{
-			"taskId": 234,
-			"taskTitle": "Sửa computed activePipeline để ưu tiên task state",
+			"taskId": 244,
+			"taskTitle": "Update top-level navigation in App.vue",
 			"complexityScore": 3,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Sửa computed activePipeline để trả về st.pipeline nếu có, nếu không thì fallback vào pl.pipeline. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ rất đơn giản, chỉ thay đổi dòng computed, nên chia làm code và self-review."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Chủ yếu là chỉnh sửa UI ở file App.vue để ẩn/hiện các tab điều hướng cấp cao. Logic đơn giản."
 		},
 		{
-			"taskId": 235,
-			"taskTitle": "Xử lý resume path - đánh dấu các step đã có là done",
+			"taskId": 245,
+			"taskTitle": "Add sub-tab bar in App.vue for detail views",
 			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Thêm code đánh dấu các extract steps đã có là done trong resume path, dựa trên số lượng existingChunks. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ yêu cầu thêm vòng lặp đánh dấu, có độ phức tạp trung bình, nên chia làm code và self-review."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Hãy chia nhỏ task 245 thành các bước: 1. Tạo computed property để xác định khi nào hiển thị thanh sub-tab. 2. Triển khai cấu trúc template cho thanh sub-tab mới. 3. Cài đặt logic active class dựa trên route name hiện tại. 4. CSS styling cho thanh điều hướng phụ.",
+			"reasoning": "Task này yêu cầu xử lý logic hiển thị có điều kiện khá tinh vi dựa trên cả Route và trạng thái Store (Topic đã chọn)."
 		},
 		{
-			"taskId": 236,
-			"taskTitle": "Xử lý direct extract path cho pipeline",
+			"taskId": 246,
+			"taskTitle": "Update isTopicDetailRoute to include 'analysis'",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Chỉ là việc cập nhật một hằng số hoặc mảng kiểm tra tên route."
+		},
+		{
+			"taskId": 247,
+			"taskTitle": "Verify cross-navigation across all views",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "",
+			"reasoning": "Task kiểm tra thủ công các liên kết giữa các màn hình để đảm bảo cấu trúc điều hướng mới không làm đứt gãy trải nghiệm người dùng."
+		},
+		{
+			"taskId": 248,
+			"taskTitle": "Full verification: compile, test, and manual flow",
 			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Xử lý direct extract path, điều chỉnh totalSteps và mark first running phù hợp. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ tương tự task 228 nhưng đơn giản hơn, nên chia làm code và self-review."
-		},
-		{
-			"taskId": 237,
-			"taskTitle": "Viết unit tests cho toàn bộ fix timeline",
-			"complexityScore": 6,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tạo subtask 1: Viết unit test cho tất cả các thay đổi từ task 228 đến 236, đảm bảo npm run test pass. Subtask 2: Self-review.",
-			"reasoning": "Nhiệm vụ viết test bao phủ nhiều thay đổi, có độ phức tạp trung bình cao do cần mock. Nên chia làm code test và self-review."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Hãy chia nhỏ task 248 thành các bước: 1. Chạy quy trình kiểm tra lỗi biên dịch và unit test tự động. 2. Thực hiện manual walkthrough toàn bộ luồng người dùng. 3. Kiểm tra các trường hợp biên (edge cases) như URL trực tiếp hoặc mất mạng.",
+			"reasoning": "Đây là bước cuối cùng để đảm bảo chất lượng sản phẩm trước khi hoàn thành đợt refactor lớn."
 		}
 	]
 }

@@ -102,28 +102,29 @@ export default defineBackground(() => {
         }
 
         case 'GET_CACHED_TOPIC': {
+          // Caller phải luôn truyền URL trong payload — không fallback tabs.query (cần tabs permission)
           const payloadUrl = message.payload as string | undefined;
-          const urlPromise = payloadUrl ? Promise.resolve(payloadUrl) : getActiveTabUrl();
-          urlPromise
-            .then((url) => (url ? getCachedTopic(url) : null))
+          (payloadUrl ? getCachedTopic(payloadUrl) : Promise.resolve(null))
             .then(sendResponse)
             .catch(() => sendResponse(null));
           return true;
         }
 
         case 'SAVE_CACHED_TOPIC': {
+          // Caller phải luôn truyền url trong payload — không fallback tabs.query (cần tabs permission)
           const partial = message.payload as Partial<CachedTopic> & { url?: string };
-          const urlPromise = partial.url ? Promise.resolve(partial.url) : getActiveTabUrl();
-          urlPromise
-            .then(async (url) => {
-              if (!url) throw new Error('No URL');
-              const config = await getSettings();
-              const existing = await getCachedTopic(url);
-              const topic = mergePartialTopic(partial, existing, url, { provider: config.provider, model: config.model });
-              await saveCachedTopic(topic);
-              sendResponse({ success: true });
-            })
-            .catch((err) => sendResponse({ error: String(err) }));
+          if (!partial.url) {
+            sendResponse({ error: 'No URL in payload' });
+            return true;
+          }
+          const url = partial.url;
+          (async () => {
+            const config = await getSettings();
+            const existing = await getCachedTopic(url);
+            const topic = mergePartialTopic(partial, existing, url, { provider: config.provider, model: config.model });
+            await saveCachedTopic(topic);
+            sendResponse({ success: true });
+          })().catch((err) => sendResponse({ error: String(err) }));
           return true;
         }
 
@@ -233,11 +234,6 @@ async function getCustomPrompts(): Promise<CustomPrompts> {
 
 async function saveCustomPrompts(prompts: CustomPrompts): Promise<void> {
   await browser.storage.sync.set({ [STORAGE_KEYS.CUSTOM_PROMPTS]: prompts });
-}
-
-async function getActiveTabUrl(): Promise<string | null> {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  return tab?.url || null;
 }
 
 async function migrateStorageLocalToIDB(): Promise<void> {

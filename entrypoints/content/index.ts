@@ -43,6 +43,8 @@ export default defineContentScript({
             pageCount: scraper?.getPageCount() ?? 1,
             threadDeleted: isDeleted,
             threadLocked: isLocked,
+            // Trả về URL để sidepanel không cần tabs permission để đọc tab.url
+            url: location.href,
           };
           // Try to get a better title from the page
           const titleEl = document.querySelector('h1.p-title-value, .titleBar h1');

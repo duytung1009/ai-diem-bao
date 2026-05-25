@@ -63,14 +63,9 @@ const modelLabel = computed(() => {
 
 async function navigateToTopic() {
   if (!props.topic.url) return;
-  try {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) {
-      await browser.tabs.update(tab.id, { url: props.topic.url });
-    }
-  } catch {
-    await browser.tabs.create({ url: props.topic.url });
-  }
+  // Dùng tabs.create thay vì tabs.update — không cần tabs permission.
+  // UX: mở tab mới thay vì navigate in-place (acceptable tradeoff để giảm permissions).
+  await browser.tabs.create({ url: props.topic.url });
 }
 </script>
 

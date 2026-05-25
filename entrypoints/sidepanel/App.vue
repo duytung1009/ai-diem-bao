@@ -65,16 +65,18 @@ const isSummarizingCurrentTopic = computed(() =>
 
 async function detectActiveTabTopic() {
   try {
+    // Không đọc tab.url — cần tabs permission. Chỉ lấy tabId để sendMessage.
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url) return;
+    if (!tab?.id) return;
 
     const result = await browser.tabs.sendMessage(tab.id, {
       type: 'DETECT_XF',
     }) as DetectResult | undefined;
 
-    if (result && result.version !== 'unknown') {
-      store.setActiveTab(result, tab.url);
-      await autoUpdateCachedTopic(tab.url, result);
+    // URL lấy từ content script response (location.href) thay vì tab.url
+    if (result && result.version !== 'unknown' && result.url) {
+      store.setActiveTab(result, result.url);
+      await autoUpdateCachedTopic(result.url, result);
     } else {
       store.setActiveTab(null, null);
     }

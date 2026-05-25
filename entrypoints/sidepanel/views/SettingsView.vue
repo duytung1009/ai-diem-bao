@@ -244,8 +244,8 @@ const defaultPrompts = {
 const promptTabLabels = {
   summary: 'Tóm tắt',
   knowledge: 'Kiến thức',
-  research: 'Tra cứu',
   threadAnalysis: 'Phân tích',
+  research: 'Tra cứu',
 };
 
 const activePromptValue = computed({

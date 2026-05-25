@@ -147,6 +147,8 @@ export interface DetectResult {
   pageCount: number;
   threadDeleted?: boolean;
   threadLocked?: boolean;
+  /** URL của tab, lấy từ location.href trong content script (không cần tabs permission) */
+  url?: string;
 }
 
 export type CacheFreshness = 'fresh' | 'stale' | 'outdated';

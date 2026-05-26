@@ -97,13 +97,13 @@ function handleConflictGoBack() {
             </template>
           </ThreadAnalysisContent>
 
-          <div v-else class="flex flex-col items-center space-y-2">
+          <div v-else-if="!isAnalyzing" class="flex flex-col items-center space-y-2">
             <p class="text-sm text-(--color-text-secondary)">Chưa có phân tích cho thớt này.</p>
-            <button class="btn-llm" :disabled="isAnalyzing" @click="generateAnalysis">
+            <button class="btn-llm" @click="generateAnalysis">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
               </svg>
-              {{ isAnalyzing ? 'Đang phân tích...' : 'Phân tích thớt' }}
+              {{ 'Phân tích thớt' }}
             </button>
           </div>
         </template>

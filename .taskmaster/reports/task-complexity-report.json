@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-25T02:38:49.952Z",
+		"generatedAt": "2026-05-26T03:36:22.348Z",
 		"tasksAnalyzed": 15,
-		"totalTasks": 94,
+		"totalTasks": 104,
 		"analysisCount": 15,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -15,7 +15,7 @@
 			"complexityScore": 5,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Task này đã có các subtask chi tiết bao quát việc tạo module, xử lý logic nén và tích hợp stale-guard. Độ phức tạp ở mức trung bình do cần đảm bảo tính tương đương dữ liệu với logic cũ qua snapshot testing."
+			"reasoning": "Logic chuyển đổi sang module pure không quá phức tạp nhưng yêu cầu độ chính xác cao trong việc xử lý payload và snapshot testing để đảm bảo tương thích ngược."
 		},
 		{
 			"taskId": 170,
@@ -23,7 +23,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Đã có đầy đủ subtask. Việc tách logic scraping ra composable đòi hỏi xử lý tốt các callback và trạng thái lỗi (thread deleted/locked), cũng như đảm bảo cơ chế khử trùng dữ liệu trang cuối."
+			"reasoning": "Việc tách logic scraping liên quan đến xử lý bất đồng bộ, quản lý vòng lặp trang và các callback trạng thái yêu cầu thiết kế interface chặt chẽ."
 		},
 		{
 			"taskId": 171,
@@ -31,7 +31,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Đã có subtask. Độ phức tạp nằm ở cơ chế reconcile để điều chỉnh pipeline động khi số lượng segment thực tế thay đổi so với dự kiến ban đầu, yêu cầu quản lý trạng thái mảng phức tạp."
+			"reasoning": "Quản lý StepTimeline tập trung và logic điều chỉnh pipeline động (reconcile/rebuild) đòi hỏi sự phối hợp tốt giữa trạng thái UI và logic thực thi."
 		},
 		{
 			"taskId": 172,
@@ -39,7 +39,7 @@
 			"complexityScore": 7,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Đã có subtask. Các hàm này là nhân tố cốt lõi xử lý LLM và persistence. Việc đảm bảo stale-guard hoạt động đúng trong các điều kiện bất đồng bộ và logic short-circuit cho single-segment làm tăng độ phức tạp."
+			"reasoning": "Các hàm này là lõi của quá trình xử lý LLM, yêu cầu xử lý lỗi nghiêm ngặt, cơ chế stale-guard và tối ưu hóa cho trường hợp single-segment."
 		},
 		{
 			"taskId": 173,
@@ -47,87 +47,87 @@
 			"complexityScore": 8,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Đã có subtask. Đây là task điều phối cao nhất, hợp nhất nhiều luồng xử lý (scraping, planning, summarizing). Yêu cầu khả năng quản lý luồng dữ liệu và trạng thái cực kỳ chặt chẽ để không xảy ra race condition."
+			"reasoning": "Đây là orchestrator chính điều phối nhiều thành phần (scraper, planner, primitives), tiềm ẩn rủi ro về race condition và quản lý trạng thái phức tạp."
 		},
 		{
-			"taskId": 239,
-			"taskTitle": "Create useThreadAnalysis composable",
-			"complexityScore": 5,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Hãy chia nhỏ task 239 thành các bước: 1. Định nghĩa Interface và Reactive State. 2. Triển khai logic lấy dữ liệu từ Store (summaryJson). 3. Cài đặt hàm generateAnalysis gọi LLM Task và dispatch lưu trữ. 4. Viết Unit test với mock LLM/Store.",
-			"reasoning": "Task này yêu cầu thiết lập một logic mới để xử lý phân tích thớt, bao gồm cả gọi LLM và tương tác với IndexedDB qua store. Tuy nhiên, cấu trúc composable khá tiêu chuẩn trong dự án."
-		},
-		{
-			"taskId": 240,
-			"taskTitle": "Create AnalysisView.vue component",
-			"complexityScore": 4,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Hãy chia nhỏ task 240 thành các bước: 1. Xây dựng template cơ bản và tích hợp useThreadAnalysis. 2. Xử lý logic hiển thị các trạng thái loading, disabled và kết quả từ ThreadAnalysisContent. 3. Styling và kiểm tra tương thích giao diện.",
-			"reasoning": "Việc tạo view mới chủ yếu là lắp ghép các component có sẵn và sử dụng composable đã tạo ở task trước. Độ phức tạp thấp hơn logic xử lý dữ liệu."
-		},
-		{
-			"taskId": 241,
-			"taskTitle": "Add /analysis route in main.ts",
+			"taskId": 249,
+			"taskTitle": "Định nghĩa Interface CostEstimate",
 			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Đây là một task cấu hình router đơn giản, không yêu cầu logic phức tạp."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tạo interface CostEstimate trong lib/types.ts và định nghĩa các kiểu dữ liệu cho apiCalls, tokens, cost và model.",
+			"reasoning": "Chỉ là định nghĩa kiểu dữ liệu cơ bản trong TypeScript, không có logic thực thi."
 		},
 		{
-			"taskId": 242,
-			"taskTitle": "Verify AnalysisView functionality end-to-end",
+			"taskId": 250,
+			"taskTitle": "Nâng cấp logic tính toán trong cost-estimator.ts",
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Hãy chia nhỏ task 242 thành các bước: 1. Viết kịch bản test cho trường hợp chưa chọn topic. 2. Viết test cho luồng generate thành công và hiển thị dữ liệu. 3. Kiểm tra tính bền vững của dữ liệu khi điều hướng qua lại.",
-			"reasoning": "Task này tập trung vào kiểm thử tích hợp và E2E để đảm bảo tính ổn định của tính năng mới."
+			"expansionPrompt": "Triển khai các hàm estimateAutoSummarizeCost, estimateExtractCost và estimateSegmentSummarizeCost với logic heuristic.",
+			"reasoning": "Đòi hỏi việc cài đặt các công thức tính toán token và thời gian dựa trên các tham số cấu hình khác nhau."
 		},
 		{
-			"taskId": 243,
-			"taskTitle": "Refactor SummaryView to remove sub-tabs and ThreadAnalysisContent",
+			"taskId": 251,
+			"taskTitle": "Phát triển UI Component CostConfirmModal.vue",
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Hãy chia nhỏ task 243 thành các bước: 1. Loại bỏ các ref và watcher liên quan đến tab phân tích cũ. 2. Dọn dẹp template và xóa các component không còn sử dụng. 3. Kiểm tra hồi quy cho tính năng tóm tắt và chuyển đổi segment.",
-			"reasoning": "Việc dọn dẹp code cũ yêu cầu sự cẩn thận để không làm hỏng logic chuyển đổi segment hiện có."
+			"expansionPrompt": "Xây dựng layout Modal với Tailwind, thiết lập transition animation và backdrop mờ.",
+			"reasoning": "Cần xử lý UI/UX tốt với animation mượt mà và đảm bảo hiển thị đúng trên các kích thước màn hình sidepanel."
 		},
 		{
-			"taskId": 244,
-			"taskTitle": "Update top-level navigation in App.vue",
+			"taskId": 252,
+			"taskTitle": "Triển khai logic format dữ liệu trong Modal",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Chủ yếu là chỉnh sửa UI ở file App.vue để ẩn/hiện các tab điều hướng cấp cao. Logic đơn giản."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Viết các helper functions để format thời gian (giây/phút), tiền tệ USD và số token có dấu ngăn cách.",
+			"reasoning": "Tập trung vào logic định dạng hiển thị để cải thiện trải nghiệm đọc hiểu số liệu của người dùng."
 		},
 		{
-			"taskId": 245,
-			"taskTitle": "Add sub-tab bar in App.vue for detail views",
+			"taskId": 253,
+			"taskTitle": "Refactor SummaryView.vue tích hợp Confirm Modal",
 			"complexityScore": 5,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Hãy chia nhỏ task 245 thành các bước: 1. Tạo computed property để xác định khi nào hiển thị thanh sub-tab. 2. Triển khai cấu trúc template cho thanh sub-tab mới. 3. Cài đặt logic active class dựa trên route name hiện tại. 4. CSS styling cho thanh điều hướng phụ.",
-			"reasoning": "Task này yêu cầu xử lý logic hiển thị có điều kiện khá tinh vi dựa trên cả Route và trạng thái Store (Topic đã chọn)."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Thay thế logic confirm inline cũ, quản lý trạng thái hiển thị modal và tính toán estimate trước khi show.",
+			"reasoning": "Thay đổi luồng tương tác chính của view tóm tắt, cần đảm bảo các trạng thái cũ được dọn dẹp và tích hợp mượt mà với modal mới."
 		},
 		{
-			"taskId": 246,
-			"taskTitle": "Update isTopicDetailRoute to include 'analysis'",
+			"taskId": 254,
+			"taskTitle": "Refactor KnowledgeView.vue - Flow Trích xuất (Extract)",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tích hợp CostConfirmModal vào luồng trích xuất, xử lý trạng thái confirmTarget để phân biệt các hành động.",
+			"reasoning": "Tương tự như SummaryView nhưng cần xử lý thêm logic phân biệt giữa các loại confirm khác nhau trong cùng một view."
+		},
+		{
+			"taskId": 255,
+			"taskTitle": "Refactor KnowledgeView.vue - Flow Khôi phục (Restore)",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Cấu hình modal cho hành động restore, đảm bảo title và dữ liệu ước tính được cập nhật chính xác cho flow này.",
+			"reasoning": "Tận dụng cấu trúc từ flow extract, độ phức tạp giảm đi do đã có khung sườn trước đó."
+		},
+		{
+			"taskId": 256,
+			"taskTitle": "Triển khai Threshold Logic mới cho việc hiển thị Modal",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Cài đặt logic kiểm tra costUsd và apiCalls để quyết định tự động chạy hay hiện modal confirm.",
+			"reasoning": "Logic điều kiện ảnh hưởng trực tiếp đến luồng người dùng, cần đảm bảo tính nhất quán giữa các chế độ local và cloud model."
+		},
+		{
+			"taskId": 257,
+			"taskTitle": "Dọn dẹp mã nguồn và xóa ConfirmInline.vue",
 			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Chỉ là việc cập nhật một hằng số hoặc mảng kiểm tra tên route."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tìm kiếm và xóa tất cả các tham chiếu đến ConfirmInline.vue, sau đó xóa file vật lý và kiểm tra build.",
+			"reasoning": "Công việc dọn dẹp mã nguồn thuần túy, rủi ro thấp nhưng cần cẩn thận để không làm hỏng build."
 		},
 		{
-			"taskId": 247,
-			"taskTitle": "Verify cross-navigation across all views",
-			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Task kiểm tra thủ công các liên kết giữa các màn hình để đảm bảo cấu trúc điều hướng mới không làm đứt gãy trải nghiệm người dùng."
-		},
-		{
-			"taskId": 248,
-			"taskTitle": "Full verification: compile, test, and manual flow",
+			"taskId": 258,
+			"taskTitle": "Kiểm thử tổng thể và Hiệu chỉnh UI/UX",
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Hãy chia nhỏ task 248 thành các bước: 1. Chạy quy trình kiểm tra lỗi biên dịch và unit test tự động. 2. Thực hiện manual walkthrough toàn bộ luồng người dùng. 3. Kiểm tra các trường hợp biên (edge cases) như URL trực tiếp hoặc mất mạng.",
-			"reasoning": "Đây là bước cuối cùng để đảm bảo chất lượng sản phẩm trước khi hoàn thành đợt refactor lớn."
+			"expansionPrompt": "Thực hiện các test case E2E trên nhiều loại model (Ollama, OpenAI) và độ dài dữ liệu khác nhau để verify modal flow.",
+			"reasoning": "Đảm bảo toàn bộ hệ thống hoạt động ổn định sau refactor và các con số ước tính phản ánh đúng thực tế."
 		}
 	]
 }

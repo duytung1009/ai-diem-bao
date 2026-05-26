@@ -4650,13 +4650,477 @@
         "recommendedSubtasks": 3,
         "expansionPrompt": "Hãy chia nhỏ task 248 thành các bước: 1. Chạy quy trình kiểm tra lỗi biên dịch và unit test tự động. 2. Thực hiện manual walkthrough toàn bộ luồng người dùng. 3. Kiểm tra các trường hợp biên (edge cases) như URL trực tiếp hoặc mất mạng.",
         "updatedAt": "2026-05-25T03:07:52.966Z"
+      },
+      {
+        "id": "249",
+        "title": "Định nghĩa Interface CostEstimate",
+        "description": "Thêm interface CostEstimate vào lib/types.ts để cấu trúc hóa dữ liệu báo giá.",
+        "details": "Tạo interface CostEstimate trong lib/types.ts hoặc file lib/cost-estimate.ts mới bao gồm các trường: apiCalls (number), inputTokens (number), outputTokens (number), estimatedMs (number), costUsd (number | null), và model (string).",
+        "testStrategy": "Kiểm tra bằng cách import interface này vào một file khác và đảm bảo không có lỗi type-checking từ TypeScript compiler.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa interface CostEstimate trong lib/types.ts",
+            "description": "Thực hiện việc khai báo cấu trúc interface CostEstimate với các trường dữ liệu cần thiết trong tệp tin định nghĩa kiểu chung.",
+            "dependencies": [],
+            "details": "Mở tệp lib/types.ts và thêm interface CostEstimate bao gồm các trường: apiCalls (number), inputTokens (number), outputTokens (number), estimatedMs (number), costUsd (number | null), và model (string).",
+            "status": "pending",
+            "testStrategy": "Sử dụng trình biên dịch TypeScript (tsc) để kiểm tra lỗi cú pháp trong tệp lib/types.ts.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm tra tính tương thích và xuất interface",
+            "description": "Đảm bảo interface CostEstimate được export đúng cách và có thể sử dụng được trong toàn bộ dự án mà không gây lỗi kiểu.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện export interface vừa tạo. Thử nghiệm import interface này vào một module khác (ví dụ: một service xử lý báo giá) để xác nhận IDE và TypeScript compiler nhận diện đúng cấu trúc dữ liệu.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra khả năng import và gán dữ liệu mẫu cho interface CostEstimate trong môi trường phát triển.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo interface CostEstimate trong lib/types.ts và định nghĩa các kiểu dữ liệu cho apiCalls, tokens, cost và model.",
+        "updatedAt": "2026-05-26T04:14:10.768Z"
+      },
+      {
+        "id": "250",
+        "title": "Nâng cấp logic tính toán trong cost-estimator.ts",
+        "description": "Thêm các hàm builder để tính toán chi tiết token, thời gian và chi phí dựa trên heuristic mới.",
+        "details": "Triển khai 3 hàm: estimateAutoSummarizeCost, estimateExtractCost, và estimateSegmentSummarizeCost. Logic: inputTokens tính theo map-reduce phase; outputTokens = apiCalls * maxOutputTokens * 0.6. Thời gian: estimatedMs = (apiCalls * 8000) + (outputTokens / 1000 * 500). Sử dụng estimateCost() hiện có để tính costUsd.",
+        "testStrategy": "Viết unit test cho các hàm builder với các bộ dữ liệu đầu vào khác nhau (số trang, model local vs cloud) để kiểm tra tính chính xác của công thức heuristic.",
+        "priority": "high",
+        "dependencies": [
+          "249"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cài đặt các hàm tiện ích tính toán heuristic cốt lõi",
+            "description": "Xây dựng các công thức tính toán token và thời gian cơ bản dựa trên các tham số đầu vào như số lượng apiCalls và maxOutputTokens.",
+            "dependencies": [],
+            "details": "Triển khai logic: outputTokens = apiCalls * maxOutputTokens * 0.6; estimatedMs = (apiCalls * 8000) + (outputTokens / 1000 * 500). Các giá trị này sẽ là nền tảng cho các hàm builder phía sau.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra đơn vị cho các phép tính số học với các giá trị giả định để đảm bảo công thức heuristic được áp dụng chính xác.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai 3 hàm builder ước tính chi phí cụ thể",
+            "description": "Hoàn thiện các hàm estimateAutoSummarizeCost, estimateExtractCost và estimateSegmentSummarizeCost trong cost-estimator.ts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tích hợp logic map-reduce phase để tính inputTokens cho từng loại tác vụ. Sử dụng hàm estimateCost() hiện có để chuyển đổi kết quả token thành chi phí USD dựa trên cấu hình model.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết Unit Test kiểm thử logic tính toán chi phí",
+            "description": "Xây dựng bộ kiểm thử tự động để xác nhận tính chính xác của các hàm ước tính với các kịch bản thực tế.",
+            "dependencies": [
+              2
+            ],
+            "details": "Tạo các test case bao gồm: tóm tắt ít trang, trích xuất dữ liệu lớn, và tóm tắt theo phân đoạn với các model khác nhau (local vs cloud) để so sánh kết quả trả về với kỳ vọng.",
+            "status": "pending",
+            "testStrategy": "Sử dụng Jest để chạy các kịch bản kiểm thử, đảm bảo độ sai lệch giữa kết quả thực tế và công thức heuristic là 0%.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Triển khai các hàm estimateAutoSummarizeCost, estimateExtractCost và estimateSegmentSummarizeCost với logic heuristic.",
+        "updatedAt": "2026-05-26T04:14:10.822Z"
+      },
+      {
+        "id": "251",
+        "title": "Phát triển UI Component CostConfirmModal.vue",
+        "description": "Tạo component bottom-sheet với animation trượt từ dưới lên và backdrop mờ.",
+        "details": "Sử dụng Tailwind CSS: 'fixed bottom-0 full-width z-50'. Animation: 'transition: transform 200ms ease-out'. Thêm backdrop nhẹ (opacity 0.3). Props tuân thủ CostConfirmModalProps interface trong PRD. Component nên hỗ trợ title, các dòng thông số, warning text, và các nút action.",
+        "testStrategy": "Mount component trong Storybook hoặc view tạm, kiểm tra hiển thị trên mobile view (chiều rộng ~380px) và animation trượt lên/xuống khi toggle.",
+        "priority": "medium",
+        "dependencies": [
+          "249"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Khai báo Interface Props và cấu trúc khung cho CostConfirmModal.vue",
+            "description": "Định nghĩa interface CostConfirmModalProps và thiết lập cấu trúc template ban đầu cho component.",
+            "dependencies": [],
+            "details": "Thực hiện khai báo các Props bao gồm title, danh sách các dòng thông số chi phí, warning text và các hàm callback cho nút bấm theo đặc tả PRD. Tạo khung HTML cơ bản chứa phần backdrop và phần nội dung modal.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra tính đúng đắn của interface props trong mã nguồn và đảm bảo component nhận được dữ liệu mẫu thông qua Vue DevTools.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Hiện thực hóa Styling và Animation cho Bottom-sheet bằng Tailwind CSS",
+            "description": "Sử dụng Tailwind CSS để tạo hiệu ứng trượt từ dưới lên và làm mờ nền (backdrop) với độ mờ 0.3.",
+            "dependencies": [
+              1
+            ],
+            "details": "Áp dụng các class 'fixed bottom-0 w-full z-50' cho modal và 'opacity-30' cho backdrop. Sử dụng Vue Transition để điều khiển animation 'transform transition duration-200 ease-out' khi modal xuất hiện hoặc đóng lại.",
+            "status": "pending",
+            "testStrategy": "Thực hiện toggle component và quan sát bằng mắt thường để đảm bảo hiệu ứng trượt mượt mà, không bị giật và backdrop che phủ đúng diện tích.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Hoàn thiện UI chi tiết và kiểm thử trên môi trường Sidepanel",
+            "description": "Render chi tiết các thành phần nội dung và kiểm tra hiển thị trên kích thước màn hình hẹp.",
+            "dependencies": [
+              2
+            ],
+            "details": "Hiển thị các dòng thông số chi phí, định dạng văn bản cảnh báo và các nút hành động (Confirm/Cancel). Đảm bảo layout co giãn tốt trên chiều rộng ~380px của Chrome Extension Sidepanel mà không bị tràn viền.",
+            "status": "pending",
+            "testStrategy": "Sử dụng công cụ kiểm tra của trình duyệt (Inspect Element) giả lập chiều rộng 380px, kiểm tra các nút bấm có thể tương tác được và UI cân đối.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Xây dựng layout Modal với Tailwind, thiết lập transition animation và backdrop mờ.",
+        "updatedAt": "2026-05-26T04:14:10.842Z"
+      },
+      {
+        "id": "252",
+        "title": "Triển khai logic format dữ liệu trong Modal",
+        "description": "Hệ thống hóa cách hiển thị thời gian và chi phí trong component CostConfirmModal.",
+        "details": "Viết helper functions trong component: Format thời gian (<60s: '~X giây', 1-10 phút: '~X-Y phút', >10 phút: '~X phút'). Format tiền tệ USD hoặc hiển thị 'N/A' nếu costUsd null (model local/unknown). Hiển thị số token có dấu phẩy ngăn cách hàng nghìn.",
+        "testStrategy": "Manual test với các giá trị mock: estimatedMs = 45000, 300000, 900000. costUsd = 0.0082, 0, null.",
+        "priority": "medium",
+        "dependencies": [
+          "251"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng các hàm helper định dạng thời gian và số lượng token",
+            "description": "Viết các logic xử lý chuyển đổi thời gian sang chuỗi mô tả và định dạng số token với dấu phẩy.",
+            "dependencies": [],
+            "details": "Hàm format thời gian cần xử lý: <60s hiển thị '~X giây', 1-10 phút hiển thị khoảng '~X-Y phút', >10 phút hiển thị '~X phút'. Hàm format token dùng Intl.NumberFormat để hiển thị dấu ngăn cách hàng nghìn.",
+            "status": "pending",
+            "testStrategy": "Unit test các hàm helper với các giá trị đầu vào ms: 45000, 300000, 900000 và các số lượng token lớn.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai định dạng tiền tệ và tích hợp logic vào CostConfirmModal",
+            "description": "Hoàn thiện hàm format chi phí USD và áp dụng tất cả các helper đã viết vào phần hiển thị của component Modal.",
+            "dependencies": [
+              1
+            ],
+            "details": "Hàm format chi phí phải trả về 'N/A' nếu costUsd là null (model local) hoặc định dạng tiền tệ USD chuẩn. Sau đó, cập nhật phần template trong CostConfirmModal.vue để gọi các hàm helper này cho các trường thông tin tương ứng.",
+            "status": "pending",
+            "testStrategy": "Manual test giao diện với mock data: costUsd = 0.0082, 0, null. Kiểm tra tính đúng đắn của việc hiển thị label trên UI modal.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Viết các helper functions để format thời gian (giây/phút), tiền tệ USD và số token có dấu ngăn cách.",
+        "updatedAt": "2026-05-26T04:14:10.861Z"
+      },
+      {
+        "id": "253",
+        "title": "Refactor SummaryView.vue tích hợp Confirm Modal",
+        "description": "Thay thế logic confirm inline cũ trong SummaryView bằng CostConfirmModal.",
+        "details": "Xóa biến confirmingAutoSummarize và pattern v-if quanh nội dung chính. Sử dụng showConfirmModal (boolean) và computed property để lấy CostEstimate từ hàm estimateAutoSummarizeCost. Khi người dùng bấm 'Tóm tắt tất cả', hiện modal thay vì hiện confirm inline.",
+        "testStrategy": "Mở tab Summary, bấm 'Tóm tắt tất cả', đảm bảo modal hiện lên từ dưới đáy, layout phía trên không bị xê dịch.",
+        "priority": "high",
+        "dependencies": [
+          "250",
+          "252"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Loại bỏ logic xác nhận inline cũ trong SummaryView",
+            "description": "Xóa bỏ các biến trạng thái và các khối v-if phục vụ cho việc hiển thị xác nhận tóm tắt cũ ngay trên view chính.",
+            "dependencies": [],
+            "details": "Thực hiện xóa biến ref 'confirmingAutoSummarize', loại bỏ các directive v-if xung quanh layout chính để chuẩn bị cho việc sử dụng modal thay thế. Đảm bảo giao diện luôn hiển thị đầy đủ các phần tử chính mà không bị gián đoạn bởi trạng thái cũ.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra mã nguồn để xác nhận không còn biến confirmingAutoSummarize và giao diện SummaryView không bị ẩn nội dung khi chưa bấm nút.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp CostConfirmModal và cấu hình dữ liệu ước tính",
+            "description": "Đưa component CostConfirmModal vào view và thiết lập logic tính toán chi phí tự động dựa trên dữ liệu hiện có.",
+            "dependencies": [
+              1
+            ],
+            "details": "Khai báo biến trạng thái 'showConfirmModal' (boolean). Tạo computed property để lấy kết quả từ hàm 'estimateAutoSummarizeCost'. Truyền dữ liệu ước tính (tokens, cost) vào props tương ứng của CostConfirmModal.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra xem modal có nhận đúng các giá trị ước tính chi phí từ computed property khi dữ liệu đầu vào thay đổi hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kết nối hành động 'Tóm tắt tất cả' với Confirm Modal",
+            "description": "Chỉnh sửa handler của nút tóm tắt để hiển thị modal và xử lý luồng xác nhận/hủy từ phía người dùng.",
+            "dependencies": [
+              2
+            ],
+            "details": "Cập nhật hàm click của nút 'Tóm tắt tất cả' để gán 'showConfirmModal' thành true. Đăng ký sự kiện confirm trong modal để kích hoạt tiến trình tóm tắt thực tế và đóng modal sau khi bắt đầu hoặc khi người dùng nhấn hủy.",
+            "status": "pending",
+            "testStrategy": "Bấm nút 'Tóm tắt tất cả', xác nhận modal hiện lên từ dưới đáy. Nhấn xác nhận trong modal và kiểm tra xem tiến trình tóm tắt có được kích hoạt đúng không.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thay thế logic confirm inline cũ, quản lý trạng thái hiển thị modal và tính toán estimate trước khi show.",
+        "updatedAt": "2026-05-26T04:14:10.879Z"
+      },
+      {
+        "id": "254",
+        "title": "Refactor KnowledgeView.vue - Flow Trích xuất (Extract)",
+        "description": "Chuyển đổi confirm flow của tính năng trích xuất kiến thức sang dùng modal mới.",
+        "details": "Cập nhật KnowledgeView để dùng CostConfirmModal. Tính toán estimate bằng estimateExtractCost. Quản lý trạng thái confirmTarget để phân biệt giữa 'extract' và 'restore'.",
+        "testStrategy": "Vào KnowledgeView, bấm nút Extract, verify thông tin tokens/cost hiển thị đúng cho dữ liệu hiện tại.",
+        "priority": "high",
+        "dependencies": [
+          "250",
+          "252"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết lập trạng thái quản lý modal và confirmTarget",
+            "description": "Khai báo các biến state cần thiết để điều khiển CostConfirmModal và phân biệt giữa các hành động trích xuất/khôi phục.",
+            "dependencies": [],
+            "details": "Thêm ref 'showConfirmModal' (boolean) và 'confirmTarget' (string với giá trị 'extract' | 'restore') vào KnowledgeView.vue. Tích hợp component CostConfirmModal vào template và binding các props cần thiết.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra xem biến showConfirmModal có thay đổi đúng khi gọi hàm mở modal không, và confirmTarget có nhận đúng giá trị 'extract' hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp logic tính toán chi phí trích xuất (Estimate)",
+            "description": "Kết nối hàm estimateExtractCost để cung cấp dữ liệu ước tính cho modal khi thực hiện flow trích xuất.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tạo một computed property để tính toán dữ liệu estimate dựa trên confirmTarget. Khi confirmTarget là 'extract', gọi hàm estimateExtractCost từ composable hoặc utility để lấy thông tin tokens và cost dự kiến.",
+            "status": "pending",
+            "testStrategy": "Mở modal trích xuất và verify các con số tokens, cost hiển thị trên modal khớp với dữ liệu đầu vào hiện tại của KnowledgeView.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Refactor luồng xử lý sự kiện Extract",
+            "description": "Thay thế logic confirm cũ bằng việc kích hoạt modal và xử lý hành động trích xuất sau khi người dùng xác nhận.",
+            "dependencies": [
+              2
+            ],
+            "details": "Cập nhật hàm handleExtract để thay vì thực hiện trích xuất ngay lập tức, nó sẽ set confirmTarget = 'extract' và hiển thị modal. Viết logic trong callback onConfirm của modal để gọi hàm thực thi trích xuất kiến thức thực tế.",
+            "status": "pending",
+            "testStrategy": "Bấm nút Extract, xác nhận trên modal và đảm bảo quá trình trích xuất kiến thức bắt đầu chạy đúng như logic cũ.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tích hợp CostConfirmModal vào luồng trích xuất, xử lý trạng thái confirmTarget để phân biệt các hành động.",
+        "updatedAt": "2026-05-26T04:14:10.898Z"
+      },
+      {
+        "id": "255",
+        "title": "Refactor KnowledgeView.vue - Flow Khôi phục (Restore)",
+        "description": "Tích hợp confirm modal cho hành động Restore trong KnowledgeView.",
+        "details": "Sử dụng lại cùng một instance CostConfirmModal nhưng cập nhật title và estimate data khi confirmTarget là 'restore'. Sử dụng logic tính toán tương tự extract nhưng điều chỉnh các tham số đầu vào cho phù hợp với flow restore.",
+        "testStrategy": "Bấm nút Restore trong KnowledgeView, kiểm tra tiêu đề modal và các con số ước tính có thay đổi tương ứng không.",
+        "priority": "high",
+        "dependencies": [
+          "254"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cấu hình trạng thái và logic tính toán chi phí cho flow Restore",
+            "description": "Thiết lập các biến trạng thái để nhận diện hành động khôi phục và triển khai hàm tính toán chi phí ước tính cho dữ liệu restore.",
+            "dependencies": [],
+            "details": "Cập nhật giá trị 'restore' cho biến confirmTarget. Xây dựng logic tính toán estimate tương tự như flow extract nhưng điều chỉnh tham số đầu vào dựa trên dữ liệu kiến thức cần khôi phục.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra hàm tính toán trả về đúng số token và chi phí dự kiến cho tập dữ liệu restore cụ thể.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp hiển thị CostConfirmModal và xử lý sự kiện Khôi phục",
+            "description": "Cập nhật template KnowledgeView.vue để kích hoạt modal xác nhận khi người dùng nhấn nút Restore.",
+            "dependencies": [
+              1
+            ],
+            "details": "Gán sự kiện mở modal cho nút Restore, cập nhật title của CostConfirmModal thành 'Xác nhận khôi phục' khi confirmTarget là 'restore'. Truyền dữ liệu estimate đã tính toán vào modal và xử lý hành động xác nhận để thực hiện logic restore cuối cùng.",
+            "status": "pending",
+            "testStrategy": "Nhấn nút Restore, xác nhận modal hiển thị đúng tiêu đề và thông tin chi phí. Nhấn xác nhận trên modal để đảm bảo flow restore được kích hoạt.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Cấu hình modal cho hành động restore, đảm bảo title và dữ liệu ước tính được cập nhật chính xác cho flow này.",
+        "updatedAt": "2026-05-26T04:14:10.918Z"
+      },
+      {
+        "id": "256",
+        "title": "Triển khai Threshold Logic mới cho việc hiển thị Modal",
+        "description": "Áp dụng quy tắc bỏ qua modal nếu chi phí bằng 0 và số lượng API calls thấp.",
+        "details": "Cập nhật hàm trigger action: Nếu (costUsd === 0 VÀ apiCalls <= 3) thì thực hiện gọi LLM ngay lập tức. Ngược lại, luôn hiện modal confirm. Sử dụng ngưỡng cũ (5 calls) để tô màu cam cho dòng warning trong modal nếu vượt quá.",
+        "testStrategy": "Sử dụng model local (Ollama) với thớt ngắn (2-3 calls) -> Modal không hiện. Thử với model OpenAI -> Modal luôn hiện.",
+        "priority": "medium",
+        "dependencies": [
+          "253",
+          "255"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật hàm logic trigger để điều hướng luồng hiển thị Modal",
+            "description": "Thực hiện sửa đổi logic trong hàm kích hoạt hành động để tự động bỏ qua Modal khi chi phí thấp.",
+            "dependencies": [],
+            "details": "Thêm điều kiện kiểm tra (costUsd === 0 && apiCalls <= 3). Nếu thỏa mãn, thực hiện gọi trực tiếp đến hàm xử lý LLM. Nếu không, kích hoạt trạng thái hiển thị modal confirm như hiện tại.",
+            "status": "pending",
+            "testStrategy": "Sử dụng unit test với các bộ dữ liệu mock: {cost: 0, calls: 2} -> skip modal, {cost: 0, calls: 4} -> show modal, {cost: 0.1, calls: 2} -> show modal.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Điều chỉnh UI Modal và logic tô màu cảnh báo ngưỡng API",
+            "description": "Cập nhật giao diện Modal confirm để hiển thị cảnh báo trực quan khi vượt quá ngưỡng API calls quy định.",
+            "dependencies": [
+              1
+            ],
+            "details": "Kiểm tra biến apiCalls trong component Modal. Nếu giá trị > 5, áp dụng CSS class (ví dụ text-orange-500) cho dòng thông báo warning để cảnh báo người dùng về số lượng request lớn.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công trên trình duyệt bằng cách giả lập kết quả trả về từ pipeline với số lượng calls là 6 để xác nhận dòng chữ đã chuyển sang màu cam.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Cài đặt logic kiểm tra costUsd và apiCalls để quyết định tự động chạy hay hiện modal confirm.",
+        "updatedAt": "2026-05-26T04:14:10.937Z"
+      },
+      {
+        "id": "257",
+        "title": "Dọn dẹp mã nguồn và xóa ConfirmInline.vue",
+        "description": "Xóa bỏ component cũ và các tham chiếu không còn sử dụng.",
+        "details": "Chạy grep -rn 'ConfirmInline' để đảm bảo không còn file nào sử dụng component này. Xóa file entrypoints/sidepanel/components/ConfirmInline.vue. Xóa các biến CSS hoặc helper cũ liên quan đến inline confirm.",
+        "testStrategy": "Project build thành công và không có lỗi 'Component not found' trong console.",
+        "priority": "low",
+        "dependencies": [
+          "253",
+          "255"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tìm kiếm và xóa bỏ các tham chiếu đến ConfirmInline.vue",
+            "description": "Thực hiện tìm kiếm trên toàn bộ mã nguồn để phát hiện và gỡ bỏ các khai báo, import và sử dụng component ConfirmInline.",
+            "dependencies": [],
+            "details": "Sử dụng lệnh grep -rn 'ConfirmInline' hoặc tính năng tìm kiếm của IDE để xác định vị trí các tệp tin đang sử dụng component này. Xóa bỏ các dòng import, đăng ký component và các thẻ template liên quan. Đồng thời, rà soát và xóa các biến CSS hoặc hàm helper chỉ dành riêng cho ConfirmInline.",
+            "status": "pending",
+            "testStrategy": "Sử dụng lệnh grep một lần nữa sau khi xóa để đảm bảo không còn kết quả nào chứa từ khóa 'ConfirmInline' trong mã nguồn.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xóa file vật lý và kiểm tra tính toàn vẹn của Build",
+            "description": "Xóa bỏ tệp tin component khỏi hệ thống tệp và thực hiện quá trình build để xác nhận không có lỗi liên kết.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện xóa tệp tin tại đường dẫn entrypoints/sidepanel/components/ConfirmInline.vue. Sau khi xóa, chạy lệnh build (ví dụ: npm run build) để đảm bảo không phát sinh lỗi 'Module not found'. Kiểm tra giao diện Sidepanel để chắc chắn không có lỗi runtime trong console.",
+            "status": "pending",
+            "testStrategy": "Xác nhận kết quả build thành công 100% và kiểm tra tab Console của trình duyệt không xuất hiện lỗi liên quan đến component đã xóa.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tìm kiếm và xóa tất cả các tham chiếu đến ConfirmInline.vue, sau đó xóa file vật lý và kiểm tra build.",
+        "updatedAt": "2026-05-26T04:14:10.957Z"
+      },
+      {
+        "id": "258",
+        "title": "Kiểm thử tổng thể và Hiệu chỉnh UI/UX",
+        "description": "Kiểm tra cuối cùng trên nhiều kịch bản model và độ dài dữ liệu khác nhau.",
+        "details": "Kiểm tra hiển thị với model free (Gemma) hiển thị $0.0000. Kiểm tra thớt cực dài (>50 trang) để xem hiển thị thời gian (>10 phút). Đảm bảo các nút Tiếp tục/Hủy hoạt động chính xác cho tất cả các luồng.",
+        "testStrategy": "Thực hiện end-to-end test từ lúc mở sidepanel, trigger summary, extract, restore trên cả model Cloud và Local.",
+        "priority": "medium",
+        "dependencies": [
+          "256",
+          "257"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Kiểm thử E2E trên các dòng Model Cloud và Local",
+            "description": "Thực hiện các kịch bản kiểm thử đầu cuối từ khi mở sidepanel đến khi kết thúc quy trình cho cả Ollama và OpenAI.",
+            "dependencies": [],
+            "details": "Kiểm tra hiển thị chi phí $0.0000 cho model miễn phí như Gemma. Xác minh logic tính toán giá tiền và thời gian ước tính hiển thị chính xác trên UI cho từng loại model.",
+            "status": "pending",
+            "testStrategy": "Chạy thủ công các luồng summarize và extract trên các model khác nhau, quan sát logs console và giao diện người dùng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm thử hiệu năng và giao diện với dữ liệu lớn",
+            "description": "Giả lập hoặc sử dụng các luồng dữ liệu cực dài (trên 50 trang) để kiểm tra khả năng hiển thị thời gian và độ ổn định.",
+            "dependencies": [
+              1
+            ],
+            "details": "Kiểm tra xem UI có bị treo khi xử lý lượng token lớn hay không. Đảm bảo nhãn thời gian hiển thị đúng định dạng (ví dụ >10 phút) và không bị lỗi layout khi dữ liệu quá dài.",
+            "status": "pending",
+            "testStrategy": "Sử dụng bộ dữ liệu mẫu có kích thước lớn, theo dõi mức chiếm dụng bộ nhớ của trình duyệt và phản hồi của UI.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xác minh logic điều hướng các nút Tiếp tục và Hủy",
+            "description": "Kiểm tra hoạt động của các nút điều hướng trong modal flow để đảm bảo tính nhất quán của trạng thái hệ thống.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Đảm bảo khi nhấn Hủy, pipeline dừng lại ngay lập tức và giải phóng tài nguyên. Khi nhấn Tiếp tục, luồng xử lý phải được khôi phục đúng bước đang thực hiện mà không mất dữ liệu.",
+            "status": "pending",
+            "testStrategy": "Thực hiện các thao tác ngắt quãng (interruption) tại từng bước của pipeline để kiểm tra tính nhất quán của state trong Vuex/Pinia.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thực hiện các test case E2E trên nhiều loại model (Ollama, OpenAI) và độ dài dữ liệu khác nhau để verify modal flow.",
+        "updatedAt": "2026-05-26T04:14:10.981Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-25T03:07:52.967Z",
-      "taskCount": 94,
-      "completedCount": 89,
+      "lastModified": "2026-05-26T04:14:10.981Z",
+      "taskCount": 104,
+      "completedCount": 99,
       "tags": [
         "master"
       ]

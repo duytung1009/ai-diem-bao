@@ -1,9 +1,9 @@
 import { ref, computed, watch } from 'vue';
-import type { KnowledgeEntry, KnowledgeChunk, LLMConfig, CachedTopic, ScrapedPost, NotebookEntry } from '@/lib/types';
+import type { KnowledgeEntry, KnowledgeChunk, LLMConfig, CachedTopic, ScrapedPost, NotebookEntry, CostEstimate } from '@/lib/types';
 import { sendMessage, sendMessageQuiet } from '@/lib/messaging';
-import { estimateTokens, calculateSegmentBudget, getContextLimit } from '@/lib/token-estimator';
+import { estimateTokens, calculateSegmentBudget, getContextLimit, getModelMaxOutput } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
-import { estimateExtractCalls } from '@/lib/llm/cost-estimator';
+import { estimateExtractCalls, estimateExtractCost } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, KNOWLEDGE_MAX_CHUNK_BUDGET } from '@/lib/constants';
 import { buildKnowledgePrompt } from '@/lib/prompts';
 import { buildKnowledgePipeline } from '@/lib/pipeline-builder';
@@ -32,8 +32,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   const totalChunks = ref(0);
   const currentPhase = ref<'idle' | 'extracting' | 'reducing'>('idle');
   const currentConfig = ref<LLMConfig | null>(null);
-  const confirmingExtract = ref(false);
-  const confirmingRestore = ref(false);
+  const confirmTarget = ref<'extract' | 'restore' | null>(null);
   const showClearDataAction = ref(false);
 
   // --- Non-reactive ---
@@ -71,12 +70,37 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     return estimateExtractCalls(chunks.length);
   });
 
+  const estimatedExtractCost = computed<CostEstimate | null>(() => {
+    if (!allPosts.value.length || !currentConfig.value || isLoading.value) return null;
+    const model = currentConfig.value.model ?? 'gpt-4o-mini';
+    const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow, knowledgeMaxTokens.value, currentConfig.value.thinkingEnabled, currentConfig.value.thinkingBudget);
+    if (!chunks.length) return null;
+    const totalTokens = allPosts.value.reduce((sum, p) => sum + estimateTokens(p.content), 0);
+    const avgChunkTokens = Math.round(totalTokens / chunks.length);
+    const maxOutput = knowledgeMaxTokens.value ?? getModelMaxOutput(model);
+    return estimateExtractCost(chunks.length, avgChunkTokens, model, maxOutput);
+  });
+
   const showExtractCostWarning = computed(() => estimatedExtractApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
 
   const estimatedRestoreApiCalls = computed(() => {
     if (!canRestore.value) return 0;
     const len = cachedTopic.value?.knowledgeChunks?.length ?? 0;
     return len <= 1 ? 0 : len;
+  });
+
+  const estimatedRestoreCost = computed<CostEstimate | null>(() => {
+    if (!canRestore.value || !currentConfig.value) return null;
+    const len = cachedTopic.value?.knowledgeChunks?.length ?? 0;
+    if (!len) return null;
+    const model = currentConfig.value.model ?? 'gpt-4o-mini';
+    const apiCalls = len <= 1 ? 0 : len;
+    if (apiCalls === 0) return null;
+    const maxOutput = knowledgeMaxTokens.value ?? getModelMaxOutput(model);
+    // avg chunk tokens: approximate from existing chunks or use default
+    const chunks = cachedTopic.value?.knowledgeChunks ?? [];
+    const avgTokens = chunks.length > 0 ? Math.round(chunks.reduce((s, c) => s + c.entries.length * 200, 0) / chunks.length) : 2000;
+    return estimateExtractCost(len, avgTokens, model, maxOutput);
   });
 
   const showRestoreCostWarning = computed(() => estimatedRestoreApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
@@ -328,7 +352,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   // --- Public orchestration functions ---
 
   async function handleExtract() {
-    confirmingExtract.value = false;
+    confirmTarget.value = null;
     if (!allPosts.value.length) return;
     if (isLoading.value) return;
 
@@ -481,7 +505,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   }
 
   async function handleRestore() {
-    confirmingRestore.value = false;
+    confirmTarget.value = null;
     showClearDataAction.value = false;
     const topicUrl = cachedTopic.value?.url;
     if (!topicUrl) return;
@@ -503,7 +527,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     }
 
     try {
-      const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
+      // Restore ignores exclusions — user explicitly wants everything back
+      const excludedNums = new Set<number>();
       // Build pipeline: mark existing extract steps done, reduce running
       pl.pipeline.value = buildKnowledgePipeline(chunks.length);
       for (let j = 0; j < chunks.length; j++) {
@@ -511,6 +536,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       }
       pl.markRunning('reduce');
       await runReducePhase(chunks, excludedNums, guardId, topicUrl);
+      store.updateSelectedTopic({ excludedKnowledgePostNumbers: [] });
+      await sendMessage('SAVE_CACHED_TOPIC', { url: topicUrl, excludedKnowledgePostNumbers: [] }).catch(() => {});
       pl.markDone('reduce');
     } catch (err) {
       if (knowledgeGuard.isStale(guardId)) return;
@@ -604,16 +631,17 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     totalChunks,
     currentPhase,
     currentConfig,
-    confirmingExtract,
-    confirmingRestore,
+    confirmTarget,
     showClearDataAction,
     knowledgeGuard,
     cachedTopic,
     activePipeline,
     canRestore,
     estimatedExtractApiCalls,
+    estimatedExtractCost,
     showExtractCostWarning,
     estimatedRestoreApiCalls,
+    estimatedRestoreCost,
     showRestoreCostWarning,
     allPosts,
     extractKnowledgeChunkTask,
@@ -634,18 +662,20 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     handleDelete,
     handleClearTracking,
     onExtractClick() {
-      if (showExtractCostWarning.value) {
-        confirmingExtract.value = true;
-      } else {
+      const est = estimatedExtractCost.value;
+      if (!est || (est.costUsd === 0 && est.apiCalls <= 3)) {
         handleExtract();
+        return;
       }
+      confirmTarget.value = 'extract';
     },
     onRestoreClick() {
-      if (showRestoreCostWarning.value) {
-        confirmingRestore.value = true;
-      } else {
+      const est = estimatedRestoreCost.value;
+      if (!est || (est.costUsd === 0 && est.apiCalls <= 3)) {
         handleRestore();
+        return;
       }
+      confirmTarget.value = 'restore';
     },
   };
 }

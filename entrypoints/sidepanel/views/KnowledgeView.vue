@@ -10,6 +10,7 @@ import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import BackButton from '../components/BackButton.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
+import CostConfirmModal from '../components/CostConfirmModal.vue';
 
 const store = useTopicStore();
 const knowledge = useKnowledge(store);
@@ -18,10 +19,10 @@ const { topicInfo } = useSummarize(store);
 const {
   entries, loadedTopicUrl, isLoading, error, llmTaskId,
   currentChunkIndex, totalChunks, currentPhase, currentConfig,
-  confirmingExtract, confirmingRestore, showClearDataAction,
+  confirmTarget, showClearDataAction,
   cachedTopic, activePipeline, canRestore,
-  estimatedExtractApiCalls, showExtractCostWarning,
-  estimatedRestoreApiCalls, showRestoreCostWarning,
+  estimatedExtractCost, showExtractCostWarning,
+  estimatedRestoreCost, showRestoreCostWarning,
   allPosts,
   handleExtract, handleRestore, handleCancel,
   handleClearKnowledgeData, toggleSave, handleDelete, handleClearTracking,
@@ -290,7 +291,7 @@ onActivated(async () => {
       <!-- Restore button when entries empty but knowledgeChunks exist -->
       <template v-if="allPosts.length && !entries.length && !isLoading">
         <template v-if="canRestore">
-          <button class="btn-llm" @click="handleRestore">
+          <button class="btn-llm" @click="onRestoreClick">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
             </svg>
@@ -300,7 +301,7 @@ onActivated(async () => {
         <!-- Extract button — only when no chunks to restore -->
         <div v-else class="flex flex-col items-center space-y-2">
           <p class="text-sm text-(--color-text-secondary)">Chưa trích xuất kiến thức cho thớt này.</p>
-          <button v-if="!confirmingExtract" class="btn-llm" @click="handleExtract">
+          <button class="btn-llm" @click="onExtractClick">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
             </svg>
@@ -388,11 +389,11 @@ onActivated(async () => {
               </svg>
               Sổ tay
             </button>
-            <button v-if="allPosts.length" class="btn text-xs flex items-center gap-1" @click="handleExtract">
+            <button v-if="allPosts.length && newPostsCount > 0" class="btn text-xs flex items-center gap-1" @click="handleExtract">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              Trích xuất bài mới<span v-if="newPostsCount > 0"> ({{ newPostsCount }})</span>
+              Trích xuất bài mới<span> ({{ newPostsCount }})</span>
             </button>
           </div>
           <!-- Clear tracking button -->
@@ -492,4 +493,24 @@ onActivated(async () => {
     </template>
     </template>
   </div>
+
+  <!-- Cost confirm modal for extract / restore -->
+  <CostConfirmModal
+    v-if="confirmTarget === 'extract' && estimatedExtractCost"
+    title="Trích xuất Kiến thức"
+    :estimate="estimatedExtractCost"
+    confirm-text="Tiếp tục"
+    :warning="showExtractCostWarning ? 'Thớt dài, số lần gọi API sẽ cao hơn bình thường.' : undefined"
+    @confirm="confirmTarget = null; handleExtract()"
+    @cancel="confirmTarget = null"
+  />
+  <CostConfirmModal
+    v-else-if="confirmTarget === 'restore' && estimatedRestoreCost"
+    title="Khôi phục danh sách Kiến thức"
+    :estimate="estimatedRestoreCost"
+    confirm-text="Tiếp tục"
+    :warning="showRestoreCostWarning ? 'Số chunks lớn, quá trình khôi phục sẽ mất nhiều thời gian.' : undefined"
+    @confirm="confirmTarget = null; handleRestore()"
+    @cancel="confirmTarget = null"
+  />
 </template>

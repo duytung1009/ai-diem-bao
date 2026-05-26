@@ -23,6 +23,15 @@ export interface SummaryResult {
   research?: string;
 }
 
+export interface CostEstimate {
+  apiCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedMs: number;
+  costUsd: number | null; // null if model has no pricing (local/unknown)
+  model: string;
+}
+
 export interface QuoteItem {
   author: string;
   postNumber: number;

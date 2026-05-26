@@ -3,7 +3,7 @@ import { sendMessage } from '@/lib/messaging';
 import { estimateTokens } from '@/lib/token-estimator';
 import { STORAGE_KEYS, FALLBACK_MS_PER_TOKEN, LLM_TASK_CLEANUP_DELAY_MS } from '@/lib/constants';
 import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON, PipelineDefinition } from '@/lib/types';
-import { markStepDone, markStepError } from '@/lib/pipeline-builder';
+import { markStepDone, markStepError, markFirstStepRunning } from '@/lib/pipeline-builder';
 
 interface LLMTaskState {
   taskId: string;
@@ -38,6 +38,8 @@ function handleProgress(payload: LLMProgressMessage) {
   // Initialize pipeline from first progress message
   if (payload.pipeline) {
     task.pipeline = payload.pipeline;
+    // Mark first step running so StepTimeline shows active state immediately
+    markFirstStepRunning(task.pipeline);
   }
   // Update ETA on the currently running pipeline step (do NOT advance steps —
   // LLM progress step numbers represent map-reduce chunks within a single task,

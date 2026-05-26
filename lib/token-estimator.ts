@@ -80,6 +80,10 @@ export function modelSupportsThinking(model: string): boolean {
   return (PRICING_TABLE[model]?.thinkingBudget ?? 0) > 0;
 }
 
+export function isModelInPricingTable(model: string): boolean {
+  return model in PRICING_TABLE;
+}
+
 /**
  * Compute effective thinking overhead for context window calculations.
  * When thinking is enabled, thinking tokens consume both output budget and context window.

@@ -14,7 +14,7 @@ import { useTopicStore } from './useTopicStore';
 import { useOptimisticUpdate } from './useOptimisticUpdate';
 
 export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
-  const { extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask, getTaskState } = useLLM();
+  const { extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask, getTaskState, checkLLMConfigured } = useLLM();
   const pl = usePipeline();
   const { optimisticUpdate } = useOptimisticUpdate(store);
 
@@ -366,6 +366,9 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     if (!allPosts.value.length) return;
     if (isLoading.value) return;
 
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
+
     const guardId = knowledgeGuard.begin();
     error.value = '';
     isLoading.value = true;
@@ -398,7 +401,18 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
       if (postsToProcess.length === 0) {
         const existingChunks = resume.existingChunks;
-        if (existingChunks.length > 0) {
+        const allChunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
+        // Detect if failed chunks were found but their posts can't be located in allPosts
+        // (e.g. posts were re-scraped, allPosts shrank, or cache lost post data).
+        const hasMissingFailedPosts =
+          allChunks.some(c => c.failed) && existingChunks.length < allChunks.length;
+
+        if (hasMissingFailedPosts) {
+          // Failed chunks detected but no posts available to re-extract them
+          error.value =
+            'Không tìm thấy bài viết cho các đoạn bị lỗi. Vui lòng scrape lại bài viết từ diễn đàn.';
+        } else if (existingChunks.length > 0 && entries.value.length === 0) {
+          // All posts already extracted but reduce hasn't produced entries yet — run reduce
           currentPhase.value = 'reducing';
           pl.pipeline.value = buildKnowledgePipeline(existingChunks.length);
           for (let j = 0; j < existingChunks.length; j++) {
@@ -407,7 +421,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
           pl.markRunning('reduce');
           await runReducePhase(existingChunks, excludedNums, guardId, topicUrl);
           pl.markDone('reduce');
-        } else if (entries.value.length > 0) {
+        } else {
           error.value = 'Không có bài viết mới để trích xuất kiến thức.';
         }
         return;

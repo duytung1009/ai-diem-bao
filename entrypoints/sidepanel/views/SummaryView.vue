@@ -231,7 +231,7 @@ function handleConflictGoBack() {
         <ErrorDisplay v-if="error" :message="error" action="none" />
 
         <!-- Page scraping warnings -->
-        <div v-if="scrapingWarnings.length > 0" class="alert alert-warning text-xs space-y-1">
+        <div v-if="scrapingWarnings.length > 0" class="text-xs alert alert-warning space-y-1">
           <p class="font-medium">Một số trang bị bỏ qua:</p>
           <ul class="list-disc list-inside space-y-0.5">
             <li v-for="(w, i) in scrapingWarnings" :key="i">{{ w }}</li>
@@ -242,7 +242,7 @@ function handleConflictGoBack() {
         </div>
 
         <!-- Info messages (e.g. articles loaded) -->
-        <div v-if="scrapingInfo.length > 0" class="alert alert-info text-xs">
+        <div v-if="scrapingInfo.length > 0" class="text-xs alert alert-info text-xs">
           <ul class="list-disc list-inside space-y-0.5">
             <li v-for="(m, i) in scrapingInfo" :key="i">{{ m }}</li>
           </ul>
@@ -251,7 +251,7 @@ function handleConflictGoBack() {
         <!-- SEGMENT MODE (always) -->
         <template v-if="isSegmentMode && !isProcessing">
           <!-- Info banner: chỉ hiển thị khi > 1 segment -->
-          <div v-if="segments.length > 1" class="alert alert-info text-xs">
+          <div v-if="segments.length > 1" class="text-xs alert alert-info text-xs">
             <p class="font-medium">Thớt dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
             <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần theo độ dài nội dung. Tóm tắt từng phần
               rồi tạo tổng quan.</p>

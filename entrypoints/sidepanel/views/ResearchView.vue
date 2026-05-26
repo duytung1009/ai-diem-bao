@@ -34,7 +34,7 @@ watch(isLoading, (val) => {
 const error = ref<string | null>(null);
 const history = ref<ResearchEntry[]>([]);
 const llmTaskId = ref<string | null>(null);
-const { researchTopic: runResearch, getTaskState, cancelTask } = useLLM();
+const { researchTopic: runResearch, getTaskState, cancelTask, checkLLMConfigured } = useLLM();
 
 const activePipeline = computed<PipelineDefinition | null>(() => {
   if (!llmTaskId.value) return null;
@@ -87,6 +87,9 @@ onActivated(async () => {
 async function handleResearch() {
   const q = question.value.trim();
   if (!q || !allPosts.value.length) return;
+
+  const configCheck = await checkLLMConfigured();
+  if (!configCheck.ok) { error.value = configCheck.error!; return; }
 
   isLoading.value = true;
   error.value = null;
@@ -176,7 +179,7 @@ function formatDate(ts: number): string {
       <template v-if="!pendingConflict">
 
       <!-- No cache warning -->
-      <div v-if="!allPosts.length" class="alert alert-warning">
+      <div v-if="!allPosts.length" class="text-xs alert alert-warning">
         Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 

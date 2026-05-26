@@ -89,7 +89,7 @@ function formatETA(ms: number): string {
             </span>
 
             <span
-              v-if="step.status === 'running' && step.etaMs != null && !Number.isNaN(step.etaMs)"
+              v-if="step.status === 'running' && step.etaMs != null && !Number.isNaN(step.etaMs) && step.etaMs >= 0"
               class="text-xs text-(--color-accent) bg-(--color-accent-soft) px-1.5 py-0.5 rounded"
             >
               {{ formatETA(step.etaMs) }}

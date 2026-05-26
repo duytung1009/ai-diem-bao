@@ -6,6 +6,19 @@
 };
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ─── Extension sidebar/panel reset ─────────────── */
+/* Firefox sidebar UA styles có thể inject margin vào body;     */
+/* override explicit để đảm bảo layout không bị lệch.           */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  /* Improve font rendering on Firefox (Gecko) */
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 /* ─── Design Tokens ─────────────────────────────── */
 :root {
   /* Surface colors */

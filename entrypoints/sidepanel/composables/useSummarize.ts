@@ -21,7 +21,7 @@ import { useTopicScraper } from './useTopicScraper';
 import { usePipeline } from './usePipeline';
 
 export function useSummarize(store: ReturnType<typeof useTopicStore>) {
-  const { summarize, summarizeSegmentsTask, threadAnalysisTask, cancelTask, getTaskState } = useLLM();
+  const { summarize, summarizeSegmentsTask, threadAnalysisTask, cancelTask, getTaskState, checkLLMConfigured } = useLLM();
   const scraper = useTopicScraper();
   const pl = usePipeline();
 
@@ -538,6 +538,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (!seg || !topicInfo.value) return;
     const topic = store.selectedTopic.value!;
 
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
+
     error.value = '';
     scraper.scrapingWarnings.value = [];
     scraper.scrapingInfo.value = [];
@@ -649,6 +652,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
     const completedSegments = segmentSummaries.value.filter(isCompletedSegment);
     if (completedSegments.length === 0) return;
+
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
 
     pl.markRunning('overall');
 
@@ -1037,6 +1043,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   async function handleSegmentUpdate() {
     if (!topicInfo.value || !store.selectedTopic.value) return;
+
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
 
     const isDynamic = currentConfig.value?.dynamicSegments ?? true;
     const currentSegments = segmentSummaries.value;
@@ -1450,6 +1459,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const topic = store.selectedTopic.value;
     if (!topic || !topicInfo.value) return;
 
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
+
     const totalPages = Math.max(
       topicInfo.value.pageCount,
       store.activeTabDetect.value?.pageCount ?? 0,
@@ -1461,6 +1473,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   async function handleGenerateAnalysis(): Promise<void> {
     const topic = store.selectedTopic.value;
     if (!topic || !summaryJson.value || isAnalyzing.value) return;
+
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
 
     const thisAnalyzeId = analyzeGuard.begin();
     isAnalyzing.value = true;

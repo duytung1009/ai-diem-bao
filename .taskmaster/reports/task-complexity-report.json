@@ -1,9 +1,9 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-26T11:44:34.160Z",
-		"tasksAnalyzed": 11,
-		"totalTasks": 120,
-		"analysisCount": 11,
+		"generatedAt": "2026-05-26T13:53:21.560Z",
+		"tasksAnalyzed": 9,
+		"totalTasks": 124,
+		"analysisCount": 9,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
 		"usedResearch": true
@@ -15,7 +15,7 @@
 			"complexityScore": 5,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Đây là task tái cấu trúc logic lưu trữ hiện có thành một module thuần. Độ phức tạp ở mức trung bình vì yêu cầu sự chính xác cao trong việc tính toán metadata và tích hợp cơ chế stale-guard để tránh race condition, nhưng các subtask hiện tại đã bao phủ đủ các khía cạnh này."
+			"reasoning": "Việc hợp nhất logic từ nhiều nguồn vào một module pure duy nhất đòi hỏi sự chính xác cao để không làm hỏng dữ liệu hiện có, đặc biệt là phần xử lý stale-guard để ngăn chặn race conditions khi lưu trữ."
 		},
 		{
 			"taskId": 170,
@@ -23,7 +23,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Task này yêu cầu tách biệt logic xử lý ngoại lệ trang (threadDeleted/Locked) và cơ chế deduplication phức tạp. Việc quản lý trạng thái tiến trình (progress) thông qua callback trong một môi trường bất đồng bộ làm tăng độ phức tạp so với các module pure."
+			"reasoning": "Quản lý vòng lặp scraping bất đồng bộ với nhiều trạng thái ngoại lệ như thread bị xóa hoặc khóa, cùng với việc duy trì logic deduplication ở trang cuối, tạo ra độ phức tạp đáng kể trong quản lý trạng thái."
 		},
 		{
 			"taskId": 171,
@@ -31,7 +31,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Thách thức lớn nhất ở đây là hàm reconcile, đòi hỏi phải đồng bộ hóa mảng trạng thái UI (StepTimeline) một cách mượt mà khi dữ liệu thực tế thay đổi mà không làm gián đoạn trải nghiệm người dùng."
+			"reasoning": "Logic reconcile (đồng bộ hóa) giữa số lượng segment dự kiến và thực tế yêu cầu tính toán kỹ lưỡng để cập nhật UI Timeline mà không làm gián đoạn hoặc mất trạng thái của các bước đã hoàn thành."
 		},
 		{
 			"taskId": 172,
@@ -39,7 +39,7 @@
 			"complexityScore": 7,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Đây là lõi của logic tóm tắt. Nó đòi hỏi sự phối hợp chặt chẽ giữa gọi LLM, kiểm tra token chống ghi đè (stale-guard) và logic gộp (reduce) kết quả. Sai sót ở đây sẽ ảnh hưởng trực tiếp đến tính đúng đắn của dữ liệu đầu ra."
+			"reasoning": "Đây là các đơn vị thực thi cốt lõi tương tác trực tiếp với LLM API. Việc đảm bảo stale-guard ở cả hai cấp độ (từng segment và tổng thể) là yếu tố sống còn để bảo vệ tính toàn vẹn của kết quả tóm tắt."
 		},
 		{
 			"taskId": 173,
@@ -47,55 +47,39 @@
 			"complexityScore": 8,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Đây là task có độ phức tạp cao nhất do đóng vai trò điều phối toàn bộ quy trình. Nó phải xử lý nhiều luồng rẽ nhánh (resume, new, update), quản lý vòng lặp lỗi và đảm bảo pipeline UI luôn khớp với tiến độ thực thi."
+			"reasoning": "Là bộ điều phối trung tâm cho toàn bộ quy trình, driver này phải xử lý nhiều chế độ chạy khác nhau (mới, chạy tiếp, cập nhật) và quản lý lỗi tập trung từ tất cả các module phụ thuộc."
 		},
 		{
-			"taskId": 269,
-			"taskTitle": "Types: LLMError.partialText + KnowledgeChunk.failed",
+			"taskId": 275,
+			"taskTitle": "wxt.config.ts: chuyển manifest sang function, conditional permissions theo browser",
 			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Chỉ đơn thuần là mở rộng interface và kiểu dữ liệu TypeScript. Không thay đổi logic thực thi nên rủi ro thấp và thực hiện nhanh chóng."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Chuyển đổi manifest sang dạng function trong wxt.config.ts và cấu hình quyền truy cập (permissions) riêng biệt cho Chrome và Firefox.",
+			"reasoning": "Thay đổi cấu hình framework WXT để hỗ trợ đa trình duyệt, không yêu cầu logic nghiệp vụ phức tạp nhưng cần kiểm tra kỹ cấu trúc manifest đầu ra của từng nền tảng."
 		},
 		{
-			"taskId": 270,
-			"taskTitle": "Adapters: truyền partial text qua INCOMPLETE_RESPONSE",
+			"taskId": 276,
+			"taskTitle": "background/index.ts: guard Chrome-only APIs (sidePanel + keepalive)",
+			"complexityScore": 2,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Sử dụng biến môi trường BROWSER để bao bọc các lời gọi API sidePanel và logic keep-alive, đảm bảo service worker không bị crash trên Firefox.",
+			"reasoning": "Nhiệm vụ tập trung vào việc đảm bảo tính an toàn cho mã nguồn khi chạy trên các môi trường trình duyệt khác nhau bằng cách sử dụng các cờ kiểm tra điều kiện."
+		},
+		{
+			"taskId": 277,
+			"taskTitle": "Tạo lib/create-app.ts + entrypoints/sidebar/ cho Firefox sidebar",
 			"complexityScore": 3,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "",
-			"reasoning": "Cần sửa đổi nhiều file adapter (OpenAI, Claude, Gemini). Mặc dù thay đổi nhỏ nhưng yêu cầu sự nhất quán trong cách bắt lỗi và trích xuất dữ liệu thô từ các phản hồi bị cắt cụt của model."
+			"reasoning": "Yêu cầu tái cấu trúc cách khởi tạo ứng dụng Vue để dùng chung cho cả Sidepanel (Chrome) và Sidebar (Firefox), giúp duy trì tính nhất quán và giảm lặp mã nguồn giữa các entrypoint."
 		},
 		{
-			"taskId": 271,
-			"taskTitle": "parseKnowledgeEntries: thêm partial array rescue",
-			"complexityScore": 3,
+			"taskId": 278,
+			"taskTitle": "Smoke test Firefox build: load unpacked, verify sidebar + core features",
+			"complexityScore": 2,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Triển khai hàm tryRescuePartialArray để xử lý chuỗi JSON bị cắt cụt: tìm dấu mở ngoặc đầu tiên, quét ngược từ cuối để tìm object hợp lệ gần nhất và đóng mảng.",
-			"reasoning": "Đòi hỏi logic xử lý chuỗi và JSON cẩn thận để 'cứu' được nhiều dữ liệu nhất có thể từ một chuỗi bị hỏng cấu trúc do giới hạn tokens."
-		},
-		{
-			"taskId": 272,
-			"taskTitle": "Background: salvage partial entries thay vì throw INCOMPLETE_RESPONSE",
-			"complexityScore": 4,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Cập nhật extract_knowledge_chunk handler: bọc logic gọi LLM trong try/catch, nhận diện INCOMPLETE_RESPONSE và chuyển đổi thành kết quả thành công kèm cờ truncated.",
-			"reasoning": "Thay đổi cách thức giao tiếp lỗi giữa Background và UI. Cần đảm bảo message payload mới (truncated: boolean) không làm hỏng các consumer hiện tại."
-		},
-		{
-			"taskId": 273,
-			"taskTitle": "useKnowledge: continue-on-truncation + resume skip failed chunks",
-			"complexityScore": 6,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Độ phức tạp nằm ở việc thay đổi luồng điều khiển: không được dừng vòng lặp khi có lỗi cắt cụt, đồng thời phải cập nhật lại logic resume để biết chính xác điểm cần bắt đầu lại (chunk bị fail)."
-		},
-		{
-			"taskId": 274,
-			"taskTitle": "UI: warning banner + nút Trích xuất lại khi có failed chunks",
-			"complexityScore": 3,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Thiết kế component WarningBanner trong KnowledgeView.vue hiển thị số lượng chunk bị lỗi và tích hợp nút trigger lại hàm extractKnowledge.",
-			"reasoning": "Liên quan đến việc đồng bộ trạng thái giữa composable và UI. Cần xử lý hiển thị banner sao cho không gây phiền nhiễu nhưng vẫn đủ rõ ràng để người dùng biết dữ liệu bị thiếu."
+			"expansionPrompt": "Thực hiện quy trình kiểm thử thủ công toàn diện trên Firefox (sidebar, detection, summary, settings) và kiểm tra hồi quy trên Chrome để đảm bảo tính ổn định.",
+			"reasoning": "Nhiệm vụ kiểm thử thủ công quan trọng để xác nhận các thay đổi về cấu hình và kiến trúc hoạt động đúng trên thực tế mà không gây ra lỗi cho phiên bản hiện tại trên Chrome."
 		}
 	]
 }

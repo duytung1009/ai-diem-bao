@@ -199,7 +199,7 @@ onActivated(async () => {
     </div>
 
     <!-- Error -->
-    <div v-if="error" class="alert alert-error text-xs">{{ error }}</div>
+    <div v-if="error" class="text-xs alert alert-error text-xs">{{ error }}</div>
 
     <!-- Empty state -->
     <div v-if="!isLoading && entries.length === 0" class="text-center py-12 space-y-3">

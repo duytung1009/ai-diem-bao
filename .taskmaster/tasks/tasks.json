@@ -5868,13 +5868,188 @@
         "expansionPrompt": "Thiết kế component WarningBanner trong KnowledgeView.vue hiển thị số lượng chunk bị lỗi và tích hợp nút trigger lại hàm extractKnowledge.",
         "updatedAt": "2026-05-26T11:57:33.428Z",
         "notes": "Review: review/20260526_1253_tier3_feature-seeder-detection-and-knowledge-resume.md — approve"
+      },
+      {
+        "id": "275",
+        "title": "wxt.config.ts: chuyển manifest sang function, conditional permissions theo browser",
+        "description": "Convert manifest object → function `(env) => ({})` để branch permissions theo browser. Chrome giữ `sidePanel`, Firefox thêm `tabs`, bỏ `sidePanel`, thêm `browser_specific_settings.gecko`.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [],
+        "details": "Sửa wxt.config.ts:\n- `manifest: (env) => ({ ... })`\n- Chrome: permissions ['storage','sidePanel','activeTab']\n- Firefox: permissions ['storage','activeTab','tabs'], bỏ sidePanel, thêm browser_specific_settings: { gecko: { id: 'loithothо@extension', strict_min_version: '121.0' } }\n- Verify `npm run compile` pass sau khi sửa",
+        "testStrategy": "npm run compile pass. npm run build và npm run build:firefox đều không lỗi.",
+        "notes": "Planning: planning/20260526_1349_31-feature-firefox-support.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chuyển đổi manifest sang dạng function (env) => ({ ... })",
+            "description": "Thay đổi cấu trúc thuộc tính manifest trong file cấu hình wxt.config.ts từ một đối tượng tĩnh sang một hàm nhận tham số môi trường (env) để hỗ trợ cấu hình động.",
+            "dependencies": [],
+            "details": "Sửa đổi phần `manifest` trong `defineConfig` của file wxt.config.ts. Chuyển đổi từ khai báo `manifest: { ... }` thành `manifest: (env) => ({ ... })`. Đảm bảo các thông tin manifest cơ bản được giữ nguyên và trả về đúng định dạng đối tượng.",
+            "status": "pending",
+            "testStrategy": "Chạy lệnh `npm run compile` để xác nhận không có lỗi cú pháp sau khi thay đổi cấu trúc file cấu hình.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thiết lập quyền và cấu hình riêng cho Chrome và Firefox",
+            "description": "Thực hiện logic rẽ nhánh dựa trên tham số `env.browser` để gán quyền truy cập (permissions) và cài đặt đặc thù cho từng trình duyệt trong hàm manifest.",
+            "dependencies": [
+              1
+            ],
+            "details": "Cập nhật logic trong hàm manifest: Đối với Chrome, đặt permissions là ['storage', 'sidePanel', 'activeTab']. Đối với Firefox, thiết lập permissions là ['storage', 'activeTab', 'tabs'], loại bỏ 'sidePanel' và thêm trường `browser_specific_settings` với thông tin gecko: { id: 'loithothо@extension', strict_min_version: '121.0' }.",
+            "status": "pending",
+            "testStrategy": "Thực hiện build cho cả hai nền tảng bằng `npm run build` và `npm run build:firefox`, sau đó kiểm tra file manifest.json trong thư mục output tương ứng để xác nhận các quyền và cấu hình gecko đã chính xác.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chuyển đổi manifest sang dạng function trong wxt.config.ts và cấu hình quyền truy cập (permissions) riêng biệt cho Chrome và Firefox.",
+        "createdAt": "2026-05-26T13:51:16.000Z",
+        "updatedAt": "2026-05-26T13:58:07.639Z"
+      },
+      {
+        "id": "276",
+        "title": "background/index.ts: guard Chrome-only APIs (sidePanel + keepalive)",
+        "description": "Wrap `browser.sidePanel.setPanelBehavior` và keepalive setInterval bằng `import.meta.env.BROWSER === 'chrome'` để Firefox không crash khi load service worker.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [
+          "275"
+        ],
+        "details": "Hai chỗ cần sửa trong entrypoints/background/index.ts:\n1. Line ~14: `if (import.meta.env.BROWSER === 'chrome') { browser.sidePanel?.setPanelBehavior({ openPanelOnActionClick: true }); }`\n2. Lines ~44-47: keepalive chỉ tạo khi BROWSER === 'chrome', Firefox dùng `null` thay thế. Cập nhật `clearInterval(keepalive)` để handle null-safe.",
+        "testStrategy": "npm run compile pass. Firefox build không còn reference đến browser.sidePanel trong bundle output.",
+        "notes": "Planning: planning/20260526_1349_31-feature-firefox-support.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Bao bọc API sidePanel bằng điều kiện trình duyệt Chrome",
+            "description": "Thực hiện kiểm tra biến môi trường BROWSER để bảo vệ lệnh gọi API sidePanel không chạy trên các trình duyệt khác.",
+            "dependencies": [],
+            "details": "Tại file entrypoints/background/index.ts (khoảng dòng 14), thêm điều kiện if (import.meta.env.BROWSER === 'chrome') trước khi thực hiện browser.sidePanel?.setPanelBehavior({ openPanelOnActionClick: true }); nhằm tránh gây crash cho Firefox.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run compile và kiểm tra tệp bundle đầu ra cho Firefox để đảm bảo không có mã liên quan đến sidePanel được thực thi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật logic keepalive và xử lý null-safe cho clearInterval",
+            "description": "Chỉnh sửa phần khởi tạo và dọn dẹp biến keepalive để chỉ hoạt động trên Chrome, đồng thời ngăn lỗi trên Firefox.",
+            "dependencies": [
+              1
+            ],
+            "details": "Bao bọc logic setInterval khởi tạo keepalive trong điều kiện import.meta.env.BROWSER === 'chrome'. Đối với Firefox, gán giá trị mặc định là null. Cập nhật các vị trí gọi clearInterval(keepalive) để đảm bảo không gặp lỗi khi biến là null.",
+            "status": "pending",
+            "testStrategy": "Tải bản build Firefox vào about:debugging và xác nhận service worker khởi động bình thường mà không có lỗi console về keepalive API.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Sử dụng biến môi trường BROWSER để bao bọc các lời gọi API sidePanel và logic keep-alive, đảm bảo service worker không bị crash trên Firefox.",
+        "createdAt": "2026-05-26T13:51:16.000Z",
+        "updatedAt": "2026-05-26T13:59:05.351Z"
+      },
+      {
+        "id": "277",
+        "title": "Tạo lib/create-app.ts + entrypoints/sidebar/ cho Firefox sidebar",
+        "description": "Extract Vue app bootstrap vào lib/create-app.ts, refactor sidepanel/main.ts dùng nó, tạo entrypoints/sidebar/main.ts và index.html để WXT generate sidebar_action manifest key cho Firefox.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [
+          "275"
+        ],
+        "details": "Các bước:\n1. Tạo lib/create-app.ts: move nội dung sidepanel/main.ts (createApp + router + mount) vào function exportable `mountApp()`\n2. Sửa entrypoints/sidepanel/main.ts: `import { mountApp } from '@/lib/create-app'; mountApp();`\n3. Tạo entrypoints/sidebar/main.ts: tương tự\n4. Tạo entrypoints/sidebar/index.html: copy từ entrypoints/sidepanel/index.html\nLưu ý: WXT nhận biết entrypoint `sidebar` và tự sinh `sidebar_action` cho Firefox manifest.",
+        "testStrategy": "npm run build:firefox sinh ra manifest.json có `sidebar_action` key. npm run build (Chrome) vẫn có `side_panel` key. Cả hai build không lỗi.",
+        "notes": "Planning: planning/20260526_1349_31-feature-firefox-support.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo lib/create-app.ts với hàm mountApp()",
+            "status": "pending",
+            "dependencies": [],
+            "details": "Extract createApp + router setup từ sidepanel/main.ts",
+            "parentId": "277"
+          },
+          {
+            "id": 2,
+            "title": "Refactor sidepanel/main.ts + tạo sidebar/main.ts và sidebar/index.html",
+            "status": "pending",
+            "dependencies": [],
+            "details": "sidepanel/main.ts gọi mountApp(). sidebar/ mirror cấu trúc.",
+            "parentId": "277"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "createdAt": "2026-05-26T13:51:16.000Z",
+        "updatedAt": "2026-05-26T14:00:19.913Z"
+      },
+      {
+        "id": "278",
+        "title": "Smoke test Firefox build: load unpacked, verify sidebar + core features",
+        "description": "Load bản build Firefox vào about:debugging, verify sidebar mở đúng, detect thread, summarize hoạt động, settings lưu được. Đảm bảo Chrome build không regression.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [
+          "275",
+          "276",
+          "277"
+        ],
+        "details": "Test checklist:\n1. `npm run build:firefox` — build thành công\n2. Firefox: about:debugging → Load Temporary Add-on → .output/firefox-mv3/manifest.json\n3. Click icon → sidebar mở\n4. Mở thread VOZ/OtoFun → detect đúng version, hiện nút Tóm Tắt\n5. Chạy tóm tắt → kết quả hiển thị\n6. Settings → lưu API key → reload → key còn đó\n7. Chrome build: `npm run build` → load → verify không regression\nNếu step 4 fail (tabs.query không lấy được tab): kiểm tra `tabs` permission đã vào manifest Firefox chưa.",
+        "testStrategy": "Manual QA trên Firefox 121+ hoặc Firefox Nightly. Kết quả ghi vào review file.",
+        "notes": "Planning: planning/20260526_1349_31-feature-firefox-support.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng và tải bản build Firefox để kiểm thử",
+            "description": "Thực hiện quy trình build mã nguồn cho Firefox và tải bản build vào trình duyệt để bắt đầu kiểm thử.",
+            "dependencies": [],
+            "details": "Chạy lệnh 'npm run build:firefox'. Sau đó, mở Firefox truy cập 'about:debugging', chọn 'This Firefox' và nhấn 'Load Temporary Add-on' để chọn file manifest.json trong thư mục '.output/firefox-mv3/'.",
+            "status": "pending",
+            "testStrategy": "Xác nhận thư mục build được tạo thành công và extension xuất hiện trong trình quản lý add-on của Firefox.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm tra tính năng cốt lõi trên trình duyệt Firefox",
+            "description": "Xác minh khả năng hoạt động của sidebar, nhận diện thread, tính năng tóm tắt và lưu trữ cấu hình trên Firefox.",
+            "dependencies": [
+              1
+            ],
+            "details": "Mở các thread trên VOZ hoặc OtoFun để kiểm tra việc nhận diện phiên bản và hiển thị nút Tóm Tắt. Thực thi tóm tắt để xem kết quả. Vào phần Settings, lưu API key, sau đó reload trang để đảm bảo dữ liệu được lưu trong Storage. Kiểm tra quyền 'tabs' trong manifest nếu việc nhận diện tab thất bại.",
+            "status": "pending",
+            "testStrategy": "Manual QA trên Firefox 121+. Kiểm tra log console để phát hiện lỗi liên quan đến Firefox API hoặc permissions.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra hồi quy trên Chrome và hoàn thiện báo cáo",
+            "description": "Đảm bảo các thay đổi hỗ trợ Firefox không gây lỗi (regression) cho phiên bản Chrome hiện tại.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Chạy 'npm run build' để tạo bản build Chrome. Tải lên Chrome và thực hiện nhanh checklist tương tự như Firefox (sidebar, detection, summary). Ghi lại kết quả kiểm thử vào file review hoặc hệ thống quản lý task.",
+            "status": "pending",
+            "testStrategy": "So sánh tính năng giữa bản build Chrome mới và bản build ổn định trước đó để đảm bảo không có sự sai lệch về chức năng.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thực hiện quy trình kiểm thử thủ công toàn diện trên Firefox (sidebar, detection, summary, settings) và kiểm tra hồi quy trên Chrome để đảm bảo tính ổn định.",
+        "createdAt": "2026-05-26T13:51:16.000Z",
+        "updatedAt": "2026-05-26T14:02:39.251Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-26T11:57:33.429Z",
-      "taskCount": 120,
-      "completedCount": 115,
+      "lastModified": "2026-05-26T14:02:39.252Z",
+      "taskCount": 124,
+      "completedCount": 119,
       "tags": [
         "master"
       ]

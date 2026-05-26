@@ -201,6 +201,19 @@ function cancelTask(taskId: string) {
   sendMessage('CANCEL_LLM_TASK', { taskId }).catch(() => {});
 }
 
+async function checkLLMConfigured(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const stored = await browser.storage.sync.get(STORAGE_KEYS.SETTINGS);
+    const config = stored[STORAGE_KEYS.SETTINGS] as { apiKey?: string; provider?: string } | undefined;
+    if (!config?.apiKey && config?.provider !== 'gemini-free') {
+      return { ok: false, error: 'Chưa cấu hình LLM. Vào Cài đặt để nhập API key.' };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Không thể đọc cấu hình LLM.' };
+  }
+}
+
 export function useLLM() {
   if (!listenerRegistered) {
     browser.runtime.onMessage.addListener((message: { type: string; payload: unknown }) => {
@@ -228,6 +241,7 @@ export function useLLM() {
     cancelTask,
     getTaskState,
     getETA,
+    checkLLMConfigured,
     activeTasks: readonly(activeTasks),
     modelSpeedStats: readonly(modelSpeedStats),
   };

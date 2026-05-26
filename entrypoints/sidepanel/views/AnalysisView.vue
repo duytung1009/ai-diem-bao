@@ -82,7 +82,7 @@ function handleConflictGoBack() {
       <template v-if="!pendingConflict">
         <StepTimeline v-if="isAnalyzing && activePipeline" :pipeline="activePipeline" :show-cancel="true" @cancel="cancelTask(llmTaskId!)" />
 
-        <div v-if="!hasSummary" class="alert alert-warning">
+        <div v-if="!hasSummary" class="text-xs alert alert-warning">
           Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
         </div>
 

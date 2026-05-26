@@ -444,7 +444,7 @@ async function toggleBookmark(topic: CachedTopic) {
               <!-- Inline confirmation -->
               <div
                 v-if="pendingDeleteUrl === topic.url"
-                class="alert alert-error mt-1"
+                class="text-xs alert alert-error mt-1"
               >
                 <!-- 2-choice dialog when topic has saved knowledge entries -->
                 <template v-if="((pendingDeleteNotebookCount ?? topic.knowledgeEntries?.length) ?? 0) > 0">

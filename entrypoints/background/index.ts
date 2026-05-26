@@ -10,8 +10,10 @@ import { estimateTokens } from '@/lib/token-estimator';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry } from '@/lib/types';
 
 export default defineBackground(() => {
-  // Open side panel when clicking the extension icon
-  browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  // Open side panel when clicking the extension icon (Chrome only)
+  if (import.meta.env.BROWSER === 'chrome') {
+    browser.sidePanel?.setPanelBehavior({ openPanelOnActionClick: true });
+  }
 
   // One-time migration: storage.local → IndexedDB, then normalize URLs, then migrate prompts
   migrateStorageLocalToIDB()
@@ -41,17 +43,19 @@ export default defineBackground(() => {
           // Respond immediately — giải phóng message channel
           sendResponse({ started: true, taskId });
 
-          // Keepalive — prevent service worker termination during long LLM call
-          const keepalive = setInterval(() => {
-            void browser.storage.sync.get(''); // no-op ping to keep service worker alive
-          }, KEEPALIVE_INTERVAL_MS);
+          // Keepalive — prevent service worker termination during long LLM call (Chrome only)
+          const keepalive = import.meta.env.BROWSER === 'chrome'
+            ? setInterval(() => {
+                void browser.storage.sync.get(''); // no-op ping to keep service worker alive
+              }, KEEPALIVE_INTERVAL_MS)
+            : null;
 
           const ctrl = new AbortController();
           activeLLMTasks.set(taskId, ctrl);
 
           processLLMTask(taskId, taskType, payload, ctrl.signal)
             .finally(() => {
-              clearInterval(keepalive);
+              if (keepalive !== null) clearInterval(keepalive);
               activeLLMTasks.delete(taskId);
             });
 

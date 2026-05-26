@@ -12,8 +12,8 @@ defineEmits<{
 </script>
 
 <template>
-  <div class="alert alert-warning space-y-3">
-    <p class="text-xs">
+  <div class="text-xs alert alert-warning space-y-3">
+    <p>
       Đang {{ operation }} cho thớt <strong>{{ oldTopicTitle }}</strong>.
       Chọn <strong>"Hủy task"</strong> để chuyển sang thớt <strong>{{ newTopicTitle }}</strong>,
       hoặc <strong>"Quay lại thớt cũ"</strong> để tiếp tục theo dõi.

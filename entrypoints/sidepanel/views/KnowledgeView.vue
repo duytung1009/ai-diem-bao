@@ -288,7 +288,7 @@ onActivated(async () => {
       <template v-if="!pendingConflict">
 
       <!-- No posts warning -->
-      <div v-if="!allPosts.length" class="alert alert-warning">
+      <div v-if="!allPosts.length" class="text-xs alert alert-warning">
         Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
@@ -319,7 +319,7 @@ onActivated(async () => {
       <ProgressIndicator v-else-if="isLoading" :task-id="llmTaskId" :fallback-message="progressLabel" :show-cancel="isLoading" @cancel="handleCancel" />
 
       <!-- Error -->
-      <div v-if="error" class="alert alert-error">
+      <div v-if="error" class="text-xs alert alert-error">
         <div class="flex items-start gap-3">
           <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -339,7 +339,7 @@ onActivated(async () => {
       </div>
 
       <!-- Truncation warning banner -->
-      <div v-if="truncationWarning > 0 && !isLoading" class="alert alert-warning">
+      <div v-if="truncationWarning > 0 && !isLoading" class="text-xs alert alert-warning">
         <div class="flex items-start gap-3">
           <svg class="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

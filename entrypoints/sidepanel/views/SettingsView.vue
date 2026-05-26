@@ -567,7 +567,7 @@ async function exportCache() {
       </label>
       <div>
         <p class="text-xs font-medium text-(--color-text-secondary)">Hiển thị chỉ số độ tin cậy tài khoản</p>
-        <p class="text-[11px] text-(--color-text-muted)">Badge cảnh báo tài khoản mới hoặc ít hoạt động.</p>
+        <p class="text-xs text-(--color-text-muted)">Badge cảnh báo tài khoản mới hoặc ít hoạt động.</p>
       </div>
     </div>
 
@@ -756,7 +756,7 @@ async function exportCache() {
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
         Max output tokens (Tóm tắt): {{ (config.maxTokens ?? 16384).toLocaleString() }}
       </label>
-      <p class="text-[11px] text-(--color-text-muted) mb-1">
+      <p class="text-xs text-(--color-text-muted) mb-1">
         Giới hạn số token LLM có thể trả về trong một lần gọi tóm tắt. Tăng nếu tóm tắt bị cắt ngắn.
       </p>
       <div class="flex gap-2 items-center">
@@ -784,7 +784,7 @@ async function exportCache() {
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
         Max output tokens (Kiến thức): {{ (config.knowledgeMaxTokens ?? config.maxTokens ?? 16384).toLocaleString() }}
       </label>
-      <p class="text-[11px] text-(--color-text-muted) mb-1">
+      <p class="text-xs text-(--color-text-muted) mb-1">
         Giới hạn riêng cho flow trích xuất kiến thức. Để trống = dùng giá trị của Tóm tắt ở trên.
       </p>
       <div class="flex gap-2 items-center">
@@ -808,7 +808,7 @@ async function exportCache() {
     </div>
 
     <!-- Low maxTokens warning for thinking models -->
-    <div v-if="lowMaxTokensWarning" class="alert alert-error text-xs">
+    <div v-if="lowMaxTokensWarning" class="text-xs alert alert-error text-xs">
       {{ lowMaxTokensWarning }}
     </div>
 
@@ -826,7 +826,7 @@ async function exportCache() {
         </label>
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary)">Thinking mode</p>
-          <p class="text-[11px] text-(--color-text-muted)">Model suy luận nội bộ trước khi trả lời (tốn token output).</p>
+          <p class="text-xs text-(--color-text-muted)">Model suy luận nội bộ trước khi trả lời (tốn token output).</p>
         </div>
       </div>
 
@@ -835,7 +835,7 @@ async function exportCache() {
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           Thinking budget: {{ thinkingBudgetLabel }}
         </label>
-        <p class="text-[11px] text-(--color-text-muted) mb-1">
+        <p class="text-xs text-(--color-text-muted) mb-1">
           Giới hạn token dành cho suy luận nội bộ (nằm trong Max output tokens). Kéo về 0 = tắt thinking. Nhấn "Tự động" = model tự quyết định.
         </p>
         <input
@@ -881,7 +881,7 @@ async function exportCache() {
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
         Context window (tokens): {{ config.contextWindow ? config.contextWindow.toLocaleString() : 'Tự động' }}
       </label>
-      <p class="text-[11px] text-(--color-text-muted) mb-1">
+      <p class="text-xs text-(--color-text-muted) mb-1">
         Giới hạn context window của model. Để trống hoặc 0 = dùng giá trị mặc định (theo model đã biết, hoặc 128K).
         Quan trọng với LLM local/custom có context nhỏ hơn.
       </p>
@@ -913,7 +913,7 @@ async function exportCache() {
       <label class="block text-xs font-medium text-(--color-text-secondary)">
         Delay giữa các lần tải trang: {{ config.scrapeDelayMs ?? DEFAULT_SCRAPE_DELAY_MS }}ms
       </label>
-      <p class="text-[11px] text-(--color-text-muted)">
+      <p class="text-xs text-(--color-text-muted)">
         Khoảng cách giữa mỗi request khi đọc topic nhiều trang. Tăng lên nếu bị chặn bởi forum.
       </p>
       <input
@@ -942,7 +942,7 @@ async function exportCache() {
       </label>
       <div>
         <p class="text-xs font-medium text-(--color-text-secondary)">Tự động chia segment theo độ dài nội dung</p>
-        <p class="text-[11px] text-(--color-text-muted)">Tính số trang mỗi phần dựa trên LLM Context window, tránh vượt quá giới hạn context.</p>
+        <p class="text-xs text-(--color-text-muted)">Tính số trang mỗi phần dựa trên LLM Context window, tránh vượt quá giới hạn context.</p>
       </div>
     </div>
 
@@ -951,7 +951,7 @@ async function exportCache() {
       <label class="block text-xs font-medium text-(--color-text-secondary)">
         Số trang mỗi phần (Segment): {{ config.segmentSize ?? DEFAULT_SEGMENT_SIZE }}
       </label>
-      <p class="text-[11px] text-(--color-text-muted)">
+      <p class="text-xs text-(--color-text-muted)">
         Topic dài hơn giá trị này sẽ được chia thành nhiều phần để tóm tắt riêng.
       </p>
       <input
@@ -969,7 +969,7 @@ async function exportCache() {
     </div>
 
     <!-- Config change warning -->
-    <div class="alert alert-warning text-xs leading-relaxed">
+    <div class="text-xs alert alert-warning">
       ⚠️ Thay đổi cấu hình model/segment sẽ khiến các thread đang tóm tắt dở phải tóm tắt và chia segment lại từ đầu.
     </div>
 
@@ -994,7 +994,7 @@ async function exportCache() {
     <!-- Save message -->
     <div 
       v-if="saveMessage" 
-      class="alert alert-success text-center"
+      class="text-xs alert alert-success text-center"
     >
       {{ saveMessage }}
     </div>
@@ -1003,13 +1003,13 @@ async function exportCache() {
     <LoadingSpinner v-if="testing" text="Đang kiểm tra kết nối..." />
     <div
       v-if="testResult === 'success'"
-      class="alert alert-success text-center"
+      class="text-xs alert alert-success text-center"
     >
       Kết nối thành công!
     </div>
     <div
       v-if="testResult === 'fail'"
-      class="alert alert-error text-center"
+      class="text-xs alert alert-error text-center"
     >
       Kết nối thất bại. Kiểm tra lại API Key và Base URL.
     </div>
@@ -1047,7 +1047,7 @@ async function exportCache() {
       >
         Xóa tất cả cache
       </button>
-      <div v-if="showClearConfirm" class="alert alert-error space-y-2">
+      <div v-if="showClearConfirm" class="text-xs alert alert-error space-y-2">
         <p class="text-xs font-medium">Xóa tất cả cache?</p>
         <div class="flex gap-2">
           <button

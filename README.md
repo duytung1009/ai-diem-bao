@@ -103,7 +103,7 @@ Xong. Không cần cài thêm gì cả.
 | Ollama | `llama3` | Như LM Studio nhưng CLI cho thím nào thích gõ lệnh |
 | OpenRouter | *(tùy chọn)* | Aggregator, pick model nào cũng được, tính phí từng model |
 
-> **Mẹo thực tế:** Thớt thường thì Haiku/Flash là đủ. Thớt 500+ bài phức tạp mới cần đến Sonnet/GPT-4o. Dùng Haiku cho tiết kiệm — AI cũng biết đọc, không cần hàng xịn mới hiểu Voz nói gì.
+> **Mẹo thực tế:** Thớt thường thì GPT-4o/Gemini Flash Lite là đủ. Thớt 500+ bài phức tạp mới cần đến GPT-5/Gemini Flash/Gemini Pro. Dùng model rẻ nhất cho tiết kiệm — AI cũng biết đọc, không cần hàng xịn mới hiểu Voz nói gì.
 
 ---
 

@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   CUSTOM_PROMPTS: 'custom-prompts',
   THEME: 'theme-mode',
   MODEL_SPEED_STATS: 'model-speed-stats',
+  SHOW_TRUST_BADGES: 'show-trust-badges',
 } as const;
 
 export const DEFAULT_LLM_CONFIG: LLMConfig = {

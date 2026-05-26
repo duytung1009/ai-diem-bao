@@ -1,6 +1,6 @@
 # Cơ chế Scraping
 
-> Cập nhật: 2026-04-01
+> Cập nhật: 2026-05-26
 
 ## 1. Kiến trúc tổng quan
 
@@ -288,3 +288,83 @@ segmentSummaries.value = tempUpdated; // update UI state
 ```
 
 Nếu LLM sau đó lỗi, posts không bị mất. Lần retry tiếp theo sẽ dùng cached posts.
+
+---
+
+## 11. User Metadata & Trust Score (Feature 28)
+
+### 11.1. Scrape user metadata
+
+Trong `scrapePosts()`, mỗi scraper extract `userMeta` từ DOM cho **lần đầu tiên** gặp một username (first-seen-wins). Các bài sau của cùng user nhận `userMeta: undefined`.
+
+```typescript
+interface UserMeta {
+  messageCount?: number;   // Tổng số bài trên forum
+  reactionScore?: number;  // Reaction score / likes received
+  joinDate?: string;       // ISO string hoặc raw text từ DOM
+  userTitle?: string;      // Cấp bậc (e.g. "Senior Member", "Junior Member")
+}
+```
+
+**XF2 (standard):** `aside.message-userDetails > dl.pairs--justified` với các `dt`/`dd` cặp.
+
+**VOZ (XF2 custom theme):** Không render stats trong sidebar thread. Chỉ có `userTitle`:
+```html
+<section class="message-user">
+  <div class="message-userDetails">           <!-- div, không phải aside -->
+    <h4 class="message-name">username</h4>
+    <h5 class="userTitle message-userTitle">Senior Member</h5>
+    <!-- KHÔNG có dl.pairs — message count, join date không hiển thị -->
+  </div>
+</section>
+```
+
+Selector trong `xf2-scraper.ts`: `.message-userDetails` → nếu có `dl.pairs` → parse stats + userTitle; nếu không → trả về `{ userTitle }` only.
+
+**XF1:** `div.messageUserInfo > dl.pairsJustified` — không có userTitle.
+
+### 11.2. VOZ Rank System
+
+VOZ dùng `userTitle` làm signal chính khi không có stats. `trust-scorer.ts` map rank → score:
+
+| Cấp bậc | Score | Flag |
+|---|---|---|
+| New Member | 15 | `voz_rank_restricted` |
+| Junior Member | 25 | `voz_rank_restricted` |
+| Member | 70 | — |
+| Senior Member | 80 | — |
+| Active Member | 85 | — |
+| Well-known Member | 90 | — |
+| Đã tốn tiền | 85 | — |
+| Thành viên tích cực | 90 | — |
+| Staff / Mod / Admin | 95 | — |
+| Title tùy chỉnh không nhận ra | 0 | `no_meta` |
+
+**Lý do New Member / Junior Member bị flag:** Hai cấp này bị VOZ giới hạn quyền đăng bài ở nhiều chuyên mục — dấu hiệu tài khoản mới chưa xác thực đủ điều kiện.
+
+### 11.3. TrustFlag & scoring flow
+
+```typescript
+type TrustFlag =
+  | 'new_account'          // join date < 90 ngày
+  | 'low_post_count'       // messageCount < 50
+  | 'low_reaction_ratio'   // reactionScore / messageCount < 0.05
+  | 'high_thread_activity' // postCountInThread > 5 khi score thấp
+  | 'voz_rank_restricted'  // VOZ rank hạn chế (New Member / Junior Member)
+  | 'no_meta';             // Không có metadata
+```
+
+Flow trong `background/index.ts` sau mỗi `SAVE_CACHED_TOPIC` có `partial.segments`:
+1. Flatten `topic.segments[i].posts` → `postsForScoring`
+2. Nếu có ít nhất 1 post có `userMeta` → `computeTrustScores(postsForScoring)`
+3. Lưu `topic.userTrustScores: Record<string, TrustScore>` vào IndexedDB
+
+### 11.4. UI
+
+| Component | Hiển thị |
+|---|---|
+| `TrustBadge.vue` | Badge nhỏ cạnh username; `voz_restricted` → "⚠ Acc hạn chế" (cam), `suspicious` → "⚠ Newbie" (cam), `watch` → "? Ít hoạt động" (xám) |
+| `SummaryContent.vue` | Render `<TrustBadge>` sau tên người ủng hộ trong opinions JSON |
+| `ThreadAnalysisContent.vue` | Warning nếu nhóm có nhiều user score thấp |
+
+Badge ẩn khi `no_meta` hoặc score ≥ 60.

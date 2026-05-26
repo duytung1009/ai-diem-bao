@@ -51,6 +51,24 @@ export function estimateAutoSummarizeCost(
 }
 
 /**
+ * Full cost estimate when the actual segment count is already known.
+ * Preferred over estimateAutoSummarizeCost when segment boundaries are pre-computed.
+ * Uses segmentCount + 1 overall summary call (if > 1 segment).
+ */
+export function estimateAutoSummarizeCostFromSegments(
+  segmentCount: number,
+  budgetTokens: number,
+  model: string,
+  maxOutputTokens: number,
+): CostEstimate {
+  // One call per segment + one overall summary call (if > 1 segment)
+  const apiCalls = segmentCount + (segmentCount > 1 ? 1 : 0);
+  const inputTokens = apiCalls * budgetTokens;
+  const outputTokens = Math.round(apiCalls * maxOutputTokens * 0.6);
+  return buildCostEstimate(apiCalls, inputTokens, outputTokens, model);
+}
+
+/**
  * Estimate the number of API calls for knowledge extraction.
  * @deprecated Use estimateExtractCost() for full CostEstimate.
  */

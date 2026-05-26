@@ -5114,13 +5114,767 @@
         "recommendedSubtasks": 3,
         "expansionPrompt": "Thực hiện các test case E2E trên nhiều loại model (Ollama, OpenAI) và độ dài dữ liệu khác nhau để verify modal flow.",
         "updatedAt": "2026-05-26T04:14:10.981Z"
+      },
+      {
+        "id": "259",
+        "title": "Định nghĩa các Interface và Types cho Seeder Detection",
+        "description": "Cập nhật lib/types.ts để bao gồm các cấu trúc dữ liệu cho User Metadata và Trust Score.",
+        "details": "Thêm interface UserMeta với messageCount (number), reactionScore (number), joinDate (string). Thêm TrustFlag enum/type. Thêm interface TrustScore bao gồm username, score, flags, postCountInThread, và meta?. Cập nhật ScrapedPost để có trường userMeta?.",
+        "testStrategy": "Kiểm tra tính hợp lệ của kiểu dữ liệu (type checking) bằng TypeScript compiler.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa các interface cơ bản UserMeta, TrustScore và enum TrustFlag",
+            "description": "Thực hiện khai báo các cấu trúc dữ liệu mới cần thiết cho tính năng Seeder Detection trong tệp lib/types.ts.",
+            "dependencies": [],
+            "details": "Thêm interface UserMeta với các trường: messageCount (number), reactionScore (number), joinDate (string). Định nghĩa enum TrustFlag để phân loại các dấu hiệu tài khoản. Tạo interface TrustScore bao gồm username, score, flags, postCountInThread và trường meta tùy chọn thuộc kiểu UserMeta.",
+            "status": "pending",
+            "testStrategy": "Sử dụng TypeScript compiler (tsc) để kiểm tra lỗi cú pháp và đảm bảo các định nghĩa kiểu không bị xung đột.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật interface ScrapedPost để tích hợp thông tin UserMeta",
+            "description": "Bổ sung trường dữ liệu metadata người dùng vào cấu trúc bài viết đã cào để hỗ trợ phân tích seeder.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm định nghĩa interface ScrapedPost trong file lib/types.ts và thêm thuộc tính userMeta? với kiểu dữ liệu UserMeta đã định nghĩa ở bước trước. Việc này giúp các module thu thập dữ liệu có thể đính kèm thông tin người dùng vào mỗi bài viết.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra tính tương thích bằng cách biên dịch lại project và xác nhận IDE nhận diện đúng thuộc tính mới trên đối tượng ScrapedPost.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia nhỏ việc định nghĩa các interface UserMeta, TrustScore và cập nhật ScrapedPost trong lib/types.ts cùng với enum TrustFlag.",
+        "updatedAt": "2026-05-26T08:07:47.254Z"
+      },
+      {
+        "id": "260",
+        "title": "Phát triển hàm tiện ích Parse ngày tháng từ DOM XenForo",
+        "description": "Xây dựng helper function để chuyển đổi các định dạng ngày tháng từ XenForo sang ISO string.",
+        "details": "Ưu tiên lấy giá trị từ attribute 'datetime' của tag <time>. Nếu không có, parse text raw như 'Jan 5, 2024' hoặc xử lý relative time ('2 years ago'). Sử dụng native Date hoặc regex, không thêm thư viện ngoài.",
+        "testStrategy": "Unit test với các đầu vào: 'Jan 5, 2024', ISO strings, relative strings từ DOM thực tế.",
+        "priority": "medium",
+        "dependencies": [
+          "259"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai hàm helper parseXfDate xử lý đa định dạng",
+            "description": "Xây dựng logic lõi để chuyển đổi thời gian từ XenForo (attribute datetime, văn bản tuyệt đối, hoặc thời gian tương đối) sang định dạng ISO.",
+            "dependencies": [],
+            "details": "Hàm sẽ thực hiện: 1. Trích xuất thuộc tính 'datetime' từ thẻ <time> nếu có. 2. Nếu không, sử dụng Regex để nhận diện thời gian tương đối (ví dụ: '2 minutes ago', 'A moment ago') và tính toán dựa trên Date.now(). 3. Parse các chuỗi ngày tháng dạng văn bản như 'Jan 5, 2024' bằng native Date. Không sử dụng thư viện ngoài.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xây dựng bộ Unit Test cho hàm parseXfDate",
+            "description": "Thiết lập các kịch bản kiểm thử tự động bao phủ toàn bộ các trường hợp dữ liệu đầu vào từ DOM thực tế của XenForo 1 và 2.",
+            "dependencies": [
+              1
+            ],
+            "details": "Các test case bao gồm: Chuỗi ISO chuẩn từ attribute datetime, định dạng 'Month Day, Year', các mốc thời gian tương đối (giây, phút, giờ, ngày, năm), và xử lý fallback khi dữ liệu đầu vào không hợp lệ hoặc trống. Đảm bảo tính toán thời gian tương đối khớp với sai số tối thiểu.",
+            "status": "pending",
+            "testStrategy": "Sử dụng Jest hoặc Vitest để chạy assertion cho danh sách các đầu vào mẫu đã thu thập từ thực tế.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Triển khai helper parse ngày tháng và bộ test case bao quát các định dạng XenForo (tuyệt đối, tương đối) lấy từ DOM thực tế.",
+        "updatedAt": "2026-05-26T08:19:52.701Z"
+      },
+      {
+        "id": "261",
+        "title": "Cập nhật Scraper cho XenForo 2 và XenForo 1",
+        "description": "Chỉnh sửa lib/scrapers/xf2-scraper.ts và xf1-scraper.ts để trích xuất UserMeta.",
+        "details": "Sử dụng selector 'aside.message-userDetails' cho XF2 và 'div.messageUserInfo' cho XF1. Implement hàm extractUserMeta(). Đảm bảo chỉ scrape user metadata ở lần xuất hiện đầu tiên của mỗi username trên trang để tối ưu hiệu suất. Graceful fallback nếu không tìm thấy DOM element.",
+        "testStrategy": "Chạy scraper trên các trang thread XF1/XF2 thực tế, kiểm tra object ScrapedPost có chứa đúng userMeta không.",
+        "priority": "high",
+        "dependencies": [
+          "259",
+          "260"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai extractUserMeta cho XenForo 2",
+            "description": "Cập nhật file lib/scrapers/xf2-scraper.ts để hỗ trợ trích xuất thông tin người dùng từ selector aside.message-userDetails.",
+            "dependencies": [],
+            "details": "Thực hiện hàm extractUserMeta sử dụng Cheerio để lấy dữ liệu từ element 'aside.message-userDetails'. Thiết lập một biến cache nội bộ (ví dụ Map hoặc Set) trong phạm vi xử lý trang để lưu trữ các username đã scrape, tránh việc xử lý lại cùng một tác giả nhiều lần trên một trang.",
+            "status": "pending",
+            "testStrategy": "Sử dụng unit test với đoạn mã HTML giả lập của XenForo 2, kiểm tra xem metadata có được trích xuất đúng và không lặp lại cho cùng một username.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai extractUserMeta cho XenForo 1",
+            "description": "Chỉnh sửa lib/scrapers/xf1-scraper.ts để trích xuất UserMeta bằng selector div.messageUserInfo.",
+            "dependencies": [],
+            "details": "Viết logic trích xuất cho XF1 bên trong file xf1-scraper.ts. Sử dụng selector 'div.messageUserInfo' để tìm thông tin tác giả. Áp dụng cơ chế cache username tương tự như XF2 để đảm bảo hiệu suất tối ưu khi một trang có nhiều bài viết của cùng một người.",
+            "status": "pending",
+            "testStrategy": "Chạy thử nghiệm trên các trang thread thực tế của XenForo 1 và kiểm tra tính toàn vẹn của dữ liệu UserMeta trong kết quả trả về.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp và xử lý Graceful Fallback",
+            "description": "Đảm bảo object ScrapedPost chứa UserMeta và hệ thống không bị crash khi thiếu phần tử DOM.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Cập nhật định dạng đầu ra của cả hai scraper để bao gồm trường userMeta mới. Triển khai cơ chế try-catch hoặc kiểm tra null/undefined cho các selector để đảm bảo nếu cấu trúc DOM thay đổi hoặc thiếu thông tin, scraper vẫn tiếp tục hoạt động và trả về giá trị mặc định.",
+            "status": "pending",
+            "testStrategy": "Thực hiện scrape một trang web có cấu trúc bị thiếu metadata để xác nhận scraper không bị lỗi và vẫn trả về các thông tin bài viết khác bình thường.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Triển khai extractUserMeta cho XF1, XF2 và xây dựng cơ chế cache nội bộ để chỉ scrape user metadata một lần duy nhất cho mỗi username trên mỗi trang.",
+        "updatedAt": "2026-05-26T08:19:52.741Z"
+      },
+      {
+        "id": "262",
+        "title": "Xây dựng bộ máy tính điểm tin cậy (Trust Scorer)",
+        "description": "Triển khai lib/trust-scorer.ts để tính toán điểm dựa trên heuristics.",
+        "details": "Tạo hàm pure function computeTrustScores(posts: ScrapedPost[]). Thực hiện logic trừ điểm: Baseline 100. Join date < 30 ngày (-40), < 90 ngày (-25), < 180 ngày (-10). Message count < 10 (-30), < 50 (-15). Reaction/Message ratio < 0.02 (-20), < 0.05 (-10). Nếu score < 50 và postCountInThread > 5 (-10).",
+        "testStrategy": "Unit test với nhiều kịch bản user: acc mới tinh, acc lâu năm nhưng ít bài, acc spam trong thread, acc không có metadata.",
+        "priority": "high",
+        "dependencies": [
+          "259",
+          "261"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa kiểu dữ liệu và hằng số cấu hình scoring",
+            "description": "Thiết lập cấu trúc dữ liệu và các bộ quy tắc điểm trừ cho thuật toán heuristics.",
+            "dependencies": [],
+            "details": "Định nghĩa các interface cần thiết trong src/types/trust.ts và các hằng số trọng số trong lib/trust-scorer.ts để dễ dàng điều chỉnh sau này.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra tính hợp lệ của kiểu dữ liệu bằng TypeScript compiler.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Lập trình hàm pure function computeTrustScores",
+            "description": "Triển khai logic tính toán điểm tin cậy chính xác dựa trên thông tin người dùng và bài đăng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện trừ điểm từ mức cơ sở 100 dựa trên các điều kiện: ngày tham gia, số lượng bài viết, tỷ lệ reaction và số bài đăng trong thread hiện tại.",
+            "status": "pending",
+            "testStrategy": "Thực hiện manual test với dữ liệu giả lập để xác nhận các phép tính cộng trừ điểm hoạt động đúng logic.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Phát triển bộ unit test toàn diện cho Trust Scorer",
+            "description": "Xây dựng các test cases bao phủ mọi trường hợp hồ sơ người dùng để đảm bảo tính ổn định.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng Vitest để viết test cho các kịch bản: account mới (<30 ngày), account thiếu metadata, account có tỷ lệ reaction thấp, và account spam trong thread.",
+            "status": "pending",
+            "testStrategy": "Chạy lệnh npm run test:unit và đảm bảo tỷ lệ coverage cho file trust-scorer.ts đạt trên 95%.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Triển khai hàm pure computeTrustScores với các trọng số điểm trừ cụ thể và xây dựng bộ unit test cho nhiều kịch bản hồ sơ người dùng khác nhau.",
+        "updatedAt": "2026-05-26T08:19:52.772Z"
+      },
+      {
+        "id": "263",
+        "title": "Cập nhật Cache Manager và Schema lưu trữ",
+        "description": "Chỉnh sửa lib/cache-manager.ts và CachedTopic interface để lưu trữ Trust Scores.",
+        "details": "Thêm trường userTrustScores: Record<string, TrustScore> vào CachedTopic. Cập nhật hàm lưu cache để đính kèm kết quả từ Trust Scorer. Đảm bảo dữ liệu được merge khi scrape thêm trang mới (incremental update).",
+        "testStrategy": "Verify trong IndexedDB/Storage của browser xem trường userTrustScores có được lưu đúng sau khi scrape không.",
+        "priority": "medium",
+        "dependencies": [
+          "259",
+          "262"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật Interface CachedTopic và Schema IndexedDB",
+            "description": "Sửa đổi interface CachedTopic trong hệ thống types và cấu hình lại cấu trúc lưu trữ trong lib/cache-manager.ts.",
+            "dependencies": [],
+            "details": "Bổ sung trường userTrustScores: Record<string, TrustScore> vào interface CachedTopic. Cấu hình lại schema của IndexedDB thông qua lib/cache-manager.ts để đảm bảo các object store có thể lưu trữ và truy vấn được dữ liệu trust scores mới.",
+            "status": "pending",
+            "testStrategy": "Sử dụng công cụ Developer Tools của trình duyệt để kiểm tra cấu trúc dữ liệu trong IndexedDB sau khi thực hiện thao tác lưu cache.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai logic merge và cập nhật hàm lưu cache",
+            "description": "Cập nhật logic xử lý trong lib/cache-manager.ts để tích hợp kết quả từ Trust Scorer và xử lý cập nhật tăng cường (incremental update).",
+            "dependencies": [
+              1
+            ],
+            "details": "Chỉnh sửa hàm lưu dữ liệu để nhận kết quả từ Trust Scorer. Thực hiện logic merge dữ liệu: khi người dùng scrape thêm trang mới trong cùng một topic, hệ thống phải gộp (merge) userTrustScores mới với dữ liệu cũ thay vì ghi đè hoàn toàn.",
+            "status": "pending",
+            "testStrategy": "Thực hiện scrape tuần tự nhiều trang của cùng một chủ đề và xác minh rằng danh sách điểm tin cậy của các người dùng được tổng hợp đầy đủ từ tất cả các trang đã scrape.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Cập nhật schema IndexedDB trong cache-manager và triển khai logic merge dữ liệu trust scores khi thực hiện scrape bổ sung trang mới.",
+        "updatedAt": "2026-05-26T08:19:52.798Z"
+      },
+      {
+        "id": "264",
+        "title": "Tích hợp Trust Scorer vào luồng xử lý Background",
+        "description": "Kết nối logic tính điểm vào entrypoints/background/index.ts sau khi quá trình scrape hoàn tất.",
+        "details": "Sau khi nhận kết quả scrape từ content script hoặc background fetch, gọi computeTrustScores và cập nhật vào cache trước khi trả về cho UI. Đảm bảo không block luồng chính nếu có lỗi trong quá trình tính điểm.",
+        "testStrategy": "Kiểm tra log của background script để xác nhận Trust Scorer được gọi sau mỗi lần scrape thành công.",
+        "priority": "medium",
+        "dependencies": [
+          "261",
+          "262",
+          "263"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chỉnh sửa entrypoints/background/index.ts để tích hợp computeTrustScores",
+            "description": "Cập nhật hàm xử lý tác vụ trong background script để chèn logic tính điểm uy tín (computeTrustScores) ngay sau khi quá trình cào dữ liệu (scrape) hoàn tất.",
+            "dependencies": [],
+            "details": "Tìm điểm kết thúc của quá trình nhận dữ liệu ScrapedPost[]. Thực hiện gọi hàm computeTrustScores từ thư viện scorer. Đảm bảo dữ liệu đầu ra bao gồm các thông số trust score đã được tính toán cho từng người dùng.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra log của background script để xác nhận hàm computeTrustScores nhận đúng mảng ScrapedPost và trả về kết quả định danh người dùng kèm điểm số.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai cơ chế Try-Catch và lưu Cache cho Trust Scores",
+            "description": "Bọc logic tính điểm trong khối try-catch để tránh crash luồng xử lý chính và thực hiện cập nhật kết quả vào cache.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng cấu trúc try-catch xung quanh lời gọi computeTrustScores. Nếu có lỗi xảy ra, ghi nhận lỗi qua console.error và cho phép luồng trả kết quả về UI tiếp tục với dữ liệu gốc. Sau khi tính toán thành công, thực hiện cập nhật dữ liệu vào cache trước khi gửi response.",
+            "status": "pending",
+            "testStrategy": "Giả lập một lỗi bên trong hàm tính điểm và xác nhận rằng hệ thống vẫn trả về kết quả scrape cho UI mà không bị treo. Kiểm tra cache để đảm bảo dữ liệu mới được lưu đúng.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Kết nối logic tính điểm vào quy trình xử lý của background script và thêm cơ chế try-catch để đảm bảo lỗi tính điểm không làm hỏng dữ liệu scrape.",
+        "updatedAt": "2026-05-26T08:19:52.829Z"
+      },
+      {
+        "id": "265",
+        "title": "Thêm cài đặt bật/tắt Seeder Detection",
+        "description": "Cập nhật entrypoints/sidepanel/views/SettingsView.vue để thêm option điều khiển tính năng.",
+        "details": "Thêm checkbox 'Hiển thị chỉ số độ tin cậy tài khoản (Seeder Detection)'. Mặc định giá trị là true. Lưu vào storage của extension.",
+        "testStrategy": "Thay đổi checkbox và verify setting được lưu/load chính xác khi mở lại sidepanel.",
+        "priority": "low",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai checkbox cài đặt Seeder Detection trong SettingsView",
+            "description": "Chỉnh sửa file entrypoints/sidepanel/views/SettingsView.vue để thêm một checkbox mới cho phép người dùng bật hoặc tắt tính năng Seeder Detection. Đồng bộ hóa giá trị này với bộ nhớ của extension (storage) và thiết lập giá trị mặc định là true.",
+            "dependencies": [],
+            "details": "Sử dụng component checkbox hiện có trong dự án, liên kết với key seederDetectionEnabled trong extension storage thông qua browser.storage.local hoặc một utility helper tương đương. Đảm bảo UI cập nhật ngay khi thay đổi và có nhãn hiển thị là Hiển thị chỉ số độ tin cậy tài khoản (Seeder Detection).",
+            "status": "pending",
+            "testStrategy": "Mở Sidepanel, vào mục Cài đặt, thay đổi trạng thái checkbox, sau đó đóng và mở lại Sidepanel để xác nhận giá trị được lưu trữ và tải lên chính xác từ storage.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Bổ sung checkbox vào SettingsView và đồng bộ trạng thái với extension storage.",
+        "updatedAt": "2026-05-26T08:19:52.857Z"
+      },
+      {
+        "id": "266",
+        "title": "Phát triển UI Component Badge và Tooltip cho User",
+        "description": "Tạo component hiển thị mức độ tin cậy dựa trên score.",
+        "details": "Màu cam + icon cảnh báo cho score < 40 ('Newbie'). Màu xám cho 40-60 ('Ít hoạt động'). Tooltip hiển thị chi tiết lý do (flags) và các chỉ số metadata (vd: 'Acc mới (30 ngày) · 12 bài...').",
+        "testStrategy": "Visual check trên các trường hợp score khác nhau trong môi trường dev.",
+        "priority": "medium",
+        "dependencies": [
+          "259"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng component TrustBadge và logic phân loại theo score",
+            "description": "Thiết kế và triển khai component TrustBadge cơ bản để hiển thị mức độ tin cậy dựa trên điểm số đầu vào.",
+            "dependencies": [],
+            "details": "Sử dụng Vue.js và Tailwind CSS để tạo component. Cài đặt logic: score < 40 hiển thị màu cam kèm icon cảnh báo ('Newbie'); score 40-60 hiển thị màu xám ('Ít hoạt động'). Định nghĩa các props nhận score, label và các flags liên quan.",
+            "status": "pending",
+            "testStrategy": "Thực hiện unit test với các bộ dữ liệu score khác nhau (dưới 40, từ 40-60 và trên 60) để kiểm tra tính chính xác của màu sắc và icon hiển thị.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp Tooltip hiển thị metadata và danh sách flags vi phạm",
+            "description": "Phát triển phần Tooltip chi tiết xuất hiện khi người dùng hover vào TrustBadge để giải thích các chỉ số.",
+            "dependencies": [
+              1
+            ],
+            "details": "Triển khai Tooltip hiển thị thông tin chi tiết bao gồm: lý do vi phạm (flags) và các chỉ số metadata (ví dụ: thời gian tạo tài khoản, số lượng bài viết). Format nội dung tooltip theo mẫu: 'Acc mới (30 ngày) · 12 bài...'. Đảm bảo Tooltip hiển thị đúng vị trí và dễ đọc.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra trực quan trên trình duyệt bằng cách hover vào các badge khác nhau để xác nhận nội dung tooltip khớp với dữ liệu đầu vào và không bị lỗi hiển thị giao diện.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tạo component TrustBadge với logic hiển thị màu sắc theo score và Tooltip chi tiết giải thích các flags vi phạm.",
+        "updatedAt": "2026-05-26T08:19:52.887Z"
+      },
+      {
+        "id": "267",
+        "title": "Hiển thị Badge Trust Score trong SummaryView",
+        "description": "Tích hợp badge vào phần hiển thị Opinions trong SummaryView.",
+        "details": "Duyệt qua danh sách opinions, mapping username với dữ liệu từ userTrustScores trong cache. Hiển thị badge cạnh username nếu setting 'Seeder Detection' được bật.",
+        "testStrategy": "Mở SummaryView của một topic đã scrape, verify badge xuất hiện đúng cạnh các username có score thấp.",
+        "priority": "medium",
+        "dependencies": [
+          "264",
+          "265",
+          "266"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tích hợp logic mapping Trust Score từ cache vào danh sách Opinions",
+            "description": "Thực hiện việc kết nối và ánh xạ dữ liệu giữa danh sách các ý kiến (opinions) và điểm tin cậy (userTrustScores) được lưu trữ trong cache.",
+            "dependencies": [],
+            "details": "Truy xuất dữ liệu từ store cache, thực hiện hàm lặp qua mảng opinions để gán trust score tương ứng cho mỗi username. Đảm bảo xử lý các trường hợp username không tồn tại trong cache.",
+            "status": "pending",
+            "testStrategy": "Unit test logic mapping để xác nhận điểm số được gán chính xác cho các username tương ứng từ bộ nhớ cache.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Hiển thị UI Badge và xử lý logic ẩn hiện theo cài đặt Seeder Detection",
+            "description": "Thêm component Badge vào cạnh username trong danh sách Opinions và điều khiển việc hiển thị dựa trên trạng thái của cài đặt Seeder Detection.",
+            "dependencies": [
+              1
+            ],
+            "details": "Chỉnh sửa template của SummaryView hoặc component con tương ứng để render Badge UI. Sử dụng computed property để kiểm tra giá trị setting 'Seeder Detection' từ hệ thống trước khi cho phép hiển thị badge.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công trên giao diện: Badge phải xuất hiện khi bật Seeder Detection và biến mất khi tắt setting này; đồng thời kiểm tra giao diện không bị vỡ.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Mapping dữ liệu Trust Score từ cache vào danh sách Opinions và xử lý logic ẩn/hiện dựa trên cài đặt của người dùng.",
+        "updatedAt": "2026-05-26T08:19:52.929Z"
+      },
+      {
+        "id": "268",
+        "title": "Enrich dữ liệu Trust Score trong ThreadAnalysisView",
+        "description": "Thêm chỉ số tin cậy vào phần User Profiles của tab Thread Analysis.",
+        "details": "Hiển thị indicator cạnh tên nhóm user nếu nhóm đó chứa nhiều user có score thấp. Không thay đổi dữ liệu AI trả về, chỉ làm giàu (enrich) UI layer bằng thông tin score có sẵn từ cache.",
+        "testStrategy": "Verify các nhóm user trong Thread Analysis có hiển thị cảnh báo nếu chứa nhiều account 'suspicious'.",
+        "priority": "low",
+        "dependencies": [
+          "264",
+          "265",
+          "266"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng logic truy xuất và tính toán mật độ Trust Score từ cache",
+            "description": "Thực hiện việc lấy dữ liệu điểm tin cậy của người dùng từ cache (IndexedDB hoặc Store) và tính toán tỷ lệ tài khoản 'nghi ngờ' cho từng nhóm trong User Profiles.",
+            "dependencies": [],
+            "details": "Truy cập vào kho dữ liệu cache để đối chiếu danh sách User IDs trong từng cụm (cluster) của kết quả phân tích. Tính toán tỷ lệ phần trăm người dùng có điểm thấp để xác định xem nhóm đó có cần hiển thị indicator cảnh báo hay không.",
+            "status": "pending",
+            "testStrategy": "Unit test logic xử lý dữ liệu với các bộ dữ liệu mẫu (mock data) để đảm bảo các nhóm có mật độ trust score thấp được gắn cờ chính xác.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật UI ThreadAnalysisView để hiển thị indicator cảnh báo",
+            "description": "Chỉnh sửa thành phần hiển thị danh sách User Profiles để thêm các biểu tượng hoặc nhãn cảnh báo (warning indicators) bên cạnh tên của các nhóm người dùng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Can thiệp vào lớp UI (template/CSS) của component hiển thị profile người dùng. Thêm một tooltip hoặc biểu tượng cảnh báo trực quan dựa trên kết quả tính toán từ subtask 1 mà không làm thay đổi cấu trúc dữ liệu gốc trả về từ AI.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công trên trình duyệt để xác nhận indicator xuất hiện đúng vị trí cạnh các nhóm 'suspicious' và hiển thị tooltip giải thích tương ứng.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Bổ sung indicator cảnh báo vào danh sách User Profiles trong tab phân tích dựa trên mật độ tài khoản có điểm tin cậy thấp.",
+        "updatedAt": "2026-05-26T08:19:52.954Z"
+      },
+      {
+        "id": "269",
+        "title": "Types: LLMError.partialText + KnowledgeChunk.failed",
+        "description": "Thêm field `partialText?: string` vào LLMError và `failed?: boolean` vào KnowledgeChunk để hỗ trợ partial salvage khi max_tokens.",
+        "details": "lib/errors.ts: thêm constructor param thứ 4 `partialText?: string` vào LLMError. lib/types.ts: thêm `failed?: boolean` vào KnowledgeChunk interface với comment giải thích (chunk bị truncate, entries là partial). Không thay đổi behavior — chỉ extend types.",
+        "testStrategy": "Compile check: `npm run compile` không có lỗi TypeScript. Verify LLMError vẫn backward-compatible (partialText optional).",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật định nghĩa class LLMError trong lib/errors.ts",
+            "description": "Bổ sung thuộc tính partialText vào class LLMError và cập nhật constructor.",
+            "dependencies": [],
+            "details": "Thêm trường `public readonly partialText?: string` vào class LLMError. Sửa đổi constructor để chấp nhận tham số thứ tư là `partialText?: string`, đảm bảo nó được gán chính xác vào instance.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công bằng cách khởi tạo LLMError với 4 tham số trong một file script test.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật interface KnowledgeChunk trong lib/types.ts",
+            "description": "Thêm thuộc tính failed vào interface KnowledgeChunk để đánh dấu các chunk bị lỗi hoặc bị cắt ngang.",
+            "dependencies": [],
+            "details": "Thêm trường `failed?: boolean` vào interface KnowledgeChunk. Thêm JSDoc comment giải thích rằng trường này chỉ định chunk bị truncate và các entries bên trong có thể chỉ là dữ liệu một phần (partial).",
+            "status": "pending",
+            "testStrategy": "Kiểm tra định nghĩa interface trong IDE để đảm bảo thuộc tính mới xuất hiện và có comment giải thích.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra tính tương thích ngược (Backward Compatibility) cho LLMError",
+            "description": "Đảm bảo việc thay đổi constructor của LLMError không gây lỗi cho các phần code hiện tại.",
+            "dependencies": [
+              1
+            ],
+            "details": "Rà soát lại các nơi đang khởi tạo LLMError trong project để đảm bảo việc thêm tham số thứ 4 (optional) không gây lỗi logic hoặc lỗi compile khi chỉ truyền 2 hoặc 3 tham số.",
+            "status": "pending",
+            "testStrategy": "Chạy 'npm run compile' và quan sát xem có lỗi phát sinh tại các vị trí gọi constructor LLMError cũ hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Thực hiện biên dịch TypeScript toàn dự án",
+            "description": "Chạy trình biên dịch TypeScript để xác nhận tính nhất quán của hệ thống type sau thay đổi.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Sử dụng lệnh `npm run compile` hoặc `npx tsc --noEmit` để kiểm tra xem việc thay đổi types có gây ra xung đột nào với các module phụ thuộc khác không.",
+            "status": "pending",
+            "testStrategy": "Lệnh biên dịch phải kết thúc với mã thoát 0 (không có lỗi).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Xác minh khả năng truy cập của các field mới trong code",
+            "description": "Đảm bảo các thuộc tính mới có thể được truy cập đúng cách từ các module khác.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Viết một đoạn mã giả trong background script thử truy cập `err.partialText` từ một đối tượng LLError và `chunk.failed` từ một đối tượng KnowledgeChunk để xác nhận type-safe.",
+            "status": "pending",
+            "testStrategy": "Xác nhận IntelliSense của IDE hiển thị đúng các thuộc tính mới và không có cảnh báo đỏ về kiểu dữ liệu.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-26T11:50:21.803Z",
+        "notes": "Review: review/20260526_1253_tier3_feature-seeder-detection-and-knowledge-resume.md — approve"
+      },
+      {
+        "id": "270",
+        "title": "Adapters: truyền partial text qua INCOMPLETE_RESPONSE",
+        "description": "Cập nhật openai-adapter, claude-adapter, gemini-adapter để pass nội dung response vào LLMError khi phát hiện truncation.",
+        "details": "openai-adapter.ts: khi `finishReason === 'length'`, throw LLMError(INCOMPLETE_RESPONSE, undefined, undefined, content). claude-adapter.ts: khi `stopReason === 'max_tokens'`, tương tự. gemini-adapter.ts: khi finish_reason là MAX_TOKENS, đồng nhất pattern — check xem hiện đang throw string hay LLMError, chuẩn hóa về LLMError với partialText. Biến `content` là accumulated text trước khi throw.",
+        "testStrategy": "Unit test mock: adapter nhận response với finish_reason=length → LLMError.partialText chứa text đã nhận. Verify không ảnh hưởng các finish_reason khác (stop, end_turn).",
+        "priority": "high",
+        "dependencies": [
+          "269"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "openai-adapter: pass content khi finish_reason=length",
+            "description": "Sửa openai-adapter.ts.",
+            "dependencies": [],
+            "details": "Tìm đoạn `if (finishReason === 'length')`, thêm argument content vào LLMError constructor.",
+            "status": "pending",
+            "testStrategy": "Mock response với finish_reason=length, assert partialText.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "claude-adapter: pass content khi stop_reason=max_tokens",
+            "description": "Sửa claude-adapter.ts.",
+            "dependencies": [],
+            "details": "Tìm đoạn `if (stopReason === 'max_tokens')`, thêm content.",
+            "status": "pending",
+            "testStrategy": "Mock response, assert partialText.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "gemini-adapter: chuẩn hóa và pass content khi MAX_TOKENS",
+            "description": "Sửa gemini-adapter.ts.",
+            "dependencies": [],
+            "details": "Gemini có thể throw string khác pattern. Đọc code hiện tại, đồng nhất về LLMError(INCOMPLETE_RESPONSE, ..., content).",
+            "status": "pending",
+            "testStrategy": "Mock Gemini MAX_TOKENS response, verify LLMError với partialText.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-26T11:51:18.612Z",
+        "notes": "Review: review/20260526_1253_tier3_feature-seeder-detection-and-knowledge-resume.md — approve"
+      },
+      {
+        "id": "271",
+        "title": "parseKnowledgeEntries: thêm partial array rescue",
+        "description": "Thêm fallback 'scan backward' để salvage entries từ truncated JSON array khi tất cả parse attempts đều fail.",
+        "details": "Trong parseKnowledgeEntries (background/index.ts), sau bước repairUnescapedQuotes fail: thêm `tryRescuePartialArray(text)` — tìm `[` đầu tiên, scan ngược từ cuối tìm `}` hợp lệ, append `]` và thử JSON.parse. Trả về parsed array nếu thành công, `[]` nếu không. Filter entries như bình thường. Đây là safety net — không thay đổi happy path.",
+        "testStrategy": "Unit tests: (1) JSON bị cắt giữa entry cuối → rescue parse được N-1 entries. (2) JSON hoàn toàn corrupt → rescue trả `[]`, không crash. (3) JSON hợp lệ → rescue không được gọi (happy path giữ nguyên).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai hàm helper tryRescuePartialArray",
+            "description": "Xây dựng logic xử lý chuỗi để salvage dữ liệu từ một mảng JSON bị cắt cụt (truncated) trong background/index.ts.",
+            "dependencies": [],
+            "details": "Hàm tryRescuePartialArray(text) sẽ thực hiện: 1. Tìm vị trí dấu '[' đầu tiên. 2. Duyệt ngược từ cuối chuỗi để tìm dấu '}' hợp lệ gần nhất. 3. Trích xuất đoạn text giữa hai vị trí này, thêm dấu ']' vào cuối. 4. Thử JSON.parse và trả về kết quả (mảng) hoặc mảng rỗng [] nếu lỗi.",
+            "status": "pending",
+            "testStrategy": "Unit test với các input: chuỗi mất dấu đóng mảng, chuỗi bị cắt giữa chừng một object, và chuỗi không có dấu ngoặc nào.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp fallback rescue vào parseKnowledgeEntries",
+            "description": "Cập nhật hàm parseKnowledgeEntries để gọi tryRescuePartialArray như một lớp bảo vệ cuối cùng trước khi trả về mảng rỗng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong background/index.ts, sau khi bước repairUnescapedQuotes thất bại, chèn lệnh gọi tryRescuePartialArray(text). Kết quả từ hàm rescue sẽ được đi qua bộ lọc filter entries (đảm bảo đúng schema KnowledgeChunk) trước khi trả về cho caller. Đảm bảo luồng 'happy path' không bị thay đổi.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra tích hợp: giả lập một JSON lỗi cấu trúc mảng và verify xem hàm có trả về các entries hợp lệ phía trước đó không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết Unit Tests kiểm soát các trường hợp biên của salvage logic",
+            "description": "Xây dựng bộ test suite bao phủ các kịch bản salvage JSON để đảm bảo tính ổn định và không gây crash.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Viết các test case trong môi trường test: 1. JSON bị cắt giữa entry cuối cùng (phải salvage được N-1 entries). 2. JSON hoàn toàn corrupt (trả về []). 3. JSON hợp lệ (rescue không được can thiệp vào dữ liệu). Kiểm tra performance để đảm bảo việc scan ngược không gây treo thread với chuỗi lớn.",
+            "status": "pending",
+            "testStrategy": "Sử dụng Jest để chạy các test case đã định nghĩa, đảm bảo tỷ lệ bao phủ mã nguồn (code coverage) cho logic mới.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Triển khai hàm tryRescuePartialArray để xử lý chuỗi JSON bị cắt cụt: tìm dấu mở ngoặc đầu tiên, quét ngược từ cuối để tìm object hợp lệ gần nhất và đóng mảng.",
+        "updatedAt": "2026-05-26T11:52:25.831Z",
+        "notes": "Review: review/20260526_1253_tier3_feature-seeder-detection-and-knowledge-resume.md — approve"
+      },
+      {
+        "id": "272",
+        "title": "Background: salvage partial entries thay vì throw INCOMPLETE_RESPONSE",
+        "description": "Trong START_LLM_TASK handler, case extract_knowledge_chunk: bắt INCOMPLETE_RESPONSE, dùng partialText để salvage entries, trả về { entries, truncated: true } thay vì propagate error.",
+        "details": "background/index.ts, case 'extract_knowledge_chunk': wrap await extractKnowledgeChunk() trong try/catch. Nếu err instanceof LLMError && code === INCOMPLETE_RESPONSE && err.partialText: gọi parseKnowledgeEntries(err.partialText) trong try/catch (nếu parse fail → salvaged = []). Gán result = { entries: salvaged, truncated: true }. Không rethrow. Tất cả LLMError khác vẫn rethrow bình thường. LLM_RESULT message cần thêm field truncated: boolean trong payload.",
+        "testStrategy": "Integration test mock: task extract_knowledge_chunk với mock adapter throw INCOMPLETE_RESPONSE(partialText='[{\"title\":\"x\"...') → LLM_RESULT nhận được có entries và truncated=true. Mock với non-INCOMPLETE_RESPONSE → vẫn nhận error như cũ.",
+        "priority": "high",
+        "dependencies": [
+          "269",
+          "270",
+          "271"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật interface payload LLM_RESULT",
+            "description": "Thêm trường dữ liệu truncated vào interface kết quả trả về của LLM task để phía UI nhận biết dữ liệu không đầy đủ.",
+            "dependencies": [],
+            "details": "Chỉnh sửa tệp định nghĩa types (ví dụ: lib/types.ts hoặc background/types.ts). Cập nhật interface của LLM_RESULT message payload để bao gồm field 'truncated: boolean'. Đảm bảo tính tương thích với các module hiện tại đang tiêu thụ message này.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra biên dịch bằng lệnh npm run compile để xác nhận không có lỗi TypeScript sau khi thêm trường mới.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai logic salvage trong background/index.ts",
+            "description": "Cập nhật handler extract_knowledge_chunk để bắt lỗi INCOMPLETE_RESPONSE và cứu vãn các entries từ văn bản một phần.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tại file entrypoints/background/index.ts, trong case 'extract_knowledge_chunk': wrap lệnh gọi extractKnowledgeChunk trong khối try/catch. Nếu bắt được LLMError với code INCOMPLETE_RESPONSE, gọi parseKnowledgeEntries(err.partialText) và gán result = { entries: salvaged, truncated: true }. Đảm bảo các loại LLMError khác vẫn được rethrow bình thường.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết integration test cho kịch bản INCOMPLETE_RESPONSE",
+            "description": "Xây dựng các bộ test mock để kiểm chứng việc hệ thống vẫn trả về dữ liệu thành công khi LLM bị cắt cụt do giới hạn token.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng môi trường kiểm thử tích hợp, mock một adapter ném ra LLMError(INCOMPLETE_RESPONSE) kèm theo partialText hợp lệ. Verify rằng message LLM_RESULT nhận được ở client có chứa các entries đã cứu vãn và truncated=true. Mock thêm trường hợp parse partialText thất bại để đảm bảo salvaged trả về mảng rỗng.",
+            "status": "pending",
+            "testStrategy": "Chạy bộ test integration suite chuyên biệt cho background handlers.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Cập nhật extract_knowledge_chunk handler: bọc logic gọi LLM trong try/catch, nhận diện INCOMPLETE_RESPONSE và chuyển đổi thành kết quả thành công kèm cờ truncated.",
+        "updatedAt": "2026-05-26T11:53:50.357Z",
+        "notes": "Review: review/20260526_1253_tier3_feature-seeder-detection-and-knowledge-resume.md — approve"
+      },
+      {
+        "id": "273",
+        "title": "useKnowledge: continue-on-truncation + resume skip failed chunks",
+        "description": "Chunk loop không abort khi nhận truncated=true. Save chunk với failed=true. computeKnowledgeResumeState detect và skip failed chunks.",
+        "details": "useKnowledge.ts: (1) Trong chunk loop sau `const llmResult = await result`: check `llmResult.data?.truncated === true` → set `wasTruncated=true`, increment `truncatedChunkCount`. Tạo chunkRecord với `failed: wasTruncated || undefined`. Gọi persistChunks. Không break loop. (2) computeKnowledgeResumeState: thêm logic tìm `firstFailedIdx = chunks.findIndex(c => c.failed)`. Nếu tìm thấy: return { startFromPostNumber: chunks[firstFailedIdx].startPostNumber, existingChunks: chunks.slice(0, firstFailedIdx) }. (3) Sau khi flow hoàn thành (kể cả reduce): nếu truncatedChunkCount > 0, set `truncationWarning.value = truncatedChunkCount`.",
+        "testStrategy": "Mock chunk 2/4 trả truncated=true: verify chunk 3,4 vẫn chạy. Verify knowledgeChunks[1].failed=true trong cache. Verify reduce phase chạy với 4 chunks. Resume sau đó: verify chỉ re-extract từ startPostNumber của chunk 2.",
+        "priority": "high",
+        "dependencies": [
+          "272"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chunk loop: handle truncated result, không abort",
+            "description": "Thêm wasTruncated check, save failed chunk, continue.",
+            "dependencies": [],
+            "details": "Không break loop khi truncated. Mark chunk với failed=true. Track truncatedChunkCount.",
+            "status": "pending",
+            "testStrategy": "Mock truncated result ở chunk giữa, verify loop tiếp tục.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "computeKnowledgeResumeState: detect và skip failed chunks",
+            "description": "Update resume logic để re-extract từ chunk bị fail.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm firstFailedIdx trong knowledgeChunks, return existingChunks=chunks trước đó, startFromPostNumber=startPostNumber của chunk fail.",
+            "status": "pending",
+            "testStrategy": "Unit test với mock cache có 1 failed chunk ở giữa.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Expose truncationWarning ref từ useKnowledge",
+            "description": "Thêm ref `truncationWarning: Ref<number>` vào return object.",
+            "dependencies": [
+              1
+            ],
+            "details": "Set truncationWarning.value = truncatedChunkCount sau khi flow hoàn thành. Reset về 0 khi bắt đầu extract mới.",
+            "status": "pending",
+            "testStrategy": "Verify ref expose đúng, reset đúng.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-26T11:55:18.799Z",
+        "notes": "Review: review/20260526_1253_tier3_feature-seeder-detection-and-knowledge-resume.md — approve"
+      },
+      {
+        "id": "274",
+        "title": "UI: warning banner + nút Trích xuất lại khi có failed chunks",
+        "description": "KnowledgeView hiển thị warning sau khi hoàn thành nếu có chunk bị truncate. Nút 'Trích xuất lại' trigger resume flow.",
+        "details": "KnowledgeView.vue: (1) Import `truncationWarning` từ useKnowledge. (2) Thêm warning banner sau khi isLoading=false: `v-if='truncationWarning > 0'` — text 'X chunk bị cắt ngắn (max_tokens). Kết quả có thể thiếu entries. Tăng Max output tokens trong Cài đặt rồi thử lại.' Màu amber, không tự dismiss. (3) Nút 'Trích xuất lại' trong banner: `@click='onExtractClick()'` — sẽ trigger resume flow (computeKnowledgeResumeState sẽ detect failed chunks). (4) Nút 'Trích xuất lại' cũng hiện trong action area khi `hasFailed` (có chunk failed trong cache) ngay cả khi không có truncationWarning active session.",
+        "testStrategy": "Manual test: chạy extraction với mock INCOMPLETE_RESPONSE → verify banner xuất hiện sau khi flow xong. Bấm 'Trích xuất lại' → verify resume bắt đầu từ đúng post number. Verify banner biến mất khi extraction bắt đầu.",
+        "priority": "medium",
+        "dependencies": [
+          "273"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tích hợp trạng thái truncationWarning và logic resume vào KnowledgeView.vue",
+            "description": "Thực hiện import và kết nối các biến trạng thái từ useKnowledge vào component KnowledgeView.",
+            "dependencies": [],
+            "details": "Import `truncationWarning` và `hasFailed` từ composable `useKnowledge`. Đảm bảo hàm `onExtractClick` sẵn sàng để trigger resume flow khi được gọi từ UI.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra bằng log console để xác nhận giá trị truncationWarning và hasFailed được cập nhật chính xác từ composable khi có dữ liệu mock.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xây dựng Warning Banner hiển thị thông báo truncate",
+            "description": "Thiết kế và hiển thị banner cảnh báo màu amber khi có chunk bị cắt ngắn do giới hạn tokens.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm template banner với `v-if='!isLoading && truncationWarning > 0'`. Sử dụng màu amber, không tự tắt. Nội dung hiển thị số lượng chunk bị cắt và nút 'Trích xuất lại' gọi `onExtractClick()`.",
+            "status": "pending",
+            "testStrategy": "Giả lập trạng thái truncationWarning > 0 và isLoading=false, xác nhận banner xuất hiện đúng màu sắc và text. Bấm nút trích xuất lại và verify hàm onExtractClick được gọi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Hiển thị nút 'Trích xuất lại' trong Action Area dựa trên cache",
+            "description": "Thêm nút bấm trích xuất lại vào khu vực điều khiển chính khi phát hiện có chunk lỗi trong cache.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Kiểm tra điều kiện `hasFailed` (chunk failed trong cache). Nếu thỏa mãn, hiển thị thêm nút 'Trích xuất lại' tại Action Area của KnowledgeView để người dùng có thể kích hoạt resume flow bất cứ lúc nào.",
+            "status": "pending",
+            "testStrategy": "Mock dữ liệu cache có chunk lỗi để hasFailed=true. Kiểm tra nút xuất hiện trong Action Area và hoạt động đúng khi click.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thiết kế component WarningBanner trong KnowledgeView.vue hiển thị số lượng chunk bị lỗi và tích hợp nút trigger lại hàm extractKnowledge.",
+        "updatedAt": "2026-05-26T11:57:33.428Z",
+        "notes": "Review: review/20260526_1253_tier3_feature-seeder-detection-and-knowledge-resume.md — approve"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-26T04:14:10.981Z",
-      "taskCount": 104,
-      "completedCount": 99,
+      "lastModified": "2026-05-26T11:57:33.429Z",
+      "taskCount": 120,
+      "completedCount": 115,
       "tags": [
         "master"
       ]

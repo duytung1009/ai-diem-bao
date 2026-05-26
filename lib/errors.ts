@@ -53,6 +53,7 @@ export class LLMError extends Error {
     public readonly code: LLMErrorCode,
     message?: string,
     public readonly status?: number,
+    public readonly partialText?: string,
   ) {
     super(message ?? LLM_MESSAGES[code]);
     this.name = 'LLMError';

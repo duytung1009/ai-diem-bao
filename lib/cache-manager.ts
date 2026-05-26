@@ -42,6 +42,9 @@ export function mergePartialTopic(
     threadAnalysis: partial.threadAnalysis !== undefined
       ? partial.threadAnalysis
       : existing?.threadAnalysis,
+    userTrustScores: partial.userTrustScores !== undefined
+      ? partial.userTrustScores
+      : existing?.userTrustScores,
   };
 }
 

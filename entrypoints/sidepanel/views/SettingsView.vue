@@ -22,6 +22,7 @@ import {
 import type { KnowledgePromptSections, SummaryPromptSections } from '@/lib/types';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useTheme } from '../composables/useTheme';
+import { useSeederDetection } from '../composables/useSeederDetection';
 
 const config = ref<LLMConfig>({ ...DEFAULT_LLM_CONFIG });
 const showApiKey = ref(false);
@@ -58,6 +59,7 @@ const showClearConfirm = ref(false);
 const exporting = ref(false);
 
 const { themeMode: currentTheme, setTheme } = useTheme();
+const { showTrustBadges, loadSetting: loadSeederSetting, setShowTrustBadges } = useSeederDetection();
 const themeOptions = [
   { value: 'light' as const, label: 'Sáng' },
   { value: 'dark' as const, label: 'Tối' },
@@ -343,6 +345,7 @@ async function refreshCacheSize() {
 }
 
 onMounted(async () => {
+  await loadSeederSetting();
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
     config.value = {
@@ -551,6 +554,23 @@ async function exportCache() {
       <PillTabs :tabs="themeOptions" :modelValue="currentTheme" @update:modelValue="setTheme" />
     </div>
 
+    <!-- Seeder Detection -->
+    <div class="flex items-center gap-3">
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input
+          :checked="showTrustBadges"
+          @change="setShowTrustBadges(($event.target as HTMLInputElement).checked)"
+          type="checkbox"
+          class="sr-only peer"
+        />
+        <div class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+      </label>
+      <div>
+        <p class="text-xs font-medium text-(--color-text-secondary)">Hiển thị chỉ số độ tin cậy tài khoản</p>
+        <p class="text-[11px] text-(--color-text-muted)">Badge cảnh báo tài khoản mới hoặc ít hoạt động.</p>
+      </div>
+    </div>
+
     <h2 class="font-semibold text-sm text-(--color-text-primary)">Cấu hình LLM</h2>
 
     <!-- Provider -->
@@ -560,11 +580,11 @@ async function exportCache() {
         v-model="config.provider"
         class="input"
       >
-        <option value="openai">OpenAI</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
-        <option value="claude">Anthropic Claude</option>
+        <option value="openai">OpenAI</option>
         <option value="gemini">Google Gemini</option>
         <option value="gemini-free">Google Gemini (Free Tier)</option>
+        <option value="claude">Anthropic Claude</option>
       </select>
     </div>
 

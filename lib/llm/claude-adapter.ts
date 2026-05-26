@@ -78,6 +78,8 @@ export class ClaudeAdapter implements LLMProvider {
           throw new LLMError(
             LLMErrorCode.INCOMPLETE_RESPONSE,
             'Phản hồi bị cắt ngắn: output vượt giới hạn max tokens. Tăng "Max output tokens" trong Cài đặt. Nếu prompt cũng gần chạm context window, giảm "Context window (tokens)" hoặc Reset về Tự động.',
+            undefined,
+            content,
           );
         }
 

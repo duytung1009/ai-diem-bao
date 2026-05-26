@@ -62,6 +62,7 @@ export class XF2Scraper implements TopicScraper {
   scrapePosts(doc: Document = document): ScrapedPost[] {
     const posts: ScrapedPost[] = [];
     const articles = doc.querySelectorAll('article.message');
+    const seenUsers = new Set<string>();
 
     articles.forEach((article) => {
       const author = this.extractAuthor(article);
@@ -69,10 +70,72 @@ export class XF2Scraper implements TopicScraper {
       const timestamp = this.extractTimestamp(article);
       const postNumber = this.extractPostNumber(article);
 
-      posts.push({ author, content, timestamp, postNumber });
+      const userMeta = seenUsers.has(author) ? undefined : this.extractUserMeta(article);
+      if (userMeta !== undefined) seenUsers.add(author);
+
+      posts.push({ author, content, timestamp, postNumber, userMeta });
     });
 
     return posts;
+  }
+
+  private extractUserMeta(article: Element): import('../types').UserMeta | undefined {
+    try {
+      // VOZ uses div.message-userDetails inside section.message-user (not aside)
+      const details = article.querySelector('.message-userDetails');
+      if (!details) return undefined;
+
+      // Always extract the rank/title — this is the primary signal on VOZ
+      // which doesn't show message counts / join dates in thread HTML.
+      const userTitle =
+        details.querySelector('h5.userTitle, .message-userTitle')?.textContent?.trim() || undefined;
+
+      const dl = details.querySelector('dl.pairs--justified, dl.pairs');
+
+      if (!dl) {
+        // VOZ only exposes the rank title in thread view — use it as the sole signal.
+        return userTitle ? { userTitle } : undefined;
+      }
+
+      const dts = dl.querySelectorAll('dt');
+      const dds = dl.querySelectorAll('dd');
+      let messageCount: number | undefined;
+      let reactionScore: number | undefined;
+      let joinDate: string | undefined;
+
+      dts.forEach((dt, i) => {
+        const key = dt.textContent?.trim().toLowerCase() ?? '';
+        const dd = dds[i];
+        if (!dd) return;
+        const val = dd.textContent?.trim() ?? '';
+
+        // Support English, VOZ-localised, and OtoFun-localised XF2 labels
+        if (key === 'messages' || key === 'tin nhắn' || key === 'số km') {
+          // OtoFun: "Số km" = post count (themed as kilometres driven)
+          const n = parseInt(val.replace(/[,.\s]/g, ''), 10);
+          if (!isNaN(n)) messageCount = n;
+        } else if (
+          key === 'reaction score' || key === 'likes received' ||
+          key === 'điểm phản ứng' || key === 'động cơ'
+        ) {
+          // OtoFun: "Động cơ" = "X Mã lực" (horsepower = reputation score)
+          // parseInt("576319Mãlực", 10) correctly stops at non-digit → 576319
+          const n = parseInt(val.replace(/[,.\s]/g, ''), 10);
+          if (!isNaN(n)) reactionScore = n;
+        } else if (key === 'joined' || key === 'tham gia' || key === 'ngày cấp bằng') {
+          // OtoFun: "Ngày cấp bằng" = licence issue date = join date (d/m/yy format)
+          const timeEl = dd.querySelector('time');
+          joinDate = timeEl?.getAttribute('datetime') || val || undefined;
+        }
+      });
+
+      if (messageCount === undefined && reactionScore === undefined && joinDate === undefined && !userTitle) {
+        return undefined;
+      }
+      return { messageCount, reactionScore, joinDate, userTitle };
+    } catch {
+      return undefined;
+    }
   }
 
   private extractAuthor(article: Element): string {

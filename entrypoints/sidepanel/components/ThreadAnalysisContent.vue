@@ -1,14 +1,27 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { ThreadAnalysisJSON } from '@/lib/types';
+import { ref, computed } from 'vue';
+import type { ThreadAnalysisJSON, TrustScore } from '@/lib/types';
+import TrustBadge from './TrustBadge.vue';
 
 const props = defineProps<{
   analysis: ThreadAnalysisJSON;
   threadTitle: string;
   totalPages: number;
+  userTrustScores?: Record<string, TrustScore>;
+  showTrustBadges?: boolean;
 }>();
 
 const copied = ref(false);
+
+// Compute proportion of low-trust users (score < 40) for the warning indicator
+// Exclude no_meta users — score=0 due to missing data shouldn't count as suspicious
+const lowTrustWarning = computed(() => {
+  if (!props.showTrustBadges || !props.userTrustScores) return false;
+  const scores = Object.values(props.userTrustScores).filter(s => !s.flags.includes('no_meta'));
+  if (scores.length === 0) return false;
+  const lowCount = scores.filter(s => s.score < 40).length;
+  return lowCount / scores.length >= 0.3;
+});
 
 const heatIcon = (heat: 'high' | 'medium' | 'low' | 'hot' | 'normal') => {
   if (heat === 'high' || heat === 'hot') return '🔥';
@@ -164,7 +177,9 @@ async function handleCopy() {
 
     <!-- 2. USER TIÊU BIỂU -->
     <section class="space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary) px-1">👥 USER TIÊU BIỂU</h3>
+      <h3 class="font-semibold text-(--color-text-primary) px-1">👥 USER TIÊU BIỂU
+        <span v-if="lowTrustWarning" class="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400" title="Nhiều user trong thread có dấu hiệu seeder/tài khoản mới">⚠ Có dấu hiệu seeder</span>
+      </h3>
       <div class="grid gap-2">
         <div
           v-for="(profile, i) in analysis.userProfiles"
@@ -262,6 +277,10 @@ async function handleCopy() {
           <div class="flex items-center gap-1.5">
             <span>{{ commentIcon(comment.type) }}</span>
             <span class="text-xs font-medium text-(--color-text-secondary)">{{ comment.author }}</span>
+            <TrustBadge
+              v-if="showTrustBadges && userTrustScores?.[comment.author]"
+              :trustScore="userTrustScores[comment.author]"
+            />
           </div>
           <p class="text-xs text-(--color-text-primary)">{{ comment.text }}</p>
         </div>

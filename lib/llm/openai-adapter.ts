@@ -84,6 +84,8 @@ export class OpenAIAdapter implements LLMProvider {
           throw new LLMError(
             LLMErrorCode.INCOMPLETE_RESPONSE,
             'Tóm tắt bị cắt ngắn: output vượt giới hạn max tokens. Tăng "Max output tokens" trong Cài đặt. Nếu prompt cũng gần chạm context window, giảm "Context window (tokens)" hoặc Reset về Tự động.',
+            undefined,
+            content,
           );
         }
 

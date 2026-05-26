@@ -7,7 +7,7 @@ import type { LLMConfig } from '@/lib/types';
 import { calculateSegmentBudget, estimateTokens } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import type { CostEstimate } from '@/lib/types';
-import { estimateAutoSummarizeCost } from '@/lib/llm/cost-estimator';
+import { estimateAutoSummarizeCostFromSegments } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { formatNumber } from '@/lib/format';
 import { getModelMaxOutput } from '@/lib/token-estimator';
@@ -23,6 +23,7 @@ import ForwardLink from '../components/ForwardLink.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 
 import { useLLM } from '../composables/useLLM';
+import { useSeederDetection } from '../composables/useSeederDetection';
 import type { PipelineDefinition } from '@/lib/types';
 
 const router = useRouter();
@@ -42,6 +43,7 @@ const {
   handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
 } = useSummarize(store);
 const { getTaskState } = useLLM();
+const { showTrustBadges, loadSetting: loadSeederSetting } = useSeederDetection();
 
 // Determine pipeline to display: prefer task state (auto-updated), fallback to static builder
 const activePipeline = computed<PipelineDefinition | null>(() => {
@@ -64,7 +66,11 @@ const estimatedAutoSummarizeCost = computed<CostEstimate | null>(() => {
   const model = currentConfig.value.model ?? 'gpt-4o-mini';
   const budget = calculateSegmentBudget(model, summaryPromptTokens, undefined, currentConfig.value.contextWindow);
   const maxOutput = currentConfig.value.maxTokens ?? getModelMaxOutput(model);
-  return estimateAutoSummarizeCost(topicInfo.value.pageCount, budget, model, maxOutput);
+  // Use actual segment count (from segmentSize setting) instead of re-deriving from token budget.
+  // Token budget math overestimates pages-per-segment for large-context models, leading to
+  // underestimated apiCalls and the modal being incorrectly skipped.
+  const segCount = segments.value.length || 1;
+  return estimateAutoSummarizeCostFromSegments(segCount, budget, model, maxOutput);
 });
 const showAutoSummarizeWarning = computed(() =>
   (estimatedAutoSummarizeCost.value?.apiCalls ?? 0) > LLM_WARN_THRESHOLD_CALLS,
@@ -129,6 +135,7 @@ const postPageMap = computed<Record<number, number>>(() => {
 });
 
 onMounted(() => {
+  loadSeederSetting().catch(() => {});
   sendMessage<LLMConfig>('GET_SETTINGS').then((cfg) => {
     currentConfig.value = cfg;
     if (cfg?.segmentSize) segmentSize.value = cfg.segmentSize;
@@ -334,7 +341,7 @@ function handleConflictGoBack() {
                   Tóm tắt bởi {{ modelLabel }}
                 </div>
                 <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url"
-                  :post-page-map="postPageMap">
+                  :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                   <template #actions>
                     <button class="btn text-xs flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(0)">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,7 +397,7 @@ function handleConflictGoBack() {
                 <div v-if="modelLabel" class="text-xs text-(--color-text-muted) italic">
                   Tóm tắt bởi {{ modelLabel }}
                 </div>
-                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
+                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                   <template #actions>
                     <template v-if="segments.length > 1">
                       <button class="btn text-xs flex items-center gap-1" @click="onAutoSummarizeClick">
@@ -464,7 +471,7 @@ function handleConflictGoBack() {
                 <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(segmentSummaries[activeSegmentIndex].postCount) }} bài viết</span>
               </div>
               <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" :json="segmentSummaries[activeSegmentIndex].summaryJson"
-                :topic-url="cachedTopic?.url" :post-page-map="postPageMap">
+                :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                 <template #actions>
                   <button class="btn text-xs flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(activeSegmentIndex)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

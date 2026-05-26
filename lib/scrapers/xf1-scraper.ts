@@ -56,6 +56,7 @@ export class XF1Scraper implements TopicScraper {
   scrapePosts(doc: Document = document): ScrapedPost[] {
     const posts: ScrapedPost[] = [];
     const messages = doc.querySelectorAll('li.message');
+    const seenUsers = new Set<string>();
 
     messages.forEach((msg) => {
       const author = this.extractAuthor(msg);
@@ -63,10 +64,54 @@ export class XF1Scraper implements TopicScraper {
       const timestamp = this.extractTimestamp(msg);
       const postNumber = this.extractPostNumber(msg);
 
-      posts.push({ author, content, timestamp, postNumber });
+      const userMeta = seenUsers.has(author) ? undefined : this.extractUserMeta(msg);
+      if (userMeta !== undefined) seenUsers.add(author);
+
+      posts.push({ author, content, timestamp, postNumber, userMeta });
     });
 
     return posts;
+  }
+
+  private extractUserMeta(msg: Element): import('../types').UserMeta | undefined {
+    try {
+      const container = msg.querySelector('div.messageUserInfo');
+      if (!container) return undefined;
+
+      const dl = container.querySelector('dl.pairsJustified');
+      if (!dl) return undefined;
+
+      const dts = dl.querySelectorAll('dt');
+      const dds = dl.querySelectorAll('dd');
+      let messageCount: number | undefined;
+      let reactionScore: number | undefined;
+      let joinDate: string | undefined;
+
+      dts.forEach((dt, i) => {
+        const key = dt.textContent?.trim().toLowerCase() ?? '';
+        const dd = dds[i];
+        if (!dd) return;
+        const val = dd.textContent?.trim() ?? '';
+
+        if (key === 'messages') {
+          const n = parseInt(val.replace(/[,.\s]/g, ''), 10);
+          if (!isNaN(n)) messageCount = n;
+        } else if (key === 'likes received' || key === 'reaction score') {
+          const n = parseInt(val.replace(/[,.\s]/g, ''), 10);
+          if (!isNaN(n)) reactionScore = n;
+        } else if (key === 'joined') {
+          const timeEl = dd.querySelector('time');
+          joinDate = timeEl?.getAttribute('datetime') || val || undefined;
+        }
+      });
+
+      if (messageCount === undefined && reactionScore === undefined && joinDate === undefined) {
+        return undefined;
+      }
+      return { messageCount, reactionScore, joinDate };
+    } catch {
+      return undefined;
+    }
   }
 
   private extractAuthor(msg: Element): string {

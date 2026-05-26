@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onActivated, computed, ref } from 'vue';
+import { onActivated, computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useThreadAnalysis } from '../composables/useThreadAnalysis';
+import { useSeederDetection } from '../composables/useSeederDetection';
 import type { PipelineDefinition } from '@/lib/types';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import ThreadAnalysisContent from '../components/ThreadAnalysisContent.vue';
@@ -13,6 +14,9 @@ import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 const router = useRouter();
 const store = useTopicStore();
 const { threadAnalysis, isAnalyzing, error, hasSummary, llmTaskId, generateAnalysis, getTaskState, cancelTask } = useThreadAnalysis(store);
+const { showTrustBadges, loadSetting: loadSeederSetting } = useSeederDetection();
+
+onMounted(() => { loadSeederSetting().catch(() => {}); });
 
 const cachedTopic = computed(() => store.selectedTopic.value);
 const loadedTopicUrl = ref<string | null>(null);
@@ -85,7 +89,7 @@ function handleConflictGoBack() {
         <template v-else>
           <ErrorDisplay v-if="error" :message="error" />
 
-          <ThreadAnalysisContent v-if="threadAnalysis" :analysis="threadAnalysis" :thread-title="cachedTopic.title" :total-pages="cachedTopic.totalPages">
+          <ThreadAnalysisContent v-if="threadAnalysis" :analysis="threadAnalysis" :thread-title="cachedTopic.title" :total-pages="cachedTopic.totalPages" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
             <template #actions>
               <button class="btn text-xs flex items-center gap-1" :disabled="isAnalyzing" @click="generateAnalysis">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

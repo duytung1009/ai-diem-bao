@@ -2,13 +2,16 @@
 import { ref, computed } from 'vue';
 import MarkdownContent from './MarkdownContent.vue';
 import AccordionItem from './AccordionItem.vue';
-import type { SummaryJSON } from '@/lib/types';
+import TrustBadge from './TrustBadge.vue';
+import type { SummaryJSON, TrustScore } from '@/lib/types';
 
 const props = defineProps<{
   content: string;
   json?: SummaryJSON;
   topicUrl?: string;
   postPageMap?: Record<number, number>;
+  userTrustScores?: Record<string, TrustScore>;
+  showTrustBadges?: boolean;
 }>();
 
 function openPostLink(postNumber: number) {
@@ -61,8 +64,6 @@ const sections = computed<Section[]>(() => {
       }
     }
     
-    console.log('Parsing section raw', props.content);
-    console.log('Parsed section:', { title, body });
     return { title, body };
   });
 });
@@ -118,6 +119,8 @@ async function handleCopy() {
     prompt('Copy nội dung bên dưới:', text);
   }
 }
+
+
 </script>
 
 <template>
@@ -174,6 +177,17 @@ async function handleCopy() {
               </template>
               <div class="space-y-3">
                 <MarkdownContent :content="op.description" />
+                <div v-if="Array.isArray(op.supporters) && op.supporters.length && (showTrustBadges ? userTrustScores : false) !== undefined" class="flex flex-wrap gap-1.5 mt-1">
+                  <template v-for="username in op.supporters" :key="username">
+                    <span class="flex items-center gap-1 text-xs text-(--color-text-secondary)">
+                      {{ username }}
+                      <TrustBadge
+                        v-if="showTrustBadges && userTrustScores?.[username]"
+                        :trustScore="userTrustScores[username]"
+                      />
+                    </span>
+                  </template>
+                </div>
                 <div v-if="op.quotes?.length" class="space-y-2 mt-1">
                   <blockquote
                     v-for="(q, qi) in op.quotes"

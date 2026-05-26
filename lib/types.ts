@@ -1,11 +1,36 @@
 export type XenForoVersion = 'xf1' | 'xf2' | 'unknown';
 
+export interface UserMeta {
+  messageCount?: number;   // Total posts in the whole forum
+  reactionScore?: number;  // Reaction score / likes received
+  joinDate?: string;       // ISO string or raw text from DOM
+  userTitle?: string;      // Rank/title text (e.g. "Senior Member", "Junior Member")
+}
+
+export type TrustFlag =
+  | 'new_account'          // join date < 90 days from scrape date
+  | 'low_post_count'       // messageCount < 50
+  | 'low_reaction_ratio'   // reactionScore / messageCount < 0.05
+  | 'high_thread_activity' // postCountInThread > 5 AND score already low
+  | 'voz_rank_restricted'    // VOZ rank is New Member or Junior Member (posting restricted)
+  | 'otofun_rank_restricted' // OtoFun rank is Xe đạp or Xe máy (new member tier)
+  | 'no_meta';             // No metadata available to evaluate
+
+export interface TrustScore {
+  username: string;
+  score: number;              // 0–100, lower = more suspicious
+  flags: readonly TrustFlag[];
+  postCountInThread: number;
+  meta?: UserMeta;
+}
+
 export interface ScrapedPost {
   author: string;
   content: string;
   timestamp: string;
   postNumber: number;
   page?: number;
+  userMeta?: UserMeta;
 }
 
 export interface TopicData {
@@ -191,6 +216,7 @@ export interface CachedTopic {
   threadLocked?: boolean;
   threadDeleted?: boolean;
   lastScrapedPage?: number;    // last page fully scraped (for resume after cancel during scrape phase)
+  userTrustScores?: Record<string, TrustScore>;
 }
 
 export interface TopicSegment {
@@ -240,6 +266,7 @@ export interface KnowledgeChunk {
   entries: KnowledgeEntry[];    // raw entries từ chunk này (PRE-reduce)
   extractedAt: number;          // timestamp
   complete?: boolean;           // false = chunk cuối, chưa đầy budget, cho phép append posts mới
+  failed?: boolean;             // true = chunk bị truncate (max_tokens), entries là partial
 }
 
 // --- Thread Analysis types (F25) ---

@@ -92,6 +92,9 @@ export class GeminiAdapter implements LLMProvider {
 
         const data = await res.json();
 
+        const content =
+          data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
         const finishReason = data.candidates?.[0]?.finishReason as string | undefined;
         if (finishReason && finishReason !== 'STOP') {
           const FINISH_REASON_MESSAGES: Record<string, string> = {
@@ -104,11 +107,9 @@ export class GeminiAdapter implements LLMProvider {
           };
           const message = FINISH_REASON_MESSAGES[finishReason]
             ?? `Tóm tắt không hoàn chỉnh (${finishReason}). Vui lòng thử lại.`;
-          throw new LLMError(LLMErrorCode.INCOMPLETE_RESPONSE, message);
+          const partialText = finishReason === 'MAX_TOKENS' ? content : undefined;
+          throw new LLMError(LLMErrorCode.INCOMPLETE_RESPONSE, message, undefined, partialText);
         }
-
-        const content =
-          data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
         return {
           content,

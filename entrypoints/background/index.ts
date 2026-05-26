@@ -1,5 +1,7 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
 import { summarizeTopic, researchTopic, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
+import { LLMError, LLMErrorCode } from '@/lib/errors';
+import { computeTrustScores } from '@/lib/trust-scorer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats } from '@/lib/notebook-db';
@@ -122,6 +124,21 @@ export default defineBackground(() => {
             const config = await getSettings();
             const existing = await getCachedTopic(url);
             const topic = mergePartialTopic(partial, existing, url, { provider: config.provider, model: config.model });
+            // Compute trust scores when scrape data arrives (posts or segments updated).
+            // Prefer segment posts as source because they are freshly scraped with userMeta.
+            // Top-level topic.posts may be from old cache (pre-Feature 28) without userMeta.
+            if (partial.posts !== undefined || partial.segments !== undefined) {
+              const segPosts = (topic.segments ?? []).flatMap(seg => seg?.posts ?? []);
+              const postsForScoring = segPosts.length > 0 ? segPosts : topic.posts;
+              const hasMeta = postsForScoring.some(p => p.userMeta !== undefined);
+              if (postsForScoring.length > 0) {
+                try {
+                  topic.userTrustScores = hasMeta ? computeTrustScores(postsForScoring) : undefined;
+                } catch (e) {
+                  console.warn('[BG] Trust scorer failed (non-fatal):', e);
+                }
+              }
+            }
             await saveCachedTopic(topic);
             sendResponse({ success: true });
           })().catch((err) => sendResponse({ error: String(err) }));
@@ -381,8 +398,24 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
       case 'extract_knowledge_chunk': {
         const { posts, title, mode } = payload as { posts: ScrapedPost[]; title: string; mode?: 'extract' | 'chunk' };
         inputTokens = estimateTokens(posts.map(p => p.content).join(''));
-        const raw = await extractKnowledgeChunk(posts, title, config, onProgress, prompts, signal, mode ?? 'chunk');
-        result = { entries: parseKnowledgeEntries(raw) };
+        try {
+          const raw = await extractKnowledgeChunk(posts, title, config, onProgress, prompts, signal, mode ?? 'chunk');
+          result = { entries: parseKnowledgeEntries(raw) };
+        } catch (extractErr) {
+          if (
+            extractErr instanceof LLMError &&
+            extractErr.code === LLMErrorCode.INCOMPLETE_RESPONSE &&
+            extractErr.partialText
+          ) {
+            let salvaged: KnowledgeEntry[] = [];
+            try {
+              salvaged = parseKnowledgeEntries(extractErr.partialText);
+            } catch { /* parse failed — salvaged stays [] */ }
+            result = { entries: salvaged, truncated: true };
+          } else {
+            throw extractErr;
+          }
+        }
         break;
       }
       case 'reduce_knowledge_chunks': {
@@ -451,6 +484,26 @@ async function updateModelSpeedStats(model: string, totalTokens: number, elapsed
   } catch { /* non-critical */ }
 }
 
+/** Salvage partial entries from a truncated JSON array.
+ * Finds the first '[', scans backward from the end to find the last complete '}',
+ * appends ']' and tries JSON.parse. Returns raw array on success, [] on failure.
+ */
+function tryRescuePartialArray(text: string): unknown[] {
+  const startIdx = text.indexOf('[');
+  if (startIdx === -1) return [];
+  // Scan backward from end to find the last '}' that closes a complete object
+  for (let i = text.length - 1; i > startIdx; i--) {
+    if (text[i] === '}') {
+      const candidate = text.slice(startIdx, i + 1) + ']';
+      try {
+        const parsed: unknown = JSON.parse(candidate);
+        if (Array.isArray(parsed)) return parsed;
+      } catch { /* continue scanning */ }
+    }
+  }
+  return [];
+}
+
 function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   let text = (fenceMatch ? fenceMatch[1] : raw).trim();
@@ -459,26 +512,11 @@ function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
   }
   // Fix broken \u sequences (same as parseSummaryJSON)
   text = text.replace(/\\u(?![0-9a-fA-F]{4})/g, 'u');
-  try {
-    const rawParsed: unknown = JSON.parse(text);
-    // Handle wrapped format { entries: [...] } from OpenAI Structured Outputs
-    // (root-level arrays are not supported by the API, so we wrap in an object).
-    let parsed: unknown[];
-    if (
-      rawParsed !== null &&
-      typeof rawParsed === 'object' &&
-      !Array.isArray(rawParsed) &&
-      Array.isArray((rawParsed as Record<string, unknown>).entries)
-    ) {
-      parsed = (rawParsed as Record<string, unknown>).entries as unknown[];
-    } else if (Array.isArray(rawParsed)) {
-      parsed = rawParsed;
-    } else {
-      return [];
-    }
-    parsed = parsed.flat();
+
+  function mapEntries(parsed: unknown[]): KnowledgeEntry[] {
+    const flat = parsed.flat();
     const now = Date.now();
-    return parsed
+    return flat
       .filter((e: unknown): e is Record<string, unknown> =>
         typeof e === 'object' && e !== null && typeof (e as Record<string, unknown>).title === 'string'
       )
@@ -496,8 +534,33 @@ function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
         },
         extractedAt: now,
       }));
+  }
+
+  try {
+    const rawParsed: unknown = JSON.parse(text);
+    // Handle wrapped format { entries: [...] } from OpenAI Structured Outputs
+    // (root-level arrays are not supported by the API, so we wrap in an object).
+    let parsed: unknown[];
+    if (
+      rawParsed !== null &&
+      typeof rawParsed === 'object' &&
+      !Array.isArray(rawParsed) &&
+      Array.isArray((rawParsed as Record<string, unknown>).entries)
+    ) {
+      parsed = (rawParsed as Record<string, unknown>).entries as unknown[];
+    } else if (Array.isArray(rawParsed)) {
+      parsed = rawParsed;
+    } else {
+      return [];
+    }
+    return mapEntries(parsed);
   } catch {
+    // Fallback: salvage partial entries from truncated JSON
     if (text.length > 50) {
+      const rescued = tryRescuePartialArray(text);
+      if (rescued.length > 0) {
+        return mapEntries(rescued);
+      }
       throw new Error('LLM trả về JSON không hợp lệ, không thể parse kiến thức. Dữ liệu có thể bị lỗi — thử lại hoặc tăng "Max tokens" trong Cài đặt.');
     }
     return [];

@@ -34,6 +34,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   const currentConfig = ref<LLMConfig | null>(null);
   const confirmTarget = ref<'extract' | 'restore' | null>(null);
   const showClearDataAction = ref(false);
+  const truncationWarning = ref(0);  // count of truncated chunks in last run
 
   // --- Non-reactive ---
   const knowledgeGuard = createRunGuard();
@@ -150,6 +151,15 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   } {
     const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
     if (chunks.length === 0) return { startFromPostNumber: 0, existingChunks: [] };
+
+    // If any chunk is marked failed, resume from the first failed chunk
+    const firstFailedIdx = chunks.findIndex(c => c.failed);
+    if (firstFailedIdx !== -1) {
+      return {
+        startFromPostNumber: chunks[firstFailedIdx].startPostNumber,
+        existingChunks: chunks.slice(0, firstFailedIdx),
+      };
+    }
 
     const lastChunk = chunks[chunks.length - 1];
     if (lastChunk.complete === false) {
@@ -362,6 +372,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     currentPhase.value = 'extracting';
     currentChunkIndex.value = 0;
     totalChunks.value = 0;
+    truncationWarning.value = 0;
 
     if (!currentConfig.value) {
       const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
@@ -439,6 +450,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       }
       pl.markFirstRunning();
 
+      let truncatedChunkCount = 0;
+
       for (let i = 0; i < chunkPlan.length; i++) {
         if (knowledgeGuard.isStale(guardId)) return;
         currentChunkIndex.value = newChunks.length;
@@ -465,6 +478,9 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
         const ft = getTaskState(taskId);
         if (ft?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
 
+        const wasTruncated = (llmResult.data as { truncated?: boolean })?.truncated === true;
+        if (wasTruncated) truncatedChunkCount++;
+
         const chunkEntries = enrichEntries(
           ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
         );
@@ -481,6 +497,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
           entries: chunkEntries,
           extractedAt: Date.now(),
           complete: isLastChunk ? (chunkTokens >= budget * 0.8) : true,
+          failed: wasTruncated || undefined,
         };
         newChunks.push(chunkRecord);
 
@@ -491,6 +508,10 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       pl.markRunning('reduce');
       await runReducePhase(newChunks, excludedNums, guardId, topicUrl);
       pl.markDone('reduce');
+
+      if (truncatedChunkCount > 0) {
+        truncationWarning.value = truncatedChunkCount;
+      }
     } catch (err) {
       if (knowledgeGuard.isStale(guardId)) return;
       error.value = err instanceof Error ? err.message : String(err);
@@ -633,6 +654,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     currentConfig,
     confirmTarget,
     showClearDataAction,
+    truncationWarning,
     knowledgeGuard,
     cachedTopic,
     activePipeline,

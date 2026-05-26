@@ -193,4 +193,3 @@ Tùy thớt. Gemini Flash có context window lớn nên tóm thớt dài tốt. 
 ## License
 
 MIT — dùng thoải mái, fork thoải mái, đừng claim là của mình thôi.
-                                                                                                             

@@ -718,7 +718,7 @@
         ],
         "complexity": 5,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "",
+        "expansionPrompt": "Chia nhỏ module persistence thành các helper functions cho payload và logic nén segment riêng biệt để dễ dàng thực hiện snapshot testing.",
         "updatedAt": "2026-05-17T15:23:57.970Z"
       },
       {
@@ -797,7 +797,7 @@
         ],
         "complexity": 6,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "",
+        "expansionPrompt": "Phân tách logic scraping trang đơn và logic xử lý vòng lặp trang để tăng tính tái sử dụng và dễ kiểm thử bằng mock.",
         "updatedAt": "2026-05-17T15:24:37.938Z"
       },
       {
@@ -862,7 +862,7 @@
         ],
         "complexity": 6,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "",
+        "expansionPrompt": "Tập trung vào cơ chế đồng bộ trạng thái giữa StepTimeline và LLMTaskState để đảm bảo giao diện người dùng luôn phản ánh đúng tiến trình xử lý.",
         "updatedAt": "2026-05-17T15:25:19.041Z"
       },
       {
@@ -929,7 +929,7 @@
         ],
         "complexity": 7,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "",
+        "expansionPrompt": "Xây dựng các bộ test case mock LLM chi tiết cho từng hàm primitive để đảm bảo cơ chế stale-guard và short-circuit hoạt động chính xác.",
         "updatedAt": "2026-05-17T15:26:01.154Z"
       },
       {
@@ -1007,7 +1007,7 @@
         ],
         "complexity": 8,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "",
+        "expansionPrompt": "Mô tả chi tiết luồng điều phối giữa Scraper, Planner và Summarizer trong driver trước khi triển khai để bao quát hết các kịch bản resume/retry.",
         "updatedAt": "2026-05-17T15:26:45.175Z"
       },
       {
@@ -6043,13 +6043,159 @@
         "expansionPrompt": "Thực hiện quy trình kiểm thử thủ công toàn diện trên Firefox (sidebar, detection, summary, settings) và kiểm tra hồi quy trên Chrome để đảm bảo tính ổn định.",
         "createdAt": "2026-05-26T13:51:16.000Z",
         "updatedAt": "2026-05-26T14:02:39.251Z"
+      },
+      {
+        "id": "279",
+        "title": "lib/types.ts: them openrouter vao LLMProvider",
+        "description": "Mo rong LLMProvider type de bao gom openrouter.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [],
+        "details": "Sua lib/types.ts: 'openai' | 'claude' | 'gemini' | 'gemini-free' | 'openrouter' | 'custom'",
+        "testStrategy": "npm run compile pass.",
+        "notes": "Planning: planning/20260526_1609_32-feature-openrouter-provider.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật định nghĩa LLMProvider trong lib/types.ts",
+            "description": "Bổ sung giá trị 'openrouter' vào Union type LLMProvider để hỗ trợ nhà cung cấp OpenRouter.",
+            "dependencies": [],
+            "details": "Tìm đến file lib/types.ts, chỉnh sửa định nghĩa type LLMProvider để bao gồm 'openrouter'. Cấu trúc mới sẽ là: 'openai' | 'claude' | 'gemini' | 'gemini-free' | 'openrouter' | 'custom'.",
+            "status": "pending",
+            "testStrategy": "Chạy lệnh 'npm run compile' để xác nhận mã nguồn TypeScript hợp lệ và không có lỗi type checking.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "createdAt": "2026-05-26T16:11:47.000Z",
+        "updatedAt": "2026-05-26T16:23:04.628Z",
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Cập nhật định nghĩa Union type cho LLMProvider trong lib/types.ts để bao gồm 'openrouter'."
+      },
+      {
+        "id": "280",
+        "title": "factory.ts + openai-adapter.ts: route openrouter + HTTP headers",
+        "description": "Them case openrouter trong factory, them HTTP-Referer va X-Title headers trong OpenAIAdapter khi provider la openrouter.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [
+          "279"
+        ],
+        "details": "factory.ts: case 'openrouter' -> new OpenAIAdapter(config). openai-adapter.ts: if provider===openrouter, add headers HTTP-Referer + X-Title.",
+        "testStrategy": "Network tab: request co HTTP-Referer va X-Title khi dung openrouter.",
+        "notes": "Planning: planning/20260526_1609_32-feature-openrouter-provider.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật factory.ts để định tuyến provider openrouter",
+            "description": "Thêm trường hợp xử lý cho provider 'openrouter' vào logic khởi tạo adapter trong factory.ts.",
+            "dependencies": [],
+            "details": "Thực hiện chỉnh sửa file factory.ts, bổ sung case 'openrouter' vào cấu trúc điều khiển để trả về một instance mới của OpenAIAdapter(config) khi provider được chọn là openrouter.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra mã nguồn để đảm bảo logic switch-case trong factory đã bao gồm openrouter và trả về đúng adapter.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cấu hình HTTP headers cho OpenRouter trong openai-adapter.ts",
+            "description": "Bổ sung các headers định danh (HTTP-Referer và X-Title) vào request khi sử dụng provider openrouter.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong file openai-adapter.ts, thêm logic kiểm tra nếu provider hiện tại là 'openrouter'. Nếu đúng, đính kèm thêm các headers 'HTTP-Referer' và 'X-Title' vào cấu hình của fetch request gửi đến API.",
+            "status": "pending",
+            "testStrategy": "Mở tab Network trên trình duyệt, thực hiện gửi request qua OpenRouter và xác nhận sự hiện diện của các headers HTTP-Referer và X-Title trong payload.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "createdAt": "2026-05-26T16:11:47.000Z",
+        "updatedAt": "2026-05-26T16:23:04.658Z",
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Triển khai case 'openrouter' trong factory.ts và bổ sung logic thêm headers HTTP-Referer/X-Title vào OpenAIAdapter."
+      },
+      {
+        "id": "281",
+        "title": "SettingsView.vue: dropdown + providerDefaults + helper text cho OpenRouter",
+        "description": "Them option openrouter vao dropdown (vi tri thu 2). Them providerDefaults entry voi baseUrl pre-fill. Them isOpenRouter computed va helper text.",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [
+          "279"
+        ],
+        "details": "1. Dropdown: option value=openrouter sau custom. 2. providerDefaults openrouter: model=meta-llama/llama-3.1-8b-instruct:free, baseUrl=https://openrouter.ai/api/v1. 3. isOpenRouter computed. 4. Helper text model field + baseUrl field khi isOpenRouter.",
+        "testStrategy": "Chon OpenRouter: baseUrl tu dien. Switch provider khac va back: settings restore. Helper text hien dung.",
+        "notes": "Planning: planning/20260526_1609_32-feature-openrouter-provider.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Dropdown + providerDefaults + isOpenRouter",
+            "status": "pending",
+            "dependencies": [],
+            "parentId": "281"
+          },
+          {
+            "id": 2,
+            "title": "Helper text model field va baseUrl field",
+            "status": "pending",
+            "dependencies": [],
+            "parentId": "281"
+          }
+        ],
+        "complexity": 3,
+        "createdAt": "2026-05-26T16:11:47.000Z",
+        "updatedAt": "2026-05-26T16:23:04.687Z",
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Cập nhật logic validation và các giá trị mặc định cho OpenRouter trong SettingsView, đảm bảo helper text hiển thị đúng khi người dùng chọn provider này."
+      },
+      {
+        "id": "282",
+        "title": "HelpView.vue: them section 1.2 OpenRouter, renumber 1.2->1.3, 1.3->1.4",
+        "description": "Them card huong dan OpenRouter voi badge Khuyen nghi, model :free goi y, alert rate limit. Doi so thu tu cac section cu.",
+        "status": "done",
+        "priority": "medium",
+        "dependencies": [
+          "281"
+        ],
+        "details": "Card 1.2 gom: badge + ten + badge Khuyen nghi. Alert info ve free models. 7 buoc setup. Model :free khuyen nghi: meta-llama/llama-3.1-8b-instruct:free, google/gemini-2.0-flash-001:free, mistralai/mistral-7b-instruct:free. Alert warning rate limit. Renumber 1.2->1.3, 1.3->1.4.",
+        "testStrategy": "HelpView hien dung: 1.1, 1.2 (moi), 1.3, 1.4 theo thu tu. Layout khong bi be.",
+        "notes": "Planning: planning/20260526_1609_32-feature-openrouter-provider.md",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm nội dung hướng dẫn OpenRouter vào HelpView.vue",
+            "description": "Tích hợp thẻ hướng dẫn chi tiết cho nhà cung cấp OpenRouter vào giao diện trợ giúp.",
+            "dependencies": [],
+            "details": "Thêm một card mới tại vị trí 1.2 bao gồm: tên OpenRouter kèm badge 'Khuyến nghị'. Cấu trúc nội dung gồm 7 bước thiết lập, alert thông tin về các model :free (Llama-3.1-8b, Gemini-2.0-flash, Mistral-7b) và alert cảnh báo về giới hạn tốc độ (rate limit).",
+            "status": "pending",
+            "testStrategy": "Kiểm tra hiển thị của card OpenRouter trên giao diện, đảm bảo các badge, danh sách model gợi ý và các khối cảnh báo (alert) xuất hiện đúng định dạng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Đánh số lại các mục hướng dẫn hiện có",
+            "description": "Cập nhật số thứ tự các mục phía sau để duy trì tính nhất quán cho tài liệu hướng dẫn.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện thay đổi nhãn hiển thị của các section cũ: chuyển mục 1.2 hiện tại thành 1.3 và mục 1.3 hiện tại thành 1.4. Đảm bảo cấu trúc danh mục trong HelpView.vue được sắp xếp liền mạch theo thứ tự 1.1, 1.2 (mới), 1.3, 1.4.",
+            "status": "pending",
+            "testStrategy": "Truy cập trang HelpView và xác nhận số thứ tự các tiêu đề hiển thị chính xác theo trình tự tăng dần, không có mục nào bị trùng lặp số hiệu.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "createdAt": "2026-05-26T16:11:47.000Z",
+        "updatedAt": "2026-05-26T16:23:04.716Z",
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Soạn thảo nội dung hướng dẫn OpenRouter và thực hiện việc đánh số lại các section trong HelpView.vue một cách nhất quán."
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-26T14:02:39.252Z",
-      "taskCount": 124,
-      "completedCount": 119,
+      "lastModified": "2026-05-26T16:23:04.716Z",
+      "taskCount": 128,
+      "completedCount": 123,
       "tags": [
         "master"
       ]

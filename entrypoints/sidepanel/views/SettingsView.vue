@@ -31,6 +31,7 @@ const testing = ref(false);
 
 const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number; maxTokens: number; contextWindow: undefined; thinkingEnabled: boolean; thinkingBudget: number | undefined }> = {
   openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
+  openrouter: { model: 'deepseek/deepseek-v4-flash:free', apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
   custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
   claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
   gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: true, thinkingBudget: undefined },
@@ -46,6 +47,7 @@ function syncCurrentProvider() {
     temperature: config.value.temperature,
     timeoutMs: config.value.timeoutMs ?? 120000,
     maxTokens: config.value.maxTokens ?? 4096,
+    knowledgeMaxTokens: config.value.knowledgeMaxTokens,
     contextWindow: config.value.contextWindow,
     thinkingEnabled: config.value.thinkingEnabled,
     thinkingBudget: config.value.thinkingBudget,
@@ -308,6 +310,7 @@ const cacheUsagePercent = computed(() => storageQuotaBytes.value > 0 ? Math.roun
 const cacheNearFull = computed(() => cacheUsagePercent.value >= 90);
 const isClaude = computed(() => config.value.provider === 'claude');
 const isGemini = computed(() => config.value.provider === 'gemini' || config.value.provider === 'gemini-free');
+const isOpenRouter = computed(() => config.value.provider === 'openrouter');
 const supportsThinking = computed(() => isGemini.value && modelSupportsThinking(config.value.model));
 const modelMaxThinkingBudget = computed(() => getModelThinkingBudget(config.value.model));
 const thinkingBudgetLabel = computed(() => {
@@ -383,6 +386,7 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
     temperature: config.value.temperature,
     timeoutMs: config.value.timeoutMs ?? 120000,
     maxTokens: config.value.maxTokens ?? 4096,
+    knowledgeMaxTokens: config.value.knowledgeMaxTokens,
     contextWindow: config.value.contextWindow,
     thinkingEnabled: config.value.thinkingEnabled,
     thinkingBudget: config.value.thinkingBudget,
@@ -396,6 +400,7 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
   config.value.temperature = saved?.temperature ?? defaults.temperature;
   config.value.timeoutMs = saved?.timeoutMs ?? defaults.timeoutMs;
   config.value.maxTokens = saved?.maxTokens ?? defaults.maxTokens;
+  config.value.knowledgeMaxTokens = saved?.knowledgeMaxTokens;
   config.value.contextWindow = saved?.contextWindow ?? defaults.contextWindow;
   config.value.thinkingEnabled = saved?.thinkingEnabled ?? defaults.thinkingEnabled;
   config.value.thinkingBudget = saved?.thinkingBudget ?? defaults.thinkingBudget;
@@ -566,7 +571,7 @@ async function exportCache() {
         <div class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
       </label>
       <div>
-        <p class="text-xs font-medium text-(--color-text-secondary)">Hiển thị chỉ số độ tin cậy tài khoản</p>
+        <p class="text-xs font-medium text-(--color-text-secondary)">Hiển thị chỉ số độ tin cậy tài khoản (Thử nghiệm)</p>
         <p class="text-xs text-(--color-text-muted)">Badge cảnh báo tài khoản mới hoặc ít hoạt động.</p>
       </div>
     </div>
@@ -581,6 +586,7 @@ async function exportCache() {
         class="input"
       >
         <option value="custom">Custom (OpenAI-compatible)</option>
+        <option value="openrouter">OpenRouter (multi-model)</option>
         <option value="openai">OpenAI</option>
         <option value="gemini">Google Gemini</option>
         <option value="gemini-free">Google Gemini (Free Tier)</option>
@@ -630,6 +636,7 @@ async function exportCache() {
         placeholder="https://api.openai.com/v1"
         class="input"
       />
+      <p v-if="isOpenRouter" class="text-xs text-(--color-text-muted) mt-1">OpenRouter tự động route đến model bạn chọn. Không cần sửa Base URL.</p>
     </div>
 
     <!-- Model selector for Claude -->
@@ -702,7 +709,7 @@ async function exportCache() {
       </div>
     </div>
 
-    <!-- Model input for OpenAI/Custom -->
+    <!-- Model input for OpenAI/Custom/OpenRouter -->
     <div v-if="!isClaude && !isGemini">
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Model</label>
       <input
@@ -711,6 +718,7 @@ async function exportCache() {
         placeholder="gpt-4o-mini"
         class="input"
       />
+      <p v-if="isOpenRouter" class="text-xs text-(--color-text-muted) mt-1">Dùng format <code class="font-mono">provider/model</code>, VD: <code class="font-mono">meta-llama/llama-3.1-8b-instruct:free</code>, <code class="font-mono">openai/gpt-4o-mini</code>, <code class="font-mono">google/gemini-2.0-flash-001:free</code>. Xem đầy đủ tại <code class="font-mono">openrouter.ai/models</code></p>
     </div>
 
     <!-- Temperature -->
@@ -718,6 +726,7 @@ async function exportCache() {
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
         Temperature: {{ config.temperature.toFixed(1) }}
       </label>
+      <p class="text-xs text-(--color-text-muted) mb-1">Độ ngẫu nhiên trong câu trả lời. 0 = deterministic (nhất quán), 1 = sáng tạo hơn nhưng dễ hallucinate.</p>
       <input
         v-model.number="config.temperature"
         type="range"
@@ -737,6 +746,7 @@ async function exportCache() {
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
         Timeout: {{ Math.round((config.timeoutMs ?? 120000) / 1000) }}s
       </label>
+      <p class="text-xs text-(--color-text-muted) mb-1">Thời gian tối đa chờ phản hồi từ API. Tăng nếu gặp lỗi timeout với topic dài hoặc model chậm.</p>
       <input
         v-model.number="config.timeoutMs"
         type="range"

@@ -76,7 +76,7 @@ export interface SummaryJSON {
   conclusion: string;
 }
 
-export type LLMProvider = 'openai' | 'claude' | 'gemini' | 'gemini-free' | 'custom';
+export type LLMProvider = 'openai' | 'claude' | 'gemini' | 'gemini-free' | 'openrouter' | 'custom';
 
 export interface ProviderSpecificConfig {
   model: string;
@@ -85,6 +85,7 @@ export interface ProviderSpecificConfig {
   temperature: number;
   timeoutMs: number;
   maxTokens?: number;
+  knowledgeMaxTokens?: number;
   contextWindow?: number;
   thinkingEnabled?: boolean;
   thinkingBudget?: number;

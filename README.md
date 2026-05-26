@@ -186,7 +186,7 @@ Vì tác giả không có tiền bao key cho cả Voz. Mỗi thím tự dùng ke
 Hiện tại là XenForo 1.x và 2.x. Tức là hầu hết các forum lớn ở VN chạy XenForo là xài được.
 
 **Model nào tóm hay nhất?**  
-Tùy thớt. Gemini Flash có context window lớn nên tóm thớt dài tốt. Claude Haiku nhanh và rẻ cho thớt thường. GPT-4o nếu thím muốn chất lượng cao và không tiếc tiền.
+Tùy thớt. Gemini Flash có context window lớn nên tóm tắt thớt dài tốt. DeepSeek V4 Flash nhanh và rẻ cho thớt thường. Claude Sonnet nếu thím muốn chất lượng cao và không tiếc tiền.
 
 ---
 

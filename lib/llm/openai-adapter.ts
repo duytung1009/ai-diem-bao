@@ -25,7 +25,8 @@ export class OpenAIAdapter implements LLMProvider {
         { role: 'user', content: 'Respond with "OK" only.' },
       ], undefined, { jsonMode: false });
       return true;
-    } catch {
+    } catch (err) {
+      console.error('Error testing LLM connection:', err);
       return false;
     }
   }
@@ -35,6 +36,10 @@ export class OpenAIAdapter implements LLMProvider {
     externalSignal?: AbortSignal,
     options?: LLMOptions,
   ): Promise<LLMResponse> {
+    const apiKey = this.config.apiKey;
+    if (!apiKey) {
+      throw new LLMError(LLMErrorCode.AUTH_FAILED, 'API key chưa được cấu hình. Vui lòng nhập API key trong cài đặt.');
+    }
     return withRetry(async () => {
       const baseUrl = this.config.baseUrl.replace(/\/+$/, '');
       const url = `${baseUrl}/chat/completions`;
@@ -45,7 +50,7 @@ export class OpenAIAdapter implements LLMProvider {
 
       const jsonMode = options?.jsonMode !== false;
       const responseFormat = jsonMode
-        ? this.config.provider === 'openai'
+        ? this.config.provider === 'openai' || this.config.provider === 'openrouter'
           ? { response_format: { type: 'json_object' as const } }
           : this.config.provider === 'custom' && options?.schemaName
             ? { response_format: JSON_SCHEMAS[options.schemaName] }
@@ -58,6 +63,10 @@ export class OpenAIAdapter implements LLMProvider {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${this.config.apiKey}`,
+            ...(this.config.provider === 'openrouter' ? {
+              'HTTP-Referer': 'https://github.com/duytung1009/ai-diem-bao',
+              'X-OpenRouter-Title': 'loi-thot-ho',
+            } : {}),
           },
           body: JSON.stringify({
             model: this.config.model,
@@ -73,7 +82,7 @@ export class OpenAIAdapter implements LLMProvider {
           const errorBody = await res.text().catch(() => '');
           throw llmErrorFromStatus(res.status, errorBody);
         }
-
+        
         const data = await res.json();
         const choice = data.choices?.[0];
         const finishReason = choice?.finish_reason as string | undefined;

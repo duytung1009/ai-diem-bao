@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-26T13:53:21.560Z",
+		"generatedAt": "2026-05-26T16:14:10.569Z",
 		"tasksAnalyzed": 9,
-		"totalTasks": 124,
+		"totalTasks": 128,
 		"analysisCount": 9,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -14,72 +14,72 @@
 			"taskTitle": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
 			"complexityScore": 5,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Việc hợp nhất logic từ nhiều nguồn vào một module pure duy nhất đòi hỏi sự chính xác cao để không làm hỏng dữ liệu hiện có, đặc biệt là phần xử lý stale-guard để ngăn chặn race conditions khi lưu trữ."
+			"expansionPrompt": "Chia nhỏ module persistence thành các helper functions cho payload và logic nén segment riêng biệt để dễ dàng thực hiện snapshot testing.",
+			"reasoning": "Nhiệm vụ này tập trung vào việc refactor logic lưu trữ hiện có vào một module thuần túy (pure module). Độ phức tạp ở mức trung bình do cần đảm bảo tính nhất quán của dữ liệu qua các bài test snapshot và tích hợp stale-guard."
 		},
 		{
 			"taskId": 170,
 			"taskTitle": "Refactor logic scraping thành Composable useTopicScraper (R4)",
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Quản lý vòng lặp scraping bất đồng bộ với nhiều trạng thái ngoại lệ như thread bị xóa hoặc khóa, cùng với việc duy trì logic deduplication ở trang cuối, tạo ra độ phức tạp đáng kể trong quản lý trạng thái."
+			"expansionPrompt": "Phân tách logic scraping trang đơn và logic xử lý vòng lặp trang để tăng tính tái sử dụng và dễ kiểm thử bằng mock.",
+			"reasoning": "Việc tách logic scraping yêu cầu xử lý các trạng thái bất đồng bộ phức tạp, bao gồm tiến trình (progress), các lỗi đặc thù của thread (deleted/locked) và cơ chế khử trùng lặp dữ liệu trang cuối."
 		},
 		{
 			"taskId": 171,
 			"taskTitle": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Logic reconcile (đồng bộ hóa) giữa số lượng segment dự kiến và thực tế yêu cầu tính toán kỹ lưỡng để cập nhật UI Timeline mà không làm gián đoạn hoặc mất trạng thái của các bước đã hoàn thành."
+			"expansionPrompt": "Tập trung vào cơ chế đồng bộ trạng thái giữa StepTimeline và LLMTaskState để đảm bảo giao diện người dùng luôn phản ánh đúng tiến trình xử lý.",
+			"reasoning": "Nhiệm vụ này yêu cầu thiết kế một hệ thống quản lý pipeline tập trung có khả năng điều chỉnh động (reconcile) khi số lượng segment thay đổi, đòi hỏi sự phối hợp chặt chẽ giữa trạng thái UI và logic nghiệp vụ."
 		},
 		{
 			"taskId": 172,
 			"taskTitle": "Xây dựng các hàm Primitive trong useSummarize",
 			"complexityScore": 7,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Đây là các đơn vị thực thi cốt lõi tương tác trực tiếp với LLM API. Việc đảm bảo stale-guard ở cả hai cấp độ (từng segment và tổng thể) là yếu tố sống còn để bảo vệ tính toàn vẹn của kết quả tóm tắt."
+			"expansionPrompt": "Xây dựng các bộ test case mock LLM chi tiết cho từng hàm primitive để đảm bảo cơ chế stale-guard và short-circuit hoạt động chính xác.",
+			"reasoning": "Đây là logic cốt lõi liên quan đến gọi LLM và lưu trữ kết quả. Độ phức tạp cao vì phải quản lý nghiêm ngặt stale-guard token để tránh race condition và xử lý logic gộp (reduce) kết quả hiệu quả."
 		},
 		{
 			"taskId": 173,
 			"taskTitle": "Triển khai Driver trung tâm runSummarizeJob (R7)",
 			"complexityScore": 8,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Là bộ điều phối trung tâm cho toàn bộ quy trình, driver này phải xử lý nhiều chế độ chạy khác nhau (mới, chạy tiếp, cập nhật) và quản lý lỗi tập trung từ tất cả các module phụ thuộc."
+			"expansionPrompt": "Mô tả chi tiết luồng điều phối giữa Scraper, Planner và Summarizer trong driver trước khi triển khai để bao quát hết các kịch bản resume/retry.",
+			"reasoning": "Đây là điểm kết nối của tất cả các module. Driver này chịu trách nhiệm điều phối toàn bộ quy trình từ cào dữ liệu đến tóm tắt tổng thể, xử lý các chế độ chạy khác nhau (mode) và khôi phục trạng thái (resume)."
 		},
 		{
-			"taskId": 275,
-			"taskTitle": "wxt.config.ts: chuyển manifest sang function, conditional permissions theo browser",
+			"taskId": 279,
+			"taskTitle": "lib/types.ts: them openrouter vao LLMProvider",
+			"complexityScore": 1,
+			"recommendedSubtasks": 1,
+			"expansionPrompt": "Cập nhật định nghĩa Union type cho LLMProvider trong lib/types.ts để bao gồm 'openrouter'.",
+			"reasoning": "Chỉ là một thay đổi nhỏ về kiểu dữ liệu (TypeScript type definition), không ảnh hưởng đến logic thực thi."
+		},
+		{
+			"taskId": 280,
+			"taskTitle": "factory.ts + openai-adapter.ts: route openrouter + HTTP headers",
 			"complexityScore": 2,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chuyển đổi manifest sang dạng function trong wxt.config.ts và cấu hình quyền truy cập (permissions) riêng biệt cho Chrome và Firefox.",
-			"reasoning": "Thay đổi cấu hình framework WXT để hỗ trợ đa trình duyệt, không yêu cầu logic nghiệp vụ phức tạp nhưng cần kiểm tra kỹ cấu trúc manifest đầu ra của từng nền tảng."
+			"expansionPrompt": "Triển khai case 'openrouter' trong factory.ts và bổ sung logic thêm headers HTTP-Referer/X-Title vào OpenAIAdapter.",
+			"reasoning": "Thay đổi logic nhỏ trong Factory để khởi tạo adapter và cập nhật adapter để gửi thêm các headers bắt buộc theo yêu cầu của OpenRouter."
 		},
 		{
-			"taskId": 276,
-			"taskTitle": "background/index.ts: guard Chrome-only APIs (sidePanel + keepalive)",
-			"complexityScore": 2,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Sử dụng biến môi trường BROWSER để bao bọc các lời gọi API sidePanel và logic keep-alive, đảm bảo service worker không bị crash trên Firefox.",
-			"reasoning": "Nhiệm vụ tập trung vào việc đảm bảo tính an toàn cho mã nguồn khi chạy trên các môi trường trình duyệt khác nhau bằng cách sử dụng các cờ kiểm tra điều kiện."
-		},
-		{
-			"taskId": 277,
-			"taskTitle": "Tạo lib/create-app.ts + entrypoints/sidebar/ cho Firefox sidebar",
+			"taskId": 281,
+			"taskTitle": "SettingsView.vue: dropdown + providerDefaults + helper text cho OpenRouter",
 			"complexityScore": 3,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "",
-			"reasoning": "Yêu cầu tái cấu trúc cách khởi tạo ứng dụng Vue để dùng chung cho cả Sidepanel (Chrome) và Sidebar (Firefox), giúp duy trì tính nhất quán và giảm lặp mã nguồn giữa các entrypoint."
+			"expansionPrompt": "Cập nhật logic validation và các giá trị mặc định cho OpenRouter trong SettingsView, đảm bảo helper text hiển thị đúng khi người dùng chọn provider này.",
+			"reasoning": "Đòi hỏi cập nhật giao diện người dùng, thêm các thuộc tính tính toán (computed properties) và quản lý dữ liệu mặc định cho nhà cung cấp mới."
 		},
 		{
-			"taskId": 278,
-			"taskTitle": "Smoke test Firefox build: load unpacked, verify sidebar + core features",
+			"taskId": 282,
+			"taskTitle": "HelpView.vue: them section 1.2 OpenRouter, renumber 1.2->1.3, 1.3->1.4",
 			"complexityScore": 2,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Thực hiện quy trình kiểm thử thủ công toàn diện trên Firefox (sidebar, detection, summary, settings) và kiểm tra hồi quy trên Chrome để đảm bảo tính ổn định.",
-			"reasoning": "Nhiệm vụ kiểm thử thủ công quan trọng để xác nhận các thay đổi về cấu hình và kiến trúc hoạt động đúng trên thực tế mà không gây ra lỗi cho phiên bản hiện tại trên Chrome."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Soạn thảo nội dung hướng dẫn OpenRouter và thực hiện việc đánh số lại các section trong HelpView.vue một cách nhất quán.",
+			"reasoning": "Nhiệm vụ chủ yếu là cập nhật nội dung tài liệu và điều chỉnh bố cục (renumbering) trang trợ giúp."
 		}
 	]
 }

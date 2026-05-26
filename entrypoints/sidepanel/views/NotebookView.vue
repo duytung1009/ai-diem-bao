@@ -112,27 +112,6 @@ onActivated(async () => {
 
     <!-- Filter bar -->
     <div class="space-y-2">
-      <!-- Topic dropdown -->
-      <div v-if="allTopicUrls.length > 0" class="flex flex-wrap gap-1.5">
-        <button
-          v-if="filters.topicUrl"
-          class="px-2 py-0.5 rounded-full text-xs bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
-          @click="filters.topicUrl = null"
-        >
-          Tất cả thớt
-        </button>
-        <button
-          v-for="url in allTopicUrls"
-          :key="url"
-          class="px-2 py-0.5 rounded-full text-xs transition-colors truncate max-w-40"
-          :class="filters.topicUrl === url
-            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
-            : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
-          @click="filters.topicUrl = filters.topicUrl === url ? null : url"
-        >
-          {{ entries.find(e => e.sourceTopicUrl === url)?.sourceTopicTitle || url }}
-        </button>
-      </div>
       <!-- Category pills -->
       <div v-if="stats.categories.length > 0" class="flex flex-wrap gap-1.5">
         <button

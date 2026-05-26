@@ -82,10 +82,64 @@
         </ol>
       </div>
 
-      <!-- Gemini Free Tier -->
+      <!-- OpenRouter (recommended) -->
       <div class="card space-y-1.5 mb-3">
         <div class="flex items-center gap-2">
           <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.2</span>
+          <h3 class="text-xs font-semibold text-(--color-text-primary)">OpenRouter (multi-model)</h3>
+          <span class="badge bg-green-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
+        </div>
+        <div class="text-xs alert alert-info">
+          Có các model <code class="font-mono">:free</code> hoàn toàn miễn phí, không cần chạy local, không cần thẻ tín dụng. Model <code class="font-mono">:free</code> có rate limit nhưng đủ cho dùng cá nhân.
+        </div>
+        <ol class="space-y-1.5 pl-1 mt-1">
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <span>Đăng ký tài khoản tại <code class="font-mono text-(--color-accent-text)">https://openrouter.ai</code></span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+            <span>Vào <code class="font-mono text-(--color-accent-text)">openrouter.ai/settings/keys</code> → "Create Key"</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+            <span>Copy API key (bắt đầu bằng <code class="font-mono text-(--color-accent-text)">sk-or-v1-...</code>)</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+            <span>Mở extension → tab <strong class="text-(--color-text-primary)">Cài đặt</strong> → chọn Provider <strong class="text-(--color-text-primary)">"OpenRouter (multi-model)"</strong></span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">5</span>
+            <span>Dán API key vào ô API Key</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">6</span>
+            <span>Nhập model theo format <code class="font-mono text-(--color-accent-text)">provider/model</code>. Gợi ý model <code class="font-mono text-(--color-accent-text)">:free</code>:<br>
+              • <code class="font-mono text-(--color-accent-text)">deepseek/deepseek-v4-flash:free</code> (context lên đến 1M, Max Output 384K, mạnh, uptime kém)<br>
+              • <code class="font-mono text-(--color-accent-text)">google/gemma-4-26b-a4b-it:free</code> (Context 262.1K, Max Output 32.8K, nhanh)<br>
+              • <code class="font-mono text-(--color-accent-text)">openai/gpt-oss-20b:free</code> (Context 131.1K, Max Output 8.2K, nhanh)<br>
+              Xem thêm: <code class="font-mono text-(--color-accent-text)">openrouter.ai/models?q=free</code>
+            </span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">7</span>
+            <span>Nhấn <strong class="text-(--color-text-primary)">"Test Connection"</strong> → hiện "Kết nối thành công!" là OK</span>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Gemini Free Tier -->
+      <div class="card space-y-1.5 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.3</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">Gemini API Free Tier (Google AI Studio)</h3>
         </div>
         <div class="text-xs alert alert-warning">
@@ -134,7 +188,7 @@
       <!-- API Pay-per-request -->
       <div class="card space-y-1.5">
         <div class="flex items-center gap-2">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.3</span>
+          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.4</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">API Pay-per-request (Gemini / OpenAI)</h3>
         </div>
         <div class="text-xs alert alert-warning">

@@ -202,7 +202,7 @@ function navigateTo(path: string) {
 
     <!-- Tab Navigation -->
     <nav class="bg-(--color-bg-surface) border-b border-(--color-border) flex">
-      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors" :class="isThreadActive
+      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 font-medium transition-colors" :class="isThreadActive
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/')">
@@ -211,7 +211,7 @@ function navigateTo(path: string) {
         </svg>
         Thớt
       </button>
-      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors" :class="route.name === 'notebook'
+      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 font-medium transition-colors" :class="route.name === 'notebook'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/notebook')">
@@ -220,7 +220,7 @@ function navigateTo(path: string) {
         </svg>
         Sổ tay
       </button>
-      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors" :class="route.name === 'settings'
+      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 font-medium transition-colors" :class="route.name === 'settings'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
         " @click="navigateTo('/settings')">

@@ -24,13 +24,13 @@ export function useNotebook() {
   const allTags = computed(() => {
     const tags = new Set<string>();
     entries.value.forEach(e => e.tags.forEach(t => tags.add(t)));
-    return [...tags].sort();
+    return [...tags].sort().slice(0, 6); // limit to 6 tags for UI simplicity
   });
 
   const allTopicUrls = computed(() => {
     const urls = new Set<string>();
     entries.value.forEach(e => urls.add(e.sourceTopicUrl));
-    return [...urls].sort();
+    return [...urls].sort().slice(0, 6); // limit to 6 topic URLs for UI simplicity
   });
 
   const filteredEntries = computed(() => {

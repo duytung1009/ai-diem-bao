@@ -7,6 +7,7 @@ import { GeminiAdapter } from './gemini-adapter';
 export function createProvider(config: LLMConfig): LLMProvider {
   switch (config.provider) {
     case 'openai':
+    case 'openrouter':
     case 'custom':
       return new OpenAIAdapter(config);
     case 'claude':

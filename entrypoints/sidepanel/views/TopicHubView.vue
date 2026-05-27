@@ -21,8 +21,24 @@ const pendingDeleteNotebookCount = ref<number | undefined>(undefined);
 const searchQuery = ref('');
 const sortBy = ref<'recent' | 'posts' | 'title'>('recent');
 const showBookmarkedOnly = ref(false);
+const filterDomain = ref<string | null>(null);
 
 const bookmarkCount = computed(() => allTopics.value.filter(t => t.bookmarked).length);
+
+// Top domains sorted by topic count, max 6
+const allDomains = computed(() => {
+  const counts: Record<string, number> = {};
+  for (const topic of allTopics.value) {
+    try {
+      const h = new URL(topic.url).hostname;
+      counts[h] = (counts[h] ?? 0) + 1;
+    } catch { /* skip */ }
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([host]) => host);
+});
 
 // Temp topic: injected into domain groups while summarizing a topic not yet in cache
 const summarizingTempTopic = computed(() => {
@@ -37,6 +53,11 @@ const summarizingTempTopic = computed(() => {
 // Filter + sort topics (excludes temp topic — added separately in groupedTopics)
 const filteredTopics = computed(() => {
   let topics = [...allTopics.value];
+
+  // Domain filter
+  if (filterDomain.value) {
+    topics = topics.filter(t => { try { return new URL(t.url).hostname === filterDomain.value; } catch { return false; } });
+  }
 
   // Bookmark filter
   if (showBookmarkedOnly.value) {
@@ -294,6 +315,27 @@ async function toggleBookmark(topic: CachedTopic) {
             <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
             </svg>
+          </button>
+        </div>
+        <!-- Domain filter pills -->
+        <div v-if="allDomains.length > 1" class="flex flex-wrap gap-1.5">
+          <button
+            v-if="filterDomain"
+            class="px-2 py-0.5 rounded-full text-xs bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
+            @click="filterDomain = null"
+          >
+            Tất cả diễn đàn
+          </button>
+          <button
+            v-for="domain in allDomains"
+            :key="domain"
+            class="px-2 py-0.5 rounded-full text-xs transition-colors"
+            :class="filterDomain === domain
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
+              : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+            @click="filterDomain = filterDomain === domain ? null : domain"
+          >
+            {{ domain }}
           </button>
         </div>
         <!-- Sort selector -->

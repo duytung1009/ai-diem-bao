@@ -249,6 +249,11 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     }).catch(() => {});
   }
 
+  function updateReduceStepLabel(label: string): void {
+    const step = pl.pipeline.value?.steps.find(s => s.id === 'reduce');
+    if (step) step.label = label;
+  }
+
   async function runReducePhase(
     chunks: KnowledgeChunk[],
     excludedNums: Set<number>,
@@ -266,19 +271,23 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     } else {
       const model = currentConfig.value?.model ?? 'gpt-4o-mini';
       const contextLimit = getContextLimit(model, currentConfig.value?.contextWindow);
+      const maxOutput = knowledgeMaxTokens.value ?? currentConfig.value?.maxTokens ?? 2000;
       const promptOverhead = estimateTokens(buildKnowledgePrompt('reduce', {}, finalCap)) + RESPONSE_BUFFER_TOKENS;
-      const usableTokens = Math.floor(contextLimit * CONTEXT_USAGE_RATIO) - promptOverhead;
+      // Input must fit within: context_window - max_output_tokens (not just 75% of context_window)
+      const usableTokens = Math.floor((contextLimit - maxOutput) * CONTEXT_USAGE_RATIO) - promptOverhead;
       const totalTokens = estimateTokens(JSON.stringify(allPartial)) * 1.4;
 
       let entriesToReduce = allPartial;
 
-      if (totalTokens > usableTokens && allPartial.length > 2) {
+      if (totalTokens > usableTokens && allPartial.length >= 2) {
         const groupCount = Math.max(2, Math.ceil(totalTokens / usableTokens));
         const groupSize = Math.ceil(allPartial.length / groupCount);
         const groupResults: KnowledgeEntry[][] = [];
 
         for (let g = 0; g < allPartial.length; g += groupSize) {
           if (knowledgeGuard.isStale(guardId)) return;
+          const groupIndex = Math.floor(g / groupSize) + 1;
+          updateReduceStepLabel(`Gộp sơ bộ (${groupIndex}/${groupCount})`);
           const group = allPartial.slice(g, g + groupSize);
           const { taskId, result } = reduceKnowledgeChunksTask(group);
           llmTaskId.value = taskId;
@@ -318,6 +327,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
         for (let g = 0; g < entriesToReduce.length; g += groupSize) {
           if (knowledgeGuard.isStale(guardId)) return;
+          const callIndex = Math.floor(g / groupSize) + 1;
+          updateReduceStepLabel(`Gộp kiến thức (${callIndex}/${numCalls})`);
           const group = entriesToReduce.slice(g, g + groupSize);
           const { taskId, result } = reduceKnowledgeChunksTask(group, maxPerCall);
           llmTaskId.value = taskId;

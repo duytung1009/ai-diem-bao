@@ -114,6 +114,10 @@ function estimateETA(taskType: string, payload: unknown): number {
     if (typeof p.previousSummary === 'string') text += p.previousSummary;
     if (typeof p.question === 'string') text += p.question;
     if (Array.isArray(p.newPosts)) text += (p.newPosts as ScrapedPost[]).map((x: ScrapedPost) => x.content).join('');
+    // reduce_knowledge_chunks: { partialEntries: KnowledgeEntry[][], entryCap? }
+    if (Array.isArray(p.partialEntries)) {
+      text += (p.partialEntries as KnowledgeEntry[][]).flat().map((e: KnowledgeEntry) => e.content).join('');
+    }
   }
   const tokens = estimateTokens(text);
   return getETA(tokens, currentModel.value) ?? tokens * FALLBACK_MS_PER_TOKEN; // fallback ms/token

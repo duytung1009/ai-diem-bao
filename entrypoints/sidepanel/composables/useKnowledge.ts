@@ -1,5 +1,5 @@
-import { ref, computed, watch } from 'vue';
-import type { KnowledgeEntry, KnowledgeChunk, LLMConfig, CachedTopic, ScrapedPost, NotebookEntry, CostEstimate } from '@/lib/types';
+import { ref, computed, watch, readonly } from 'vue';
+import type { KnowledgeEntry, KnowledgeChunk, LLMConfig, CachedTopic, ScrapedPost, NotebookEntry, CostEstimate, TopicSegment } from '@/lib/types';
 import { sendMessage, sendMessageQuiet } from '@/lib/messaging';
 import { estimateTokens, calculateSegmentBudget, getContextLimit, getModelMaxOutput } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
@@ -12,6 +12,18 @@ import { useLLM } from './useLLM';
 import { usePipeline } from './usePipeline';
 import { useTopicStore } from './useTopicStore';
 import { useOptimisticUpdate } from './useOptimisticUpdate';
+
+// F33: per-segment view model (derived, never cached)
+export interface KnowledgeSegmentView {
+  segmentIndex: number;
+  startPage: number;
+  endPage: number;
+  postCount: number;
+  status: 'pending' | 'extracting' | 'done' | 'partial';
+  chunks: KnowledgeChunk[];
+  rawEntryCount: number;
+  lastExtractedAt: number | null;
+}
 
 export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   const { extractKnowledgeChunkTask, reduceKnowledgeChunksTask, cancelTask, getTaskState, checkLLMConfigured } = useLLM();
@@ -38,6 +50,11 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
   // --- Non-reactive ---
   const knowledgeGuard = createRunGuard();
+
+  // F33: tracks which segment is currently being extracted (null = idle/global extract)
+  const activeKnowledgeSegmentIndex = ref<number | null>(null);
+  // F33: true while extractAllSegments is iterating (including idle gaps between segments)
+  const isBatchExtracting = ref(false);
 
   // --- Computed ---
   const cachedTopic = computed(() => store.selectedTopic.value);
@@ -111,6 +128,54 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     currentConfig.value?.knowledgeMaxTokens ?? currentConfig.value?.maxTokens,
   );
 
+  // F33: per-segment extraction views derived from cached topic
+  const knowledgeSegments = computed<KnowledgeSegmentView[]>(() => {
+    const segs = cachedTopic.value?.segments ?? [];
+    const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
+    return segs.map((seg, i) => {
+      const segChunks = chunks.filter(c => c.segmentIndex === i);
+      const hasFailed = segChunks.some(c => c.failed);
+      let status: KnowledgeSegmentView['status'];
+      if (activeKnowledgeSegmentIndex.value === i) {
+        status = 'extracting';
+      } else if (segChunks.length === 0) {
+        status = 'pending';
+      } else if (hasFailed) {
+        status = 'partial';
+      } else {
+        status = 'done';
+      }
+      const rawEntryCount = segChunks.reduce((sum, c) => sum + c.entries.length, 0);
+      const lastExtractedAt = segChunks.length > 0
+        ? Math.max(...segChunks.map(c => c.extractedAt))
+        : null;
+      return {
+        segmentIndex: i,
+        startPage: seg.startPage,
+        endPage: seg.endPage,
+        postCount: seg.posts?.length ?? 0,
+        status,
+        chunks: segChunks,
+        rawEntryCount,
+        lastExtractedAt,
+      };
+    });
+  });
+
+  // F33: true when any chunk was extracted AFTER the last reduce (entries are stale)
+  const isReduceStale = computed(() => {
+    const reducedAt = cachedTopic.value?.knowledgeReducedAt;
+    if (!reducedAt) return false;
+    const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
+    return chunks.some(c => !c.failed && c.extractedAt > reducedAt);
+  });
+
+  // F33: true if there are extracted segment chunks (entries exist pre-reduce)
+  const hasAnyExtractedSegment = computed(() => {
+    const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
+    return chunks.some(c => c.segmentIndex !== undefined && !c.failed);
+  });
+
   // --- Helpers ---
 
   function enrichEntries(newEntries: KnowledgeEntry[]): KnowledgeEntry[] {
@@ -140,11 +205,28 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   function calcMaxOutputEntries(maxOutputTokens: number): number {
     // Dùng maxOutputTokens (knowledgeMaxTokens) thay vì contextLimit:
     // contextLimit là input budget, không phải output budget.
-    // 0.8 safety margin + 500 tokens/entry (thực tế ~400-600) để tránh JSON bị cắt.
-    const TOKENS_PER_ENTRY_REDUCE = 500;
+    // 700 tokens/entry thay vì 500: thực tế entry dài có thể đạt 700-1000 tokens
+    // (title + content chi tiết + tags + source + JSON overhead). 500 gây underestimate
+    // dẫn đến cap quá lớn → completion_tokens vượt max khi LLM trả về entries verbose.
+    const TOKENS_PER_ENTRY_REDUCE = 700;
     return Math.max(10, Math.floor(maxOutputTokens * 0.8 / TOKENS_PER_ENTRY_REDUCE));
   }
 
+  // F33: find which segment index a post belongs to (undefined if no segments / not found)
+  function findSegmentForPost(
+    postNumber: number,
+    segments: ReadonlyArray<{ posts?: ReadonlyArray<{ postNumber: number }> }>,
+  ): number | undefined {
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i].posts?.some(p => p.postNumber === postNumber)) return i;
+    }
+    return undefined;
+  }
+
+  /**
+   * @deprecated Legacy resume logic for full-thread (non-segment) extraction.
+   * Segment-mode topics use per-segment resume via computeSegmentResumeState() instead.
+   */
   function computeKnowledgeResumeState(): {
     startFromPostNumber: number;
     existingChunks: KnowledgeChunk[];
@@ -193,6 +275,141 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
   // --- Internal orchestration ---
 
+  // F33: resume state for a single segment's existing chunks
+  function computeSegmentResumeState(
+    segmentExistingChunks: KnowledgeChunk[],
+    segmentPosts: ScrapedPost[],
+  ): { startFromPostNumber: number; resumeChunks: KnowledgeChunk[] } {
+    if (segmentExistingChunks.length === 0) {
+      return { startFromPostNumber: segmentPosts[0]?.postNumber ?? 0, resumeChunks: [] };
+    }
+    const firstFailed = segmentExistingChunks.findIndex(c => c.failed);
+    if (firstFailed !== -1) {
+      return {
+        startFromPostNumber: segmentExistingChunks[firstFailed].startPostNumber,
+        resumeChunks: segmentExistingChunks.slice(0, firstFailed),
+      };
+    }
+    const last = segmentExistingChunks[segmentExistingChunks.length - 1];
+    if (last.complete === false) {
+      return {
+        startFromPostNumber: last.startPostNumber,
+        resumeChunks: segmentExistingChunks.slice(0, -1),
+      };
+    }
+    return { startFromPostNumber: last.endPostNumber + 1, resumeChunks: [...segmentExistingChunks] };
+  }
+
+  /**
+   * F33: Shared chunk extraction loop — used by handleExtract and extractSegment.
+   * @param postsToProcess  posts to extract (already filtered/sorted)
+   * @param existingChunks  chunks already extracted in this run (resume support); their .index starts at 0
+   * @param guardId         run guard ID
+   * @param topicUrl        topic URL for persistence
+   * @param topicTitle      topic title for LLM prompt
+   * @param segmentIdx      if provided, stamps segmentIndex on each new chunk; if undefined, auto-detects from topic segments
+   * @param prefixChunks    additional chunks to prepend when persisting (other segments' chunks)
+   */
+  async function runChunkExtraction(
+    postsToProcess: ScrapedPost[],
+    existingChunks: KnowledgeChunk[],
+    guardId: number,
+    topicUrl: string,
+    topicTitle: string,
+    segmentIdx?: number,
+    prefixChunks: KnowledgeChunk[] = [],
+  ): Promise<{ allChunks: KnowledgeChunk[]; truncatedCount: number }> {
+    const chunkPlan = planKnowledgeChunks(
+      postsToProcess,
+      currentConfig.value?.model ?? 'gpt-4o-mini',
+      currentConfig.value?.contextWindow,
+      knowledgeMaxTokens.value,
+      currentConfig.value?.thinkingEnabled,
+      currentConfig.value?.thinkingBudget,
+    );
+
+    const totalExtracts = existingChunks.length + chunkPlan.length;
+    pl.pipeline.value = buildKnowledgePipeline(totalExtracts);
+    for (let j = 0; j < existingChunks.length; j++) {
+      pl.markDone(`extract_${j}`);
+    }
+    pl.markFirstRunning();
+
+    let budget = calculateSegmentBudget(
+      currentConfig.value?.model ?? 'gpt-4o-mini',
+      KNOWLEDGE_CHUNK_PROMPT_TOKENS,
+      2000,
+      currentConfig.value?.contextWindow,
+    );
+    budget = Math.min(budget, KNOWLEDGE_MAX_CHUNK_BUDGET);
+
+    const newChunks: KnowledgeChunk[] = [...existingChunks];
+    totalChunks.value = totalExtracts;
+    let truncatedCount = 0;
+
+    const topicSegments = cachedTopic.value?.segments ?? [];
+
+    for (let i = 0; i < chunkPlan.length; i++) {
+      if (knowledgeGuard.isStale(guardId)) return { allChunks: newChunks, truncatedCount };
+      currentChunkIndex.value = newChunks.length;
+      currentPhase.value = 'extracting';
+
+      const segId = `extract_${newChunks.length}`;
+      pl.markRunning(segId);
+
+      const { startIndex, endIndex } = chunkPlan[i];
+      const chunkPosts = postsToProcess.slice(startIndex, endIndex + 1);
+      const isLastChunk = i === chunkPlan.length - 1;
+
+      const { taskId, result } = extractKnowledgeChunkTask(chunkPosts, topicTitle);
+      llmTaskId.value = taskId;
+      const st = getTaskState(taskId);
+      if (st && pl.pipeline.value) st.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
+
+      const llmResult = await result;
+      if (knowledgeGuard.isStale(guardId)) return { allChunks: newChunks, truncatedCount };
+      pl.markDone(segId);
+      const ft = getTaskState(taskId);
+      if (ft?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
+
+      const wasTruncated = (llmResult.data as { truncated?: boolean })?.truncated === true;
+      if (wasTruncated) truncatedCount++;
+
+      const chunkEntries = enrichEntries(
+        ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
+      );
+      const chunkTokens = chunkPosts.reduce(
+        (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
+        0,
+      );
+
+      // F33: auto-detect segmentIndex from topic segments if not explicitly provided
+      const resolvedSegIdx = segmentIdx !== undefined
+        ? segmentIdx
+        : findSegmentForPost(chunkPosts[0].postNumber, topicSegments);
+
+      newChunks.push({
+        index: newChunks.length,
+        startPostNumber: chunkPosts[0].postNumber,
+        endPostNumber: chunkPosts[chunkPosts.length - 1].postNumber,
+        entries: chunkEntries,
+        extractedAt: Date.now(),
+        complete: isLastChunk ? (chunkTokens >= budget * 0.8) : true,
+        failed: wasTruncated || undefined,
+        segmentIndex: resolvedSegIdx,
+      });
+
+      // Persist full set: prefix (other segments) + this run's chunks
+      await persistChunks([...prefixChunks, ...newChunks], guardId, topicUrl);
+    }
+
+    return { allChunks: newChunks, truncatedCount };
+  }
+
+  /**
+   * @deprecated Legacy single-call extraction for short non-segment threads.
+   * Not used by segment-mode flow.
+   */
   async function runDirectExtract(
     postsToProcess: ScrapedPost[],
     guardId: number,
@@ -372,6 +589,11 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
   // --- Public orchestration functions ---
 
+  /**
+   * @deprecated Legacy full-thread extraction. Processes all posts as one flat batch without segment
+   * awareness. For segment-mode topics use extractSegment() / extractAllSegments() instead.
+   * Still used for non-segment topics and the "Trích xuất lại tất cả" power-user dropdown.
+   */
   async function handleExtract() {
     confirmTarget.value = null;
     if (!allPosts.value.length) return;
@@ -432,6 +654,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
           pl.markRunning('reduce');
           await runReducePhase(existingChunks, excludedNums, guardId, topicUrl);
           pl.markDone('reduce');
+          await optimisticUpdate({ knowledgeReducedAt: Date.now() });
         } else {
           error.value = 'Không có bài viết mới để trích xuất kiến thức.';
         }
@@ -456,86 +679,20 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
         return;
       }
 
-      const chunkPlan = planKnowledgeChunks(
-        postsToProcess,
-        currentConfig.value?.model ?? 'gpt-4o-mini',
-        currentConfig.value?.contextWindow,
-        knowledgeMaxTokens.value,
-        currentConfig.value?.thinkingEnabled,
-        currentConfig.value?.thinkingBudget,
+      // Chunked path — delegate to shared helper (Task 285)
+      const { allChunks: newChunks, truncatedCount } = await runChunkExtraction(
+        postsToProcess, resume.existingChunks, guardId, topicUrl, topicTitle,
       );
-      const newChunks: KnowledgeChunk[] = [...resume.existingChunks];
-      totalChunks.value = newChunks.length + chunkPlan.length;
-
-      // Build reactive pipeline upfront (mirrors Summary's pl.buildSummarizePipeline)
-      const totalSteps = newChunks.length + chunkPlan.length;
-      pl.pipeline.value = buildKnowledgePipeline(totalSteps);
-      for (let j = 0; j < resume.existingChunks.length; j++) {
-        pl.markDone(`extract_${j}`);
-      }
-      pl.markFirstRunning();
-
-      let truncatedChunkCount = 0;
-
-      for (let i = 0; i < chunkPlan.length; i++) {
-        if (knowledgeGuard.isStale(guardId)) return;
-        currentChunkIndex.value = newChunks.length;
-        currentPhase.value = 'extracting';
-
-        const segIdx = newChunks.length;
-        const segId = `extract_${segIdx}`;
-        pl.markRunning(segId);
-
-        const { startIndex, endIndex } = chunkPlan[i];
-        const chunkPosts = postsToProcess.slice(startIndex, endIndex + 1);
-        const isLastChunk = i === chunkPlan.length - 1;
-
-        const { taskId, result } = extractKnowledgeChunkTask(chunkPosts, topicTitle);
-        llmTaskId.value = taskId;
-        const st = getTaskState(taskId);
-        if (st && pl.pipeline.value) {
-          st.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
-        }
-        const llmResult = await result;
-        if (knowledgeGuard.isStale(guardId)) return;
-        pl.markDone(segId);
-        // Sync back from task state
-        const ft = getTaskState(taskId);
-        if (ft?.pipeline) pl.pipeline.value = JSON.parse(JSON.stringify(ft.pipeline));
-
-        const wasTruncated = (llmResult.data as { truncated?: boolean })?.truncated === true;
-        if (wasTruncated) truncatedChunkCount++;
-
-        const chunkEntries = enrichEntries(
-          ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
-        );
-
-        const chunkTokens = chunkPosts.reduce(
-          (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-          0,
-        );
-
-        const chunkRecord: KnowledgeChunk = {
-          index: newChunks.length,
-          startPostNumber: chunkPosts[0].postNumber,
-          endPostNumber: chunkPosts[chunkPosts.length - 1].postNumber,
-          entries: chunkEntries,
-          extractedAt: Date.now(),
-          complete: isLastChunk ? (chunkTokens >= budget * 0.8) : true,
-          failed: wasTruncated || undefined,
-        };
-        newChunks.push(chunkRecord);
-
-        await persistChunks(newChunks, guardId, topicUrl);
-      }
 
       if (knowledgeGuard.isStale(guardId)) return;
       pl.markRunning('reduce');
       await runReducePhase(newChunks, excludedNums, guardId, topicUrl);
       pl.markDone('reduce');
+      // F33: persist timestamp so staleness detection works
+      await optimisticUpdate({ knowledgeReducedAt: Date.now() });
 
-      if (truncatedChunkCount > 0) {
-        truncationWarning.value = truncatedChunkCount;
+      if (truncatedCount > 0) {
+        truncationWarning.value = truncatedCount;
       }
     } catch (err) {
       if (knowledgeGuard.isStale(guardId)) return;
@@ -610,6 +767,34 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     currentPhase.value = 'idle';
     currentChunkIndex.value = 0;
     totalChunks.value = 0;
+    isBatchExtracting.value = false;  // stop batch loop if running
+    activeKnowledgeSegmentIndex.value = null;  // unblock stuck segment UI after cancel
+  }
+
+  /** F33: Extract all pending/partial segments sequentially. Cancellable via handleCancel(). */
+  async function extractAllSegments(): Promise<void> {
+    const segs = cachedTopic.value?.segments;
+    if (!segs?.length || isLoading.value || isBatchExtracting.value) return;
+
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
+
+    const toProcess = knowledgeSegments.value
+      .filter(s => s.status === 'pending' || s.status === 'partial')
+      .map(s => s.segmentIndex);
+
+    if (toProcess.length === 0) return;
+
+    isBatchExtracting.value = true;
+    try {
+      for (const segIdx of toProcess) {
+        if (!isBatchExtracting.value) break;
+        await extractSegment(segIdx);
+        if (!isBatchExtracting.value) break;
+      }
+    } finally {
+      isBatchExtracting.value = false;
+    }
   }
 
   async function handleClearKnowledgeData() {
@@ -667,6 +852,129 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     });
   }
 
+  // --- F33: per-segment extraction functions ---
+
+  /** Extract knowledge for a single segment by index. Does NOT run reduce. */
+  async function extractSegment(segmentIdx: number): Promise<void> {
+    const segs = cachedTopic.value?.segments;
+    if (!segs?.length || segmentIdx >= segs.length) return;
+    if (isLoading.value) return;
+
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
+
+    const guardId = knowledgeGuard.begin();
+    error.value = '';
+    isLoading.value = true;
+    currentPhase.value = 'extracting';
+    currentChunkIndex.value = 0;
+    totalChunks.value = 0;
+    activeKnowledgeSegmentIndex.value = segmentIdx;
+
+    if (!currentConfig.value) {
+      const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
+      if (cfg) currentConfig.value = cfg;
+    }
+
+    try {
+      const topicUrl = cachedTopic.value?.url;
+      const topicTitle = cachedTopic.value?.title;
+      if (!topicUrl || !topicTitle) return;
+
+      const segmentPosts = [...(segs[segmentIdx].posts ?? [])].sort((a, b) => a.postNumber - b.postNumber);
+      const allChunksCurrent = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
+      const segExistingChunks = allChunksCurrent.filter(c => c.segmentIndex === segmentIdx);
+      const otherChunks = allChunksCurrent.filter(c => c.segmentIndex !== segmentIdx);
+
+      const { startFromPostNumber, resumeChunks } = computeSegmentResumeState(segExistingChunks, segmentPosts);
+
+      const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
+      const postsToExtract = segmentPosts.filter(
+        p => p.postNumber >= startFromPostNumber && !excludedNums.has(p.postNumber),
+      );
+
+      if (postsToExtract.length === 0) {
+        error.value = 'Không có bài viết mới để trích xuất cho đoạn này.';
+        return;
+      }
+
+      await runChunkExtraction(postsToExtract, resumeChunks, guardId, topicUrl, topicTitle, segmentIdx, otherChunks);
+      // Note: runChunkExtraction already persists incrementally with otherChunks as prefix
+    } catch (err) {
+      if (knowledgeGuard.isStale(guardId)) return;
+      error.value = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (knowledgeGuard.isStale(guardId)) return;
+      isLoading.value = false;
+      llmTaskId.value = null;
+      currentPhase.value = 'idle';
+      currentChunkIndex.value = 0;
+      totalChunks.value = 0;
+      activeKnowledgeSegmentIndex.value = null;
+      pl.pipeline.value = null;  // clear extraction-only pipeline (no reduce step used)
+    }
+  }
+
+  /** Remove all chunks for a specific segment from cache. */
+  async function clearSegment(segmentIdx: number): Promise<void> {
+    const topicUrl = cachedTopic.value?.url;
+    if (!topicUrl) return;
+    const guardId = knowledgeGuard.begin();
+    const remaining = ((cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[])
+      .filter(c => c.segmentIndex !== segmentIdx);
+    await persistChunks(remaining, guardId, topicUrl);
+  }
+
+  /** Clear a segment's chunks then re-extract it from scratch. */
+  async function reExtractSegment(segmentIdx: number): Promise<void> {
+    await clearSegment(segmentIdx);
+    await extractSegment(segmentIdx);
+  }
+
+  /** Run the reduce phase manually on current chunks (for stale banner "Tổng hợp lại"). */
+  async function runReducePhaseManual(): Promise<void> {
+    const topicUrl = cachedTopic.value?.url;
+    if (!topicUrl) return;
+    const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
+    if (!chunks.length) return;
+    if (isLoading.value) return;
+
+    const configCheck = await checkLLMConfigured();
+    if (!configCheck.ok) { error.value = configCheck.error!; return; }
+
+    const guardId = knowledgeGuard.begin();
+    error.value = '';
+    isLoading.value = true;
+    currentPhase.value = 'reducing';
+    currentChunkIndex.value = 0;
+    totalChunks.value = 0;
+
+    if (!currentConfig.value) {
+      const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
+      if (cfg) currentConfig.value = cfg;
+    }
+
+    try {
+      const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
+      pl.pipeline.value = buildKnowledgePipeline(chunks.length);
+      for (let j = 0; j < chunks.length; j++) pl.markDone(`extract_${j}`);
+      pl.markRunning('reduce');
+      await runReducePhase(chunks, excludedNums, guardId, topicUrl);
+      pl.markDone('reduce');
+      await optimisticUpdate({ knowledgeReducedAt: Date.now() });
+    } catch (err) {
+      if (knowledgeGuard.isStale(guardId)) return;
+      error.value = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (knowledgeGuard.isStale(guardId)) return;
+      isLoading.value = false;
+      llmTaskId.value = null;
+      currentPhase.value = 'idle';
+      currentChunkIndex.value = 0;
+      totalChunks.value = 0;
+    }
+  }
+
   return {
     entries,
     loadedTopicUrl,
@@ -708,6 +1016,18 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     toggleSave,
     handleDelete,
     handleClearTracking,
+    // F33 new exports
+    activeKnowledgeSegmentIndex: readonly(activeKnowledgeSegmentIndex),
+    isBatchExtracting: readonly(isBatchExtracting),
+    knowledgeSegments,
+    isReduceStale,
+    hasAnyExtractedSegment,
+    extractSegment,
+    clearSegment,
+    reExtractSegment,
+    runReducePhaseManual,
+    extractAllSegments,
+    /** @deprecated Gates handleExtract() — use extractAllSegments() for segment-mode topics. */
     onExtractClick() {
       const est = estimatedExtractCost.value;
       if (!est || (est.costUsd === 0 && est.apiCalls <= 3)) {

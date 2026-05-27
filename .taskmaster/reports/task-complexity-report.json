@@ -1,9 +1,9 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-26T16:14:10.569Z",
-		"tasksAnalyzed": 9,
-		"totalTasks": 128,
-		"analysisCount": 9,
+		"generatedAt": "2026-05-27T05:59:32.407Z",
+		"tasksAnalyzed": 15,
+		"totalTasks": 138,
+		"analysisCount": 15,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
 		"usedResearch": true
@@ -12,10 +12,10 @@
 		{
 			"taskId": 169,
 			"taskTitle": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
-			"complexityScore": 5,
+			"complexityScore": 4,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "Chia nhỏ module persistence thành các helper functions cho payload và logic nén segment riêng biệt để dễ dàng thực hiện snapshot testing.",
-			"reasoning": "Nhiệm vụ này tập trung vào việc refactor logic lưu trữ hiện có vào một module thuần túy (pure module). Độ phức tạp ở mức trung bình do cần đảm bảo tính nhất quán của dữ liệu qua các bài test snapshot và tích hợp stale-guard."
+			"reasoning": "Task này tập trung vào logic thuần (pure logic) và đã có cấu trúc subtask khá chi tiết. Độ phức tạp chủ yếu nằm ở tính chính xác của dữ liệu payload và khả năng tương thích với logic cũ."
 		},
 		{
 			"taskId": 170,
@@ -23,7 +23,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "Phân tách logic scraping trang đơn và logic xử lý vòng lặp trang để tăng tính tái sử dụng và dễ kiểm thử bằng mock.",
-			"reasoning": "Việc tách logic scraping yêu cầu xử lý các trạng thái bất đồng bộ phức tạp, bao gồm tiến trình (progress), các lỗi đặc thù của thread (deleted/locked) và cơ chế khử trùng lặp dữ liệu trang cuối."
+			"reasoning": "Việc chuyển đổi các hiệu ứng lề (side effects) và xử lý bất đồng bộ phức tạp vào một composable yêu cầu quản lý trạng thái lỗi và tiến trình một cách chặt chẽ."
 		},
 		{
 			"taskId": 171,
@@ -31,7 +31,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "Tập trung vào cơ chế đồng bộ trạng thái giữa StepTimeline và LLMTaskState để đảm bảo giao diện người dùng luôn phản ánh đúng tiến trình xử lý.",
-			"reasoning": "Nhiệm vụ này yêu cầu thiết kế một hệ thống quản lý pipeline tập trung có khả năng điều chỉnh động (reconcile) khi số lượng segment thay đổi, đòi hỏi sự phối hợp chặt chẽ giữa trạng thái UI và logic nghiệp vụ."
+			"reasoning": "Quản lý trạng thái pipeline đòi hỏi sự phối hợp nhịp nhàng giữa UI và logic thực thi, đặc biệt là khi số lượng segment thay đổi động."
 		},
 		{
 			"taskId": 172,
@@ -39,7 +39,7 @@
 			"complexityScore": 7,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "Xây dựng các bộ test case mock LLM chi tiết cho từng hàm primitive để đảm bảo cơ chế stale-guard và short-circuit hoạt động chính xác.",
-			"reasoning": "Đây là logic cốt lõi liên quan đến gọi LLM và lưu trữ kết quả. Độ phức tạp cao vì phải quản lý nghiêm ngặt stale-guard token để tránh race condition và xử lý logic gộp (reduce) kết quả hiệu quả."
+			"reasoning": "Đây là nhân lõi của việc gọi LLM. Việc tích hợp stale-guard để tránh race condition khi gọi API tốn phí là một thách thức kỹ thuật quan trọng."
 		},
 		{
 			"taskId": 173,
@@ -47,39 +47,87 @@
 			"complexityScore": 8,
 			"recommendedSubtasks": 0,
 			"expansionPrompt": "Mô tả chi tiết luồng điều phối giữa Scraper, Planner và Summarizer trong driver trước khi triển khai để bao quát hết các kịch bản resume/retry.",
-			"reasoning": "Đây là điểm kết nối của tất cả các module. Driver này chịu trách nhiệm điều phối toàn bộ quy trình từ cào dữ liệu đến tóm tắt tổng thể, xử lý các chế độ chạy khác nhau (mode) và khôi phục trạng thái (resume)."
+			"reasoning": "Driver này đóng vai trò nhạc trưởng, điều phối nhiều module khác nhau. Độ phức tạp cao nhất nằm ở việc xử lý tất cả các nhánh logic (resume, mode, error recovery) một cách nhất quán."
 		},
 		{
-			"taskId": 279,
-			"taskTitle": "lib/types.ts: them openrouter vao LLMProvider",
-			"complexityScore": 1,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Cập nhật định nghĩa Union type cho LLMProvider trong lib/types.ts để bao gồm 'openrouter'.",
-			"reasoning": "Chỉ là một thay đổi nhỏ về kiểu dữ liệu (TypeScript type definition), không ảnh hưởng đến logic thực thi."
-		},
-		{
-			"taskId": 280,
-			"taskTitle": "factory.ts + openai-adapter.ts: route openrouter + HTTP headers",
-			"complexityScore": 2,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Triển khai case 'openrouter' trong factory.ts và bổ sung logic thêm headers HTTP-Referer/X-Title vào OpenAIAdapter.",
-			"reasoning": "Thay đổi logic nhỏ trong Factory để khởi tạo adapter và cập nhật adapter để gửi thêm các headers bắt buộc theo yêu cầu của OpenRouter."
-		},
-		{
-			"taskId": 281,
-			"taskTitle": "SettingsView.vue: dropdown + providerDefaults + helper text cho OpenRouter",
+			"taskId": 283,
+			"taskTitle": "Cập nhật Data Model cho Knowledge Chunk và Topic",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Cập nhật logic validation và các giá trị mặc định cho OpenRouter trong SettingsView, đảm bảo helper text hiển thị đúng khi người dùng chọn provider này.",
-			"reasoning": "Đòi hỏi cập nhật giao diện người dùng, thêm các thuộc tính tính toán (computed properties) và quản lý dữ liệu mặc định cho nhà cung cấp mới."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Định nghĩa interface mở rộng, cập nhật schema cho IndexedDB và thực hiện audit toàn bộ codebase cho các hàm khởi tạo object.",
+			"reasoning": "Thay đổi schema đơn giản nhưng cần đảm bảo tính tương thích ngược (backward compatibility) cho dữ liệu cũ trong database của người dùng."
 		},
 		{
-			"taskId": 282,
-			"taskTitle": "HelpView.vue: them section 1.2 OpenRouter, renumber 1.2->1.3, 1.3->1.4",
-			"complexityScore": 2,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Soạn thảo nội dung hướng dẫn OpenRouter và thực hiện việc đánh số lại các section trong HelpView.vue một cách nhất quán.",
-			"reasoning": "Nhiệm vụ chủ yếu là cập nhật nội dung tài liệu và điều chỉnh bố cục (renumbering) trang trợ giúp."
+			"taskId": 284,
+			"taskTitle": "Refactor useKnowledge: Thêm các biến Derived State",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Xây dựng các computed properties cho trạng thái segment, logic kiểm tra stale dữ liệu và quản lý refs cho index hiện hành.",
+			"reasoning": "Logic tính toán trạng thái (pending, done, partial) dựa trên sự tồn tại của các chunk yêu cầu kiểm tra điều kiện kỹ lưỡng để UI không bị nháy hoặc sai lệch."
+		},
+		{
+			"taskId": 285,
+			"taskTitle": "Tách helper runChunkExtraction và hàm tìm kiếm Segment",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tách rời logic định vị segment và logic gọi LLM trích xuất thành các hàm pure hoặc helper độc lập để dễ dàng unit test.",
+			"reasoning": "Refactoring mã nguồn hiện có để tái sử dụng yêu cầu sự cẩn trọng để không làm thay đổi hành vi hiện tại (regression)."
+		},
+		{
+			"taskId": 286,
+			"taskTitle": "Triển khai logic trích xuất theo phân đoạn (extractSegment)",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Chi tiết hóa luồng: tính resume point -> lấy danh sách post -> gọi extraction -> merge kết quả vào store theo segmentIndex.",
+			"reasoning": "Đây là logic nghiệp vụ chính của tính năng mới. Việc xử lý resume bên trong một phân đoạn là phần khó nhất."
+		},
+		{
+			"taskId": 287,
+			"taskTitle": "Triển khai logic xóa và trích xuất lại phân đoạn",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Xây dựng logic lọc dữ liệu (filter) theo segmentIndex và quy trình gọi lại hàm trích xuất một cách an toàn.",
+			"reasoning": "Quản lý tính nhất quán của dữ liệu sau khi xóa và đảm bảo các cờ trạng thái stale được kích hoạt đúng lúc."
+		},
+		{
+			"taskId": 288,
+			"taskTitle": "Cập nhật flow Extract All và Persist ReducedAt",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Chỉnh sửa logic handleExtract để gán index tự động và cập nhật timestamp knowledgeReducedAt sau khi pha reduce hoàn tất.",
+			"reasoning": "Cần điều chỉnh luồng tóm tắt kiến thức cũ để nó tuân thủ mô hình dữ liệu mới mà không làm gián đoạn trải nghiệm người dùng."
+		},
+		{
+			"taskId": 289,
+			"taskTitle": "Xây dựng UI Segment Grid cho tab Kiến thức",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Thiết kế component grid layout, định nghĩa các icon trạng thái và gắn kết các hành động extract/re-extract vào UI.",
+			"reasoning": "UI Grid đòi hỏi xử lý nhiều trạng thái hiển thị (loading, success, partial error) và đồng bộ thời gian thực với tiến trình backend."
+		},
+		{
+			"taskId": 290,
+			"taskTitle": "Triển khai Preview Panel cho từng phân đoạn",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Xây dựng giao diện danh sách entries thô, tích hợp logic lưu vào Notebook và xử lý chuyển đổi giữa các trạng thái preview.",
+			"reasoning": "Yêu cầu tích hợp sâu với module Notebook hiện có và đảm bảo hiệu năng khi hiển thị lượng lớn dữ liệu thô."
+		},
+		{
+			"taskId": 291,
+			"taskTitle": "Triển khai Banner thông báo lỗi thời và nút Tổng hợp thủ công",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Thiết kế logic hiển thị banner dựa trên isReduceStale và tích hợp Cost Guard cho hành động tổng hợp (reduce).",
+			"reasoning": "Cải thiện UX bằng cách nhắc nhở người dùng và bảo vệ họ khỏi việc tiêu tốn token không cần thiết thông qua Cost Guard."
+		},
+		{
+			"taskId": 292,
+			"taskTitle": "Cập nhật Action Bar và logic Fallback",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Chuyển đổi nút bấm thành Dropdown menu và xử lý logic hiển thị fallback cho các topic không chia segment.",
+			"reasoning": "Phải đảm bảo tính thẩm mỹ của giao diện và không gây nhầm lẫn cho người dùng khi làm việc với dữ liệu cũ hoặc dữ liệu không phân đoạn."
 		}
 	]
 }

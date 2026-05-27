@@ -1,12 +1,49 @@
 <script setup lang="ts">
+import { ref, watch, onUnmounted } from 'vue';
 import type { PipelineDefinition } from '@/lib/types';
 
-defineProps<{
+const props = defineProps<{
   pipeline: PipelineDefinition;
   showCancel?: boolean;
 }>();
 
 defineEmits<{ cancel: [] }>();
+
+// Local ETA map: stepId → remaining ms (used for countdown display)
+const localEta = ref<Map<string, number>>(new Map());
+
+// Sync localEta when a step's etaMs or status changes
+watch(
+  () => props.pipeline.steps,
+  (steps) => {
+    for (const step of steps) {
+      if (step.status === 'running' && step.etaMs != null) {
+        // Only reset if the incoming value is larger (fresh ETA from background)
+        const current = localEta.value.get(step.id);
+        if (current == null || step.etaMs > current) {
+          localEta.value.set(step.id, step.etaMs);
+        }
+      } else if (step.status !== 'running') {
+        localEta.value.delete(step.id);
+      }
+    }
+  },
+  { deep: true, immediate: true },
+);
+
+// Countdown tick: decrement every 5s for all running steps
+const timer = setInterval(() => {
+  for (const [id, eta] of localEta.value.entries()) {
+    const next = eta - 5000;
+    if (next <= 0) {
+      localEta.value.set(id, 0);
+    } else {
+      localEta.value.set(id, next);
+    }
+  }
+}, 5000);
+
+onUnmounted(() => clearInterval(timer));
 
 function formatETA(ms: number): string {
   if (!ms || ms < 0) return '';
@@ -89,10 +126,10 @@ function formatETA(ms: number): string {
             </span>
 
             <span
-              v-if="step.status === 'running' && step.etaMs != null && !Number.isNaN(step.etaMs) && step.etaMs >= 0"
+              v-if="step.status === 'running' && localEta.has(step.id) && formatETA(localEta.get(step.id)!)"
               class="text-xs text-(--color-accent) bg-(--color-accent-soft) px-1.5 py-0.5 rounded"
             >
-              {{ formatETA(step.etaMs) }}
+              {{ formatETA(localEta.get(step.id)!) }}
             </span>
           </div>
 

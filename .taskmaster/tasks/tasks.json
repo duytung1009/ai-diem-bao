@@ -716,7 +716,7 @@
             "parentId": "undefined"
           }
         ],
-        "complexity": 5,
+        "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Chia nhỏ module persistence thành các helper functions cho payload và logic nén segment riêng biệt để dễ dàng thực hiện snapshot testing.",
         "updatedAt": "2026-05-17T15:23:57.970Z"
@@ -6189,13 +6189,606 @@
         "updatedAt": "2026-05-26T16:23:04.716Z",
         "recommendedSubtasks": 2,
         "expansionPrompt": "Soạn thảo nội dung hướng dẫn OpenRouter và thực hiện việc đánh số lại các section trong HelpView.vue một cách nhất quán."
+      },
+      {
+        "id": "283",
+        "title": "Cập nhật Data Model cho Knowledge Chunk và Topic",
+        "description": "Bổ sung trường segmentIndex vào KnowledgeChunk và knowledgeReducedAt vào CachedTopic để hỗ trợ quản lý theo phân đoạn.",
+        "details": "Cập nhật lib/types.ts:\n- Thêm `segmentIndex?: number` vào interface `KnowledgeChunk`. Trường này lưu index của segment tương ứng trong cachedTopic.segments[].\n- Thêm `knowledgeReducedAt?: number` vào interface `CachedTopic` để lưu timestamp lần cuối cùng thực hiện pha reduce (tổng hợp).",
+        "testStrategy": "Kiểm tra việc biên dịch (compile) mã nguồn để đảm bảo không có lỗi TypeScript. Kiểm tra các instance của KnowledgeChunk cũ vẫn hoạt động bình thường (backward compatibility).",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật định nghĩa Interface trong lib/types.ts",
+            "description": "Bổ sung các trường mới vào các interface KnowledgeChunk và CachedTopic để hỗ trợ quản lý phân đoạn.",
+            "dependencies": [],
+            "details": "Thêm trường `segmentIndex?: number` vào interface `KnowledgeChunk` và `knowledgeReducedAt?: number` vào interface `CachedTopic`. Các trường này phải được đánh dấu là optional để đảm bảo tính tương thích ngược.",
+            "status": "pending",
+            "testStrategy": "Sử dụng trình biên dịch TypeScript (tsc) để kiểm tra lỗi kiểu dữ liệu trên toàn bộ project.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật Schema Database và logic khởi tạo dữ liệu",
+            "description": "Điều chỉnh cấu trúc lưu trữ trong IndexedDB và các hàm tạo đối tượng để hỗ trợ các trường dữ liệu mới.",
+            "dependencies": [
+              1
+            ],
+            "details": "Cập nhật schema trong file quản lý database (Dexie/IndexedDB) nếu cần thiết. Đảm bảo các hàm khởi tạo (factory functions) hoặc các đoạn mã tạo object mới có hỗ trợ gán giá trị cho các trường vừa thêm.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra việc mở ứng dụng và khởi tạo database trên trình duyệt để xác nhận không có lỗi schema.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Audit codebase và cập nhật logic xử lý phân đoạn",
+            "description": "Rà soát các file logic (như useKnowledge.ts) để gán giá trị segmentIndex khi tạo chunk và cập nhật kiến thức.",
+            "dependencies": [
+              2
+            ],
+            "details": "Xác định các vị trí trong chu trình trích xuất kiến thức để gán đúng index của phân đoạn vào KnowledgeChunk. Cập nhật timestamp knowledgeReducedAt khi kết thúc pha reduce. Đảm bảo logic xử lý dữ liệu cũ không có các trường này vẫn hoạt động ổn định.",
+            "status": "pending",
+            "testStrategy": "Manual test: Thực hiện trích xuất kiến thức và kiểm tra dữ liệu trong IndexedDB xem segmentIndex và knowledgeReducedAt có được lưu đúng không.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Định nghĩa interface mở rộng, cập nhật schema cho IndexedDB và thực hiện audit toàn bộ codebase cho các hàm khởi tạo object."
+      },
+      {
+        "id": "284",
+        "title": "Refactor useKnowledge: Thêm các biến Derived State",
+        "description": "Tính toán trạng thái các phân đoạn kiến thức (knowledgeSegments), kiểm tra tính lỗi thời (isReduceStale) và trạng thái trích xuất.",
+        "details": "Trong useKnowledge.ts, triển khai:\n- `knowledgeSegments`: Computed array ánh xạ 1-1 với cachedTopic.segments, chứa status (pending, extracting, done, partial), count và lastExtractedAt.\n- `isReduceStale`: Computed so sánh `knowledgeChunks.extractedAt` với `knowledgeReducedAt`.\n- `hasAnyExtractedSegment`: Kiểm tra xem đã có ít nhất 1 chunk nào có segmentIndex hợp lệ chưa.\n- `activeKnowledgeSegmentIndex`: Ref để theo dõi phân đoạn đang được xử lý.",
+        "testStrategy": "Unit test các computed property với dữ liệu giả lập (mock data) bao gồm cả trường hợp có segmentIndex và legacy chunks (undefined).",
+        "priority": "high",
+        "dependencies": [
+          "283"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Khởi tạo ref activeKnowledgeSegmentIndex",
+            "description": "Khai báo và quản lý trạng thái phân đoạn kiến thức đang được xử lý tích cực.",
+            "dependencies": [],
+            "details": "Trong file useKnowledge.ts, thực hiện khai báo const activeKnowledgeSegmentIndex = ref<number | null>(null) để theo dõi index của segment đang được tương tác hoặc xử lý.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra giá trị khởi tạo phải là null và có thể cập nhật thông qua các hàm điều hướng segment.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai computed property knowledgeSegments",
+            "description": "Tính toán trạng thái chi tiết cho từng phân đoạn kiến thức dựa trên dữ liệu cache và chunks.",
+            "dependencies": [
+              1
+            ],
+            "details": "Xây dựng computed knowledgeSegments ánh xạ từ cachedTopic.segments. Mỗi phần tử bao gồm status (pending, extracting, done, partial), count (số lượng chunk) và lastExtractedAt (thời gian trích xuất cuối cùng).",
+            "status": "pending",
+            "testStrategy": "Sử dụng unit test với các bộ dữ liệu mock: segment chưa có chunk, segment có chunk hoàn tất, và segment có chunk không đồng nhất để xác định status.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xây dựng logic kiểm tra tính lỗi thời isReduceStale và hasAnyExtractedSegment",
+            "description": "Cài đặt các biến computed để kiểm tra sự thay đổi của dữ liệu so với bản thu gọn và sự tồn tại của dữ liệu trích xuất.",
+            "dependencies": [
+              2
+            ],
+            "details": "Triển khai isReduceStale bằng cách so sánh timestamp lớn nhất của knowledgeChunks.extractedAt với knowledgeReducedAt. Triển khai hasAnyExtractedSegment bằng cách kiểm tra mảng chunks có chứa bất kỳ segmentIndex hợp lệ nào không.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra isReduceStale trả về true khi có chunk mới hơn thời điểm reduce. Kiểm tra hasAnyExtractedSegment trả về false khi mảng chunks rỗng hoặc chỉ chứa legacy data.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Tích hợp và xuất các biến trạng thái vào useKnowledge",
+            "description": "Hoàn thiện việc xuất các biến Derived State mới vào đối tượng trả về của composable useKnowledge.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Cập nhật câu lệnh return trong useKnowledge.ts để bao gồm: knowledgeSegments, isReduceStale, hasAnyExtractedSegment và activeKnowledgeSegmentIndex. Đảm bảo tính tương thích với TypeScript cho các component tiêu thụ.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra type definition của useKnowledge để đảm bảo các thuộc tính mới hiển thị đúng kiểu dữ liệu và không gây lỗi build.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Xây dựng các computed properties cho trạng thái segment, logic kiểm tra stale dữ liệu và quản lý refs cho index hiện hành."
+      },
+      {
+        "id": "285",
+        "title": "Tách helper runChunkExtraction và hàm tìm kiếm Segment",
+        "description": "Refactor mã nguồn hiện tại để tách logic trích xuất chunk và mapping bài viết vào phân đoạn thành các hàm dùng chung.",
+        "details": "- Tạo hàm `findSegmentForPost(postNumber: number, segments: TopicSegment[]): number` để tìm index segment chứa bài viết.\n- Tách logic gọi LLM trích xuất từ `handleExtract` cũ thành hàm `runChunkExtraction` độc lập, nhận `segmentIndex` làm tham số để gán vào chunk kết quả.",
+        "testStrategy": "Đảm bảo hàm findSegmentForPost trả về đúng index cho các postNumber biên (boundary). Kiểm tra runChunkExtraction hoạt động độc lập không phụ thuộc vào flow Extract All.",
+        "priority": "medium",
+        "dependencies": [
+          "284"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai hàm helper findSegmentForPost",
+            "description": "Xây dựng hàm tiện ích để xác định vị trí của một bài viết nằm trong phân đoạn nào của chủ đề.",
+            "dependencies": [],
+            "details": "Hàm findSegmentForPost(postNumber: number, segments: TopicSegment[]): number sẽ duyệt qua mảng segments, so sánh postNumber với dải giá trị start/end của từng segment để trả về index chính xác. Cần xử lý trường hợp không tìm thấy.",
+            "status": "pending",
+            "testStrategy": "Unit test với các bộ dữ liệu mẫu, kiểm tra kỹ các giá trị biên (boundary) như bài viết đầu tiên và cuối cùng của một segment.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tách logic trích xuất thành hàm runChunkExtraction",
+            "description": "Refactor logic gọi LLM trích xuất tri thức từ handleExtract thành một hàm độc lập có thể tái sử dụng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Di chuyển phần code gọi API LLM và xử lý kết quả thô vào hàm runChunkExtraction. Hàm này nhận vào danh sách posts, segmentIndex, và guardId. Kết quả trả về phải bao gồm segmentIndex để phục vụ việc mapping dữ liệu sau này.",
+            "status": "pending",
+            "testStrategy": "Sử dụng mock LLM response để kiểm tra xem hàm có trả về đúng cấu trúc chunk kèm theo segmentIndex đã truyền vào hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp helper vào luồng useKnowledge và hoàn thiện test",
+            "description": "Cập nhật các component hoặc hook đang sử dụng logic cũ sang các helper mới và viết kiểm thử tích hợp.",
+            "dependencies": [
+              2
+            ],
+            "details": "Thay thế đoạn code cũ trong handleExtract bằng việc gọi findSegmentForPost và runChunkExtraction. Đảm bảo luồng dữ liệu (data flow) vẫn nhất quán và không làm ảnh hưởng đến các tính năng khác của useKnowledge.",
+            "status": "pending",
+            "testStrategy": "Chạy kiểm thử toàn trình (Integration test) cho quy trình trích xuất để đảm bảo việc refactor không gây ra lỗi hồi quy (regression).",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tách rời logic định vị segment và logic gọi LLM trích xuất thành các hàm pure hoặc helper độc lập để dễ dàng unit test."
+      },
+      {
+        "id": "286",
+        "title": "Triển khai logic trích xuất theo phân đoạn (extractSegment)",
+        "description": "Xây dựng hàm extractSegment hỗ trợ resume trong phân đoạn và cập nhật trạng thái trích xuất.",
+        "details": "- Triển khai `computeSegmentResumeState`: logic tìm bài viết bắt đầu dựa trên các chunk hiện có của segment đó.\n- Triển khai `extractSegment(segmentIdx)`: Lấy các bài viết của segment, tính resume state, gọi `runChunkExtraction` với segmentIndex cụ thể, sau đó merge và persist chunks vào storage.",
+        "testStrategy": "Thử nghiệm trích xuất một segment bất kỳ (ví dụ segment 2) và kiểm tra xem chỉ các chunk của segment đó được tạo/cập nhật trong IndexedDB.",
+        "priority": "high",
+        "dependencies": [
+          "285"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai hàm computeSegmentResumeState",
+            "description": "Xây dựng logic để xác định vị trí bắt đầu trích xuất (resume point) dựa trên các chunk dữ liệu đã tồn tại của một phân đoạn.",
+            "dependencies": [],
+            "details": "Hàm này sẽ nhận vào segmentIndex và danh sách các chunk hiện có trong storage. Nó phải tính toán xem bài viết (post) cuối cùng được trích xuất thành công là bài nào và trả về index tiếp theo để bắt đầu.",
+            "status": "pending",
+            "testStrategy": "Unit test với các bộ dữ liệu chunk giả lập: trường hợp không có chunk nào, trường hợp đã có một phần, và trường hợp đã hoàn tất.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Khởi tạo logic extractSegment và truy xuất danh sách bài viết",
+            "description": "Thiết lập khung hàm extractSegment(segmentIdx) để lấy thông tin phân đoạn và danh sách bài viết tương ứng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Truy xuất thông tin segment từ store dựa trên segmentIdx. Lọc ra danh sách các posts thuộc phạm vi (boundaries) của segment đó để chuẩn bị cho quá trình trích xuất.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra log để đảm bảo danh sách bài viết lấy ra khớp với ranh giới của segmentIndex được truyền vào.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp cơ chế Resume vào luồng trích xuất phân đoạn",
+            "description": "Sử dụng kết quả từ computeSegmentResumeState để điều chỉnh danh sách bài viết cần xử lý thực tế.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Gọi computeSegmentResumeState bên trong extractSegment. Điều chỉnh danh sách bài viết đầu vào cho runChunkExtraction để chỉ bao gồm các bài chưa được trích xuất. Cập nhật trạng thái pipeline (markDone) cho các phần đã resume.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra xem số lượng bài viết gửi đi trích xuất có giảm đi tương ứng với số lượng chunk đã tồn tại hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Thực thi runChunkExtraction và quản lý kết quả trích xuất",
+            "description": "Gọi hàm runChunkExtraction với các tham số cụ thể cho phân đoạn và xử lý các chunk kết quả trả về.",
+            "dependencies": [
+              3
+            ],
+            "details": "Thực hiện gọi runChunkExtraction cho các bài viết còn lại. Đảm bảo các tham số như segmentIndex được truyền chính xác để hàm callback có thể định danh dữ liệu.",
+            "status": "pending",
+            "testStrategy": "Mock hàm runChunkExtraction để trả về dữ liệu mẫu và kiểm tra xem extractSegment có nhận đúng các chunk mới này không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Hợp nhất (Merge) và lưu trữ bền vững (Persist) các chunks",
+            "description": "Thực hiện gộp các chunk mới với dữ liệu cũ và cập nhật vào IndexedDB theo phân đoạn.",
+            "dependencies": [
+              4
+            ],
+            "details": "Triển khai logic merge: lấy chunk cũ từ storage, thêm chunk mới vào, sau đó gọi phương thức lưu trữ (persist) để ghi lại toàn bộ vào IndexedDB dưới khóa của segmentIndex tương ứng.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra IndexedDB sau khi chạy: đảm bảo dữ liệu của segment được cập nhật đầy đủ, không bị trùng lặp và không ảnh hưởng đến các segment khác.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 5,
+        "expansionPrompt": "Chi tiết hóa luồng: tính resume point -> lấy danh sách post -> gọi extraction -> merge kết quả vào store theo segmentIndex."
+      },
+      {
+        "id": "287",
+        "title": "Triển khai logic xóa và trích xuất lại phân đoạn",
+        "description": "Bổ sung các hàm clearSegment và reExtractSegment để cho phép user quản lý từng phần kiến thức.",
+        "details": "- `clearSegment(segmentIdx)`: Filter bỏ các chunks có segmentIndex tương ứng và persist lại.\n- `reExtractSegment(segmentIdx)`: Gọi tuần tự clearSegment và extractSegment.\n- Đảm bảo `knowledgeReducedAt` không bị reset để trigger trạng thái stale.",
+        "testStrategy": "Bấm xóa một segment đã trích xuất, xác nhận `knowledgeSegments` chuyển về trạng thái pending và rawEntryCount về 0. Bấm trích xuất lại và kiểm tra timestamp mới.",
+        "priority": "medium",
+        "dependencies": [
+          "286"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng hàm clearSegment để xóa dữ liệu phân đoạn",
+            "description": "Thực hiện logic lọc bỏ các chunks dữ liệu và cập nhật trạng thái phân đoạn trong store.",
+            "dependencies": [],
+            "details": "Viết hàm clearSegment nhận segmentIdx, thực hiện lọc mảng knowledgeChunks để loại bỏ các phần tử có index trùng khớp. Cập nhật rawEntryCount của segment về 0 và đặt status thành pending. Quan trọng nhất là giữ nguyên giá trị knowledgeReducedAt để không làm mất dấu vết thay đổi dữ liệu gốc.",
+            "status": "pending",
+            "testStrategy": "Gọi hàm với một segmentIdx cụ thể, kiểm tra mảng chunks không còn chứa dữ liệu đó và metadata segment được cập nhật trạng thái về pending.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai hàm reExtractSegment để tái trích xuất dữ liệu",
+            "description": "Kết hợp clearSegment và quy trình trích xuất kiến thức để làm mới nội dung một phân đoạn cụ thể.",
+            "dependencies": [
+              1
+            ],
+            "details": "Viết hàm reExtractSegment thực hiện gọi tuần tự clearSegment(segmentIdx) và sau đó kích hoạt pipeline trích xuất (extractSegment) cho phân đoạn đó. Cần đảm bảo việc điều phối bất đồng bộ để dữ liệu cũ được xóa sạch trước khi dữ liệu mới được trích xuất và ghi đè.",
+            "status": "pending",
+            "testStrategy": "Kích hoạt reExtractSegment từ UI, xác nhận dữ liệu cũ biến mất và sau khi tiến trình chạy xong, dữ liệu mới được điền vào với timestamp cập nhật.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp persistence và đồng bộ trạng thái stale",
+            "description": "Đảm bảo dữ liệu sau khi xóa hoặc trích xuất lại được lưu xuống storage và kích hoạt đúng trạng thái stale.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Kết nối logic xóa/trích xuất với module segment-persistence để persist dữ liệu xuống storage ngay sau khi thay đổi. Kiểm tra logic trigger trạng thái stale dựa trên knowledgeReducedAt để đảm bảo UI hiển thị cảnh báo dữ liệu cần được tổng hợp lại (reduce).",
+            "status": "pending",
+            "testStrategy": "Thực hiện xóa một segment, kiểm tra dữ liệu trong storage đã được cập nhật và xác nhận giao diện hiển thị trạng thái stale cho toàn bộ quy trình kiến thức.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Xây dựng logic lọc dữ liệu (filter) theo segmentIndex và quy trình gọi lại hàm trích xuất một cách an toàn."
+      },
+      {
+        "id": "288",
+        "title": "Cập nhật flow Extract All và Persist ReducedAt",
+        "description": "Chỉnh sửa flow cũ để gán segmentIndex cho mọi chunk và lưu timestamp sau khi reduce thành công.",
+        "details": "- Cập nhật `handleExtract`: Khi tạo chunks mới, dùng `findSegmentForPost` để gán `segmentIndex`.\n- Cập nhật `runReducePhase`: Sau khi lưu `knowledgeEntries`, thực hiện gọi `optimisticUpdate` để lưu `knowledgeReducedAt = Date.now()` vào cache.",
+        "testStrategy": "Chạy Extract All trên một topic mới. Sau khi hoàn tất, kiểm tra trong DB xem tất cả chunks có segmentIndex không và topic có knowledgeReducedAt không.",
+        "priority": "high",
+        "dependencies": [
+          "286"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật handleExtract để gán segmentIndex cho chunks",
+            "description": "Sửa đổi hàm handleExtract trong pipeline để tự động xác định segmentIndex khi tạo các chunk kiến thức.",
+            "dependencies": [],
+            "details": "Sử dụng hàm findSegmentForPost để tìm index tương ứng và gán vào thuộc tính segmentIndex cho mọi đối tượng chunk trước khi lưu vào database.",
+            "status": "pending",
+            "testStrategy": "Unit test hàm handleExtract để đảm bảo segmentIndex được gán chính xác dựa trên dữ liệu đầu vào.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật runReducePhase để lưu timestamp hoàn tất",
+            "description": "Thêm logic cập nhật thời gian knowledgeReducedAt sau khi quá trình reduce kết thúc thành công.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tại cuối hàm runReducePhase, sau khi knowledgeEntries đã được persist, gọi hàm optimisticUpdate để lưu knowledgeReducedAt = Date.now() vào topic cache.",
+            "status": "pending",
+            "testStrategy": "Mock quá trình lưu knowledgeEntries và verify xem hàm optimisticUpdate có được gọi với timestamp đúng hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra sự nhất quán của schema dữ liệu mới",
+            "description": "Đảm bảo cấu trúc dữ liệu chunk và topic hỗ trợ các trường segmentIndex và knowledgeReducedAt.",
+            "dependencies": [
+              2
+            ],
+            "details": "Kiểm tra lại các type definition và hàm lưu trữ trung gian để chắc chắn không có lỗi validate khi thêm các trường segmentIndex và knowledgeReducedAt.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm thử tích hợp luồng Extract All hoàn chỉnh",
+            "description": "Thực hiện chạy thực tế toàn bộ quy trình từ extract đến reduce để xác minh kết quả cuối cùng.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Chạy Extract All trên một topic mới. Truy vấn database để kiểm tra tất cả các chunks đều có segmentIndex và topic có giá trị knowledgeReducedAt hợp lệ.",
+            "status": "pending",
+            "testStrategy": "Sử dụng môi trường dev, thực hiện extract một topic có nhiều post và kiểm tra trạng thái dữ liệu trong IndexedDB hoặc database.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chỉnh sửa logic handleExtract để gán index tự động và cập nhật timestamp knowledgeReducedAt sau khi pha reduce hoàn tất."
+      },
+      {
+        "id": "289",
+        "title": "Xây dựng UI Segment Grid cho tab Kiến thức",
+        "description": "Hiển thị danh sách các phân đoạn dưới dạng lưới (grid) tương tự tab Tóm tắt.",
+        "details": "- Tạo component Segment Grid trong KnowledgeView.vue, hiển thị khi `segments.length > 0`.\n- Hiển thị các cột: Trạng thái (icon), Label (Trang X-Y), Entry count, Relative time.\n- Gắn các hành động: Trích xuất (extractSegment), Làm lại (reExtractSegment) với spinner khi đang xử lý.",
+        "testStrategy": "Kiểm tra giao diện hiển thị đúng các trạng thái ✅ done, ⚠ partial, ○ pending. Kiểm tra việc ẩn grid khi topic không có segments (flat mode).",
+        "priority": "medium",
+        "dependencies": [
+          "284"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết kế cấu trúc Component SegmentGrid và Layout",
+            "description": "Tạo component SegmentGrid mới và định nghĩa khung giao diện dạng lưới cho các phân đoạn.",
+            "dependencies": [],
+            "details": "Thực hiện tạo file component trong KnowledgeView.vue, sử dụng CSS Grid hoặc Flexbox để chia các cột: Trạng thái, Nhãn (Trang X-Y), Entry count, và Relative time. Đảm bảo Grid chỉ hiển thị khi segments.length > 0.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra giao diện Grid hiển thị đúng cấu trúc cột trên các kích thước màn hình khác nhau.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cấu hình Icon trạng thái và ánh xạ dữ liệu Segment",
+            "description": "Định nghĩa logic hiển thị các icon trạng thái tương ứng với dữ liệu segment.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thiết lập các icon: ✅ cho trạng thái hoàn thành (done), ⚠ cho lỗi một phần (partial), và ○ cho đang chờ (pending). Ánh xạ dữ liệu từ mảng segments vào các cột Label và Entry count tương ứng.",
+            "status": "pending",
+            "testStrategy": "Unit test kiểm tra hàm render icon dựa trên thuộc tính status của từng segment object.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp logic Extract/Re-extract và hiệu ứng Loading",
+            "description": "Gắn các hành động xử lý dữ liệu vào UI và hiển thị spinner khi đang thực hiện.",
+            "dependencies": [
+              2
+            ],
+            "details": "Kết nối các hàm extractSegment và reExtractSegment từ composable vào các nút tương ứng trên Grid. Thêm trạng thái loading cục bộ cho từng dòng để hiển thị spinner khi backend đang xử lý.",
+            "status": "pending",
+            "testStrategy": "Click vào nút trích xuất và đảm bảo spinner xuất hiện, sau đó biến mất khi dữ liệu được cập nhật thành công.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Xử lý chế độ Flat Mode và đồng bộ dữ liệu thời gian thực",
+            "description": "Đảm bảo Grid tự động ẩn khi không có segment và cập nhật trạng thái đồng bộ với backend.",
+            "dependencies": [
+              3
+            ],
+            "details": "Kiểm tra điều kiện render để ẩn Grid khi topic ở chế độ flat mode (không có segment). Đảm bảo giao diện cập nhật ngay lập tức các thay đổi về trạng thái và thời gian từ store của ứng dụng.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra chuyển đổi giữa các topic: topic có segment phải hiện Grid, topic không có segment phải ẩn Grid.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Thiết kế component grid layout, định nghĩa các icon trạng thái và gắn kết các hành động extract/re-extract vào UI.",
+        "updatedAt": "2026-05-27T06:51:53.478Z"
+      },
+      {
+        "id": "290",
+        "title": "Triển khai Preview Panel cho từng phân đoạn",
+        "description": "Cho phép xem trước các entries thô của một phân đoạn và lưu chúng vào notebook trước khi tổng hợp.",
+        "details": "- Khi click vào 1 row trong grid, expand panel hiển thị list raw entries (chưa dedup).\n- Thêm badge 'Chưa tổng hợp' cho mỗi entry.\n- Tái sử dụng logic `toggleSave` để user có thể lưu trực tiếp entry từ preview vào notebook.",
+        "testStrategy": "Mở preview của một segment, bấm 'Lưu' một entry. Chuyển sang tab Notebook kiểm tra entry đã xuất hiện chưa. Đảm bảo id của entry ổn định sau khi reduce sau này.",
+        "priority": "medium",
+        "dependencies": [
+          "289"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng giao diện Expandable Panel cho danh sách phân đoạn",
+            "description": "Thiết kế và triển khai thành phần UI cho phép mở rộng hàng trong grid để hiển thị khu vực Preview Panel khi người dùng click vào.",
+            "dependencies": [],
+            "details": "Sử dụng các component từ thư viện UI của dự án để tạo hiệu ứng expand/collapse mượt mà khi người dùng tương tác với một hàng trong bảng phân đoạn.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra bằng tay việc click vào hàng trong grid có mở rộng panel hay không và giao diện có bị vỡ trên các trình duyệt khác nhau.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Fetch và hiển thị danh sách raw entries trong Preview Panel",
+            "description": "Thực hiện truy xuất dữ liệu từ API hoặc store để lấy danh sách các bản ghi thô (raw entries) thuộc phân đoạn đã chọn mà không áp dụng deduplication.",
+            "dependencies": [
+              1
+            ],
+            "details": "Triển khai logic fetching dữ liệu dựa trên ID của phân đoạn, xử lý trạng thái loading và render danh sách các entry thô bên trong panel đã mở rộng.",
+            "status": "pending",
+            "testStrategy": "Xác nhận danh sách hiển thị đúng số lượng bản ghi thô từ API và không có sự trùng lặp nào bị loại bỏ tự động.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp Badge trạng thái và logic lưu vào Notebook",
+            "description": "Thêm Badge 'Chưa tổng hợp' cho mỗi bản ghi và tích hợp hàm toggleSave để người dùng có thể lưu trực tiếp entry vào Notebook cá nhân.",
+            "dependencies": [
+              2
+            ],
+            "details": "Gắn UI Badge cho từng entry thô và kết nối sự kiện click của nút lưu với logic toggleSave đã có sẵn trong hệ thống để thực hiện lưu/hủy lưu vào Notebook.",
+            "status": "pending",
+            "testStrategy": "Bấm vào nút lưu trên một raw entry và kiểm tra xem trạng thái nút có thay đổi không, Badge hiển thị đúng vị trí không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm thử quy trình lưu và đồng bộ dữ liệu với Notebook",
+            "description": "Thực hiện kiểm thử tích hợp để đảm bảo các entry được lưu từ Preview Panel xuất hiện chính xác trong tab Notebook và giữ nguyên ID.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Quy trình test bao gồm: Mở preview segment, chọn lưu 1 entry, chuyển sang tab Notebook, xác minh entry có ID tương ứng tồn tại và dữ liệu không bị thay đổi.",
+            "status": "pending",
+            "testStrategy": "Sử dụng Integration Test để giả lập hành vi người dùng từ lúc mở panel đến khi xác nhận dữ liệu trong Notebook store.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Xây dựng giao diện danh sách entries thô, tích hợp logic lưu vào Notebook và xử lý chuyển đổi giữa các trạng thái preview.",
+        "updatedAt": "2026-05-27T06:52:05.898Z"
+      },
+      {
+        "id": "291",
+        "title": "Triển khai Banner thông báo lỗi thời và nút Tổng hợp thủ công",
+        "description": "Hiển thị banner cảnh báo khi dữ liệu đã thay đổi nhưng chưa được reduce và cho phép chạy reduce thủ công.",
+        "details": "- Hiển thị banner khi `isReduceStale` là true hoặc khi có dữ liệu đã trích xuất nhưng chưa từng reduce (`entries.length === 0`).\n- Triển khai `runReducePhaseManual`: gọi `runReducePhase` với các chunks hiện có.\n- Thêm Cost Guard (F26) cho nút 'Tổng hợp'.",
+        "testStrategy": "Trích xuất lại 1 segment, kiểm tra banner xuất hiện. Bấm 'Tổng hợp lại', kiểm tra banner biến mất sau khi hoàn tất.",
+        "priority": "high",
+        "dependencies": [
+          "288",
+          "289"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng logic hiển thị Banner cảnh báo dữ liệu lỗi thời",
+            "description": "Thiết kế và triển khai logic hiển thị banner cảnh báo khi trạng thái reduce bị lỗi thời hoặc chưa có dữ liệu tổng hợp.",
+            "dependencies": [],
+            "details": "Banner sẽ xuất hiện khi isReduceStale là true hoặc entries.length === 0 (trường hợp đã trích xuất nhưng chưa từng reduce). Sử dụng UI cảnh báo màu amber để thu hút sự chú ý của người dùng.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra sự xuất hiện của banner sau khi thay đổi dữ liệu trích xuất (isReduceStale chuyển sang true) và đảm bảo banner biến mất sau khi reduce thành công.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai hàm runReducePhaseManual cho việc tổng hợp thủ công",
+            "description": "Phát triển chức năng kích hoạt quá trình tổng hợp dữ liệu (reduce) trực tiếp từ hành động của người dùng trên banner.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện hàm runReducePhaseManual gọi đến runReducePhase với các chunks hiện có. Đảm bảo cập nhật trạng thái pipeline thông qua pl.markRunning('reduce') và pl.markDone('reduce') tương tự Task 231.",
+            "status": "pending",
+            "testStrategy": "Nhấn nút 'Tổng hợp lại' trên banner và theo dõi quá trình xử lý cho đến khi các entries được cập nhật đầy đủ.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp Cost Guard (F26) vào nút Tổng hợp",
+            "description": "Áp dụng cơ chế bảo vệ chi phí cho hành động tổng hợp dữ liệu để ngăn chặn việc tiêu tốn token không mong muốn.",
+            "dependencies": [
+              2
+            ],
+            "details": "Bao bọc hành động trong hàm runReducePhaseManual bằng cơ chế Cost Guard (F26). Hiển thị hộp thoại xác nhận chi phí ước tính trước khi thực hiện các cuộc gọi API xử lý dữ liệu.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra xem hộp thoại xác nhận chi phí có hiện ra khi nhấn nút Tổng hợp hay không và đảm bảo hành động chỉ tiếp tục khi người dùng xác nhận đồng ý.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thiết kế logic hiển thị banner dựa trên isReduceStale và tích hợp Cost Guard cho hành động tổng hợp (reduce).",
+        "updatedAt": "2026-05-27T06:52:17.630Z"
+      },
+      {
+        "id": "292",
+        "title": "Cập nhật Action Bar và logic Fallback",
+        "description": "Đổi nút Trích xuất thành Dropdown menu và xử lý các trường hợp topic cũ hoặc không có segment.",
+        "details": "- Thay đổi nút 'Trích xuất' thành Button + Dropdown với 2 option: 'Trích xuất đoạn chưa xong' và 'Trích xuất lại tất cả'.\n- Đảm bảo logic fallback: Nếu không có segments, hiển thị UI cũ (nút đơn, không hiện grid).\n- Xử lý legacy chunks (segmentIndex = undefined) để chúng vẫn được tham gia vào pha reduce.",
+        "testStrategy": "Kiểm tra UI trên topic cũ (không có segments) xem có bị vỡ giao diện không. Kiểm tra dropdown menu trên topic mới hoạt động đúng chức năng.",
+        "priority": "low",
+        "dependencies": [
+          "289"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chuyển đổi nút Trích xuất thành Dropdown menu",
+            "description": "Thay thế nút bấm 'Trích xuất' hiện tại bằng một Button Group kèm Dropdown để người dùng có nhiều lựa chọn hơn.",
+            "dependencies": [],
+            "details": "Sử dụng component dropdown từ UI library. Cấu hình hai option: 'Trích xuất đoạn chưa xong' (gọi logic resume) và 'Trích xuất lại tất cả' (gọi logic khởi tạo lại toàn bộ). Đảm bảo icon và nhãn hiển thị chính xác theo thiết kế.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra bằng tay việc nhấn vào dropdown và chọn từng option xem có trigger đúng hàm handle tương ứng không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai logic Fallback cho UI và hiển thị Grid",
+            "description": "Xây dựng cơ chế kiểm tra topic hiện tại để quyết định hiển thị giao diện phiên bản cũ hay mới.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm điều kiện kiểm tra mảng 'segments'. Nếu không có segments hoặc mảng rỗng, quay lại hiển thị nút đơn và ẩn phần grid. Đảm bảo style không bị vỡ khi chuyển đổi giữa các trạng thái dữ liệu khác nhau.",
+            "status": "pending",
+            "testStrategy": "Tải một topic cũ không có segments và xác nhận nút đơn xuất hiện. Tải topic mới có segments và xác nhận dropdown xuất hiện.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý Legacy Chunks trong pha Reduce",
+            "description": "Cập nhật logic xử lý dữ liệu để các chunk cũ không có segmentIndex vẫn được tham gia vào quá trình tổng hợp.",
+            "dependencies": [
+              2
+            ],
+            "details": "Chỉnh sửa hàm reduce để nhận diện các chunk có 'segmentIndex === undefined'. Đảm bảo các chunk này được gom nhóm hoặc xử lý như một phần của dữ liệu tổng thể thay vì bị loại bỏ khỏi luồng xử lý chính.",
+            "status": "pending",
+            "testStrategy": "Sử dụng dữ liệu mẫu có chứa cả chunk cũ và chunk mới, thực hiện lệnh trích xuất và kiểm tra xem output cuối cùng có bao gồm nội dung từ cả hai loại chunk không.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chuyển đổi nút bấm thành Dropdown menu và xử lý logic hiển thị fallback cho các topic không chia segment.",
+        "updatedAt": "2026-05-27T06:52:28.630Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-26T16:23:04.716Z",
-      "taskCount": 128,
-      "completedCount": 123,
+      "lastModified": "2026-05-27T06:52:28.631Z",
+      "taskCount": 138,
+      "completedCount": 127,
       "tags": [
         "master"
       ]

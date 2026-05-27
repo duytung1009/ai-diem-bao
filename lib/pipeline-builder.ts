@@ -65,7 +65,7 @@ export function buildKnowledgePipeline(chunkCount: number): PipelineDefinition {
   const steps: PipelineStep[] = [];
 
   for (let i = 0; i < chunkCount; i++) {
-    steps.push(pending(`Trích xuất Segment ${i + 1}/${chunkCount}`, `extract_${i}`));
+    steps.push(pending(`Trích xuất Chunk ${i + 1}/${chunkCount}`, `extract_${i}`));
   }
   steps.push(pending('Gộp kiến thức', 'reduce'));
 

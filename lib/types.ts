@@ -211,6 +211,7 @@ export interface CachedTopic {
   /** Only entries with saved=true are persisted to cache; unsaved entries are in-memory only */
   knowledgeEntries?: KnowledgeEntry[];
   knowledgeChunks?: KnowledgeChunk[];     // raw chunks, persistent (F24)
+  knowledgeReducedAt?: number;            // F33: timestamp of last reduce phase; for staleness detection
   lastKnowledgePostNumber?: number;
   excludedKnowledgePostNumbers?: number[];
   threadAnalysis?: ThreadAnalysisJSON;
@@ -268,6 +269,7 @@ export interface KnowledgeChunk {
   extractedAt: number;          // timestamp
   complete?: boolean;           // false = chunk cuối, chưa đầy budget, cho phép append posts mới
   failed?: boolean;             // true = chunk bị truncate (max_tokens), entries là partial
+  segmentIndex?: number;        // F33: index vào cachedTopic.segments[], undefined = legacy chunk
 }
 
 // --- Thread Analysis types (F25) ---

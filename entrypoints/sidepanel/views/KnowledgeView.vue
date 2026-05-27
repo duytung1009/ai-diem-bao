@@ -28,6 +28,10 @@ const {
   handleClearKnowledgeData, toggleSave, handleDelete, handleClearTracking,
   onExtractClick, onRestoreClick,
   knowledgeGuard,
+  // F33 additions
+  knowledgeSegments, isReduceStale, hasAnyExtractedSegment,
+  extractSegment, reExtractSegment, runReducePhaseManual,
+  isBatchExtracting, extractAllSegments,
 } = knowledge;
 
 // UI state (local to view)
@@ -38,6 +42,26 @@ const expandedIds = ref<Set<string>>(new Set());
 const showSavedOnly = ref(false);
 const loadedTopicTitle = ref('');
 const pendingConflict = ref<{ newUrl: string; newTitle: string } | null>(null);
+// F33 segment grid UI state
+const segmentGridExpanded = ref(false);
+const expandedSegmentIndex = ref<number | null>(null);
+const showExtractDropdown = ref(false);
+
+// F33 helpers
+function formatRelativeTime(ts: number | null): string {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'vừa xong';
+  if (mins < 60) return `${mins} phút trước`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} giờ trước`;
+  return `${Math.floor(hrs / 24)} ngày trước`;
+}
+
+function onReduceManualClick() {
+  runReducePhaseManual();
+}
 
 // Focus scroll / route state
 const route = useRoute();
@@ -73,7 +97,11 @@ watch(() => route.query.restore, (val) => {
 
 watch(() => route.query.extract, (val) => {
   if (val === 'true' && allPosts.value.length && !isLoading.value) {
-    onExtractClick();
+    // ?extract=true is a legacy CTA signal — not applicable to segment-mode topics.
+    // For those, the user is directed to the segment grid instead.
+    if (!cachedTopic.value?.segments?.length) {
+      onExtractClick();
+    }
     router.replace({ query: { ...route.query, extract: undefined } });
   }
 }, { immediate: true });
@@ -292,8 +320,149 @@ onActivated(async () => {
         Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
-      <!-- Restore button when entries empty but knowledgeChunks exist -->
-      <template v-if="allPosts.length && !entries.length && !isLoading">
+      <!-- F33: Per-segment extraction grid (Task 289+290) -->
+      <template v-if="cachedTopic?.segments?.length && allPosts.length">
+        <!-- Info banner: chỉ hiển thị khi > 5 phân đoạn để giải thích thời gian tốn -->
+        <div v-if="cachedTopic.segments.length > 5" class="text-xs alert alert-info">
+          <p class="font-medium">Thớt dài ({{ cachedTopic.segments.length }} phần)</p>
+          <p class="mt-0.5">
+            Trích xuất kiến thức gọi API <strong>nhiều lần hơn tóm tắt</strong> — mỗi phần cần ít nhất 1 lần gọi, cộng thêm 1 lần tổng hợp cuối.
+            Với thớt này sẽ cần tối thiểu {{ cachedTopic.segments.length + 1 }} lần gọi, thời gian xử lý có thể <strong>lâu gấp đôi</strong> so với khi tóm tắt.
+            Nên thực hiện lúc rảnh và không cần kết quả ngay.
+          </p>
+        </div>
+        <div class="card space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-(--color-text-secondary)">
+              Trích xuất theo đoạn
+              ({{ knowledgeSegments.filter(s => s.status === 'done' || s.status === 'partial').length }}/{{ knowledgeSegments.length }})
+            </span>
+            <div class="flex items-center gap-1">
+              <!-- Batch in progress between segments -->
+              <template v-if="isBatchExtracting && !isLoading">
+                <span class="text-xs text-(--color-text-muted) mr-1">Đang chờ...</span>
+                <button class="btn text-xs text-red-500 dark:text-red-400" @click="handleCancel">Hủy</button>
+              </template>
+              <!-- Extract all button -->
+              <button
+                v-else-if="!isLoading && knowledgeSegments.some(s => s.status === 'pending' || s.status === 'partial')"
+                class="btn text-xs"
+                @click="extractAllSegments">
+                Trích xuất tất cả
+              </button>
+              <button class="btn" @click="segmentGridExpanded = !segmentGridExpanded">
+                <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200"
+                  :class="{ 'rotate-180': segmentGridExpanded }"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div v-if="segmentGridExpanded" class="space-y-1">
+            <template v-for="seg in knowledgeSegments" :key="seg.segmentIndex">
+              <!-- Row -->
+              <div
+                class="flex items-center gap-2 py-1.5 px-2 rounded cursor-pointer hover:bg-(--color-bg-muted) transition-colors"
+                :class="{ 'bg-(--color-accent-soft)': expandedSegmentIndex === seg.segmentIndex }"
+                @click="expandedSegmentIndex = expandedSegmentIndex === seg.segmentIndex ? null : seg.segmentIndex">
+                <!-- Status icon -->
+                <span class="shrink-0 text-sm leading-none">
+                  <template v-if="seg.status === 'done'">✅</template>
+                  <template v-else-if="seg.status === 'extracting'">
+                    <svg class="w-3.5 h-3.5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  </template>
+                  <template v-else-if="seg.status === 'partial'">⚠️</template>
+                  <template v-else>○</template>
+                </span>
+                <!-- Label -->
+                <span class="flex-1 text-xs text-(--color-text-primary)">
+                  Trang {{ seg.startPage }}–{{ seg.endPage }}
+                  <span class="text-(--color-text-muted)">
+                     · {{ seg.postCount }} bài
+                  </span>
+                  <!-- Entry count -->
+                  <span v-if="seg.rawEntryCount > 0" class="text-(--color-text-muted)">
+                     · {{ seg.rawEntryCount }} mục
+                  </span>
+                  <!-- Relative time -->
+                  <span v-if="seg.lastExtractedAt" class="text-(--color-text-muted)">
+                     · {{ formatRelativeTime(seg.lastExtractedAt) }}
+                  </span>
+                </span>
+                <!-- Action button -->
+                <a
+                  v-if="seg.status === 'pending' || seg.status === 'partial'"
+                  class="text-xs shrink-0 no-underline"
+                  href="javascript:;"
+                  :disabled="isLoading"
+                  @click.stop="extractSegment(seg.segmentIndex)">
+                  {{ seg.status === 'pending' ? 'Trích xuất' : 'Trích xuất lại' }}
+                </a>
+                <a
+                  v-else-if="seg.status === 'done'"
+                  class="text-xs shrink-0 no-underline"
+                  href="javascript:;"
+                  :disabled="isLoading"
+                  @click.stop="reExtractSegment(seg.segmentIndex)">
+                  Làm lại
+                </a>
+                <div v-else-if="seg.status === 'extracting'" class="w-16 shrink-0" />
+              </div>
+              <!-- Task 290: Preview panel for expanded segment -->
+              <div v-if="expandedSegmentIndex === seg.segmentIndex" class="ml-6 mb-1 space-y-1">
+                <div v-if="seg.chunks.length === 0" class="text-xs text-(--color-text-muted) py-1 pl-2">
+                  Chưa có dữ liệu trích xuất.
+                </div>
+                <template v-else>
+                  <div class="flex items-center gap-2 py-0.5">
+                    <span class="badge text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
+                      Chưa tổng hợp ({{ seg.rawEntryCount }} mục thô)
+                    </span>
+                  </div>
+                  <div
+                    v-for="(entry, ei) in seg.chunks.flatMap(c => c.entries).slice(0, 5)"
+                    :key="ei"
+                    class="text-xs text-(--color-text-secondary) border-l-2 border-(--color-border) pl-2 py-0.5">
+                    <span class="font-medium text-(--color-text-primary)">{{ entry.title }}</span>
+                  </div>
+                  <div v-if="seg.chunks.flatMap(c => c.entries).length > 5"
+                    class="text-xs text-(--color-text-muted) pl-2">
+                    + {{ seg.chunks.flatMap(c => c.entries).length - 5 }} mục khác
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <!-- F33: Stale reduce banner + reduce prompt (Task 291) -->
+      <div v-if="isReduceStale && entries.length > 0 && !isLoading" class="text-xs alert alert-warning">
+        <div class="flex items-center justify-between gap-2">
+          <span>⚠ Có đoạn mới trích xuất chưa được tổng hợp vào danh sách.</span>
+          <button class="btn btn-sm text-xs shrink-0" @click="onReduceManualClick">Tổng hợp lại</button>
+        </div>
+      </div>
+      <div v-else-if="hasAnyExtractedSegment && entries.length === 0 && !isLoading"
+        class="flex flex-col items-center space-y-2">
+        <p class="text-sm text-(--color-text-secondary)">
+          Đã trích xuất {{ knowledgeSegments.filter(s => s.status === 'done' || s.status === 'partial').length }} đoạn.
+          Nhấn Tổng hợp để tạo danh sách kiến thức.
+        </p>
+        <button class="btn-llm" @click="onReduceManualClick">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
+          </svg>
+          Tổng hợp kiến thức
+        </button>
+      </div>
+
+      <!-- Restore button when entries empty but knowledgeChunks exist (legacy non-segment mode only) -->
+      <template v-if="allPosts.length && !entries.length && !isLoading && !cachedTopic?.segments?.length">
         <template v-if="canRestore">
           <button class="btn-llm" @click="onRestoreClick">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -411,19 +580,55 @@ onActivated(async () => {
               </svg>
               Sổ tay
             </button>
-            <button v-if="hasFailed && !truncationWarning" class="btn text-xs flex items-center gap-1 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30"
-              @click="onExtractClick">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Trích xuất lại
-            </button>
-            <button v-if="allPosts.length && newPostsCount > 0" class="btn text-xs flex items-center gap-1" @click="handleExtract">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Trích xuất bài mới<span> ({{ newPostsCount }})</span>
-            </button>
+            <!-- Task 292: Extract dropdown when segments exist -->
+            <template v-if="cachedTopic?.segments?.length">
+              <div class="relative">
+                <!-- Backdrop to close dropdown -->
+                <div v-if="showExtractDropdown" class="fixed inset-0 z-9" @click="showExtractDropdown = false" />
+                <button
+                  class="btn text-xs flex items-center gap-1"
+                  :disabled="isLoading"
+                  @click="showExtractDropdown = !showExtractDropdown">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Trích xuất
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div
+                  v-if="showExtractDropdown"
+                  class="absolute left-0 top-full mt-1 z-10 bg-(--color-bg-elevated) border border-(--color-border) rounded shadow-lg min-w-max">
+                  <button
+                    class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; onExtractClick()">
+                    Trích xuất đoạn chưa xong
+                  </button>
+                  <button
+                    class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; handleClearKnowledgeData().then(() => handleExtract())">
+                    Trích xuất lại tất cả
+                  </button>
+                </div>
+              </div>
+            </template>
+            <!-- Fallback: no segments — keep original buttons (Task 292) -->
+            <template v-else>
+              <button v-if="hasFailed && !truncationWarning" class="btn text-xs flex items-center gap-1 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+                @click="onExtractClick">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Trích xuất lại
+              </button>
+              <button v-if="allPosts.length && newPostsCount > 0" class="btn text-xs flex items-center gap-1" @click="handleExtract">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Trích xuất bài mới<span> ({{ newPostsCount }})</span>
+              </button>
+            </template>
           </div>
           <!-- Clear tracking button -->
           <div v-if="excludedCount > 0" class="flex items-center justify-end">

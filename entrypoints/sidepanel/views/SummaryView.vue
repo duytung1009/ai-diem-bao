@@ -103,7 +103,13 @@ const allPostsForCTA = computed(() => {
 
 function handleKnowledgeCTA(action: 'extract' | 'view' | 'restore') {
   if (action === 'extract') {
-    router.push('/knowledge?extract=true');
+    // Segment-mode topics: navigate to knowledge tab so user uses the segment grid.
+    // Legacy (non-segment) topics: ?extract=true triggers handleExtract automatically.
+    if (cachedTopic.value?.segments?.length) {
+      router.push('/knowledge');
+    } else {
+      router.push('/knowledge?extract=true');
+    }
   } else if (action === 'view') {
     router.push('/knowledge');
   } else if (action === 'restore') {
@@ -242,7 +248,7 @@ function handleConflictGoBack() {
         </div>
 
         <!-- Info messages (e.g. articles loaded) -->
-        <div v-if="scrapingInfo.length > 0" class="text-xs alert alert-info text-xs">
+        <div v-if="scrapingInfo.length > 0" class="text-xs alert alert-info">
           <ul class="list-disc list-inside space-y-0.5">
             <li v-for="(m, i) in scrapingInfo" :key="i">{{ m }}</li>
           </ul>
@@ -251,7 +257,7 @@ function handleConflictGoBack() {
         <!-- SEGMENT MODE (always) -->
         <template v-if="isSegmentMode && !isProcessing">
           <!-- Info banner: chỉ hiển thị khi > 1 segment -->
-          <div v-if="segments.length > 1" class="text-xs alert alert-info text-xs">
+          <div v-if="segments.length > 1" class="text-xs alert alert-info">
             <p class="font-medium">Thớt dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
             <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần theo độ dài nội dung. Tóm tắt từng phần
               rồi tạo tổng quan.</p>
@@ -286,9 +292,11 @@ function handleConflictGoBack() {
 
             <!-- Row 2+3: Progress bar + pill grid (chỉ hiển thị khi > 1 segment) -->
             <template v-if="segments.length > 1">
-              <div class="space-y-1">
-                <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
-                  <span>{{ formatNumber(summarizedCount) }} / {{ formatNumber(segments.length) }} phần đã tóm tắt</span>
+              <div class="card space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-(--color-text-secondary)">
+                    {{ formatNumber(summarizedCount) }} / {{ formatNumber(segments.length) }} phần đã tóm tắt
+                  </span>
                   <button class="btn" @click="segmentGridExpanded = !segmentGridExpanded">
                     <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0" :class="{ 'rotate-180': segmentGridExpanded }"
                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,20 +307,20 @@ function handleConflictGoBack() {
                 <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
                   <div class="h-full rounded-full bg-blue-500 transition-all duration-300" :style="{ width: progressPercent + '%' }" />
                 </div>
-              </div>
-              <div v-if="segmentGridExpanded"
-                class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thumb-rounded-full scrollbar-track-rounded-full scrollbar scrollbar-thumb-slate-700 scrollbar-track-slate-300">
-                <button v-for="(seg, i) in segments" :key="i" class="px-2.5 py-1 text-xs rounded-full transition-colors flex items-center gap-1" :class="activeSegmentIndex === i
-                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
-                  : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'" @click="activeSegmentIndex = i">
-                  {{ seg.label }}
-                  <span v-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete !== false" class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
-                    title="Đã tóm tắt" />
-                  <span v-else-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete === false"
-                    class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Đã tóm tắt — có thể có bài viết mới" />
-                  <span v-else-if="segmentSummaries[i]?.posts?.length" class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"
-                    title="Đã scrape, chưa tóm tắt" />
-                </button>
+                <div v-if="segmentGridExpanded"
+                  class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thumb-rounded-full scrollbar-track-rounded-full scrollbar scrollbar-thumb-slate-700 scrollbar-track-slate-300">
+                  <button v-for="(seg, i) in segments" :key="i" class="px-2.5 py-1 text-xs rounded-full transition-colors flex items-center gap-1" :class="activeSegmentIndex === i
+                    ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
+                    : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'" @click="activeSegmentIndex = i">
+                    {{ seg.label }}
+                    <span v-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete !== false" class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
+                      title="Đã tóm tắt" />
+                    <span v-else-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete === false"
+                      class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Đã tóm tắt — có thể có bài viết mới" />
+                    <span v-else-if="segmentSummaries[i]?.posts?.length" class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"
+                      title="Đã scrape, chưa tóm tắt" />
+                  </button>
+                </div>
               </div>
             </template>
 

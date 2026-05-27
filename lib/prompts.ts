@@ -116,7 +116,7 @@ export const KNOWLEDGE_DEFAULT_TASKS: Record<'extract' | 'chunk' | 'reduce', str
   - Vì đây là một phân đoạn nhỏ, hãy đảm bảo viết phần "content" thật đầy đủ và chi tiết, không viết vắn tắt, để chuẩn bị cho việc gộp dữ liệu ở bước sau không bị mất thông tin.`,
 
   reduce: `Bạn là một bộ lọc logic dữ liệu nâng cao, nhiệm vụ của bạn là hợp nhất các danh sách kiến thức (JSON arrays) được trích xuất từ các phân đoạn khác nhau của thớt thành một danh sách tối ưu duy nhất. Hãy thực hiện gộp dữ liệu theo các thuật toán sau:
-  - Hợp nhất & Lọc trùng (Deduplicate): Nếu có các kiến thức tương đồng hoặc trùng lặp về nội dung giữa các đoạn, hãy gộp chúng lại làm một. Viết lại "title" và "content" sao cho bao quát và đầy đủ chi tiết nhất từ các nguồn.
+  - Hợp nhất & Lọc trùng (Deduplicate): Nếu có các kiến thức tương đồng hoặc trùng lặp về nội dung giữa các đoạn, hãy gộp chúng lại làm một. Viết lại "title" và "content" súc tích, đủ ý — không liệt kê lại toàn bộ chi tiết từ các nguồn, chỉ giữ thông tin cốt lõi và số liệu quan trọng nhất. Trường "content" tối đa 120 từ.
   - Đồng bộ hóa mảng "tags" và "category" để chúng nhất quán sau khi gộp.
   - Sắp xếp và chọn lọc lại để giữ lại tối đa {cap} entries có giá trị cao nhất theo đúng cấu trúc yêu cầu.`,
 };

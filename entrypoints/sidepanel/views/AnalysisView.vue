@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onActivated, computed, ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useTopicStore } from '../composables/useTopicStore';
+import { sendMessage } from '@/lib/messaging';
+import type { CachedTopic } from '@/lib/types';
 import { useThreadAnalysis } from '../composables/useThreadAnalysis';
 import { useSeederDetection } from '../composables/useSeederDetection';
 import type { PipelineDefinition } from '@/lib/types';
@@ -11,7 +12,6 @@ import StepTimeline from '../components/StepTimeline.vue';
 import BackButton from '../components/BackButton.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 
-const router = useRouter();
 const store = useTopicStore();
 const { threadAnalysis, isAnalyzing, error, hasSummary, llmTaskId, generateAnalysis, getTaskState, cancelTask } = useThreadAnalysis(store);
 const { showTrustBadges, loadSetting: loadSeederSetting } = useSeederDetection();
@@ -51,9 +51,13 @@ function handleConflictCancel() {
   loadedTopicTitle.value = store.selectedTopic.value?.title ?? '';
 }
 
-function handleConflictGoBack() {
+async function handleConflictGoBack() {
+  const oldUrl = loadedTopicUrl.value;
+  if (oldUrl) {
+    const oldTopic = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', oldUrl);
+    if (oldTopic) store.selectTopic(oldTopic);
+  }
   pendingConflict.value = null;
-  router.push('/');
 }
 </script>
 
@@ -83,7 +87,7 @@ function handleConflictGoBack() {
         <StepTimeline v-if="isAnalyzing && activePipeline" :pipeline="activePipeline" :show-cancel="true" @cancel="cancelTask(llmTaskId!)" />
 
         <div v-if="!hasSummary" class="text-xs alert alert-warning">
-          Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
+          Chưa có dữ liệu của thớt. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
         </div>
 
         <template v-else>

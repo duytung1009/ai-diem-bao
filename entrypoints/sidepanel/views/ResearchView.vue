@@ -141,7 +141,12 @@ function handleConflictCancel() {
   loadTopicData();
 }
 
-function handleConflictGoBack() {
+async function handleConflictGoBack() {
+  const oldUrl = loadedTopicUrl.value;
+  if (oldUrl) {
+    const oldTopic = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', oldUrl);
+    if (oldTopic) store.selectTopic(oldTopic);
+  }
   pendingConflict.value = null;
 }
 
@@ -180,7 +185,7 @@ function formatDate(ts: number): string {
 
       <!-- No cache warning -->
       <div v-if="!allPosts.length" class="text-xs alert alert-warning">
-        Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
+        Chưa có dữ liệu của thớt. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
       <template v-if="allPosts.length">

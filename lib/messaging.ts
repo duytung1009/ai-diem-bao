@@ -7,14 +7,6 @@ export function sendMessage<TResponse = unknown>(
   return browser.runtime.sendMessage({ type, payload } satisfies Message);
 }
 
-export function sendTabMessage<TResponse = unknown>(
-  tabId: number,
-  type: MessageType,
-  payload?: unknown,
-): Promise<TResponse> {
-  return browser.tabs.sendMessage(tabId, { type, payload } satisfies Message);
-}
-
 export function sendMessageQuiet(type: MessageType, payload?: unknown): void {
   try {
     const p = browser.runtime.sendMessage({ type, payload } satisfies Message);

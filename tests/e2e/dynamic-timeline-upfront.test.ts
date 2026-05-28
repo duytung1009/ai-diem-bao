@@ -26,6 +26,7 @@ vi.mock('@/entrypoints/sidepanel/composables/useLLM', () => ({
     getETA: vi.fn(() => 1000),
     activeTasks: { value: new Map() },
     modelSpeedStats: { value: {} },
+    checkLLMConfigured: vi.fn().mockResolvedValue({ ok: true }),
   }),
 }));
 

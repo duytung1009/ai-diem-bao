@@ -129,7 +129,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   /** Get best available forum post count, avoiding stale activeTabDetect data
    *  when the user is not on the forum tab. */
   function getLiveForumPostCount(): number {
-    const detect = store.activeTabDetect.value?.postCount ?? 0;
+    const topicUrl = cachedTopic.value?.url;
+    const activeTabMatches = topicUrl && store.activeTabUrl.value &&
+      isSameTopicUrl(store.activeTabUrl.value, topicUrl);
+    const detect = activeTabMatches ? (store.activeTabDetect.value?.postCount ?? 0) : 0;
     const cached = cachedTopic.value?.forumPostCount ?? 0;
     return Math.max(detect, cached);
   }
@@ -164,6 +167,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   }
 
   async function saveTopic(topic: DeepReadonly<CachedTopic>, fields: Omit<Partial<CachedTopic>, 'segments'> & { segments?: (TopicSegment | null)[] }): Promise<void> {
+    console.log(`Saving topic ${topic.url} with fields:`, fields);
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topic.title,
@@ -611,7 +615,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         postCount: scraper.countRealPosts(segPosts),
         summarizedAt: segmentSummaries.value[segmentIndex]?.summarizedAt ?? 0,
       };
-      await saveTopic(topic, { segments: tempUpdated, ...(isNewsThread ? { topicType: 'news' } : {}) });
+      await saveTopic(topic, { 
+        segments: tempUpdated, 
+        totalPosts: tempUpdated?.reduce((s, seg) => s + (seg?.postCount ?? 0), 0) ?? topic.totalPosts,
+        ...(isNewsThread ? { topicType: 'news' } : {}),
+      });
       segmentSummaries.value = tempUpdated as TopicSegment[];
 
       // Phase A3 (F26): informational cost hint for large segments (non-blocking)
@@ -1363,9 +1371,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       console.log(`[scrapeAllPages] page=${page}/${totalPages}: rawPosts=${pagePosts.length}, enrichedPosts=${enrichedPosts.length}, cumulative=${allPosts.length + enrichedPosts.length}, errors=${pageErrors.length}`);
       allPosts.push(...enrichedPosts);
 
-      // Persist accumulated posts + lastScrapedPage every 5 pages during scrape phase
-      // (not on last page — final save handles that). Enables resume after cancel.
-      if (cachedTopic.value && page % 5 === 0 && page < totalPages) {
+      // Persist accumulated posts + lastScrapedPage every 5 pages during scrape phase.
+      // Also always save on the last page to preserve full scrape state before summarization.
+      if (cachedTopic.value && (page % 5 === 0 || page === totalPages)) {
         await saveTopic(cachedTopic.value, {
           posts: allPosts,
           lastScrapedPage: page,

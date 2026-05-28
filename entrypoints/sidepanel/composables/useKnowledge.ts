@@ -975,6 +975,12 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
+  const progressPercent = computed(() =>
+    knowledgeSegments?.value?.length > 0
+      ? Math.round((knowledgeSegments.value.filter(s => s.status === 'done' || s.status === 'partial').length / knowledgeSegments.value.length) * 100)
+      : 0,
+  );
+  
   return {
     entries,
     loadedTopicUrl,
@@ -1016,6 +1022,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     toggleSave,
     handleDelete,
     handleClearTracking,
+    progressPercent,
     // F33 new exports
     activeKnowledgeSegmentIndex: readonly(activeKnowledgeSegmentIndex),
     isBatchExtracting: readonly(isBatchExtracting),

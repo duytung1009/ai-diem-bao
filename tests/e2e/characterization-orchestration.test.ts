@@ -28,6 +28,7 @@ vi.mock('@/entrypoints/sidepanel/composables/useLLM', () => ({
     getETA: vi.fn(() => 1000),
     activeTasks: { value: new Map() },
     modelSpeedStats: { value: {} },
+    checkLLMConfigured: vi.fn().mockResolvedValue({ ok: true }),
   }),
 }));
 
@@ -371,7 +372,9 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       expect(h.summarizeSegments).not.toHaveBeenCalled();
 
       const saved = savedTopicPayloads.filter(p => p.type === 'SAVE_CACHED_TOPIC');
-      expect(saved.length).toBe(2);
+      // 3 saves: (1) scrapeAllPages crash-recovery save on last page,
+      // (2) summarizeAndSaveSegment early save before LLM, (3) final save with summary
+      expect(saved.length).toBe(3);
     });
 
     it('CHAR-10: 5-page topic (25 posts/page) — dynamic with large budget → 5 scrapes, 1 LLM', async () => {
@@ -399,7 +402,9 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       expect(h.summarizeSegments).not.toHaveBeenCalled();
 
       const saved = savedTopicPayloads.filter(p => p.type === 'SAVE_CACHED_TOPIC');
-      expect(saved.length).toBe(2);
+      // 3 saves: (1) scrapeAllPages crash-recovery save on page 5 (5 % 5 === 0 || page === totalPages),
+      // (2) summarizeAndSaveSegment early save before LLM, (3) final save with summary
+      expect(saved.length).toBe(3);
     });
 
     it('CHAR-11: 25-page large topic — triggers multiple dynamic segments', async () => {

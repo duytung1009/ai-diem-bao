@@ -1166,7 +1166,7 @@ async function exportCache() {
                 {{ { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] }}
               </span>
               <div class="flex gap-2">
-                <ShowDefaultButton :expanded="showKnowledgeDefault[mode]" @toggle="showKnowledgeDefault[mode] = !showKnowledgeDefault[mode]" />
+                <ShowDefaultButton :expanded="!!showKnowledgeDefault[mode]" @toggle="showKnowledgeDefault[mode] = !showKnowledgeDefault[mode]" />
                 <button
                   type="button"
                   class="text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"

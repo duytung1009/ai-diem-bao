@@ -333,9 +333,6 @@ export async function reduceKnowledgeChunks(
   customPrompts?: CustomPrompts,
   entryCap?: number,
 ): Promise<string> {
-  const effectiveConfig = { ...config, maxTokens: config.knowledgeMaxTokens ?? config.maxTokens };
-  const provider = createProvider(effectiveConfig);
-
   onProgress?.('Đang gộp kiến thức...');
 
   const cap = entryCap ?? 20;
@@ -345,6 +342,16 @@ export async function reduceKnowledgeChunks(
   const combinedText = partialEntries
     .map((entries, i) => `--- Phần ${i + 1} ---\n${JSON.stringify(entries)}`)
     .join('\n\n');
+
+  // Clamp max_tokens so prompt_tokens + max_tokens <= context_window.
+  // Use chars/3 as a deliberate upper-bound for prompt token count (overestimates),
+  // so the clamp is always conservative — no overflow, may just cap output slightly.
+  const requestedMaxTokens = config.knowledgeMaxTokens ?? config.maxTokens ?? 4096;
+  const contextLimit = getContextLimit(config.model, config.contextWindow);
+  const promptTokensUpperBound = Math.ceil((systemPrompt.length + combinedText.length) / 3) + RESPONSE_BUFFER_TOKENS;
+  const safeMaxTokens = Math.max(512, Math.min(requestedMaxTokens, contextLimit - promptTokensUpperBound));
+  const effectiveConfig = { ...config, maxTokens: safeMaxTokens };
+  const provider = createProvider(effectiveConfig);
 
   const combinedPost: ScrapedPost = {
     author: 'PARTIAL_ENTRIES',

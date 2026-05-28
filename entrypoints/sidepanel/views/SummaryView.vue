@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl } from '@/lib/cache-manager';
-import type { LLMConfig } from '@/lib/types';
+import type { LLMConfig, CachedTopic } from '@/lib/types';
 import { calculateSegmentBudget, estimateTokens } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import type { CostEstimate } from '@/lib/types';
@@ -198,9 +198,13 @@ function handleConflictCancel() {
   }
 }
 
-function handleConflictGoBack() {
+async function handleConflictGoBack() {
+  const oldUrl = loadedTopicUrl.value;
+  if (oldUrl) {
+    const oldTopic = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', oldUrl);
+    if (oldTopic) store.selectTopic(oldTopic);
+  }
   pendingConflict.value = null;
-  router.push('/');
 }
 </script>
 
@@ -295,7 +299,7 @@ function handleConflictGoBack() {
               <div class="card space-y-2">
                 <div class="flex items-center justify-between">
                   <span class="text-xs font-semibold text-(--color-text-secondary)">
-                    {{ formatNumber(summarizedCount) }} / {{ formatNumber(segments.length) }} phần đã tóm tắt
+                    {{ formatNumber(summarizedCount) }} / {{ formatNumber(segments.length) }} đoạn đã tóm tắt
                   </span>
                   <button class="btn" @click="segmentGridExpanded = !segmentGridExpanded">
                     <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0" :class="{ 'rotate-180': segmentGridExpanded }"
@@ -323,20 +327,6 @@ function handleConflictGoBack() {
                 </div>
               </div>
             </template>
-
-            <!-- Row 4: Prev/Next khi đang ở 1 segment cụ thể -->
-            <div v-if="activeSegmentIndex !== null" class="flex items-center justify-between text-xs text-(--color-text-secondary)">
-              <button v-if="activeSegmentIndex > 0" class="flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
-                @click="activeSegmentIndex--">
-                ← {{ segments[activeSegmentIndex - 1].label }}
-              </button>
-              <span v-else />
-              <button v-if="activeSegmentIndex < segments.length - 1" class="flex items-center gap-1 text-blue-600 hover:text-blue-700"
-                @click="activeSegmentIndex++">
-                {{ segments[activeSegmentIndex + 1].label }} →
-              </button>
-              <span v-else />
-            </div>
           </div>
 
           <!-- Overall summary view -->
@@ -454,7 +444,7 @@ function handleConflictGoBack() {
                   </template>
                 </div>
               </div>
-              <div v-else class="flex flex-col items-center gap-3 py-8">
+              <div v-else class="flex flex-col items-center space-y-2">
                 <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
                 <button class="btn-llm" :disabled="isProcessing" @click="handleAutoSummarizeAll()">
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

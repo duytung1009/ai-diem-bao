@@ -31,7 +31,7 @@ const {
   // F33 additions
   knowledgeSegments, isReduceStale, hasAnyExtractedSegment,
   extractSegment, reExtractSegment, runReducePhaseManual,
-  isBatchExtracting, extractAllSegments,
+  isBatchExtracting, extractAllSegments, progressPercent,
 } = knowledge;
 
 // UI state (local to view)
@@ -261,9 +261,13 @@ function handleConflictCancel() {
   loadTopicData();
 }
 
-function handleConflictGoBack() {
+async function handleConflictGoBack() {
+  const oldUrl = loadedTopicUrl.value;
+  if (oldUrl) {
+    const oldTopic = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', oldUrl);
+    if (oldTopic) store.selectTopic(oldTopic);
+  }
   pendingConflict.value = null;
-  router.push('/');
 }
 
 onActivated(async () => {
@@ -317,7 +321,7 @@ onActivated(async () => {
 
       <!-- No posts warning -->
       <div v-if="!allPosts.length" class="text-xs alert alert-warning">
-        Chưa có dữ liệu bài viết. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
+        Chưa có dữ liệu của thớt. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
       <!-- F33: Per-segment extraction grid (Task 289+290) -->
@@ -334,8 +338,7 @@ onActivated(async () => {
         <div class="card space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-(--color-text-secondary)">
-              Trích xuất theo đoạn
-              ({{ knowledgeSegments.filter(s => s.status === 'done' || s.status === 'partial').length }}/{{ knowledgeSegments.length }})
+              {{ knowledgeSegments.filter(s => s.status === 'done' || s.status === 'partial').length }} / {{ knowledgeSegments.length }} đoạn đã trích xuất
             </span>
             <div class="flex items-center gap-1">
               <!-- Batch in progress between segments -->
@@ -359,6 +362,9 @@ onActivated(async () => {
               </button>
             </div>
           </div>
+          <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
+            <div class="h-full rounded-full bg-blue-500 transition-all duration-300" :style="{ width: progressPercent + '%' }" />
+          </div>
           <div v-if="segmentGridExpanded" class="space-y-1">
             <template v-for="seg in knowledgeSegments" :key="seg.segmentIndex">
               <!-- Row -->
@@ -367,8 +373,12 @@ onActivated(async () => {
                 :class="{ 'bg-(--color-accent-soft)': expandedSegmentIndex === seg.segmentIndex }"
                 @click="expandedSegmentIndex = expandedSegmentIndex === seg.segmentIndex ? null : seg.segmentIndex">
                 <!-- Status icon -->
-                <span class="shrink-0 text-sm leading-none">
-                  <template v-if="seg.status === 'done'">✅</template>
+                <div class="shrink-0 w-4 flex justify-center text-sm leading-none">
+                  <template v-if="seg.status === 'done'">
+                    <svg class="w-3.5 h-3.5 text-(--color-success-text)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </template>
                   <template v-else-if="seg.status === 'extracting'">
                     <svg class="w-3.5 h-3.5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -377,7 +387,7 @@ onActivated(async () => {
                   </template>
                   <template v-else-if="seg.status === 'partial'">⚠️</template>
                   <template v-else>○</template>
-                </span>
+                </div>
                 <!-- Label -->
                 <span class="flex-1 text-xs text-(--color-text-primary)">
                   Trang {{ seg.startPage }}–{{ seg.endPage }}
@@ -396,7 +406,7 @@ onActivated(async () => {
                 <!-- Action button -->
                 <a
                   v-if="seg.status === 'pending' || seg.status === 'partial'"
-                  class="text-xs shrink-0 no-underline"
+                  class="text-xs font-medium shrink-0 no-underline"
                   href="javascript:;"
                   :disabled="isLoading"
                   @click.stop="extractSegment(seg.segmentIndex)">
@@ -404,7 +414,7 @@ onActivated(async () => {
                 </a>
                 <a
                   v-else-if="seg.status === 'done'"
-                  class="text-xs shrink-0 no-underline"
+                  class="text-xs font-medium shrink-0 no-underline"
                   href="javascript:;"
                   :disabled="isLoading"
                   @click.stop="reExtractSegment(seg.segmentIndex)">

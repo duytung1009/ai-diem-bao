@@ -16,7 +16,7 @@ function isThreadPage(v: 'xf1' | 'xf2'): boolean {
 }
 
 export default defineContentScript({
-  matches: ['*://*/*'],
+  matches: ['*://voz.vn/*', '*://*.voz.vn/*', '*://www.otofun.net/*', '*://otofun.net/*'],
   main() {
     const version = detectXenForoVersion();
 

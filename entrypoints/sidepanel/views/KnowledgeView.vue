@@ -404,23 +404,26 @@ onActivated(async () => {
                   </span>
                 </span>
                 <!-- Action button -->
-                <a
+                <button
                   v-if="seg.status === 'pending' || seg.status === 'partial'"
-                  class="text-xs font-medium shrink-0 no-underline"
-                  href="javascript:;"
+                  class="text-xs font-medium shrink-0 no-underline disabled:cursor-not-allowed disabled:text-(--color-text-muted) hover:enabled:text-blue-500"
                   :disabled="isLoading"
                   @click.stop="extractSegment(seg.segmentIndex)">
                   {{ seg.status === 'pending' ? 'Trích xuất' : 'Trích xuất lại' }}
-                </a>
-                <a
+                </button>
+                <button
                   v-else-if="seg.status === 'done'"
-                  class="text-xs font-medium shrink-0 no-underline"
-                  href="javascript:;"
+                  class="text-xs font-medium shrink-0 no-underline disabled:cursor-not-allowed disabled:text-(--color-text-muted) hover:enabled:text-blue-500"
                   :disabled="isLoading"
                   @click.stop="reExtractSegment(seg.segmentIndex)">
                   Làm lại
-                </a>
-                <div v-else-if="seg.status === 'extracting'" class="w-16 shrink-0" />
+                </button>
+                <button
+                  v-if="seg.status === 'extracting'"
+                  class="text-xs font-medium shrink-0 no-underline disabled:cursor-not-allowed disabled:text-(--color-text-muted) hover:enabled:text-blue-500"
+                  @click.stop="handleCancel">
+                  Hủy
+                </button>
               </div>
               <!-- Task 290: Preview panel for expanded segment -->
               <div v-if="expandedSegmentIndex === seg.segmentIndex" class="ml-6 mb-1 space-y-1">

@@ -178,7 +178,7 @@ onActivated(async () => {
     </div>
 
     <!-- Error -->
-    <div v-if="error" class="text-xs alert alert-error text-xs">{{ error }}</div>
+    <div v-if="error" class="text-xs alert alert-error">{{ error }}</div>
 
     <!-- Empty state -->
     <div v-if="!isLoading && entries.length === 0" class="text-center py-12 space-y-3">
@@ -259,6 +259,7 @@ onActivated(async () => {
                   <!-- Source topic link -->
                   <p class="text-xs">
                     <button
+                      class="text-start"
                       :class="entry.orphaned
                         ? 'text-(--color-text-muted) cursor-not-allowed'
                         : 'text-blue-600 hover:text-blue-700'"

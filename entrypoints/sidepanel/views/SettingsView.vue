@@ -432,11 +432,41 @@ watch(activePromptTab, () => {
   }
 });
 
+// Request host permission for a custom endpoint at save-time (must be from a user gesture).
+// Known providers (OpenAI, Anthropic, Gemini, OpenRouter) already have static host_permissions
+// in the manifest. Only the 'custom' provider requires a dynamic permission request.
+//
+// Uses the native chrome.permissions.request callback API directly — the webextension-polyfill
+// (browser.*) may not expose permissions.request reliably in all side panel contexts.
+async function requestCustomOriginPermission(baseUrl: string): Promise<boolean> {
+  let origin: string;
+  try {
+    origin = new URL(baseUrl).origin + '/*';
+  } catch {
+    console.error('[permissions] Invalid baseUrl:', baseUrl);
+    return false;
+  }
+
+  try {
+    return await browser.permissions.request({ origins: [origin] });
+  } catch (err) {
+    console.error('[permissions] browser.permissions.request error:', err);
+    return false;
+  }
+}
+
 async function save() {
   saving.value = true;
   saveMessage.value = '';
   try {
     syncCurrentProvider();
+    if (config.value.provider === 'custom' && config.value.baseUrl) {
+      const granted = await requestCustomOriginPermission(config.value.baseUrl);
+      if (!granted) {
+        saveMessage.value = 'Chưa cấp quyền truy cập endpoint tùy chỉnh.';
+        return;
+      }
+    }
     await sendMessage('SAVE_SETTINGS', config.value);
     saveMessage.value = 'Đã lưu!';
     setTimeout(() => (saveMessage.value = ''), 2000);
@@ -452,6 +482,13 @@ async function testConnection() {
   testResult.value = '';
   try {
     syncCurrentProvider();
+    if (config.value.provider === 'custom' && config.value.baseUrl) {
+      const granted = await requestCustomOriginPermission(config.value.baseUrl);
+      if (!granted) {
+        testResult.value = 'fail';
+        return;
+      }
+    }
     await sendMessage('SAVE_SETTINGS', config.value);
     const result = await sendMessage<{ ok: boolean; error?: string }>('TEST_CONNECTION');
     testResult.value = result.ok ? 'success' : 'fail';
@@ -818,7 +855,7 @@ async function exportCache() {
     </div>
 
     <!-- Low maxTokens warning for thinking models -->
-    <div v-if="lowMaxTokensWarning" class="text-xs alert alert-error text-xs">
+    <div v-if="lowMaxTokensWarning" class="text-xs alert alert-error">
       {{ lowMaxTokensWarning }}
     </div>
 

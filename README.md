@@ -31,7 +31,7 @@ Từ đống 700 bài reply lộn xộn, tự động rút ra các tips, kinh ng
 - **Debate streams:** Gom các luồng tranh luận, xem phe nào thắng thế
 - **Timeline sự kiện:** Dòng thời gian diễn biến vụ việc
 - **Notable comments:** Các bình luận đáng chú ý nhất (kể cả mấy bài bị report)
-- **Tóm tắt phong cách võ hiệp:** Vì đời buồn, cần thêm chút drama kiếm hiệp
+- **Phân tích phong cách võ hiệp:** Vì đời buồn, cần thêm chút drama kiếm hiệp
 
 ### 💾 Cache thông minh — Cày một lần, xài mãi mãi
 Kết quả lưu vào IndexedDB, phát hiện bài mới tự động. Hôm nay tóm xong, tuần sau mở lại vẫn còn, không cần cày lại từ đầu.
@@ -61,7 +61,7 @@ Tự chia nhỏ topic thành chunk phù hợp với context window của model. 
 ### Yêu cầu
 - Node.js 18+
 - npm
-- API key của một LLM nào đó (thím tự lo phần này nhé, xin không được đâu)
+- API key của một LLM nào đó (thím tự lo phần này nhé, không có mà xin đâu)
 
 ```bash
 git clone <repo-url>
@@ -80,7 +80,7 @@ npm run build
 1. Mở `chrome://extensions/`
 2. Bật **Developer mode** (góc trên phải)
 3. Bấm **Load unpacked**
-4. Chọn thư mục `.output/chrome-mv3/`
+4. Chọn thư mục `.output/chrome-mv3/` hoặc file release đã giải nén (tải về từ [Releases](https://github.com/duytung1009/ai-diem-bao/releases) page)
 
 Xong. Không cần cài thêm gì cả.
 
@@ -89,9 +89,9 @@ Xong. Không cần cài thêm gì cả.
 ## Cấu hình API Key
 
 1. Mở extension → tab **Cài đặt**
-2. Chọn Provider (OpenAI / Claude / Gemini / Custom)
+2. Chọn Provider (OpenAI / Claude / Gemini / OpenRouter / Custom)
 3. Dán API Key vào
-4. Chọn model, chỉnh temperature nếu thích mấy bài tóm ảo diệu hơn
+4. Chọn model, chỉnh temperature nếu thích mấy bài tóm tắt ảo diệu hơn
 5. Bấm **Test Connection** cho chắc
 6. **Lưu** là xong
 
@@ -105,7 +105,7 @@ Xong. Không cần cài thêm gì cả.
 | Ollama | `llama3` | Như LM Studio nhưng CLI cho thím nào thích gõ lệnh |
 | OpenRouter | *(tùy chọn)* | Aggregator, pick model nào cũng được, tính phí từng model |
 
-> **Mẹo thực tế:** Thớt thường thì GPT-4o/Gemini Flash Lite là đủ. Thớt 500+ bài phức tạp mới cần đến GPT-5/Gemini Flash/Gemini Pro. Dùng model rẻ nhất cho tiết kiệm — AI cũng biết đọc, không cần hàng xịn mới hiểu Voz nói gì.
+> **Mẹo thực tế:** Thường thì xài local LLM (qwen, llama...) hoặc đồ free như openai/gpt-oss-20b:free là đủ. Thớt 500+ bài phức tạp mới cần đến GPT-5/Gemini Flash/Gemini Pro. Dùng model rẻ nhất cho tiết kiệm — AI nào cũng biết đọc, không cần hàng xịn mới hiểu Vozer đang nói gì.
 
 ---
 
@@ -157,7 +157,7 @@ ai-diem-bao/
 
 ### Kiến trúc đáng chú ý
 
-**Map-Reduce Pipeline:** Thớt dài → chia chunk → tóm từng chunk song song → merge đệ quy → ra kết quả cuối. Không sợ thớt 1000 bài.
+**Map-Reduce Pipeline:** Thớt dài → chia chunk → tóm tắt lần lượt từng chunk → merge đệ quy → ra kết quả cuối. Không sợ thớt 1000 bài.
 
 **Fire-and-Forget Messaging:** LLM task dispatch không block, progress gửi qua events — tránh timeout Chrome message channel cho tác vụ dài.
 
@@ -188,8 +188,45 @@ Vì tác giả không có tiền bao key cho cả Voz. Mỗi thím tự dùng ke
 **Hỗ trợ forum nào?**  
 Mọi forum chạy XenForo 1.x và 2.x. Vào **Cài đặt → Forum hỗ trợ**, bấm "Thêm voz.vn" / "Thêm otofun.net" để bắt đầu, hoặc nhập URL bất kỳ forum XenForo nào. Chrome sẽ hỏi xác nhận cấp quyền cho từng domain — không có domain nào được truy cập mà không có sự cho phép của bạn.
 
-**Model nào tóm hay nhất?**  
-Tùy thớt. Gemini Flash có context window lớn nên tóm tắt thớt dài tốt. DeepSeek V4 Flash nhanh và rẻ cho thớt thường. Claude Sonnet nếu thím muốn chất lượng cao và không tiếc tiền.
+**Model nào tóm tắt hay nhất?**  
+Tùy khẩu vị. Gemini Flash có context window lớn nên tóm tắt thớt dài tốt, ít hallucinate. DeepSeek V4 Flash nhanh và rẻ cho thớt thường. Claude Sonnet nếu thím muốn chất lượng cao và không tiếc tiền. Local LLM context window bé nên hay bị ảo giác, dễ mất niềm tin. Nhưng quan trọng vẫn là prompt, thím có thể vào Cài Đặt -> Prompt Templates để tùy biến prompt cho bay bổng hơn.
+
+---
+
+## ⚠️ Từ chối trách nhiệm (Disclaimer)
+
+> *Đọc kỹ trước khi dùng — không phải kiểu "Đồng ý với điều khoản" rồi bấm Next cho lẹ nhé.*
+
+### 💸 Tiền ai nấy trả
+
+Mọi chi phí token phát sinh khi dùng API trả phí (OpenAI, Gemini, Claude, v.v.) là **trách nhiệm hoàn toàn của thím**. Tớ không chịu trách nhiệm nếu thím vô tình tóm tắt một thớt 4000 bài về drama màn hình cong bằng Claude Opus rồi nhận bill cuối tháng tim đập chân run.
+
+Khuyến khích mạnh: dùng **Local LLM** (LM Studio, Ollama) hoặc các gói **free tier** là đủ xài cho 90% trường hợp. Thớt Voz không cần model xịn — AI nào cũng đọc được, miễn là biết tiếng Việt và chịu đựng được văn phong "anh không nhận ra tôi" cùng "thế lực thù địch" mỗi ngày.
+
+### 🤖 AI chỉ là máy
+
+Toàn bộ nội dung tóm tắt, chia phe, phân tích luồng tranh luận **phụ thuộc 100% vào dữ liệu bài viết cào được**. Tớ không chịu trách nhiệm nếu:
+
+- AI "bóp méo" drama vì không hiểu ngữ cảnh ngầm của thớt
+- AI xếp nhầm phe do các thím trong thớt **bẻ lái văn mẫu quá gắt** — kiểu "em ủng hộ mà" nhưng đọc xong 3 trang rõ ràng là đang chửi
+- AI kết luận "không có kẻ thua cuộc" trong một thớt mà cả hai phe đều đang tự đánh nhau
+- Kết quả ra ngược đời đến mức bản thân thím cũng không nhận ra thớt của mình
+
+Mọi phân tích chỉ mang tính **tham khảo cho vui**. Muốn kết quả chuẩn hơn thì vào **Cài đặt → Prompt Templates** mà tự chỉnh — AI nghe lời chủ nhà hơn lời developer.
+
+### 🤝 Sản phẩm của hội đồng AI
+
+Codebase này là thành quả hợp tác giữa Claude Code, GitHub Copilot, Cursor, và có thể còn vài em AI khác tớ không nhớ tên. Mỗi em một phong cách, mỗi em một quan điểm về cách đặt tên biến, và không em nào thèm hỏi ý kiến em nào trước khi làm.
+
+Kết quả là một đống bùi nhùi *hoạt động được*, nhưng đôi chỗ có thể hơi **messed up theo những cách khó đoán**. Bug dị? Có thể. Logic kỳ lạ không rõ lý do? Bình thường. Comment tiếng Anh xen tiếng Việt xen pseudocode? Đặc sản.
+
+Rất mong các thím Vozer có kinh nghiệm ghé vào **report bug hoặc PR** nếu thấy chỗ nào sai sai. Cộng đồng cùng fix thì nhanh hơn một mình tớ ngồi hỏi AI tại sao mày lại code như vậy.
+
+### 🛋️ Dùng vì đam mê (của chính bản thân)
+
+App này viết ra để **phục vụ cơn lười của tớ là chính**. Không có SLA, không có ticket support, không có cam kết uptime 99.9%, không có đội ngũ on-call 24/7 sẵn sàng xử lý sự cố lúc 2h sáng khi thớt hot đang vào cao trào.
+
+Nếu extension bị lỗi, thím cứ mở Issue trên GitHub. Tớ sẽ xem — *khi nào có thời gian và hứng*. Còn nếu thớt đó quan trọng đến mức không thể chờ, thì lội tay vẫn là phương án truyền thống đáng tin cậy nhất từ trước đến nay.
 
 ---
 

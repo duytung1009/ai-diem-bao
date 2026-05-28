@@ -1,6 +1,6 @@
 # Privacy Policy — Lội Thớt Hộ
 
-**Effective date:** 2026-05-28
+**Effective date:** 2026-05-29
 
 ---
 
@@ -74,9 +74,7 @@ All data stored by the Extension (cached analyses, notebook entries, settings) r
 | `activeTab` | Required to securely read the text content of the currently active forum thread only when the user explicitly interacts with the extension. This ensures strict user privacy by avoiding permanent host permissions across all websites. |
 | `sidePanel` | Required to host the main extension interface alongside the active browser tab. This allows users to read summaries, analyze forum factions, and manage their notebook seamlessly without leaving or disrupting their current reading flow. |
 | `storage` | Required to store the user-configured LLM API keys, cached thread summaries, and persist the user's saved knowledge entries inside the local browser storage (IndexedDB) for offline retrieval. |
-| Host access: `voz.vn`, `otofun.net` | voz.vn and otofun.net are Vietnamese XenForo-based forums. The content script runs exclusively on these two domains to read the visible thread HTML (post text, author name, timestamp, post number, and user metadata such as join date and reaction score) when the user actively opens the extension's side panel.
-This data is passed locally to the side panel, where it is sent to an LLM provider (OpenAI, Google Gemini, or Anthropic Claude) using an API key supplied by the user. No data is transmitted to any server owned or operated by the extension developer. All saved results (summaries, notebooks) are stored in the browser's local IndexedDB and never leave the user's device.
-Access is intentionally limited to these two domains. No other sites are matched. The content script is passive. It does not modify the DOM, inject UI, or run any logic until it receives a DETECT_XF message from the side panel triggered by user action. |
+| Host access: `voz.vn`, `otofun.net` | voz.vn and otofun.net are Vietnamese XenForo-based forums. The content script runs exclusively on these two domains to read the visible thread HTML (post text, author name, timestamp, post number, and user metadata such as join date and reaction score) when the user actively opens the extension's side panel. This data is passed locally to the side panel, where it is sent to an LLM provider (OpenAI, Google Gemini, or Anthropic Claude) using an API key supplied by the user. No data is transmitted to any server owned or operated by the extension developer. All saved results (summaries, notebooks) are stored in the browser's local IndexedDB and never leave the user's device. Access is intentionally limited to these two domains. No other sites are matched. The content script is passive. It does not modify the DOM, inject UI, or run any logic until it receives a DETECT_XF message from the side panel triggered by user action. |
 
 ---
 

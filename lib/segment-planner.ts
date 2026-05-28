@@ -76,7 +76,7 @@ export function isCompletedSegment(seg: TopicSegment | null | undefined): seg is
 }
 
 export interface SegmentBudgetParams {
-  model: string;
+  model?: string;
   systemPromptTokens: number;
   maxTokens?: number;
   contextWindowOverride?: number;

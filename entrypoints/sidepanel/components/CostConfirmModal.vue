@@ -30,7 +30,7 @@ const emit = defineEmits<{
   />
 
   <!-- Bottom sheet -->
-  <div class="fixed bottom-0 left-0 right-0 z-50 bg-(--color-bg-primary) border-t border-(--color-border) rounded-t-xl shadow-xl p-4 space-y-4 animate-slide-up">
+  <div class="fixed bottom-0 left-0 right-0 z-50 bg-(--color-bg-base) border-t border-(--color-border) rounded-t-xl shadow-xl p-4 space-y-4 animate-slide-up">
     <!-- Title -->
     <h3 class="text-sm font-semibold text-(--color-text-primary)">{{ title }}</h3>
 

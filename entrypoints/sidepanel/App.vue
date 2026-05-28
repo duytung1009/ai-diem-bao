@@ -126,6 +126,7 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
 
     // Always update totalPages and forumPostCount from live detect
     const hasChanges =
+      cached.version !== detect.version ||
       cached.forumPostCount !== detect.postCount ||
       cached.totalPages !== detect.pageCount ||
       (!!detect.title && cached.title !== detect.title);
@@ -135,6 +136,7 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     if (detect.postCount > 0 && detect.postCount !== cached.forumPostCount) {
       await sendMessage('SAVE_CACHED_TOPIC', {
         ...cached,
+        version: detect.version,
         forumPostCount: detect.postCount,
         totalPages: detect.pageCount,
         title: detect.title || cached.title,
@@ -142,12 +144,20 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     } else if (cached.totalPages !== detect.pageCount) {
       await sendMessage('SAVE_CACHED_TOPIC', {
         ...cached,
+        version: detect.version,
         totalPages: detect.pageCount,
+        title: detect.title || cached.title,
+      });
+    } else if (cached.version !== detect.version) {
+      await sendMessage('SAVE_CACHED_TOPIC', {
+        ...cached,
+        version: detect.version,
         title: detect.title || cached.title,
       });
     } else if (!!detect.title && cached.title !== detect.title) {
       await sendMessage('SAVE_CACHED_TOPIC', {
         ...cached,
+        version: detect.version,
         title: detect.title || cached.title,
       });
     }
@@ -156,6 +166,7 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
     const selectedUrl = store.selectedTopic.value?.url;
     if (selectedUrl && normalizeUrl(selectedUrl) === normalizedTabUrl) {
       store.updateSelectedTopic({
+        version: detect.version,
         totalPages: detect.pageCount,
         forumPostCount: detect.postCount,
         title: detect.title || cached.title,
@@ -230,7 +241,7 @@ function navigateTo(path: string) {
         </svg>
         Cài đặt
       </button>
-      <button title="Hướng dẫn sử dụng" class="w-8 text-center py-2.5 text-sm font-bold transition-colors shrink-0" :class="route.name === 'help'
+      <button title="Hướng dẫn sử dụng" class="w-8 flex items-center justify-center gap-1 py-2.5 font-bold transition-colors shrink-0" :class="route.name === 'help'
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
         " @click="navigateTo('/help')">

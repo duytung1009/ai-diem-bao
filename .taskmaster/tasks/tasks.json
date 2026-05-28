@@ -717,7 +717,7 @@
           }
         ],
         "complexity": 4,
-        "recommendedSubtasks": 0,
+        "recommendedSubtasks": 4,
         "expansionPrompt": "Chia nhỏ module persistence thành các helper functions cho payload và logic nén segment riêng biệt để dễ dàng thực hiện snapshot testing.",
         "updatedAt": "2026-05-17T15:23:57.970Z"
       },
@@ -796,7 +796,7 @@
           }
         ],
         "complexity": 6,
-        "recommendedSubtasks": 0,
+        "recommendedSubtasks": 5,
         "expansionPrompt": "Phân tách logic scraping trang đơn và logic xử lý vòng lặp trang để tăng tính tái sử dụng và dễ kiểm thử bằng mock.",
         "updatedAt": "2026-05-17T15:24:37.938Z"
       },
@@ -861,7 +861,7 @@
           }
         ],
         "complexity": 6,
-        "recommendedSubtasks": 0,
+        "recommendedSubtasks": 4,
         "expansionPrompt": "Tập trung vào cơ chế đồng bộ trạng thái giữa StepTimeline và LLMTaskState để đảm bảo giao diện người dùng luôn phản ánh đúng tiến trình xử lý.",
         "updatedAt": "2026-05-17T15:25:19.041Z"
       },
@@ -928,7 +928,7 @@
           }
         ],
         "complexity": 7,
-        "recommendedSubtasks": 0,
+        "recommendedSubtasks": 4,
         "expansionPrompt": "Xây dựng các bộ test case mock LLM chi tiết cho từng hàm primitive để đảm bảo cơ chế stale-guard và short-circuit hoạt động chính xác.",
         "updatedAt": "2026-05-17T15:26:01.154Z"
       },
@@ -1006,7 +1006,7 @@
           }
         ],
         "complexity": 8,
-        "recommendedSubtasks": 0,
+        "recommendedSubtasks": 5,
         "expansionPrompt": "Mô tả chi tiết luồng điều phối giữa Scraper, Planner và Summarizer trong driver trước khi triển khai để bao quát hết các kịch bản resume/retry.",
         "updatedAt": "2026-05-17T15:26:45.175Z"
       },
@@ -6782,13 +6782,578 @@
         "recommendedSubtasks": 3,
         "expansionPrompt": "Chuyển đổi nút bấm thành Dropdown menu và xử lý logic hiển thị fallback cho các topic không chia segment.",
         "updatedAt": "2026-05-27T06:52:28.630Z"
+      },
+      {
+        "id": "293",
+        "title": "Định nghĩa kiểu dữ liệu và khởi tạo lib/importer.ts",
+        "description": "Thêm các kiểu dữ liệu cần thiết cho tính năng import vào lib/types.ts và khởi tạo file importer mới.",
+        "details": "1. Trong `lib/types.ts`, thêm `'IMPORT_CACHE'` vào union `MessageType`.\n2. Tạo file `lib/importer.ts`.\n3. Định nghĩa `ImportConflictMode = 'skip' | 'overwrite'`.\n4. Định nghĩa interface `ImportResult` gồm: `total`, `imported`, `skipped`, `failed`, `errors: string[]`.\n5. Export các types này để sử dụng trong toàn bộ project.",
+        "testStrategy": "Kiểm tra code compile thành công và các file khác có thể import các types mới mà không bị lỗi TypeScript.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật MessageType trong lib/types.ts",
+            "description": "Thêm giá trị 'IMPORT_CACHE' vào union type MessageType để hỗ trợ giao tiếp tin nhắn cho tính năng import.",
+            "dependencies": [],
+            "details": "Mở file lib/types.ts, tìm định nghĩa MessageType và thêm chuỗi 'IMPORT_CACHE' vào danh sách các kiểu tin nhắn được phép.",
+            "status": "done",
+            "testStrategy": "Sử dụng trình kiểm tra kiểu của TypeScript (tsc) để đảm bảo không có lỗi biên dịch sau khi thêm giá trị mới.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:53:23.833Z"
+          },
+          {
+            "id": 2,
+            "title": "Khởi tạo file lib/importer.ts và định nghĩa các kiểu dữ liệu cơ sở",
+            "description": "Tạo file mới lib/importer.ts và thiết lập các type/interface cần thiết cho quá trình import dữ liệu.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tạo file lib/importer.ts. Định nghĩa ImportConflictMode với giá trị 'skip' hoặc 'overwrite'. Định nghĩa interface ImportResult bao gồm các trường: total, imported, skipped, failed (kiểu number) và errors (kiểu string[]).",
+            "status": "done",
+            "testStrategy": "Xác nhận file được tạo đúng vị trí và các định nghĩa interface tuân thủ đúng yêu cầu về cấu trúc dữ liệu.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:53:46.422Z"
+          },
+          {
+            "id": 3,
+            "title": "Export các kiểu dữ liệu và kiểm tra tính nhất quán",
+            "description": "Thực hiện export các kiểu dữ liệu từ lib/importer.ts và đảm bảo chúng có thể được sử dụng trong toàn bộ project.",
+            "dependencies": [
+              2
+            ],
+            "details": "Đảm bảo tất cả các type và interface trong lib/importer.ts đều có từ khóa export. Kiểm tra thử việc import các type này vào một module khác để xác nhận tính khả dụng.",
+            "status": "done",
+            "testStrategy": "Thực hiện lệnh compile dự án để đảm bảo các module phụ thuộc không gặp lỗi khi tham chiếu đến các kiểu dữ liệu mới.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:54:02.209Z"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thiết lập các interface cơ sở cho dữ liệu import và các enum cho chế độ xử lý xung đột.",
+        "updatedAt": "2026-05-28T14:54:02.209Z"
+      },
+      {
+        "id": "294",
+        "title": "Triển khai logic Validation và Mapping trong lib/importer.ts",
+        "description": "Xây dựng các hàm kiểm tra tính hợp lệ của file JSON và chuyển đổi dữ liệu sang định dạng Database.",
+        "details": "1. Viết hàm `validateCacheExport(raw: unknown): CacheExport`:\n   - Kiểm tra `version === '1.0'` (nếu khác thì log cảnh báo nhưng vẫn tiếp tục).\n   - Đảm bảo `topics` là mảng và mỗi item có `url`, `title`.\n2. Viết hàm `mapExportedTopic(t: ExportedTopic): CachedTopic`:\n   - Set các giá trị mặc định: `version: 'unknown'`, `posts: []`, `lastPostNumber: 0`.\n   - Map `ExportedSegment` sang `TopicSegment` (set `posts: []`, `complete: true`).\n   - Giữ nguyên các trường summary, opinions, knowledgeEntries...",
+        "testStrategy": "Unit test hàm `validateCacheExport` với các bộ dữ liệu mẫu: file hợp lệ, file thiếu url, file sai version, file không phải mảng topics.",
+        "priority": "high",
+        "dependencies": [
+          "293"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa Type Guard và Interface cho dữ liệu Import",
+            "description": "Thiết lập các cấu trúc dữ liệu cần thiết phục vụ cho việc validation và mapping trong importer.",
+            "dependencies": [],
+            "details": "Khai báo các interface như CacheExport, ExportedTopic và ExportedSegment trong lib/importer.ts để đảm bảo kiểm soát kiểu dữ liệu chặt chẽ.",
+            "status": "done",
+            "testStrategy": "Kiểm tra kiểu dữ liệu bằng TypeScript compiler để đảm bảo không có lỗi cú pháp hoặc thiếu trường.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:55:39.290Z"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai hàm validateCacheExport",
+            "description": "Thực hiện kiểm tra tính hợp lệ của dữ liệu đầu vào thô trước khi xử lý sâu hơn.",
+            "dependencies": [
+              1
+            ],
+            "details": "Hàm sẽ kiểm tra version '1.0', xác thực mảng topics và các thuộc tính bắt buộc của topic như url và title; log cảnh báo nếu version không khớp.",
+            "status": "done",
+            "testStrategy": "Sử dụng Vitest để chạy các test case với dữ liệu mẫu đúng và sai cấu trúc JSON.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:55:55.157Z"
+          },
+          {
+            "id": 3,
+            "title": "Triển khai hàm mapExportedTopic",
+            "description": "Thực hiện chuyển đổi dữ liệu từ định dạng xuất sang định dạng lưu trữ trong Database.",
+            "dependencies": [
+              2
+            ],
+            "details": "Thiết lập các giá trị mặc định cho posts, lastPostNumber và thực hiện mapping ExportedSegment sang TopicSegment với trạng thái hoàn tất.",
+            "status": "done",
+            "testStrategy": "So sánh đối tượng kết quả sau khi map với đối tượng mong đợi về mặt cấu trúc và giá trị mặc định.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:56:13.305Z"
+          },
+          {
+            "id": 4,
+            "title": "Hoàn thiện Unit Test cho toàn bộ logic Importer",
+            "description": "Đảm bảo tất cả các hàm validation và mapping hoạt động chính xác trong mọi điều kiện.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Xây dựng bộ test suite bao quát các trường hợp thiếu dữ liệu, dữ liệu không hợp lệ và dữ liệu phiên bản cũ để đảm bảo tính tương thích.",
+            "status": "done",
+            "testStrategy": "Chạy lệnh npm test lib/importer.test.ts và kiểm tra tỷ lệ bao phủ code (code coverage).",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:56:29.684Z"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Xây dựng bộ validator mạnh mẽ để kiểm tra cấu trúc JSON và mapping chính xác các trường dữ liệu cũ/mới.",
+        "updatedAt": "2026-05-28T14:56:29.684Z"
+      },
+      {
+        "id": "295",
+        "title": "Thêm handler IMPORT_CACHE trong Background script",
+        "description": "Cấu hình entrypoints/background/index.ts để nhận và xử lý yêu cầu import dữ liệu.",
+        "details": "1. Thêm case `'IMPORT_CACHE'` vào hàm xử lý message trong background.\n2. Tiếp nhận payload gồm `topics` và `conflictMode`.\n3. Chuẩn bị cấu trúc vòng lặp để xử lý từng topic một cách tuần tự nhằm tránh quá tải và dễ kiểm soát lỗi.",
+        "testStrategy": "Sử dụng console.log hoặc debugger để xác nhận background nhận đúng message và payload từ UI gửi lên.",
+        "priority": "medium",
+        "dependencies": [
+          "293",
+          "294"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa cấu trúc Message và Payload cho IMPORT_CACHE",
+            "description": "Cập nhật các định nghĩa kiểu dữ liệu để hỗ trợ action IMPORT_CACHE với payload topics và conflictMode.",
+            "dependencies": [],
+            "details": "Đảm bảo interface của message chứa trường action: 'IMPORT_CACHE' và payload: { topics: string[], conflictMode: string }. Việc này giúp TypeScript kiểm tra lỗi trong quá trình phát triển.",
+            "status": "done",
+            "testStrategy": "Kiểm tra type-checking trong IDE không có lỗi khi gán payload cho action IMPORT_CACHE.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:57:39.751Z"
+          },
+          {
+            "id": 2,
+            "title": "Đăng ký handler IMPORT_CACHE trong background/index.ts",
+            "description": "Thêm case 'IMPORT_CACHE' vào listener của browser.runtime.onMessage trong file entrypoints/background/index.ts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Xác định vị trí hàm xử lý message chính trong background script. Thêm một nhánh switch-case mới để bắt sự kiện 'IMPORT_CACHE' và trích xuất dữ liệu từ request.",
+            "status": "done",
+            "testStrategy": "Sử dụng console.log để xác nhận background nhận được đúng object topics và conflictMode từ UI gửi lên.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:57:55.731Z"
+          },
+          {
+            "id": 3,
+            "title": "Thiết lập pipeline xử lý tuần tự cho mảng topics",
+            "description": "Triển khai cấu trúc vòng lặp để xử lý từng topic một cách tuần tự thay vì xử lý song song.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng vòng lặp for...of để gọi các hàm xử lý logic import. Cơ chế này đảm bảo tài nguyên được giải phóng sau mỗi topic và dễ dàng quản lý lỗi cho từng phần tử trong danh sách.",
+            "status": "done",
+            "testStrategy": "Gửi payload có 3 topics và kiểm tra log trong Service Worker để đảm bảo các topic được in ra theo đúng thứ tự lần lượt.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:58:10.040Z"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thiết lập cơ chế lắng nghe message và chuẩn bị pipeline xử lý tuần tự cho mảng topics lớn.",
+        "updatedAt": "2026-05-28T14:58:10.040Z"
+      },
+      {
+        "id": "296",
+        "title": "Triển khai logic ghi dữ liệu vào IndexedDB trong Background",
+        "description": "Thực hiện việc kiểm tra conflict và lưu dữ liệu vào database dựa trên mode đã chọn.",
+        "details": "1. Với mỗi topic trong danh sách:\n   - Nếu `conflictMode === 'skip'`: Gọi `dbGet(topic.url)`. Nếu tồn tại, tăng `skipped` và bỏ qua.\n   - Nếu `conflictMode === 'overwrite'`: Gọi `dbPut(mappedTopic)` trực tiếp.\n2. Sử dụng `try-catch` cho từng topic để nếu một topic lỗi, quá trình import vẫn tiếp tục với các topic khác.\n3. Tổng hợp kết quả vào object `ImportResult` và trả về cho phía gọi message.",
+        "testStrategy": "Thực hiện import thử nghiệm và kiểm tra trong Application tab của DevTools xem dữ liệu đã được ghi vào IndexedDB đúng hay chưa (cả trường hợp ghi đè và bỏ qua).",
+        "priority": "high",
+        "dependencies": [
+          "295"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Khởi tạo cấu trúc vòng lặp và biến kết quả ImportResult",
+            "description": "Thiết lập các biến trạng thái ban đầu để theo dõi số lượng bản ghi được xử lý thành công, bị bỏ qua hoặc gặp lỗi.",
+            "dependencies": [],
+            "details": "Khai báo đối tượng result = { success: 0, skipped: 0, failed: 0 }. Sử dụng vòng lặp for...of để duyệt qua danh sách topics nhận được từ payload nhằm xử lý tuần tự.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:59:39.633Z"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai logic kiểm tra xung đột dữ liệu (Conflict Mode)",
+            "description": "Thực hiện rẽ nhánh logic dựa trên giá trị của conflictMode ('skip' hoặc 'overwrite') đối với từng topic.",
+            "dependencies": [
+              1
+            ],
+            "details": "Nếu conflictMode là 'skip', gọi hàm dbGet(topic.url). Nếu dữ liệu đã tồn tại trong IndexedDB, tăng biến skipped và sử dụng lệnh continue để chuyển sang bản ghi tiếp theo.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T14:59:53.660Z"
+          },
+          {
+            "id": 3,
+            "title": "Thực hiện ghi dữ liệu vào IndexedDB với khối try-catch",
+            "description": "Sử dụng hàm dbPut để lưu dữ liệu vào database và đảm bảo tiến trình không bị dừng lại khi có một bản ghi lỗi.",
+            "dependencies": [
+              2
+            ],
+            "details": "Bao bọc lệnh gọi dbPut(mappedTopic) trong một khối try-catch riêng biệt cho mỗi item. Nếu thành công tăng success, nếu thất bại log lỗi và tăng biến failed.",
+            "status": "done",
+            "testStrategy": "Sử dụng DevTools > Application > IndexedDB để xác nhận dữ liệu được ghi đúng khi chọn overwrite và không bị ghi đè khi chọn skip.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T15:00:09.819Z"
+          },
+          {
+            "id": 4,
+            "title": "Tổng hợp và trả về kết quả cuối cùng cho phía UI",
+            "description": "Hoàn tất quá trình xử lý và gửi phản hồi chứa thông tin tổng kết về cho Sidepanel.",
+            "dependencies": [
+              3
+            ],
+            "details": "Sau khi kết thúc vòng lặp xử lý toàn bộ danh sách, trả về đối tượng ImportResult. Đảm bảo message response trả về đúng định dạng mà UI đang mong đợi để hiển thị thông báo cho người dùng.",
+            "status": "done",
+            "testStrategy": "Kiểm tra giá trị trả về của message IMPORT_CACHE có khớp với số lượng item thực tế đã thao tác trong database hay không.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T15:00:25.359Z"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Xây dựng logic ghi đè (overwrite) hoặc bỏ qua (skip) dựa trên khóa chính URL và xử lý lỗi tại chỗ cho từng item.",
+        "updatedAt": "2026-05-28T15:00:25.359Z"
+      },
+      {
+        "id": "297",
+        "title": "Cập nhật UI SettingsView.vue: Thêm các điều khiển Import",
+        "description": "Thêm input file ẩn, nút bấm và lựa chọn Conflict Mode vào giao diện cài đặt.",
+        "details": "1. Thêm `<input type=\"file\" accept=\".json\" ref=\"fileInput\" class=\"hidden\" @change=\"handleFileChange\">`.\n2. Thêm nút \"Nhập dữ liệu (JSON)\" cạnh nút Xuất dữ liệu.\n3. Thêm UI (radio buttons hoặc select) để người dùng chọn giữa \"Giữ bản cũ (skip)\" và \"Ghi đè (overwrite)\", mặc định là 'skip'.\n4. Đảm bảo UI nhất quán với khối 'Cache local'.",
+        "testStrategy": "Kiểm tra giao diện hiển thị đúng, các nút bấm hoạt động và input file mở được hộp thoại chọn file của hệ điều hành.",
+        "priority": "medium",
+        "dependencies": [
+          "293"
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm Input File ẩn và Nút Nhập dữ liệu",
+            "description": "Chèn phần tử input file ẩn vào template và thêm nút bấm 'Nhập dữ liệu (JSON)' bên cạnh nút Xuất dữ liệu hiện có.",
+            "dependencies": [],
+            "details": "Cần thêm thẻ <input type=\"file\" accept=\".json\" ref=\"fileInput\" class=\"hidden\" @change=\"handleFileChange\"> vào template. Sau đó, thêm một button UI với nhãn 'Nhập dữ liệu (JSON)' và thiết lập sự kiện click để kích hoạt file input.",
+            "status": "done",
+            "testStrategy": "Kiểm tra xem nút bấm có xuất hiện trên giao diện không và khi nhấn vào nút đó thì hộp thoại chọn tệp của hệ điều hành có mở ra hay không.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T15:01:38.148Z"
+          },
+          {
+            "id": 2,
+            "title": "Thêm UI lựa chọn Chế độ xung đột (Conflict Mode)",
+            "description": "Tạo các thành phần giao diện như radio buttons hoặc select để người dùng chọn cách xử lý khi gặp dữ liệu trùng lặp.",
+            "dependencies": [
+              1
+            ],
+            "details": "Triển khai các lựa chọn 'Giữ bản cũ (skip)' và 'Ghi đè (overwrite)'. Cần khai báo một biến reactive trong script để lưu trữ giá trị này và mặc định là 'skip'.",
+            "status": "done",
+            "testStrategy": "Xác nhận các tùy chọn hiển thị đầy đủ và người dùng có thể chọn qua lại giữa 'skip' và 'overwrite' mà trạng thái được cập nhật đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-28T15:01:50.829Z"
+          },
+          {
+            "id": 3,
+            "title": "Định dạng giao diện đồng nhất với khối Cache local",
+            "description": "Điều chỉnh CSS và cấu trúc layout để các điều khiển Import mới nhất quán với khối quản lý bộ nhớ đệm hiện tại.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Sử dụng các class Tailwind hoặc CSS hiện có của dự án để đảm bảo khoảng cách (margin/padding), màu sắc nút và font chữ của phần Import mới hoàn toàn khớp với khối 'Cache local' phía trên.",
+            "status": "pending",
+            "testStrategy": "Thực hiện kiểm tra trực quan (visual inspection) trên trình duyệt để đảm bảo giao diện cân đối, không bị lệch và có tính thẩm mỹ đồng bộ.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Thiết lập UI cho việc chọn file, chọn chế độ xung đột và đồng nhất style với khối cache hiện tại.",
+        "updatedAt": "2026-05-28T15:01:50.829Z"
+      },
+      {
+        "id": "298",
+        "title": "Triển khai logic đọc file và gửi dữ liệu từ Sidepanel",
+        "description": "Xử lý sự kiện chọn file, đọc nội dung bằng FileReader và gửi message tới Background.",
+        "details": "1. Trong `handleFileChange`:\n   - Khởi tạo `FileReader` để đọc file dưới dạng text.\n   - `JSON.parse` nội dung file.\n   - Gọi `validateCacheExport` để kiểm tra sơ bộ.\n   - Nếu hợp lệ, set `importing = true` và gọi `sendMessage('IMPORT_CACHE', { topics, conflictMode })`.",
+        "testStrategy": "Chọn một file JSON và kiểm tra console log xem nội dung file đã được parse thành object thành công hay chưa trước khi gửi sang background.",
+        "priority": "medium",
+        "dependencies": [
+          "297",
+          "295"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai trình xử lý sự kiện chọn file và khởi tạo FileReader",
+            "description": "Xây dựng hàm handleFileChange để tiếp nhận file từ input và sử dụng FileReader API để đọc nội dung file dưới dạng text.",
+            "dependencies": [],
+            "details": "Sử dụng e.target.files[0] để lấy file. Khởi tạo FileReader và gọi phương thức readAsText. Thiết lập callback onload để chuẩn bị cho bước xử lý dữ liệu tiếp theo.",
+            "status": "pending",
+            "testStrategy": "Chọn một file JSON mẫu và kiểm tra console log để xác nhận nội dung file đã được đọc thành công dưới dạng chuỗi văn bản.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Phân tích JSON và thực hiện kiểm tra tính hợp lệ (Validation)",
+            "description": "Chuyển đổi chuỗi văn bản nhận được thành đối tượng JSON và sử dụng hàm validateCacheExport để kiểm tra cấu trúc dữ liệu.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng JSON.parse bên trong khối lệnh try-catch để tránh lỗi runtime. Gọi hàm validateCacheExport(parsedData) để đảm bảo dữ liệu chứa các trường cần thiết như topics và metadata.",
+            "status": "pending",
+            "testStrategy": "Sử dụng các tệp JSON không hợp lệ hoặc thiếu trường để kiểm tra xem hệ thống có ngăn chặn quá trình import và thông báo lỗi chính xác hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Gửi message IMPORT_CACHE tới Background và quản lý trạng thái UI",
+            "description": "Cập nhật trạng thái importing và gửi dữ liệu đã qua kiểm duyệt tới Background script để thực hiện lưu trữ vào database.",
+            "dependencies": [
+              2
+            ],
+            "details": "Thiết lập biến trạng thái importing thành true. Gọi hàm sendMessage('IMPORT_CACHE', { topics, conflictMode }) để gửi yêu cầu xử lý dữ liệu sang background.ts. Xử lý phản hồi từ background để cập nhật lại UI.",
+            "status": "pending",
+            "testStrategy": "Theo dõi tab Network hoặc Background Service Worker console để xác nhận message IMPORT_CACHE được gửi đi với payload chính xác.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Sử dụng FileReader API để đọc dữ liệu và thực hiện validation sơ bộ trước khi gửi lên Background.",
+        "updatedAt": "2026-05-28T14:30:04.380Z"
+      },
+      {
+        "id": "299",
+        "title": "Xử lý kết quả import và hiển thị thông báo",
+        "description": "Nhận kết quả trả về từ Background, cập nhật trạng thái UI và thông báo cho người dùng.",
+        "details": "1. Sau khi nhận response từ background, set `importing = false`.\n2. Hiển thị thông báo (toast hoặc alert) với nội dung: \"Đã nhập X topic (bỏ qua Y, lỗi Z)\".\n3. Nếu có lỗi nghiêm trọng (file không phải JSON), hiển thị thông báo lỗi cụ thể cho người dùng.",
+        "testStrategy": "Thử import file hợp lệ và file lỗi để đảm bảo các thông báo toast hiển thị đúng số lượng và nội dung.",
+        "priority": "medium",
+        "dependencies": [
+          "298"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật trạng thái UI và nhận dữ liệu phản hồi",
+            "description": "Triển khai việc thiết lập trạng thái loading về false và tiếp nhận object kết quả từ Background script.",
+            "dependencies": [],
+            "details": "Sau khi lời gọi hàm gửi message đến Background hoàn tất (resolve), thực hiện gán giá trị importing.value = false và lưu trữ kết quả thống kê bao gồm số lượng thành công, bỏ qua và lỗi vào biến cục bộ.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra trạng thái nút bấm hoặc biểu tượng loading biến mất ngay sau khi tiến trình import kết thúc trong console.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Hiển thị thông báo tổng kết kết quả Import",
+            "description": "Xây dựng logic định dạng chuỗi thông báo và hiển thị Toast cho người dùng dựa trên kết quả trả về.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng component Toast hoặc Alert để hiển thị nội dung theo mẫu: 'Đã nhập X topic (bỏ qua Y, lỗi Z)'. Trong đó X, Y, Z được lấy từ dữ liệu phản hồi của background script.",
+            "status": "pending",
+            "testStrategy": "Thực hiện import một file mock có chứa cả bản ghi thành công và bản ghi trùng lặp để xác nhận các con số hiển thị chính xác trên thông báo.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý lỗi ngoại lệ và thông báo lỗi định dạng file",
+            "description": "Bắt các ngoại lệ khi file không hợp lệ hoặc quá trình xử lý gặp lỗi hệ thống để đưa ra cảnh báo cụ thể.",
+            "dependencies": [
+              1
+            ],
+            "details": "Triển khai khối try-catch xung quanh logic xử lý kết quả. Nếu phát hiện lỗi nghiêm trọng như file không phải JSON hoặc cấu trúc dữ liệu sai, hiển thị thông báo lỗi chi tiết cho người dùng thay vì thông báo tổng kết.",
+            "status": "pending",
+            "testStrategy": "Tải lên một file không đúng định dạng JSON và kiểm tra xem hệ thống có hiển thị thông báo lỗi 'File không đúng định dạng' hay không.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Xây dựng các mẫu thông báo tổng kết kết quả import (số lượng thành công/lỗi) để phản hồi cho người dùng.",
+        "updatedAt": "2026-05-28T14:30:15.374Z"
+      },
+      {
+        "id": "300",
+        "title": "Tự động cập nhật dung lượng bộ nhớ sau khi Import",
+        "description": "Gọi hàm làm mới thông tin lưu trữ để UI hiển thị đúng lượng dữ liệu mới nhập.",
+        "details": "1. Sau khi quá trình import hoàn tất và hiển thị thông báo thành công.\n2. Gọi hàm `refreshCacheSize()` (đã có sẵn trong SettingsView) để cập nhật storage indicator.\n3. Đảm bảo danh sách các topic ở màn hình Hub cũng được cập nhật nếu cần thiết.",
+        "testStrategy": "Quan sát thanh dung lượng bộ nhớ trong Settings trước và sau khi import file lớn để thấy sự thay đổi.",
+        "priority": "low",
+        "dependencies": [
+          "299"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tích hợp hàm làm mới dung lượng bộ nhớ sau Import",
+            "description": "Thực hiện gọi hàm refreshCacheSize để cập nhật thanh hiển thị dung lượng ngay sau khi quá trình Import dữ liệu hoàn tất thành công.",
+            "dependencies": [],
+            "details": "Xác định vị trí nhận thông báo thành công từ tiến trình Import trong mã nguồn. Thực hiện gọi hàm refreshCacheSize() từ SettingsView để đảm bảo UI phản ánh đúng dung lượng bộ nhớ mới sau khi thêm dữ liệu.",
+            "status": "pending",
+            "testStrategy": "Thực hiện Import một tệp dữ liệu mẫu và kiểm tra xem thanh dung lượng trong phần Cài đặt có tự động thay đổi con số mà không cần tải lại trang hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Đồng bộ hóa danh sách Topic trên giao diện Hub",
+            "description": "Kích hoạt việc tải lại danh sách các chủ đề (Topics) tại màn hình chính (Hub) sau khi dữ liệu mới đã được nạp vào cơ sở dữ liệu.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng các hooks hoặc cơ chế event bus/state management để thông báo cho Hub component rằng dữ liệu đã thay đổi. Đảm bảo danh sách các topic hiển thị đầy đủ thông tin vừa được import.",
+            "status": "pending",
+            "testStrategy": "Sau khi Import thành công, chuyển sang màn hình Hub để xác nhận các topic mới xuất hiện ngay lập tức và có thể tương tác được.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Gọi các hooks cập nhật dung lượng storage và làm mới danh sách Hub sau khi dữ liệu DB thay đổi.",
+        "updatedAt": "2026-05-28T14:30:26.058Z"
+      },
+      {
+        "id": "301",
+        "title": "Tối ưu hóa xử lý lỗi và trường hợp biên",
+        "description": "Xử lý các tình huống như file rỗng, lỗi parse JSON, hoặc thiếu các trường bắt buộc.",
+        "details": "1. Bọc `JSON.parse` trong block try-catch để bắt lỗi format file.\n2. Nếu `topics` là mảng rỗng, trả về kết quả `total: 0` thay vì báo lỗi.\n3. Đảm bảo spinner/loading state được tắt ngay cả khi có lỗi xảy ra trong quá trình đọc file.",
+        "testStrategy": "Thử import file .txt, file JSON trống `{}`, và file JSON có nội dung `[]` để kiểm tra độ bền của code.",
+        "priority": "medium",
+        "dependencies": [
+          "294",
+          "298"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai try-catch cho JSON parsing và kiểm tra định dạng file",
+            "description": "Bọc logic xử lý JSON.parse trong khối lệnh try-catch để ngăn chặn ứng dụng bị crash khi gặp file hỏng hoặc không đúng định dạng JSON.",
+            "dependencies": [],
+            "details": "Sử dụng cấu trúc try-catch khi thực hiện JSON.parse. Trong catch block, ghi log lỗi kỹ thuật và hiển thị thông báo lỗi thân thiện cho người dùng về việc file không đúng định dạng.",
+            "status": "pending",
+            "testStrategy": "Tải lên một file .txt hoặc file JSON có lỗi cú pháp (ví dụ: thiếu dấu đóng ngoặc) để kiểm tra xem lỗi có được bắt và hiển thị thông báo hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý logic cho mảng dữ liệu rỗng và thiếu trường thông tin",
+            "description": "Kiểm tra tính hợp lệ của dữ liệu sau khi parse. Nếu mảng 'topics' rỗng hoặc thiếu các trường bắt buộc, hệ thống phải trả về kết quả mặc định.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sau khi parse thành công, kiểm tra thuộc tính 'topics'. Nếu mảng rỗng hoặc không tồn tại, trả về giá trị 'total: 0'. Sử dụng các giá trị mặc định cho các trường dữ liệu tùy chọn bị thiếu.",
+            "status": "pending",
+            "testStrategy": "Import file JSON rỗng '{}' hoặc mảng rỗng '[]' và kiểm tra xem hệ thống có hiển thị tổng số là 0 thay vì báo lỗi hệ thống hay không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Quản lý trạng thái Spinner/Loading trong kịch bản lỗi",
+            "description": "Đảm bảo trạng thái tải (spinner) được tắt đi trong mọi trường hợp (thành công hoặc thất bại) để tránh hiện tượng treo giao diện.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Đặt mã lệnh cập nhật trạng thái loading thành false vào khối 'finally' của quy trình xử lý file, hoặc đảm bảo mọi nhánh catch block đều thực hiện tắt spinner.",
+            "status": "pending",
+            "testStrategy": "Thực hiện import một file không hợp lệ và quan sát xem Spinner có biến mất sau khi thông báo lỗi xuất hiện để người dùng có thể tiếp tục thao tác khác hay không.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Bao phủ các kịch bản file hỏng, file không đúng format JSON hoặc dữ liệu thiếu trường bắt buộc.",
+        "updatedAt": "2026-05-28T14:30:36.797Z"
+      },
+      {
+        "id": "302",
+        "title": "Kiểm thử tích hợp cuối cùng",
+        "description": "Thực hiện quy trình export -> xóa sạch -> import để đảm bảo tính toàn vẹn của dữ liệu.",
+        "details": "1. Export dữ liệu hiện có ra file.\n2. Xóa sạch cache trong Settings.\n3. Import lại file vừa export.\n4. Kiểm tra xem các topic, summary, segments và knowledge có hiển thị chính xác như ban đầu không.",
+        "testStrategy": "Xác nhận dữ liệu sau khi import khớp 100% với dữ liệu trước khi export về mặt nội dung (title, summary, segments).",
+        "priority": "high",
+        "dependencies": [
+          "300",
+          "301"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thực hiện Export dữ liệu hiện có ra file JSON",
+            "description": "Sử dụng tính năng export trong ứng dụng để trích xuất toàn bộ dữ liệu bao gồm topics, summary, segments và knowledge.",
+            "dependencies": [],
+            "details": "Truy cập vào giao diện quản lý, kích hoạt chức năng export và lưu file kết quả (ví dụ: backup.json). Đảm bảo file chứa đầy đủ các trường thông tin cần thiết.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra cấu trúc file JSON đảm bảo các trường dữ liệu không bị null hoặc thiếu sót so với dữ liệu trên UI.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xóa sạch bộ nhớ Cache và dữ liệu trong Settings",
+            "description": "Thực hiện quy trình làm sạch dữ liệu để giả lập môi trường mới hoàn toàn trước khi thực hiện import.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng chức năng 'Clear Cache' trong phần Settings của ứng dụng. Sau đó, làm mới (reload) lại KnowledgeView để xác nhận không còn dữ liệu nào hiển thị.",
+            "status": "pending",
+            "testStrategy": "Xác nhận store của ứng dụng và giao diện người dùng hiển thị trạng thái rỗng (empty state).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Import lại file dữ liệu đã export vào hệ thống",
+            "description": "Tải file JSON đã lưu ở bước 1 lên hệ thống thông qua chức năng Import để khôi phục lại dữ liệu.",
+            "dependencies": [
+              2
+            ],
+            "details": "Chọn file backup.json, gọi handler IMPORT_CACHE trong background script. Theo dõi quá trình xử lý tuần tự các topic để đảm bảo không xảy ra xung đột.",
+            "status": "pending",
+            "testStrategy": "Theo dõi console log của background script để xác nhận các message IMPORT_CACHE được xử lý thành công 100%.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra và đối chiếu tính toàn vẹn dữ liệu cuối cùng",
+            "description": "Xác nhận dữ liệu hiển thị sau khi import khớp hoàn toàn với dữ liệu ban đầu trước khi thực hiện quy trình.",
+            "dependencies": [
+              3
+            ],
+            "details": "Kiểm tra chi tiết từng phần: tiêu đề topic, nội dung summary, danh sách segments và thông tin knowledge. Đảm bảo không có sự biến đổi hay mất mát dữ liệu.",
+            "status": "pending",
+            "testStrategy": "So sánh trực tiếp các thuộc tính của object dữ liệu trước và sau quá trình chuyển đổi để đảm bảo độ chính xác tuyệt đối.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Thiết kế kịch bản test vòng lặp: Export -> Clear -> Import -> Verify để đảm bảo tính toàn vẹn dữ liệu 100%.",
+        "updatedAt": "2026-05-28T14:30:47.934Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-27T06:52:28.631Z",
-      "taskCount": 138,
-      "completedCount": 127,
+      "lastModified": "2026-05-28T15:01:50.831Z",
+      "taskCount": 148,
+      "completedCount": 136,
       "tags": [
         "master"
       ]

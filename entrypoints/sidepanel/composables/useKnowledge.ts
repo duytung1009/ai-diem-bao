@@ -83,14 +83,14 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
   const estimatedExtractApiCalls = computed(() => {
     if (!allPosts.value.length || !currentConfig.value || isLoading.value) return 0;
-    const model = currentConfig.value.model ?? 'gpt-4o-mini';
+    const model = currentConfig.value.model;
     const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow, knowledgeMaxTokens.value, currentConfig.value.thinkingEnabled, currentConfig.value.thinkingBudget);
     return estimateExtractCalls(chunks.length);
   });
 
   const estimatedExtractCost = computed<CostEstimate | null>(() => {
     if (!allPosts.value.length || !currentConfig.value || isLoading.value) return null;
-    const model = currentConfig.value.model ?? 'gpt-4o-mini';
+    const model = currentConfig.value.model;
     const chunks = planKnowledgeChunks(allPosts.value, model, currentConfig.value.contextWindow, knowledgeMaxTokens.value, currentConfig.value.thinkingEnabled, currentConfig.value.thinkingBudget);
     if (!chunks.length) return null;
     const totalTokens = allPosts.value.reduce((sum, p) => sum + estimateTokens(p.content), 0);
@@ -111,7 +111,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     if (!canRestore.value || !currentConfig.value) return null;
     const len = cachedTopic.value?.knowledgeChunks?.length ?? 0;
     if (!len) return null;
-    const model = currentConfig.value.model ?? 'gpt-4o-mini';
+    const model = currentConfig.value.model;
     const apiCalls = len <= 1 ? 0 : len;
     if (apiCalls === 0) return null;
     const maxOutput = knowledgeMaxTokens.value ?? getModelMaxOutput(model);
@@ -321,7 +321,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   ): Promise<{ allChunks: KnowledgeChunk[]; truncatedCount: number }> {
     const chunkPlan = planKnowledgeChunks(
       postsToProcess,
-      currentConfig.value?.model ?? 'gpt-4o-mini',
+      currentConfig.value?.model,
       currentConfig.value?.contextWindow,
       knowledgeMaxTokens.value,
       currentConfig.value?.thinkingEnabled,
@@ -336,7 +336,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     pl.markFirstRunning();
 
     let budget = calculateSegmentBudget(
-      currentConfig.value?.model ?? 'gpt-4o-mini',
+      currentConfig.value?.model,
       KNOWLEDGE_CHUNK_PROMPT_TOKENS,
       2000,
       currentConfig.value?.contextWindow,
@@ -432,7 +432,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     );
 
     const budget = calculateSegmentBudget(
-      currentConfig.value?.model ?? 'gpt-4o-mini',
+      currentConfig.value?.model,
       KNOWLEDGE_CHUNK_PROMPT_TOKENS,
       2000,
       currentConfig.value?.contextWindow,
@@ -486,7 +486,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     if (allPartial.length === 1) {
       finalEntries = enrichEntries(allPartial[0]);
     } else {
-      const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+      const model = currentConfig.value?.model;
       const contextLimit = getContextLimit(model, currentConfig.value?.contextWindow);
       const maxOutput = knowledgeMaxTokens.value ?? currentConfig.value?.maxTokens ?? 2000;
       const promptOverhead = estimateTokens(buildKnowledgePrompt('reduce', {}, finalCap)) + RESPONSE_BUFFER_TOKENS;
@@ -662,7 +662,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       }
 
       let budget = calculateSegmentBudget(
-        currentConfig.value?.model ?? 'gpt-4o-mini',
+        currentConfig.value?.model,
         KNOWLEDGE_CHUNK_PROMPT_TOKENS,
         2000,
         currentConfig.value?.contextWindow,

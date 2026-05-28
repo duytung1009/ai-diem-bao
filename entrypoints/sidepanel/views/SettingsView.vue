@@ -2,8 +2,9 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS } from '@/lib/constants';
-import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic } from '@/lib/types';
+import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic, CostEstimate } from '@/lib/types';
 import { buildCacheExport } from '@/lib/exporter';
+import { validateCacheExport, type ImportConflictMode, type ImportResult } from '@/lib/importer';
 import { getModelThinkingBudget, modelSupportsThinking } from '@/lib/token-estimator';
 import PillTabs from '../components/PillTabs.vue';
 import ShowDefaultButton from '../components/ShowDefaultButton.vue';
@@ -21,6 +22,7 @@ import {
 } from '@/lib/prompts';
 import type { KnowledgePromptSections, SummaryPromptSections } from '@/lib/types';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import CostConfirmModal from '../components/CostConfirmModal.vue';
 import { useTheme } from '../composables/useTheme';
 import { useSeederDetection } from '../composables/useSeederDetection';
 
@@ -29,13 +31,13 @@ const showApiKey = ref(false);
 const saving = ref(false);
 const testing = ref(false);
 
-const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number; maxTokens: number; contextWindow: undefined; thinkingEnabled: boolean; thinkingBudget: number | undefined }> = {
-  openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
-  openrouter: { model: 'deepseek/deepseek-v4-flash:free', apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
-  custom: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
-  claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
-  gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: true, thinkingBudget: undefined },
-  'gemini-free': { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: true, thinkingBudget: undefined },
+const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; baseUrl: string; temperature: number; timeoutMs: number; maxTokens: number; contextWindow: number |undefined; thinkingEnabled: boolean; thinkingBudget: number | undefined }> = {
+  openai: { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 128000, thinkingEnabled: false, thinkingBudget: undefined },
+  openrouter: { model: 'openai/gpt-oss-20b:free', apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 8192, contextWindow: 131100, thinkingEnabled: false, thinkingBudget: undefined },
+  custom: { model: '', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
+  claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
+  gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
+  'gemini-free': { model: 'gemini-2.5-flash-lite', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
 };
 
 function syncCurrentProvider() {
@@ -59,6 +61,20 @@ const cacheSizeBytes = ref(0);
 const storageQuotaBytes = ref(0);
 const showClearConfirm = ref(false);
 const exporting = ref(false);
+const importing = ref(false);
+const importResult = ref<ImportResult | null>(null);
+const importError = ref('');
+const conflictMode = ref<ImportConflictMode>('skip');
+const fileInput = ref<HTMLInputElement | null>(null);
+
+const clearCacheConfirmEstimate: CostEstimate = {
+  apiCalls: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  estimatedMs: 0,
+  costUsd: 0,
+  model: 'local-cache',
+};
 
 const { themeMode: currentTheme, setTheme } = useTheme();
 const { showTrustBadges, loadSetting: loadSeederSetting, setShowTrustBadges } = useSeederDetection();
@@ -311,11 +327,17 @@ const cacheNearFull = computed(() => cacheUsagePercent.value >= 90);
 const isClaude = computed(() => config.value.provider === 'claude');
 const isGemini = computed(() => config.value.provider === 'gemini' || config.value.provider === 'gemini-free');
 const isOpenRouter = computed(() => config.value.provider === 'openrouter');
-const supportsThinking = computed(() => isGemini.value && modelSupportsThinking(config.value.model));
+const modelHasThinkingSupport = computed(() => modelSupportsThinking(config.value.model));
 const modelMaxThinkingBudget = computed(() => getModelThinkingBudget(config.value.model));
+const thinkingBudgetSliderMax = computed(() => {
+  const base = modelHasThinkingSupport.value ? modelMaxThinkingBudget.value : 32768;
+  return Math.max(base, config.value.thinkingBudget ?? 0, 2048);
+});
+const thinkingUnsupportedNote = computed(() => modelHasThinkingSupport.value
+  ? ''
+  : 'Model hiện tại không hỗ trợ thinking. Cấu hình bên dưới vẫn được lưu nhưng sẽ không có tác dụng cho tới khi bạn đổi sang model hỗ trợ thinking.');
 const thinkingBudgetLabel = computed(() => {
-  if (!supportsThinking.value) return '';
-    if (config.value.thinkingBudget == null) {
+  if (config.value.thinkingBudget == null) {
     return `Tự động (tối đa ${modelMaxThinkingBudget.value.toLocaleString()})`;
   }
   const budget = config.value.thinkingBudget;
@@ -324,11 +346,11 @@ const thinkingBudgetLabel = computed(() => {
 
 // Proxy to handle slider value: undefined → modelMax (auto), explicit value → as-is
 const thinkingBudgetSlider = computed({
-  get: () => config.value.thinkingBudget ?? modelMaxThinkingBudget.value,
-  set: (val: number) => { config.value.thinkingBudget = val; },
+  get: () => config.value.thinkingBudget ?? thinkingBudgetSliderMax.value,
+  set: (val: number) => { requestThinkingBudgetChange(val); },
 });
 const lowMaxTokensWarning = computed(() => {
-  if (!supportsThinking.value || !config.value.thinkingEnabled) return '';
+  if (!modelHasThinkingSupport.value || !config.value.thinkingEnabled) return '';
   const maxT = config.value.maxTokens ?? 4096;
   const thinkingBudget = config.value.thinkingBudget ?? modelMaxThinkingBudget.value;
   const minForResponse = 2000;
@@ -337,6 +359,24 @@ const lowMaxTokensWarning = computed(() => {
   }
   return '';
 });
+
+function handleThinkingToggle(enabled: boolean) {
+  if (!enabled) {
+    config.value.thinkingEnabled = false;
+    config.value.thinkingBudget = undefined;
+    return;
+  }
+
+  config.value.thinkingEnabled = true;
+  if (config.value.thinkingBudget === undefined) {
+    config.value.thinkingBudget = Math.floor(thinkingBudgetSliderMax.value / 2);
+  }
+}
+
+function requestThinkingBudgetChange(nextBudget: number | undefined) {
+  config.value.thinkingEnabled = true;
+  config.value.thinkingBudget = nextBudget;
+}
 
 async function refreshCacheSize() {
   const sizeResult = await sendMessage<{ bytes: number }>('GET_CACHE_SIZE').catch(() => null);
@@ -409,15 +449,11 @@ watch(() => config.value.provider, (newProvider, oldProvider) => {
 });
 
 watch(() => config.value.model, (newModel) => {
-  if (!isGemini.value) return;
-  if (modelSupportsThinking(newModel)) {
-    if (config.value.thinkingEnabled === undefined) {
-      config.value.thinkingEnabled = true;
-    }
-    config.value.thinkingBudget = undefined; // reset to auto on model change
-  } else {
-    config.value.thinkingEnabled = false;
-    config.value.thinkingBudget = undefined;
+  if (modelSupportsThinking(newModel) && config.value.thinkingEnabled === undefined) {
+    config.value.thinkingEnabled = true;
+  }
+  if (modelSupportsThinking(newModel) && config.value.thinkingBudget != null) {
+    config.value.thinkingBudget = Math.min(config.value.thinkingBudget, modelMaxThinkingBudget.value);
   }
 });
 
@@ -579,11 +615,66 @@ async function exportCache() {
     const a = document.createElement('a');
     const date = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `ai-diem-bao-export-${date}.json`;
+    a.download = `loi-thot-ho-export-${date}.json`;
     a.click();
     URL.revokeObjectURL(url);
   } finally {
     exporting.value = false;
+  }
+}
+
+function triggerImportPicker() {
+  importError.value = '';
+  fileInput.value?.click();
+}
+
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Không thể đọc file'));
+    reader.readAsText(file);
+  });
+}
+
+async function onImportFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  importing.value = true;
+  importError.value = '';
+  importResult.value = null;
+
+  try {
+    const text = await readFileAsText(file);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error('File không đúng định dạng JSON');
+    }
+
+    const exportData = validateCacheExport(parsed);
+    const result = await sendMessage<ImportResult>('IMPORT_CACHE', {
+      topics: exportData.topics,
+      conflictMode: conflictMode.value,
+    });
+
+    if (exportData.version !== '1.0') {
+      result.errors = [
+        `Cảnh báo: file version ${exportData.version} khác 1.0, đã import theo chế độ tương thích.`,
+        ...result.errors,
+      ];
+    }
+
+    importResult.value = result;
+    await refreshCacheSize();
+  } catch (err) {
+    importError.value = String(err);
+  } finally {
+    importing.value = false;
+    if (input) input.value = '';
   }
 }
 </script>
@@ -859,13 +950,14 @@ async function exportCache() {
       {{ lowMaxTokensWarning }}
     </div>
 
-    <!-- Thinking config (Gemini thinking models only) -->
-    <div v-if="supportsThinking" class="space-y-2">
+    <!-- Thinking config (all providers/models) -->
+    <div class="space-y-2">
       <!-- Thinking toggle -->
       <div class="flex items-center gap-3">
         <label class="relative inline-flex items-center cursor-pointer">
           <input
-            v-model="config.thinkingEnabled"
+            :checked="config.thinkingEnabled !== false"
+            @change="handleThinkingToggle(($event.target as HTMLInputElement).checked)"
             type="checkbox"
             class="sr-only peer"
           />
@@ -877,8 +969,15 @@ async function exportCache() {
         </div>
       </div>
 
+      <div
+        v-if="config.thinkingEnabled !== false && thinkingUnsupportedNote"
+        class="text-xs alert alert-warning"
+      >
+        {{ thinkingUnsupportedNote }}
+      </div>
+
       <!-- Thinking budget (only when thinking enabled) -->
-      <div v-if="config.thinkingEnabled !== false">
+      <div>
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           Thinking budget: {{ thinkingBudgetLabel }}
         </label>
@@ -889,32 +988,32 @@ async function exportCache() {
           v-model.number="thinkingBudgetSlider"
           type="range"
           :min="0"
-          :max="modelMaxThinkingBudget"
+          :max="thinkingBudgetSliderMax"
           :step="2048"
           class="input-range"
         />
         <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
           <span>0 (tắt)</span>
-          <span>{{ modelMaxThinkingBudget.toLocaleString() }} (max)</span>
+          <span>{{ thinkingBudgetSliderMax.toLocaleString() }} (max)</span>
         </div>
         <div class="flex gap-1 mt-1">
           <button
             class="btn btn-sm btn-secondary text-xs"
-            @click="config.thinkingBudget = undefined"
+            @click="requestThinkingBudgetChange(undefined)"
             title="Để model tự quyết định"
           >
             Tự động
           </button>
           <button
             class="btn btn-sm btn-secondary text-xs"
-            @click="config.thinkingBudget = modelMaxThinkingBudget"
+            @click="requestThinkingBudgetChange(thinkingBudgetSliderMax)"
             title="Dùng tối đa thinking budget"
           >
             Max
           </button>
           <button
             class="btn btn-sm btn-secondary text-xs"
-            @click="config.thinkingBudget = Math.floor(modelMaxThinkingBudget / 2)"
+            @click="requestThinkingBudgetChange(Math.floor(thinkingBudgetSliderMax / 2))"
             title="Dùng 50% thinking budget"
           >
             50%
@@ -1031,7 +1130,7 @@ async function exportCache() {
       </button>
       <button
         class="flex-1 btn btn-sm btn-secondary"
-        :disabled="testing || !config.apiKey"
+        :disabled="testing"
         @click="testConnection"
       >
         {{ testing ? 'Đang test...' : 'Test Connection' }}
@@ -1080,38 +1179,89 @@ async function exportCache() {
         ⚠ Cache đang sử dụng {{ cacheUsagePercent }}% dung lượng lưu trữ. Cân nhắc xoá bớt cache cũ.
       </p>
       <button
-        v-if="!showClearConfirm"
-        class="w-full btn btn-sm btn-secondary"
-        :disabled="exporting"
-        @click="exportCache"
-      >
-        {{ exporting ? 'Đang xuất...' : 'Xuất dữ liệu (JSON)' }}
-      </button>
-      <button
-        v-if="!showClearConfirm"
         class="w-full btn btn-sm btn-danger"
         @click="confirmClearAll"
       >
         Xóa tất cả cache
       </button>
-      <div v-if="showClearConfirm" class="text-xs alert alert-error space-y-2">
-        <p class="text-xs font-medium">Xóa tất cả cache?</p>
-        <div class="flex gap-2">
-          <button
-            class="flex-1 btn btn-danger"
-            @click="executeClearAll"
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".json,application/json"
+        class="hidden"
+        @change="onImportFileSelected"
+      />
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          class="w-full btn btn-sm btn-secondary"
+          :disabled="exporting || importing"
+          @click="exportCache"
+        >
+          {{ exporting ? 'Đang xuất...' : 'Xuất dữ liệu (JSON)' }}
+        </button>
+        <button
+          class="w-full btn btn-sm btn-primary"
+          :disabled="importing || exporting"
+          @click="triggerImportPicker"
+        >
+          {{ importing ? 'Đang nhập...' : 'Nhập dữ liệu (JSON)' }}
+        </button>
+      </div>
+      <div class="space-y-1">
+        <p class="block text-xs font-medium text-(--color-text-secondary)">Khi trùng dữ liệu, bạn muốn:</p>
+        <div class="grid grid-cols-1 gap-1.5">
+          <label
+            class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer"
+            :class="conflictMode === 'skip'
+              ? 'text-(--color-text-primary)'
+              : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'"
           >
-            Xóa
-          </button>
-          <button
-            class="flex-1 btn btn-sm btn-secondary"
-            @click="cancelClearAll"
+            <input
+              v-model="conflictMode"
+              type="radio"
+              name="import-conflict-mode"
+              value="skip"
+              class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30"
+            />
+            <span class="text-xs font-medium text-(--color-text-secondary)">Giữ dữ liệu hiện có</span>
+          </label>
+          <label
+            class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer"
+            :class="conflictMode === 'overwrite'
+              ? 'text-(--color-text-primary)'
+              : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'"
           >
-            Hủy
-          </button>
+            <input
+              v-model="conflictMode"
+              type="radio"
+              name="import-conflict-mode"
+              value="overwrite"
+              class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30"
+            />
+            <span class="text-xs font-medium text-(--color-text-secondary)">Ghi đè bằng dữ liệu từ file</span>
+          </label>
         </div>
       </div>
+      <div v-if="importResult" class="text-xs alert" :class="importResult.failed > 0 ? 'alert-warning' : 'alert-success'">
+        Đã nhập {{ importResult.imported }} topic (bỏ qua {{ importResult.skipped }}, lỗi {{ importResult.failed }}).
+      </div>
+      <div v-if="importError" class="text-xs alert alert-error">
+        {{ importError }}
+      </div>
+      <ul v-if="importResult?.errors?.length" class="text-xs text-(--color-text-muted) list-disc pl-5 space-y-0.5">
+        <li v-for="(err, idx) in importResult.errors.slice(0, 5)" :key="idx">{{ err }}</li>
+      </ul>
     </div>
+
+    <CostConfirmModal
+      v-if="showClearConfirm"
+      title="Xóa tất cả cache"
+      :estimate="clearCacheConfirmEstimate"
+      warning="Hành động này sẽ xóa toàn bộ dữ liệu cache cục bộ và không thể hoàn tác."
+      confirm-text="Xóa tất cả cache"
+      @confirm="executeClearAll"
+      @cancel="cancelClearAll"
+    />
 
     <!-- ─── Custom Prompt Templates ──────────────────────────────── -->
     <div class="border border-(--color-border) rounded-lg overflow-hidden">
@@ -1165,11 +1315,10 @@ async function exportCache() {
               </div>
             </div>
             <textarea
-              :value="summarySections[mode].task || getSummaryDefault(mode, 'task')"
-              @input="setSummarySectionValue(mode, 'task', ($event.target as HTMLTextAreaElement).value)"
+              v-model="summarySections[mode].task"
               rows="6"
               class="input font-mono resize-y"
-              :placeholder="'Nhập prompt ' + { direct: 'Trực tiếp', map: 'Chunk', reduce: 'Gộp' }[mode] + '...'"
+              placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)"
             />
             <div
               v-if="showSummaryDefault[mode]"
@@ -1215,11 +1364,10 @@ async function exportCache() {
               </div>
             </div>
             <textarea
-              :value="knowledgeSections[mode].task || getKnowledgeDefault(mode, 'task')"
-              @input="setSectionValue(mode, 'task', ($event.target as HTMLTextAreaElement).value)"
+              v-model="knowledgeSections[mode].task"
               rows="6"
               class="input font-mono resize-y"
-              :placeholder="'Nhập prompt ' + { extract: 'Trích xuất', chunk: 'Chunk', reduce: 'Gộp' }[mode] + '...'"
+              placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)"
             />
             <div
               v-if="showKnowledgeDefault[mode]"

@@ -113,6 +113,7 @@ export type MessageType =
   | 'DETECT_XF'
   | 'SCRAPE_ARTICLE'
   | 'FETCH_HTML'
+  | 'IMPORT_CACHE'
   | 'START_LLM_TASK'
   | 'CANCEL_LLM_TASK'
   | 'LLM_PROGRESS'

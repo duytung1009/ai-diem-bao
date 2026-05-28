@@ -82,8 +82,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const segments = computed(() => {
     if (!isSegmentMode.value || !topicInfo.value) return [];
 
-    // Dynamic mode: use computed boundaries if available (populated during auto-summarize or loaded from cache)
-    if (currentConfig.value?.dynamicSegments && dynamicSegmentBoundaries.value.length > 0) {
+    // Always prefer persisted boundaries from cache/import.
+    // This prevents UI progress mismatches when the current settings differ from
+    // the settings used when the topic was originally segmented.
+    if (dynamicSegmentBoundaries.value.length > 0) {
       return dynamicSegmentBoundaries.value;
     }
 
@@ -167,7 +169,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   }
 
   async function saveTopic(topic: DeepReadonly<CachedTopic>, fields: Omit<Partial<CachedTopic>, 'segments'> & { segments?: (TopicSegment | null)[] }): Promise<void> {
-    console.log(`Saving topic ${topic.url} with fields:`, fields);
     await sendMessage('SAVE_CACHED_TOPIC', {
       url: topic.url,
       title: topic.title,
@@ -623,7 +624,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       segmentSummaries.value = tempUpdated as TopicSegment[];
 
       // Phase A3 (F26): informational cost hint for large segments (non-blocking)
-      const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+      const model = currentConfig.value?.model;
       const thinkingOverhead = getThinkingOverhead(model, currentConfig.value?.thinkingEnabled, currentConfig.value?.thinkingBudget);
       const { chunksNeeded } = willExceedContext(
         segPosts,
@@ -1231,7 +1232,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
   /** Fetch budget based on actual system prompt (custom or default), then delegate to segment-planner. */
   async function computeDynamicBudget(): Promise<number> {
-    const model = currentConfig.value?.model ?? 'gpt-4o-mini';
+    const model = currentConfig.value?.model;
     const contextWindowOverride = currentConfig.value?.contextWindow;
     const maxTokens = currentConfig.value?.maxTokens;
     const thinkingOverhead = getThinkingOverhead(model, currentConfig.value?.thinkingEnabled, currentConfig.value?.thinkingBudget);

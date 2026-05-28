@@ -1,6 +1,6 @@
 import type { CachedTopic } from './types';
 
-const DB_NAME = 'ai-diem-bao-cache';
+const DB_NAME = 'loi-thot-ho-cache';
 const DB_VERSION = 3;
 const STORE_NAME = 'topics';
 const NOTEBOOK_STORE_NAME = 'notebookEntries';

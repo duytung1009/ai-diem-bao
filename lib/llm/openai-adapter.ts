@@ -36,10 +36,6 @@ export class OpenAIAdapter implements LLMProvider {
     externalSignal?: AbortSignal,
     options?: LLMOptions,
   ): Promise<LLMResponse> {
-    const apiKey = this.config.apiKey;
-    if (!apiKey) {
-      throw new LLMError(LLMErrorCode.AUTH_FAILED, 'API key chưa được cấu hình. Vui lòng nhập API key trong cài đặt.');
-    }
     return withRetry(async () => {
       const baseUrl = this.config.baseUrl.replace(/\/+$/, '');
       const url = `${baseUrl}/chat/completions`;

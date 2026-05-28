@@ -14,25 +14,47 @@ interface ModelSpec {
 
 // Model pricing (per 1M tokens) in USD + output limits + thinking budget
 const PRICING_TABLE: Record<string, ModelSpec> = {
-  // OpenAI models
-  'gpt-4o': { inputPrice: 2.5, outputPrice: 10, contextLimit: 128000, maxOutputTokens: 16384, thinkingBudget: 0 },
-  'gpt-4o-mini': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 128000, maxOutputTokens: 16384, thinkingBudget: 0 },
-  'gpt-4-turbo': { inputPrice: 10, outputPrice: 30, contextLimit: 128000, maxOutputTokens: 4096, thinkingBudget: 0 },
-  'gpt-3.5-turbo': { inputPrice: 0.5, outputPrice: 1.5, contextLimit: 16000, maxOutputTokens: 4096, thinkingBudget: 0 },
-  // Claude models
-  'claude-opus-4-6': { inputPrice: 15, outputPrice: 75, contextLimit: 200000, maxOutputTokens: 8192, thinkingBudget: 0 },
-  'claude-sonnet-4-6': { inputPrice: 3, outputPrice: 15, contextLimit: 200000, maxOutputTokens: 8192, thinkingBudget: 0 },
-  'claude-haiku-4-5-20251001': { inputPrice: 0.8, outputPrice: 4, contextLimit: 200000, maxOutputTokens: 8192, thinkingBudget: 0 },
-  // Gemini models (thinking models: maxOutputTokens=65535)
-  'gemini-2.5-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 24576 },
-  'gemini-2.5-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 0 },
-  'gemini-2.5-pro': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 32768 },
-  'gemini-3-flash-preview': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 24576 },
-  'gemini-3.1-flash-lite-preview': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 0 },
-  'gemini-3.1-pro-preview': { inputPrice: 1.25, outputPrice: 10, contextLimit: 1048576, maxOutputTokens: 65535, thinkingBudget: 32768 },
-  'gemini-2.0-flash': { inputPrice: 0.15, outputPrice: 0.6, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
-  'gemini-2.0-flash-lite': { inputPrice: 0.075, outputPrice: 0.3, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
-  // Gemma models (free tier)
+  // ── OpenAI models ──────────────────────────────────────────────────────────
+  // GPT-5.x flagship (as of May 2026)
+  'gpt-5.5': { inputPrice: 5.00, outputPrice: 30.00, contextLimit: 1050000, maxOutputTokens: 131072, thinkingBudget: 0 },
+  'gpt-5.4': { inputPrice: 2.50, outputPrice: 15.00, contextLimit: 1000000, maxOutputTokens: 131072, thinkingBudget: 0 },
+  'gpt-5.4-mini': { inputPrice: 0.75, outputPrice: 4.50, contextLimit: 409600, maxOutputTokens: 131072, thinkingBudget: 0 },
+  'gpt-5.4-nano': { inputPrice: 0.20, outputPrice: 1.25, contextLimit: 409600, maxOutputTokens: 131072, thinkingBudget: 0 },
+  // GPT-4.1 family
+  'gpt-4.1': { inputPrice: 2.00, outputPrice: 8.00, contextLimit: 1047576, maxOutputTokens: 32768, thinkingBudget: 0 },
+  'gpt-4.1-mini': { inputPrice: 0.40, outputPrice: 1.60, contextLimit: 1047576, maxOutputTokens: 32768, thinkingBudget: 0 },
+  'gpt-4.1-nano': { inputPrice: 0.10, outputPrice: 0.40, contextLimit: 1047576, maxOutputTokens: 32768, thinkingBudget: 0 },
+  // GPT-4o family
+  'gpt-4o': { inputPrice: 2.50, outputPrice: 10.00, contextLimit: 128000, maxOutputTokens: 16384, thinkingBudget: 0 },
+  'gpt-4o-mini': { inputPrice: 0.15, outputPrice: 0.60, contextLimit: 128000, maxOutputTokens: 16384, thinkingBudget: 0 },
+  // o-series reasoning models (thinking is internal, not a configurable budget)
+  'o3': { inputPrice: 2.00, outputPrice: 8.00, contextLimit: 200000, maxOutputTokens: 100000, thinkingBudget: 0 },
+  'o4-mini': { inputPrice: 1.10, outputPrice: 4.40, contextLimit: 200000, maxOutputTokens: 100000, thinkingBudget: 0 },
+
+  // ── Anthropic Claude models ────────────────────────────────────────────────
+  // Claude 4.x (context: 1M for Opus/Sonnet, 200k for Haiku)
+  // Extended thinking: Opus 4.7=No (adaptive only), Sonnet 4.6=Yes, Haiku 4.5=Yes
+  'claude-opus-4-7': { inputPrice: 5.00, outputPrice: 25.00, contextLimit: 1000000, maxOutputTokens: 131072, thinkingBudget: 0 },
+  'claude-opus-4-6': { inputPrice: 5.00, outputPrice: 25.00, contextLimit: 1000000, maxOutputTokens: 131072, thinkingBudget: 0 },
+  'claude-sonnet-4-6': { inputPrice: 3.00, outputPrice: 15.00, contextLimit: 1000000, maxOutputTokens: 65536, thinkingBudget: 32768 },
+  'claude-haiku-4-5-20251001': { inputPrice: 1.00, outputPrice: 5.00, contextLimit: 200000, maxOutputTokens: 65536, thinkingBudget: 16000 },
+
+  // ── Google Gemini models ───────────────────────────────────────────────────
+  // Gemini 3.5 — most capable (as of May 2026)
+  'gemini-3.5-flash': { inputPrice: 1.50, outputPrice: 9.00, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 24576 },
+  // Gemini 3.1 family
+  'gemini-3.1-pro-preview': { inputPrice: 2.00, outputPrice: 12.00, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 32768 },
+  'gemini-3.1-flash-lite': { inputPrice: 0.25, outputPrice: 1.50, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 0 },
+  // Gemini 3.0 (preview)
+  'gemini-3-flash-preview': { inputPrice: 0.50, outputPrice: 3.00, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 24576 },
+  // Gemini 2.5 family
+  'gemini-2.5-pro': { inputPrice: 1.25, outputPrice: 10.00, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 32768 },
+  'gemini-2.5-flash': { inputPrice: 0.30, outputPrice: 2.50, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 24576 },
+  'gemini-2.5-flash-lite': { inputPrice: 0.10, outputPrice: 0.40, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 0 },
+  // Gemini 2.0 (deprecated — will be shut down June 1 2026)
+  'gemini-2.0-flash': { inputPrice: 0.10, outputPrice: 0.40, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemini-2.0-flash-lite': { inputPrice: 0.075, outputPrice: 0.30, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
+  // Gemma models (free / open-weight via Gemini API)
   'gemma-3-1b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
   'gemma-3-4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
   'gemma-3-12b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000, maxOutputTokens: 8192, thinkingBudget: 0 },
@@ -53,35 +75,35 @@ export function estimateTokens(text: string): number {
  * If contextWindowOverride is provided (from user settings), it takes precedence.
  * Otherwise falls back to PRICING_TABLE lookup, then 128000 default.
  */
-export function getContextLimit(model: string, contextWindowOverride?: number): number {
+export function getContextLimit(model?: string, contextWindowOverride?: number): number {
   if (contextWindowOverride && contextWindowOverride > 0) return contextWindowOverride;
-  return PRICING_TABLE[model]?.contextLimit ?? 128000;
+  return model ? PRICING_TABLE[model]?.contextLimit ?? 128000 : 128000;
 }
 
 /**
  * Get model's max output tokens (excluding thinking).
  * Returns from PRICING_TABLE, or 4096 default for unknown models.
  */
-export function getModelMaxOutput(model: string): number {
-  return PRICING_TABLE[model]?.maxOutputTokens ?? 4096;
+export function getModelMaxOutput(model?: string): number {
+  return model ? PRICING_TABLE[model]?.maxOutputTokens ?? 4096 : 4096;
 }
 
 /**
  * Get model's thinking budget (0 = model doesn't support thinking).
  */
-export function getModelThinkingBudget(model: string): number {
-  return PRICING_TABLE[model]?.thinkingBudget ?? 0;
+export function getModelThinkingBudget(model?: string): number {
+  return model ? PRICING_TABLE[model]?.thinkingBudget ?? 0 : 0;
 }
 
 /**
  * Whether the model supports thinking (Gemini thinking models).
  */
-export function modelSupportsThinking(model: string): boolean {
-  return (PRICING_TABLE[model]?.thinkingBudget ?? 0) > 0;
+export function modelSupportsThinking(model?: string): boolean {
+  return (PRICING_TABLE[model ?? '']?.thinkingBudget ?? 0) > 0;
 }
 
-export function isModelInPricingTable(model: string): boolean {
-  return model in PRICING_TABLE;
+export function isModelInPricingTable(model?: string): boolean {
+  return model ? model in PRICING_TABLE : false;
 }
 
 /**
@@ -91,11 +113,11 @@ export function isModelInPricingTable(model: string): boolean {
  * @returns tokens to reserve for thinking (0 if thinking disabled or model doesn't support it)
  */
 export function getThinkingOverhead(
-  model: string,
+  model?: string,
   thinkingEnabled?: boolean,
   thinkingBudget?: number,
 ): number {
-  if (thinkingEnabled === false) return 0;
+  if (!model || thinkingEnabled === false) return 0;
   const modelMax = getModelThinkingBudget(model);
   if (modelMax === 0) return 0;
   if (thinkingBudget !== undefined && thinkingBudget >= 0) return Math.min(thinkingBudget, modelMax);
@@ -144,7 +166,7 @@ export function estimateCost(
  */
 export function willExceedContext(
   posts: ScrapedPost[],
-  model: string,
+  model: string | undefined = undefined,
   systemPromptLength: number = 500,
   responseBuffer: number = 2000,
   contextWindowOverride?: number,
@@ -193,7 +215,7 @@ export function formatTokenCount(tokens: number): string {
  * thinkingOverhead: tokens reserved for model thinking (0 for non-thinking models).
  */
 export function calculateSegmentBudget(
-  model: string,
+  model: undefined | string = undefined,
   systemPromptTokens: number,
   responseBuffer?: number,
   contextWindowOverride?: number,

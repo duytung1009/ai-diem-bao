@@ -19,6 +19,7 @@ export default defineContentScript({
   matches: ['*://voz.vn/*', '*://*.voz.vn/*', '*://www.otofun.net/*', '*://otofun.net/*'],
   main() {
     const version = detectXenForoVersion();
+    console.log('Detected XenForo version:', version);
 
     browser.runtime?.onMessage.addListener(
       (message: Message, _sender, sendResponse) => {

@@ -371,7 +371,7 @@ export async function reduceKnowledgeChunks(
  */
 export function planKnowledgeChunks(
   posts: ScrapedPost[],
-  model: string,
+  model?: string,
   contextWindowOverride?: number,
   maxTokens?: number,
   thinkingEnabled?: boolean,

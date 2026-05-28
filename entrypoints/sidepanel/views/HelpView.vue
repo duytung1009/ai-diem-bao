@@ -90,7 +90,7 @@
           <span class="badge bg-green-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
         </div>
         <div class="text-xs alert alert-info">
-          Có các model <code class="font-mono">:free</code> hoàn toàn miễn phí, không cần chạy local, không cần thẻ tín dụng. Model <code class="font-mono">:free</code> có rate limit nhưng đủ cho dùng cá nhân.
+          Có các model <code class="font-mono">:free</code> hoàn toàn miễn phí, không cần chạy local, không cần thẻ tín dụng. Model <code class="font-mono">:free</code> có rate limit nhưng đủ cho nhu cầu dùng thử.
         </div>
         <ol class="space-y-1.5 pl-1 mt-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
@@ -122,9 +122,9 @@
             <span
               class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">6</span>
             <span>Nhập model theo format <code class="font-mono text-(--color-accent-text)">provider/model</code>. Gợi ý model <code class="font-mono text-(--color-accent-text)">:free</code>:<br>
+              • <code class="font-mono text-(--color-accent-text)">openai/gpt-oss-20b:free</code> (Context 131.1K, Max Output 8.2K, nhanh)<br>
               • <code class="font-mono text-(--color-accent-text)">deepseek/deepseek-v4-flash:free</code> (context lên đến 1M, Max Output 384K, mạnh, uptime kém)<br>
               • <code class="font-mono text-(--color-accent-text)">google/gemma-4-26b-a4b-it:free</code> (Context 262.1K, Max Output 32.8K, nhanh)<br>
-              • <code class="font-mono text-(--color-accent-text)">openai/gpt-oss-20b:free</code> (Context 131.1K, Max Output 8.2K, nhanh)<br>
               Xem thêm: <code class="font-mono text-(--color-accent-text)">openrouter.ai/models?q=free</code>
             </span>
           </li>
@@ -459,6 +459,76 @@
               </svg> để xem riêng và dọn dẹp</span>
           </li>
         </ul>
+      </div>
+    </div>
+
+    <!-- ─── Section 5: Import/Export dữ liệu ───────────────── -->
+    <div>
+      <h2 class="font-semibold text-sm text-(--color-text-primary)">5. Import/Export dữ liệu</h2>
+      <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
+        Dùng Export để sao lưu dữ liệu cache ra file JSON, và Import để khôi phục hoặc chuyển dữ liệu sang máy/trình duyệt khác.
+      </p>
+
+      <div class="card space-y-1.5 mb-3">
+        <h3 class="text-xs font-semibold text-(--color-text-primary) flex items-center gap-1.5">
+          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">5.1</span>
+          Xuất dữ liệu (Backup)
+        </h3>
+        <ol class="space-y-1.5 pl-1">
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <span>Mở tab <strong class="text-(--color-text-primary)">Cài đặt</strong>, kéo xuống khối <strong class="text-(--color-text-primary)">Cache local</strong></span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+            <span>Nhấn nút <strong class="text-(--color-text-primary)">"Xuất dữ liệu (JSON)"</strong></span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+            <span>Trình duyệt sẽ tải xuống file dạng <code class="font-mono text-(--color-accent-text)">loi-thot-ho-export-YYYY-MM-DD.json</code>. Giữ file này để backup hoặc chuyển máy.</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card space-y-1.5 mb-3">
+        <h3 class="text-xs font-semibold text-(--color-text-primary) flex items-center gap-1.5">
+          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">5.2</span>
+          Nhập dữ liệu (Restore)
+        </h3>
+        <ol class="space-y-1.5 pl-1">
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <span>Tại tab <strong class="text-(--color-text-primary)">Cài đặt</strong>, chọn trước chế độ xử lý xung đột trong mục <strong class="text-(--color-text-primary)">"Khi trùng dữ liệu, bạn muốn"</strong>:</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+            <span><strong class="text-(--color-text-primary)">Giữ dữ liệu hiện có</strong>: bỏ qua các bản ghi bị trùng.</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+            <span><strong class="text-(--color-text-primary)">Ghi đè bằng dữ liệu từ file</strong>: cập nhật dữ liệu hiện có bằng dữ liệu trong file import.</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+            <span>Nhấn <strong class="text-(--color-text-primary)">"Nhập dữ liệu (JSON)"</strong> và chọn file backup.</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">5</span>
+            <span>Sau khi xong, extension hiển thị kết quả: số topic đã nhập, số bỏ qua và số lỗi (nếu có).</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="text-xs alert alert-info">
+        Mẹo: trước khi import vào môi trường chính, nên export dữ liệu hiện tại để có bản sao dự phòng.
       </div>
     </div>
   </div>

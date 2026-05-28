@@ -7,6 +7,8 @@ import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats } from '@/lib/notebook-db';
 import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
+import { mapExportedTopic, type ImportConflictMode, type ImportResult } from '@/lib/importer';
+import type { ExportedTopic } from '@/lib/exporter';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry } from '@/lib/types';
 
 export default defineBackground(() => {
@@ -104,6 +106,67 @@ export default defineBackground(() => {
               sendResponse({ ok: true, status: res.status, html, finalUrl: res.url });
             })
             .catch((err) => sendResponse({ ok: false, status: 0, html: '', error: String(err) }));
+          return true;
+        }
+
+        case 'IMPORT_CACHE': {
+          const { topics, conflictMode } = message.payload as { topics: ExportedTopic[]; conflictMode: ImportConflictMode };
+
+          (async () => {
+            const safeTopics = Array.isArray(topics) ? topics : [];
+            const result: ImportResult = {
+              total: safeTopics.length,
+              imported: 0,
+              skipped: 0,
+              failed: 0,
+              errors: [],
+            };
+
+            const settled = await Promise.allSettled(
+              safeTopics.map(async (topic, index) => {
+                const label = topic?.url || `topic #${index + 1}`;
+                if (!topic?.url || !topic?.title) {
+                  return { kind: 'skipped' as const, error: `${label}: thiếu url hoặc title` };
+                }
+
+                if (conflictMode === 'skip') {
+                  const existing = await dbGet(topic.url);
+                  if (existing) {
+                    return { kind: 'skipped' as const };
+                  }
+                }
+
+                const mapped = mapExportedTopic(topic);
+                await dbPut(mapped);
+                return { kind: 'imported' as const };
+              }),
+            );
+
+            for (let i = 0; i < settled.length; i += 1) {
+              const item = settled[i];
+              if (item.status === 'fulfilled') {
+                if (item.value.kind === 'imported') {
+                  result.imported += 1;
+                } else {
+                  result.skipped += 1;
+                  if (item.value.error) result.errors.push(item.value.error);
+                }
+              } else {
+                result.failed += 1;
+                const label = safeTopics[i]?.url || `topic #${i + 1}`;
+                result.errors.push(`${label}: ${String(item.reason)}`);
+              }
+            }
+
+            sendResponse(result);
+          })().catch((err) => sendResponse({
+            total: 0,
+            imported: 0,
+            skipped: 0,
+            failed: 1,
+            errors: [String(err)],
+          } satisfies ImportResult));
+
           return true;
         }
 

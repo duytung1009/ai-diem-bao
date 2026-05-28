@@ -63,7 +63,7 @@ const showAutoSummarizeModal = ref(false);
 const summaryPromptTokens = estimateTokens(SUMMARY_PROMPT);
 const estimatedAutoSummarizeCost = computed<CostEstimate | null>(() => {
   if (!topicInfo.value || !currentConfig.value) return null;
-  const model = currentConfig.value.model ?? 'gpt-4o-mini';
+  const model = currentConfig.value.model;
   const budget = calculateSegmentBudget(model, summaryPromptTokens, undefined, currentConfig.value.contextWindow);
   const maxOutput = currentConfig.value.maxTokens ?? getModelMaxOutput(model);
   // Use actual segment count (from segmentSize setting) instead of re-deriving from token budget.
@@ -351,7 +351,7 @@ async function handleConflictGoBack() {
                   </template>
                 </SummaryContent>
                 <!-- Knowledge CTA -->
-                <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="pt-1">
+                <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="flex justify-between">
                   <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
                     <button class="btn-llm" @click="handleKnowledgeCTA('extract')">
                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -361,20 +361,20 @@ async function handleConflictGoBack() {
                     </button>
                   </template>
                   <template v-else-if="hasSavedKnowledgeEntries">
-                    <p class="text-xs text-(--color-text-secondary)">
+                    <span class="text-xs text-(--color-text-secondary)">
                       Đã lưu <strong>{{ savedKnowledgeCount }}</strong> kiến thức.
-                      <ForwardLink @click="handleKnowledgeCTA('view')">
-                        Xem trong tab Kiến thức
-                      </ForwardLink>
-                    </p>
+                    </span>
+                    <ForwardLink @click="handleKnowledgeCTA('view')">
+                      Xem trong tab Kiến thức
+                    </ForwardLink>
                   </template>
                   <template v-else-if="hasKnowledgeChunks">
-                    <p class="text-xs text-(--color-text-secondary)">
+                    <span class="text-xs text-(--color-text-secondary)">
                       Đã có dữ liệu kiến thức nhưng chưa lưu.
-                      <ForwardLink @click="handleKnowledgeCTA('restore')">
-                        Khôi phục danh sách
-                      </ForwardLink>
-                    </p>
+                    </span>
+                    <ForwardLink @click="handleKnowledgeCTA('restore')">
+                      Khôi phục danh sách
+                    </ForwardLink>
                   </template>
                 </div>
               </div>
@@ -417,7 +417,7 @@ async function handleConflictGoBack() {
                   </template>
                 </SummaryContent>
                 <!-- Knowledge CTA -->
-                <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="pt-1">
+                <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="flex justify-between">
                   <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
                     <button class="btn-llm" @click="handleKnowledgeCTA('extract')">
                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -427,20 +427,20 @@ async function handleConflictGoBack() {
                     </button>
                   </template>
                   <template v-else-if="hasSavedKnowledgeEntries">
-                    <p class="text-xs text-(--color-text-secondary)">
+                    <span class="text-xs text-(--color-text-secondary)">
                       Đã lưu <strong>{{ savedKnowledgeCount }}</strong> kiến thức.
-                      <ForwardLink @click="handleKnowledgeCTA('view')">
-                        Xem trong tab Kiến thức
-                      </ForwardLink>
-                    </p>
+                    </span>
+                    <ForwardLink @click="handleKnowledgeCTA('view')">
+                      Xem trong tab Kiến thức
+                    </ForwardLink>
                   </template>
                   <template v-else-if="hasKnowledgeChunks">
-                    <p class="text-xs text-(--color-text-secondary)">
+                    <span class="text-xs text-(--color-text-secondary)">
                       Đã có dữ liệu kiến thức nhưng chưa lưu.
-                      <ForwardLink @click="handleKnowledgeCTA('restore')">
-                        Khôi phục danh sách
-                      </ForwardLink>
-                    </p>
+                    </span>
+                    <ForwardLink @click="handleKnowledgeCTA('restore')">
+                      Khôi phục danh sách
+                    </ForwardLink>
                   </template>
                 </div>
               </div>

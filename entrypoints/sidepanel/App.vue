@@ -17,7 +17,6 @@ const { loadTheme } = useTheme();
 let tabActivatedListener: ((activeInfo: { tabId: number }) => void) | null = null;
 let tabUpdatedListener: ((tabId: number, changeInfo: { status?: string }) => void) | null = null;
 
-// Detect topic on active tab when sidepanel opens, re-detect on tab switch/navigate
 onMounted(async () => {
   await loadTheme();
   await detectActiveTabTopic();
@@ -42,15 +41,12 @@ onUnmounted(() => {
   if (tabUpdatedListener) browser.tabs.onUpdated.removeListener(tabUpdatedListener);
 });
 
-// Topic-specific tabs disabled when no topic selected
 const hasSelectedTopic = computed(() => !!store.selectedTopic.value);
 
-// "Thớt" top-level tab is active for hub + all topic detail routes
 const isThreadActive = computed(() =>
   ['hub', 'summary', 'knowledge', 'analysis', 'research'].includes(route.name as string),
 );
 
-// Shared TopicMeta displayed once above router-view on all topic-detail tabs
 const isTopicDetailRoute = computed(() =>
   ['summary', 'knowledge', 'analysis', 'research'].includes(route.name as string),
 );
@@ -79,7 +75,6 @@ const loadingSubTab = computed(() => {
 
 async function detectActiveTabTopic() {
   try {
-    // Không đọc tab.url — cần tabs permission. Chỉ lấy tabId để sendMessage.
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
 
@@ -87,7 +82,6 @@ async function detectActiveTabTopic() {
       type: 'DETECT_XF',
     }) as DetectResult | undefined;
 
-    // URL lấy từ content script response (location.href) thay vì tab.url
     if (result && result.version !== 'unknown' && result.url) {
       store.setActiveTab(result, result.url);
       await autoUpdateCachedTopic(result.url, result);
@@ -95,7 +89,6 @@ async function detectActiveTabTopic() {
       store.setActiveTab(null, null);
     }
   } catch {
-    // Content script not available on this tab (chrome://, about:blank, etc.)
     store.setActiveTab(null, null);
   }
 }
@@ -124,7 +117,6 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
       }
     }
 
-    // Always update totalPages and forumPostCount from live detect
     const hasChanges =
       cached.version !== detect.version ||
       cached.forumPostCount !== detect.postCount ||
@@ -177,6 +169,37 @@ async function autoUpdateCachedTopic(tabUrl: string, detect: DetectResult) {
   }
 }
 
+const topTabs = [
+  {
+    name: 'threads',
+    label: 'Thớt',
+    route: '/',
+    icon: 'chat',
+    isActive: computed(() => isThreadActive.value),
+  },
+  {
+    name: 'notebook',
+    label: 'Sổ tay',
+    route: '/notebook',
+    icon: 'book',
+    isActive: computed(() => route.name === 'notebook'),
+  },
+  {
+    name: 'settings',
+    label: 'Cài đặt',
+    route: '/settings',
+    icon: 'gear',
+    isActive: computed(() => route.name === 'settings'),
+  },
+  {
+    name: 'help',
+    label: '?',
+    route: '/help',
+    icon: 'help',
+    isActive: computed(() => route.name === 'help'),
+  },
+];
+
 const subTabs = [
   { value: 'hub', label: 'Danh sách' },
   { value: 'summary', label: 'Tóm tắt' },
@@ -206,58 +229,39 @@ function navigateTo(path: string) {
 
 <template>
   <div class="min-h-screen bg-(--color-bg-base) text-(--color-text-primary) flex flex-col">
-    <!-- Header -->
-    <!-- <header class="bg-(--color-bg-surface) border-b border-(--color-border) px-4 py-3">
-      <h1 class="text-lg font-bold text-blue-600">Lội Thớt Hộ</h1>
-    </header> -->
-
-    <!-- Tab Navigation -->
-    <nav class="bg-(--color-bg-surface) border-b border-(--color-border) flex">
-      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 font-medium transition-colors" :class="isThreadActive
-          ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-        " @click="navigateTo('/')">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <!-- Top Navigation Bar -->
+    <nav class="bg-(--color-bg-surface) border-b border-(--color-border) px-2 py-1.5 flex items-center gap-1 shrink-0">
+      <button
+        v-for="tab in topTabs"
+        :key="tab.name"
+        class="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium font-heading transition-all duration-150"
+        :class="tab.isActive.value
+          ? 'bg-(--color-accent-soft) text-(--color-accent)'
+          : 'text-(--color-text-secondary) hover:text-(--color-text-primary) hover:bg-(--color-bg-muted)'"
+        @click="navigateTo(tab.route)"
+      >
+        <svg v-if="tab.icon === 'chat'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
-        Thớt
-      </button>
-      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 font-medium transition-colors" :class="route.name === 'notebook'
-          ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-        " @click="navigateTo('/notebook')">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg v-else-if="tab.icon === 'book'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
-        Sổ tay
-      </button>
-      <button class="flex-1 flex items-center justify-center gap-1 py-2.5 font-medium transition-colors" :class="route.name === 'settings'
-          ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'
-        " @click="navigateTo('/settings')">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg v-else-if="tab.icon === 'gear'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
-        Cài đặt
-      </button>
-      <button title="Hướng dẫn sử dụng" class="w-8 flex items-center justify-center gap-1 py-2.5 font-bold transition-colors shrink-0" :class="route.name === 'help'
-          ? 'text-blue-600 border-b-2 border-blue-600'
-          : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
-        " @click="navigateTo('/help')">
-        ?
+        {{ tab.label }}
       </button>
     </nav>
 
-    <!-- Sub-tab bar: visible when a topic is selected -->
-    <nav v-if="hasSelectedTopic && isThreadActive" class="mx-4 mt-3">
+    <!-- Sub-tab bar -->
+    <nav v-if="hasSelectedTopic && isThreadActive" class="px-3 pt-2.5 pb-0 shrink-0">
       <PillTabs :tabs="subTabs" :modelValue="activeSubTab" :loadingTabs="loadingSubTab" @update:modelValue="onSubTabChange" />
     </nav>
 
     <!-- Content -->
-    <main class="flex-1 overflow-y-auto">
-      <!-- Single TopicMeta shared across Tóm tắt / Kiến thức / Tra cứu tabs -->
-      <div v-if="selectedTopicForMeta" class="px-4 pt-4">
+    <main class="flex-1 overflow-y-auto scrollbar-thin">
+      <div v-if="selectedTopicForMeta" class="px-3 pt-3">
         <TopicMeta
           :topic="selectedTopicForMeta"
           :is-summarizing="isSummarizingCurrentTopic"

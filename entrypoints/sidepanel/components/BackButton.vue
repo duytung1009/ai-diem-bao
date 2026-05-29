@@ -12,7 +12,7 @@ const router = useRouter();
 
 <template>
   <button
-    class="inline-flex items-center gap-1 text-xs text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors py-1 px-2 rounded-md hover:bg-(--color-bg-muted)"
+    class="btn-ghost inline-flex items-center gap-1 text-xs"
     @click="router.push(to)"
   >
     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

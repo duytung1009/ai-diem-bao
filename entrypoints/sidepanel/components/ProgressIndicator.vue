@@ -103,31 +103,29 @@ const displayMessage = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-2">
-    <!-- Spinner + message -->
+  <div class="card-flat space-y-3">
     <div class="flex items-center gap-2">
-      <svg class="animate-spin h-4 w-4 text-(--color-primary) shrink-0" fill="none" viewBox="0 0 24 24">
+      <svg class="animate-spin h-4 w-4 text-(--color-accent) shrink-0" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
       </svg>
       <p class="text-sm text-(--color-text-secondary)">{{ displayMessage }}</p>
     </div>
 
-    <!-- Progress bar -->
-    <div v-if="progressPercent !== null" class="w-full bg-(--color-bg-tertiary) rounded-full h-1.5">
+    <div v-if="progressPercent !== null" class="w-full h-2 bg-(--color-bg-base) rounded-full overflow-hidden">
       <div
-        class="bg-(--color-primary) h-1.5 rounded-full transition-all duration-500"
+        class="h-full bg-(--color-accent) rounded-full transition-all duration-500 ease-out"
         :style="{ width: progressPercent + '%' }"
       />
     </div>
 
-    <!-- ETA -->
-    <p v-if="etaDisplay" class="text-xs text-(--color-text-muted)">{{ etaDisplay === MSG_ALMOST_DONE ? etaDisplay : `Ước tính còn ${etaDisplay}` }}</p>
+    <p v-if="etaDisplay" class="text-xs text-(--color-text-muted)">
+      {{ etaDisplay === MSG_ALMOST_DONE ? etaDisplay : `Ước tính còn ${etaDisplay}` }}
+    </p>
 
-    <!-- Cancel button -->
     <button
       v-if="showCancel"
-      class="w-full btn btn-sm btn-secondary"
+      class="w-full btn btn-sm btn-ghost"
       @click="$emit('cancel')"
     >
       Huỷ

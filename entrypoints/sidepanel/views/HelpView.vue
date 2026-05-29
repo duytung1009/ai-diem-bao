@@ -2,9 +2,9 @@
 </script>
 
 <template>
-  <div class="p-4 space-y-4">
+  <div class="p-3 space-y-2">
     <!-- ─── Wall-of-text disclaimer ──────────────────── -->
-    <div class="text-xs alert alert-warning space-y-1.5">
+    <div class="alert alert-warning space-y-1.5 text-xs">
       <p class="font-semibold text-(--color-text-primary)">⚠️ Trang này hơi dài. Thím vui lòng đọc trước khi hỏi.</p>
       <p class="text-(--color-text-secondary)">
         Biết là wall-of-text, biết là mệt mắt, nhưng 80% câu hỏi thường gặp đã có câu trả lời ở đây rồi đó.
@@ -14,17 +14,17 @@
 
     <!-- ─── Section 1: Setup LLM Provider ─────────────── -->
     <div>
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">1. Thiết lập LLM Provider</h2>
-      <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
+      <h2 class="section-heading mt-3">1. Thiết lập LLM Provider</h2>
+      <p class="text-xs text-(--color-text-secondary) mt-1 mb-1">
         Extension cần một LLM để hoạt động. Dưới đây là 3 cách thiết lập, xếp theo khuyến nghị giảm dần.
       </p>
 
       <!-- Local LLM (recommended) -->
       <div class="card space-y-1.5 mb-3">
         <div class="flex items-center gap-2">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.1</span>
+          <span class="badge badge-accent">1.1</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">Local LLM (LM Studio / Ollama)</h3>
-          <span class="badge bg-green-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
+          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
         </div>
         <ol class="space-y-1.5 pl-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
@@ -85,11 +85,11 @@
       <!-- OpenRouter (recommended) -->
       <div class="card space-y-1.5 mb-3">
         <div class="flex items-center gap-2">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.2</span>
+          <span class="badge badge-accent">1.2</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">OpenRouter (multi-model)</h3>
-          <span class="badge bg-green-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
+          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
         </div>
-        <div class="text-xs alert alert-info">
+        <div class="alert alert-info text-xs">
           Có các model <code class="font-mono">:free</code> hoàn toàn miễn phí, không cần chạy local, không cần thẻ tín dụng. Model <code class="font-mono">:free</code> có rate limit nhưng đủ cho nhu cầu dùng thử.
         </div>
         <ol class="space-y-1.5 pl-1 mt-1">
@@ -139,10 +139,10 @@
       <!-- Gemini Free Tier -->
       <div class="card space-y-1.5 mb-3">
         <div class="flex items-center gap-2">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.3</span>
+          <span class="badge badge-accent">1.3</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">Gemini API (Google AI Studio)</h3>
         </div>
-        <div class="text-xs alert alert-warning">
+        <div class="alert alert-warning text-xs">
           ⚠ Free tier hay gặp lỗi kết nối và giới hạn ~20 lượt gọi API mỗi ngày. Dùng cho mục đích dùng thử, không nên dùng thường xuyên.
         </div>
         <ol class="space-y-1.5 pl-1 mt-1">
@@ -188,10 +188,10 @@
       <!-- API Pay-per-request -->
       <div class="card space-y-1.5">
         <div class="flex items-center gap-2">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.4</span>
+          <span class="badge badge-accent">1.4</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">API Pay-per-request (Gemini / OpenAI)</h3>
         </div>
-        <div class="text-xs alert alert-warning">
+        <div class="alert alert-warning text-xs">
           ⚠ Chi phí có thể cao do lượng token input lớn. Mỗi request summarize tốn ~1.000 đ. Một topic khoảng 100 trang sẽ cần 15–20 request → tổng
           ~15.000–20.000 đ cho một lần tóm tắt. Cân nhắc kỹ trước khi dùng.
         </div>
@@ -225,8 +225,8 @@
 
     <!-- ─── Section 2: Flow tóm tắt ───────────────────── -->
     <div>
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">2. Flow tóm tắt</h2>
-      <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
+      <h2 class="section-heading mt-3">2. Flow tóm tắt</h2>
+      <p class="text-xs text-(--color-text-secondary) mt-1 mb-1">
         Các bước cơ bản để tóm tắt một thớt từ forum XenForo.
       </p>
       <div class="card space-y-1.5">
@@ -268,15 +268,15 @@
 
     <!-- ─── Section 3: Sau tóm tắt ──────────────────── -->
     <div>
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">3. Sau tóm tắt</h2>
-      <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
+      <h2 class="section-heading mt-3">3. Sau tóm tắt</h2>
+      <p class="text-xs text-(--color-text-secondary) mt-1 mb-1">
         Sau khi thớt đã được tóm tắt, bạn có thể khai thác thêm với hai tính năng sau.
       </p>
 
       <!-- Knowledge -->
       <div class="card space-y-1.5 mb-3">
         <h3 class="text-xs font-semibold text-(--color-text-primary) flex items-center gap-1.5">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">3.1</span>
+          <span class="badge badge-accent">3.1</span>
           Tổng hợp kiến thức (Tab "Kiến thức")
         </h3>
         <ul class="space-y-1 pl-1">
@@ -306,7 +306,7 @@
       <!-- Analysis -->
       <div class="card space-y-1.5 mb-3">
         <h3 class="text-xs font-semibold text-(--color-text-primary) flex items-center gap-1.5">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">3.2</span>
+          <span class="badge badge-accent">3.2</span>
           Phân tích luồng (Tab "Phân tích")
         </h3>
         <ul class="space-y-1 pl-1">
@@ -338,7 +338,7 @@
       <!-- Research -->
       <div class="card space-y-1.5">
         <h3 class="text-xs font-semibold text-(--color-text-primary) flex items-center gap-1.5">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">3.3</span>
+          <span class="badge badge-accent">3.3</span>
           Tra cứu mở rộng (Tab "Tra cứu")
         </h3>
         <ul class="space-y-1 pl-1">
@@ -373,8 +373,8 @@
 
     <!-- ─── Section 4: Sổ tay ────────────────────────── -->
     <div>
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">4. Sổ tay</h2>
-      <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
+      <h2 class="section-heading mt-3">4. Sổ tay</h2>
+      <p class="text-xs text-(--color-text-secondary) mt-1 mb-1">
         Sổ tay tập hợp tất cả kiến thức bạn đã bookmark từ nhiều thớt khác nhau vào một nơi, giúp tra cứu và tổng hợp dễ dàng.
       </p>
 
@@ -464,14 +464,14 @@
 
     <!-- ─── Section 5: Import/Export dữ liệu ───────────────── -->
     <div>
-      <h2 class="font-semibold text-sm text-(--color-text-primary)">5. Import/Export dữ liệu</h2>
-      <p class="text-xs text-(--color-text-secondary) mt-1 mb-3">
+      <h2 class="section-heading mt-3">5. Import/Export dữ liệu</h2>
+      <p class="text-xs text-(--color-text-secondary) mt-1 mb-1">
         Dùng Export để sao lưu dữ liệu cache ra file JSON, và Import để khôi phục hoặc chuyển dữ liệu sang máy/trình duyệt khác.
       </p>
 
       <div class="card space-y-1.5 mb-3">
         <h3 class="text-xs font-semibold text-(--color-text-primary) flex items-center gap-1.5">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">5.1</span>
+          <span class="badge badge-accent">5.1</span>
           Xuất dữ liệu (Backup)
         </h3>
         <ol class="space-y-1.5 pl-1">
@@ -495,7 +495,7 @@
 
       <div class="card space-y-1.5 mb-3">
         <h3 class="text-xs font-semibold text-(--color-text-primary) flex items-center gap-1.5">
-          <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">5.2</span>
+          <span class="badge badge-accent">5.2</span>
           Nhập dữ liệu (Restore)
         </h3>
         <ol class="space-y-1.5 pl-1">
@@ -527,7 +527,7 @@
         </ol>
       </div>
 
-      <div class="text-xs alert alert-info">
+      <div class="alert alert-info text-xs">
         Mẹo: trước khi import vào môi trường chính, nên export dữ liệu hiện tại để có bản sao dự phòng.
       </div>
     </div>

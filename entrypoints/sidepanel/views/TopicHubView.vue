@@ -287,7 +287,7 @@ async function toggleBookmark(topic: CachedTopic) {
 </script>
 
 <template>
-  <div class="p-4 space-y-4">
+  <div class="p-3 space-y-2">
     <LoadingSpinner v-if="isLoading" text="Đang tải danh sách..." />
 
     <template v-else>
@@ -323,7 +323,7 @@ async function toggleBookmark(topic: CachedTopic) {
         <div v-if="allDomains.length > 1" class="flex flex-wrap gap-1.5">
           <button
             v-if="filterDomain"
-            class="px-2 py-0.5 rounded-full text-xs bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
+            class="badge badge-neutral"
             @click="filterDomain = null"
           >
             Tất cả diễn đàn
@@ -331,10 +331,10 @@ async function toggleBookmark(topic: CachedTopic) {
           <button
             v-for="domain in allDomains"
             :key="domain"
-            class="px-2 py-0.5 rounded-full text-xs transition-colors"
+            class="badge transition-colors"
             :class="filterDomain === domain
-              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
-              : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+              ? 'badge-accent'
+              : 'badge-neutral'"
             @click="filterDomain = filterDomain === domain ? null : domain"
           >
             {{ domain }}
@@ -350,10 +350,10 @@ async function toggleBookmark(topic: CachedTopic) {
               { value: 'title', label: 'Tên A-Z' },
             ]"
             :key="option.value"
-            class="px-2 py-0.5 rounded-full transition-colors"
+            class="badge transition-colors"
             :class="sortBy === option.value
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
-              : 'text-(--color-text-secondary) hover:text-(--color-text-primary) hover:bg-(--color-bg-muted)'"
+              ? 'badge-accent'
+              : 'badge-neutral'"
             @click="sortBy = option.value as typeof sortBy"
           >
             {{ option.label }}
@@ -364,17 +364,17 @@ async function toggleBookmark(topic: CachedTopic) {
       <!-- Active tab topic -->
       <button
         v-if="store.activeTabDetect.value"
-        class="w-full text-left border-2 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30 rounded-lg p-3 hover:border-blue-400 dark:hover:border-blue-600 transition-colors space-y-1.5"
+        class="w-full text-left card border-(--color-accent) border-2 bg-(--color-accent-soft) hover:bg-(--color-accent-soft) transition-colors space-y-1.5"
         @click="handleActiveTabTopic"
       >
         <div class="flex items-center gap-2">
-          <span class="text-xs font-medium text-blue-600 dark:text-blue-400">Tab hiện tại</span>
+          <span class="text-xs font-medium text-(--color-accent-text)">Tab hiện tại</span>
         </div>
         <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2">
           {{ store.activeTabDetect.value.title }}
           <!-- News badge -->
           <span v-if="activeTabCachedTopic?.topicType === 'news'"
-            class="text-purple-700 dark:text-purple-400 font-regular text-xs ml-1"
+            class="text-(--color-accent-text) font-regular text-xs ml-1"
           >
             Tin tức
           </span>
@@ -390,7 +390,7 @@ async function toggleBookmark(topic: CachedTopic) {
       <div v-if="domainNames.length > 0" class="space-y-4">
         <div v-for="domain in domainNames" :key="domain">
           <!-- Domain header -->
-          <h3 class="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide mb-2">
+          <h3 class="section-heading">
             {{ domain }}
           </h3>
 
@@ -401,20 +401,20 @@ async function toggleBookmark(topic: CachedTopic) {
               :key="topic.url"
             >
               <div
-                class="relative border rounded-lg transition-colors"
+                class="relative card-interactive transition-colors"
                 :class="store.summarizingUrl.value === topic.url
-                  ? 'border-blue-300 dark:border-blue-700 bg-blue-50/60 dark:bg-blue-900/20 animate-pulse'
-                  : 'border-(--color-border) hover:border-blue-300 dark:hover:border-blue-600 hover:bg-(--color-accent-soft)'"
+                  ? 'border-(--color-secondary) bg-(--color-secondary-soft) animate-pulse-soft'
+                  : ''"
               >
                 <button
-                  class="w-full text-left p-3 space-y-1.5"
+                  class="w-full text-left space-y-1.5"
                   :title="topic.title"
                   @click="selectTopic(topic)"
                 >
                   <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">{{ topic.title }}
                     <!-- News badge -->
                     <span v-if="topic.topicType === 'news'"
-                      class="text-purple-700 dark:text-purple-400 font-regular text-xs ml-1"
+                      class="text-(--color-accent-text) font-regular text-xs ml-1"
                     >
                       Tin tức
                     </span>
@@ -424,7 +424,7 @@ async function toggleBookmark(topic: CachedTopic) {
                       <!-- Status badge -->
                       <SummaryStatus :status="isSameTopicUrl(store.summarizingUrl.value, topic.url) ? 'in-progress' : topicSummaryStatus(topic, false)" />
                     </div>
-                    
+
                     <div class="flex items-center gap-2 justify-start flex-wrap">
                       <!-- Post count -->
                       <span class="text-xs text-(--color-text-secondary)">
@@ -461,8 +461,8 @@ async function toggleBookmark(topic: CachedTopic) {
                   <button
                     class="p-1 transition-colors rounded"
                     :class="topic.bookmarked
-                      ? 'text-yellow-500 dark:text-yellow-400'
-                      : 'text-gray-300 dark:text-gray-600 hover:text-yellow-500 dark:hover:text-yellow-400'"
+                      ? 'text-yellow-500'
+                      : 'text-(--color-text-muted) hover:text-yellow-500'"
                     title="Đánh dấu"
                     @click.stop="toggleBookmark(topic)"
                   >
@@ -474,7 +474,7 @@ async function toggleBookmark(topic: CachedTopic) {
                     </svg>
                   </button>
                   <button
-                    class="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
+                    class="p-1 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded"
                     title="Xoá thớt"
                     @click.stop="confirmDelete(topic)"
                   >

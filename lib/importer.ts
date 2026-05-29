@@ -81,7 +81,7 @@ function normalizeTopic(input: unknown, index: number): ExportedTopic {
   const url = asNonEmptyString(input.url);
   const title = asNonEmptyString(input.title);
   if (!url || !title) {
-    throw new Error(`Topic #${index + 1}: thieu url hoac title`);
+    throw new Error(`Topic #${index + 1}: thieu url hoặc title`);
   }
 
   const segments = Array.isArray(input.segments) ? input.segments.filter(isRecord).map((s) => ({

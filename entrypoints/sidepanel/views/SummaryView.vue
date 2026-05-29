@@ -210,7 +210,7 @@ async function handleConflictGoBack() {
 </script>
 
 <template>
-  <div class="p-4 space-y-4">
+  <div class="p-3 space-y-2">
     <!-- No topic selected -->
     <div v-if="!topicInfo" class="text-center py-8">
       <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
@@ -219,11 +219,10 @@ async function handleConflictGoBack() {
 
     <!-- Topic loaded -->
     <template v-else>
-      <!-- Back button + Refresh -->
+      <!-- Back button + Section heading + Export -->
       <div class="flex items-center justify-between">
         <BackButton />
-        <h2 class="font-semibold text-sm text-(--color-text-primary)">Tóm tắt tổng quan</h2>
-        <ExportButton v-if="cachedTopic && (summary || segmentSummaries.some(s => s?.summary))" :topic="cachedTopic as unknown as CachedTopic" />
+        <h2 class="section-heading">Tóm tắt tổng quan</h2>
       </div>
 
       <!-- Conflict alert: running task for old topic -->
@@ -282,18 +281,13 @@ async function handleConflictGoBack() {
           <!-- Segment tabs -->
           <div v-if="summary" class="space-y-2">
             <!-- Row 1: Tổng quan + Tiếp theo -->
-            <div class="flex items-center gap-2 flex-wrap">
-              <button class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors" :class="activeSegmentIndex === null
-                ? 'bg-blue-600 text-white'
-                : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-bg-muted)'" @click="activeSegmentIndex = null">
+            <div class="flex items-between gap-2 flex-wrap">
+              <button class="badge transition-colors" :class="activeSegmentIndex === null
+                ? 'badge-accent'
+                : 'badge-neutral'" @click="activeSegmentIndex = null">
                 Tổng quan
               </button>
-              <button v-if="nextPendingSegmentIndex !== null"
-                class="px-3 py-1.5 text-xs rounded-full font-medium transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:text-(--color-text-primary) flex items-center gap-1"
-                @click="activeSegmentIndex = nextPendingSegmentIndex">
-                Tiếp theo: {{ segments[nextPendingSegmentIndex!].label }}
-                <span class="text-(--color-text-muted)">→</span>
-              </button>
+              <ExportButton v-if="cachedTopic && (summary || segmentSummaries.some(s => s?.summary))" :topic="cachedTopic as unknown as CachedTopic" />
             </div>
 
             <!-- Row 2+3: Progress bar + pill grid (chỉ hiển thị khi > 1 segment) -->
@@ -311,19 +305,19 @@ async function handleConflictGoBack() {
                   </button>
                 </div>
                 <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
-                  <div class="h-full rounded-full bg-blue-500 transition-all duration-300" :style="{ width: progressPercent + '%' }" />
+                  <div class="h-full rounded-full bg-(--color-accent) transition-all duration-300" :style="{ width: progressPercent + '%' }" />
                 </div>
                 <div v-if="segmentGridExpanded"
-                  class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thumb-rounded-full scrollbar-track-rounded-full scrollbar scrollbar-thumb-slate-700 scrollbar-track-slate-300">
-                  <button v-for="(seg, i) in segments" :key="i" class="px-2.5 py-1 text-xs rounded-full transition-colors flex items-center gap-1" :class="activeSegmentIndex === i
-                    ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
-                    : 'text-(--color-text-secondary) hover:bg-(--color-bg-muted)'" @click="activeSegmentIndex = i">
+                  class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thin">
+                  <button v-for="(seg, i) in segments" :key="i" class="badge transition-colors flex items-center gap-1" :class="activeSegmentIndex === i
+                    ? 'badge-accent'
+                    : 'badge-neutral'" @click="activeSegmentIndex = i">
                     {{ seg.label }}
-                    <span v-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete !== false" class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"
+                    <span v-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete !== false" class="w-1.5 h-1.5 rounded-full bg-(--color-success-text) shrink-0"
                       title="Đã tóm tắt" />
                     <span v-else-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete === false"
                       class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Đã tóm tắt — có thể có bài viết mới" />
-                    <span v-else-if="segmentSummaries[i]?.posts?.length" class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"
+                    <span v-else-if="segmentSummaries[i]?.posts?.length" class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
                       title="Đã scrape, chưa tóm tắt" />
                   </button>
                 </div>
@@ -343,7 +337,7 @@ async function handleConflictGoBack() {
                 <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url"
                   :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                   <template #actions>
-                    <button class="btn text-xs flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(0)">
+                    <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(0)">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -400,7 +394,7 @@ async function handleConflictGoBack() {
                 <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                   <template #actions>
                     <template v-if="segments.length > 1">
-                      <button class="btn text-xs flex items-center gap-1" @click="onAutoSummarizeClick">
+                      <button class="btn btn-ghost btn-sm flex items-center gap-1" @click="onAutoSummarizeClick">
                         <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                         </svg>
@@ -409,7 +403,7 @@ async function handleConflictGoBack() {
                         }} phần)</template>
                       </button>
                     </template>
-                    <button class="btn text-xs flex items-center gap-1" :disabled="isProcessing" @click="() => generateOverallSummary()">
+                    <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="() => generateOverallSummary()">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -473,7 +467,7 @@ async function handleConflictGoBack() {
               <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" :json="segmentSummaries[activeSegmentIndex].summaryJson"
                 :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                 <template #actions>
-                  <button class="btn text-xs flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(activeSegmentIndex)">
+                  <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(activeSegmentIndex)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

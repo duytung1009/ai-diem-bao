@@ -125,13 +125,12 @@ async function handleCopy() {
 
 <template>
   <div class="space-y-3 text-sm">
-    <!-- Actions row: slot bên trái, Copy bên phải -->
     <div class="flex items-center justify-between">
-      <div class="flex items-center justify-start gap-2">
+      <div class="flex items-center gap-2">
         <slot name="actions" />
       </div>
       <button
-        class="btn text-xs flex items-center gap-1"
+        class="btn btn-sm btn-ghost flex items-center gap-1"
         @click="handleCopy"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,25 +140,26 @@ async function handleCopy() {
       </button>
     </div>
     
-    <div class="card p-4 space-y-4">
-      <!-- JSON mode: render structured data directly (Feature 15) -->
-      <div v-if="json" class="space-y-4">
+    <div class="card p-4 space-y-5">
+      <div v-if="json" class="space-y-5">
         <div>
-          <h3 class="text-sm font-semibold text-(--color-text-primary) mb-2">Tóm tắt</h3>
-          <MarkdownContent :content="json.summary" />
+          <h3 class="section-heading mb-2">Tóm tắt</h3>
+          <div class="border-l-2 border-(--color-accent) pl-3">
+            <MarkdownContent :content="json.summary" />
+          </div>
         </div>
 
         <div v-if="json.opinions?.length">
-          <h3 class="text-sm font-semibold text-(--color-text-primary) mb-2">Quan điểm nổi bật</h3>
+          <h3 class="section-heading mb-2">Quan điểm nổi bật</h3>
           <div class="space-y-2">
             <AccordionItem v-for="(op, i) in json.opinions" :key="i">
               <template #title>
                 <div class="w-full min-w-0">
                   <div class="flex items-center justify-between mb-1">
-                    <span class="font-medium text-sm">{{ op.title }}</span>
+                    <span class="font-medium text-sm text-(--color-text-primary)">{{ op.title }}</span>
                     <span
                       v-if="Array.isArray(op.supporters) && op.supporters.length"
-                      class="text-xs text-(--color-text-secondary) ml-2 shrink-0"
+                      class="badge badge-accent ml-2 shrink-0"
                     >
                       {{ op.supporters.length }} người
                     </span>
@@ -169,7 +169,7 @@ async function handleCopy() {
                     class="w-full h-1.5 bg-(--color-bg-muted) rounded-full overflow-hidden"
                   >
                     <div
-                      class="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-300"
+                      class="h-full bg-(--color-secondary) rounded-full transition-all duration-300"
                       :style="{ width: Math.round((op.supporters.length / totalJsonSupporters) * 100) + '%' }"
                     />
                   </div>
@@ -192,17 +192,17 @@ async function handleCopy() {
                   <blockquote
                     v-for="(q, qi) in op.quotes"
                     :key="qi"
-                    class="border-l-2 border-(--color-border) pl-3 text-xs text-(--color-text-secondary)"
+                    class="border-l-2 border-(--color-border-strong) pl-3 text-xs text-(--color-text-secondary)"
                   >
-                    <p class="italic leading-relaxed">{{ q.text }}</p>
+                    <p class="italic leading-relaxed">"{{ q.text }}"</p>
                     <cite class="not-italic text-xs text-(--color-text-muted) mt-0.5 block">
                       — {{ q.author }}
                       <button
                         v-if="topicUrl"
-                        class="font-mono opacity-70 hover:opacity-100 hover:underline cursor-pointer"
+                        class="link font-mono text-xs"
                         @click="openPostLink(q.postNumber)"
                       >#{{ q.postNumber }}</button>
-                      <span v-else class="font-mono opacity-70">#{{ q.postNumber }}</span>
+                      <span v-else class="font-mono text-(--color-text-muted)">#{{ q.postNumber }}</span>
                     </cite>
                   </blockquote>
                 </div>
@@ -212,24 +212,28 @@ async function handleCopy() {
         </div>
 
         <div v-if="json.conclusion">
-          <h3 class="text-sm font-semibold text-(--color-text-primary) mb-2">Kết luận</h3>
-          <MarkdownContent :content="json.conclusion" />
+          <h3 class="section-heading mb-2">Kết luận</h3>
+          <div class="border-l-2 border-(--color-secondary) pl-3">
+            <MarkdownContent :content="json.conclusion" />
+          </div>
         </div>
       </div>
 
-      <!-- Markdown fallback mode (backward compat for old cache / custom prompts) -->
       <template v-else>
-        <div class="text-xs alert alert-warning">
-          Đang hiển thị ở chế độ fallback vì phản hồi LLM bị lỗi và không parse được sang JSON.
+        <div class="alert alert-warning flex items-start gap-2">
+          <svg class="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+          <span>Đang hiển thị ở chế độ fallback vì phản hồi LLM bị lỗi và không parse được sang JSON.</span>
         </div>
         
         <MarkdownContent v-if="!isStructured" :content="content" />
 
-        <div v-else class="space-y-4">
+        <div v-else class="space-y-5">
           <div v-for="(section, i) in sections" :key="i">
             <h3
               v-if="section.title"
-              class="text-sm font-semibold text-(--color-text-primary) mb-2"
+              class="section-heading mb-2"
             >
               {{ section.title }}
             </h3>
@@ -247,10 +251,10 @@ async function handleCopy() {
                 <template #title>
                   <div class="w-full min-w-0">
                     <div class="flex items-center justify-between mb-1">
-                      <span class="font-medium text-sm">{{ opinion.title }}</span>
+                      <span class="font-medium text-sm text-(--color-text-primary)">{{ opinion.title }}</span>
                       <span
                         v-if="opinion.supporterCount !== null"
-                        class="text-xs text-(--color-text-secondary) ml-2 shrink-0"
+                        class="badge badge-accent ml-2 shrink-0"
                       >
                         {{ opinion.supporterCount }} người
                       </span>
@@ -260,7 +264,7 @@ async function handleCopy() {
                       class="w-full h-1.5 bg-(--color-bg-muted) rounded-full overflow-hidden"
                     >
                       <div
-                        class="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-300"
+                        class="h-full bg-(--color-secondary) rounded-full transition-all duration-300"
                         :style="{ width: Math.round((opinion.supporterCount / section.totalSupporters!) * 100) + '%' }"
                       />
                     </div>

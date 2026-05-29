@@ -9,13 +9,13 @@ const isOpen = ref(false);
 </script>
 
 <template>
-  <div class="border border-(--color-border) rounded-lg overflow-hidden">
+  <div class="card p-0! overflow-hidden">
     <button
-      class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-(--color-text-primary) bg-(--color-bg-base) hover:bg-(--color-bg-muted) transition-colors text-left"
+      class="w-full flex items-center justify-between px-3 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) transition-colors text-left"
       @click="isOpen = !isOpen"
     >
       <slot name="title">
-        <span>{{ title }}</span>
+        <span class="font-heading">{{ title }}</span>
       </slot>
       <svg
         class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0 ml-2"
@@ -32,7 +32,7 @@ const isOpen = ref(false);
       :class="isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
     >
       <div class="overflow-hidden">
-        <div class="px-3 py-2.5">
+        <div class="px-3 pb-3">
           <slot />
         </div>
       </div>

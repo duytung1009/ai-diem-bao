@@ -138,13 +138,12 @@ async function handleCopy() {
 
 <template>
   <div class="space-y-3 text-sm">
-    <!-- Actions row: slot bên trái, Copy bên phải -->
     <div class="flex items-center justify-between">
-      <div class="flex items-center justify-start gap-2">
+      <div class="flex items-center gap-2">
         <slot name="actions" />
       </div>
       <button
-        class="btn text-xs flex items-center gap-1"
+        class="btn btn-sm btn-ghost flex items-center gap-1"
         @click="handleCopy"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,31 +153,39 @@ async function handleCopy() {
       </button>
     </div>
 
-    <!-- 1. TỔNG QUAN -->
-    <section class="card p-4 space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary) flex items-center gap-2">
-        <span class="text-base">{{ heatIcon(analysis.overview.heat) }}</span>
+    <section class="card p-4 space-y-3">
+      <h3 class="section-heading flex items-center gap-2">
+        <span>{{ heatIcon(analysis.overview.heat) }}</span>
         TỔNG QUAN
-        <span class="text-xs font-normal px-1.5 py-0.5 rounded-full"
-          :class="analysis.overview.heat === 'hot' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : analysis.overview.heat === 'normal' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'"
+        <span
+          class="badge ml-auto"
+          :class="{
+            'badge-warning': analysis.overview.heat === 'hot',
+            'badge-accent': analysis.overview.heat === 'normal',
+            'badge-success': analysis.overview.heat !== 'hot' && analysis.overview.heat !== 'normal',
+          }"
         >{{ heatLabel(analysis.overview.heat) }}</span>
       </h3>
-      <p class="text-(--color-text-primary) font-medium">{{ analysis.overview.coreConflict }}</p>
+      <p class="font-heading text-sm text-(--color-text-primary) font-semibold">{{ analysis.overview.coreConflict }}</p>
       <ul class="space-y-1">
-        <li v-for="(fact, i) in analysis.overview.keyFacts" :key="i" class="flex items-start gap-1.5 text-(--color-text-secondary)">
-          <span class="text-blue-500 mt-0.5 shrink-0">•</span>
+        <li v-for="(fact, i) in analysis.overview.keyFacts" :key="i" class="flex items-start gap-1.5 text-xs text-(--color-text-secondary)">
+          <span class="text-(--color-secondary) mt-0.5 shrink-0">•</span>
           <span>{{ fact }}</span>
         </li>
       </ul>
-      <div v-if="analysis.overview?.misconception" class="bg-(--color-bg-muted) rounded p-2.5 text-xs text-(--color-text-secondary) border-l-2 border-amber-400">
-        <span class="font-medium text-amber-600 dark:text-amber-400">VOZ hiểu sai:</span> {{ analysis.overview.misconception }}
+      <div v-if="analysis.overview?.misconception" class="alert-warning alert flex items-start gap-2">
+        <span class="font-medium text-(--color-warning-text) shrink-0">VOZ hiểu sai:</span>
+        <span>{{ analysis.overview.misconception }}</span>
       </div>
     </section>
 
-    <!-- 2. USER TIÊU BIỂU -->
     <section class="space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary) px-1">👥 USER TIÊU BIỂU
-        <span v-if="lowTrustWarning" class="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400" title="Nhiều user trong thread có dấu hiệu seeder/tài khoản mới">⚠ Có dấu hiệu seeder</span>
+      <h3 class="section-heading flex items-center gap-1.5 px-1">👥 USER TIÊU BIỂU
+        <span
+          v-if="lowTrustWarning"
+          class="badge badge-warning ml-auto"
+          title="Nhiều user trong thread có dấu hiệu seeder/tài khoản mới"
+        >⚠ Có dấu hiệu seeder</span>
       </h3>
       <div class="grid gap-2">
         <div
@@ -186,19 +193,18 @@ async function handleCopy() {
           :key="i"
           class="card p-3 space-y-1.5"
         >
-          <p class="font-medium text-(--color-text-primary) text-xs uppercase tracking-wide">{{ profile.role }}</p>
-          <p class="text-(--color-text-secondary) text-xs">{{ profile.description }}</p>
-          <p class="text-(--color-text-muted) text-xs italic">{{ profile.note }}</p>
-          <blockquote class="border-l-2 border-blue-400 pl-2 text-xs text-(--color-text-secondary) italic">
-            '{{ profile.quote }}'
+          <p class="font-heading text-xs font-semibold text-(--color-text-primary)">{{ profile.role }}</p>
+          <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ profile.description }}</p>
+          <p class="text-xs text-(--color-text-muted) italic">— {{ profile.note }}</p>
+          <blockquote class="border-l-2 border-(--color-secondary) pl-2 text-xs text-(--color-text-secondary) italic">
+            "{{ profile.quote }}"
           </blockquote>
         </div>
       </div>
     </section>
 
-    <!-- 3. LUỒNG TRANH LUẬN -->
     <section class="space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary) px-1">⚡ LUỒNG TRANH LUẬN</h3>
+      <h3 class="section-heading flex items-center gap-1.5 px-1">⚡ LUỒNG TRANH LUẬN</h3>
       <div class="space-y-2">
         <div
           v-for="(stream, i) in analysis.debateStreams"
@@ -206,30 +212,29 @@ async function handleCopy() {
           class="card p-3 flex items-start gap-2.5"
         >
           <span class="text-base shrink-0 mt-0.5">{{ heatIcon(stream.heat) }}</span>
-          <div>
-            <p class="font-medium text-(--color-text-primary) text-xs">{{ stream.title }}</p>
-            <p class="text-(--color-text-secondary) text-xs mt-0.5">{{ stream.description }}</p>
+          <div class="min-w-0">
+            <p class="font-heading text-xs font-semibold text-(--color-text-primary)">{{ stream.title }}</p>
+            <p class="text-xs text-(--color-text-secondary) mt-0.5 leading-relaxed">{{ stream.description }}</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 4. COMBAT TIÊU BIỂU -->
     <section class="space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary) px-1">⚔️ COMBAT TIÊU BIỂU</h3>
+      <h3 class="section-heading flex items-center gap-1.5 px-1">⚔️ COMBAT TIÊU BIỂU</h3>
       <div class="space-y-3">
         <div
           v-for="(combat, i) in analysis.combats"
           :key="i"
           class="card p-3 space-y-2"
         >
-          <p class="font-semibold text-(--color-text-primary) text-xs">{{ combat.title }}</p>
+          <p class="font-heading text-xs font-semibold text-(--color-text-primary)">{{ combat.title }}</p>
           <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-start text-xs">
-            <div class="bg-blue-50 dark:bg-blue-900/20 rounded p-2 text-(--color-text-secondary)">
+            <div class="bg-(--color-secondary-soft) rounded-lg p-2 text-(--color-text-secondary) leading-relaxed">
               {{ combat.sideA }}
             </div>
-            <span class="font-bold text-(--color-text-muted) self-center">VS</span>
-            <div class="bg-red-50 dark:bg-red-900/20 rounded p-2 text-(--color-text-secondary)">
+            <span class="font-heading font-bold text-(--color-text-muted) self-center text-sm">VS</span>
+            <div class="bg-(--color-accent-soft) rounded-lg p-2 text-(--color-text-secondary) leading-relaxed">
               {{ combat.sideB }}
             </div>
           </div>
@@ -238,9 +243,8 @@ async function handleCopy() {
       </div>
     </section>
 
-    <!-- 5. TIMELINE -->
     <section class="space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary) px-1">📅 TIMELINE</h3>
+      <h3 class="section-heading flex items-center gap-1.5 px-1">📅 TIMELINE</h3>
       <div class="space-y-2">
         <div
           v-for="(phase, i) in analysis.timeline"
@@ -248,8 +252,8 @@ async function handleCopy() {
           class="card p-3 space-y-1.5"
         >
           <div class="flex items-center gap-2">
-            <span class="font-medium text-(--color-text-primary) text-xs">{{ phase.name }}</span>
-            <span class="text-xs px-1.5 py-0.5 bg-(--color-bg-muted) text-(--color-text-muted) rounded-full">{{ phase.pageRange }}</span>
+            <span class="font-heading text-xs font-semibold text-(--color-text-primary)">{{ phase.name }}</span>
+            <span class="badge badge-neutral text-xs">{{ phase.pageRange }}</span>
           </div>
           <ul class="space-y-0.5">
             <li
@@ -258,23 +262,22 @@ async function handleCopy() {
               class="text-xs text-(--color-text-secondary) flex items-start gap-1.5"
             >
               <span class="text-(--color-text-muted) shrink-0">–</span>
-              <span>{{ event }}</span>
+              <span class="leading-relaxed">{{ event }}</span>
             </li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- 6. COMMENT NỔI BẬT -->
     <section class="space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary) px-1">💬 COMMENT NỔI BẬT</h3>
+      <h3 class="section-heading flex items-center gap-1.5 px-1">💬 COMMENT NỔI BẬT</h3>
       <div class="space-y-2">
         <div
           v-for="(comment, i) in analysis.notableComments"
           :key="i"
           class="card p-3 space-y-1"
         >
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <span>{{ commentIcon(comment.type) }}</span>
             <span class="text-xs font-medium text-(--color-text-secondary)">{{ comment.author }}</span>
             <TrustBadge
@@ -282,16 +285,14 @@ async function handleCopy() {
               :trustScore="userTrustScores[comment.author]"
             />
           </div>
-          <p class="text-xs text-(--color-text-primary)">{{ comment.text }}</p>
+          <p class="text-xs text-(--color-text-primary) leading-relaxed">{{ comment.text }}</p>
         </div>
       </div>
     </section>
 
-    <!-- 7. KẾT LUẬN -->
-    <section class="card p-4 space-y-3">
-      <h3 class="font-semibold text-(--color-text-primary)">📊 KẾT LUẬN</h3>
-      <!-- Breakdown bars -->
-      <div class="space-y-1.5">
+    <section class="card p-3 space-y-2">
+      <h3 class="section-heading flex items-center gap-1.5">📊 KẾT LUẬN</h3>
+      <div class="space-y-2">
         <div
           v-for="(item, i) in analysis.conclusion.breakdown"
           :key="i"
@@ -299,33 +300,32 @@ async function handleCopy() {
         >
           <div class="flex items-center justify-between text-xs text-(--color-text-secondary)">
             <span>{{ item.label }}</span>
-            <span class="font-medium">{{ item.percent }}%</span>
+            <span class="font-heading font-semibold">{{ item.percent }}%</span>
           </div>
           <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
             <div
-              class="h-full rounded-full bg-blue-500"
+              class="h-full rounded-full bg-(--color-accent)"
               :style="{ width: item.percent + '%' }"
             />
           </div>
         </div>
       </div>
       <div class="grid gap-2 text-xs">
-        <div class="bg-(--color-bg-muted) rounded p-2.5 space-y-0.5">
-          <p class="font-medium text-(--color-text-secondary)">Góc nhìn hệ thống</p>
-          <p class="text-(--color-text-primary)">{{ analysis.conclusion.insightPolicy }}</p>
+        <div class="card-flat space-y-1">
+          <p class="section-heading">Góc nhìn hệ thống</p>
+          <p class="text-(--color-text-primary) leading-relaxed">{{ analysis.conclusion.insightPolicy }}</p>
         </div>
-        <div class="bg-(--color-bg-muted) rounded p-2.5 space-y-0.5">
-          <p class="font-medium text-(--color-text-secondary)">Phản ứng của VOZ</p>
-          <p class="text-(--color-text-primary)">{{ analysis.conclusion.insightPublic }}</p>
+        <div class="card-flat space-y-1">
+          <p class="section-heading">Phản ứng của VOZ</p>
+          <p class="text-(--color-text-primary) leading-relaxed">{{ analysis.conclusion.insightPublic }}</p>
         </div>
       </div>
       <p class="text-xs text-(--color-text-muted) italic text-center">{{ analysis.conclusion.finalNote }}</p>
     </section>
 
-    <!-- 8. KIẾM HIỆP -->
     <section class="card p-4 space-y-2">
-      <h3 class="font-semibold text-(--color-text-primary)">⚔️ KIẾM HIỆP</h3>
-      <p class="text-xs text-(--color-text-secondary) italic whitespace-pre-line border-l-2 border-purple-400 pl-3">{{ analysis.wuxia }}</p>
+      <h3 class="section-heading flex items-center gap-1.5">⚔️ KIẾM HIỆP</h3>
+      <p class="text-xs text-(--color-text-secondary) italic whitespace-pre-line border-l-2 border-(--color-accent) pl-3 leading-relaxed">{{ analysis.wuxia }}</p>
     </section>
   </div>
 </template>

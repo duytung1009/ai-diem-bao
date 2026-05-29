@@ -8,7 +8,7 @@ import { estimateCost, isModelInPricingTable } from '@/lib/token-estimator';
 const MS_PER_CALL_BASE = 8000;
 const MS_PER_1K_OUTPUT_TOKENS = 500;
 
-function buildCostEstimate(
+export function buildCostEstimate(
   apiCalls: number,
   inputTokens: number,
   outputTokens: number,

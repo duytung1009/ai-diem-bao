@@ -3,7 +3,7 @@ import type { KnowledgeEntry, KnowledgeChunk, LLMConfig, CachedTopic, ScrapedPos
 import { sendMessage, sendMessageQuiet } from '@/lib/messaging';
 import { estimateTokens, calculateSegmentBudget, getContextLimit, getModelMaxOutput } from '@/lib/token-estimator';
 import { planKnowledgeChunks, KNOWLEDGE_CHUNK_PROMPT_TOKENS } from '@/lib/llm/summarizer';
-import { estimateExtractCalls, estimateExtractCost } from '@/lib/llm/cost-estimator';
+import { estimateExtractCalls, estimateExtractCost, buildCostEstimate } from '@/lib/llm/cost-estimator';
 import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, MAP_REDUCE_CHUNK_DELAY_MS, KNOWLEDGE_MAX_CHUNK_BUDGET } from '@/lib/constants';
 import { buildKnowledgePrompt } from '@/lib/prompts';
 import { buildKnowledgePipeline } from '@/lib/pipeline-builder';
@@ -127,13 +127,17 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     if (!currentConfig.value) return null;
     const chunks = (cachedTopic.value?.knowledgeChunks ?? []).filter(c => c.entries.length > 0);
     if (!chunks.length) return null;
+    // Single chunk → enrichEntries in memory, no API calls
+    if (chunks.length === 1) return null;
     const model = currentConfig.value.model;
-    const apiCalls = Math.max(1, chunks.length);
-    const avgTokens = chunks.length > 0
-      ? Math.round(chunks.reduce((s, c) => s + c.entries.length * 200, 0) / chunks.length)
-      : 2000;
-    const maxOutput = knowledgeMaxTokens.value ?? getModelMaxOutput(model);
-    return estimateExtractCost(apiCalls, avgTokens, model, maxOutput);
+    const maxOutput = knowledgeMaxTokens.value ?? currentConfig.value?.maxTokens ?? 2000;
+    const maxPerCall = calcMaxOutputEntries(maxOutput);
+    const totalEntries = chunks.reduce((s, c) => s + c.entries.length, 0);
+    const preReduceGroups = Math.ceil(totalEntries / (maxPerCall * 4));
+    const apiCalls = preReduceGroups + 1;
+    // Rough avg input tokens per pre-reduce group
+    const avgTokens = Math.round(Math.min(maxPerCall * 4, totalEntries) * 200);
+    return buildCostEstimate(apiCalls, avgTokens * apiCalls, Math.round(apiCalls * maxOutput * 0.6), model);
   });
 
   // Effective max output tokens for knowledge flow — uses dedicated field with fallback to summarize
@@ -513,7 +517,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
       if (totalTokens > usableTokens && allPartial.length >= 2) {
         const allFlatEntries = allPartial.flat();
-        const entriesPerGroup = maxPerCall * 2;
+        const entriesPerGroup = maxPerCall * 4;
         const flatGroups: KnowledgeEntry[][] = [];
 
         for (let i = 0; i < allFlatEntries.length; i += entriesPerGroup) {

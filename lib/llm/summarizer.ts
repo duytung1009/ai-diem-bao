@@ -6,7 +6,7 @@ import {
   buildKnowledgePrompt,
   THREAD_ANALYSIS_PROMPT,
 } from '../prompts';
-import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget, getThinkingOverhead, getModelMaxOutput } from '../token-estimator';
+import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget, getThinkingOverhead } from '../token-estimator';
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO, KNOWLEDGE_MAX_CHUNK_BUDGET } from '../constants';
 import { LLMError, LLMErrorCode } from '../errors';
 
@@ -351,9 +351,10 @@ export async function reduceKnowledgeChunks(
   const promptTokensUpperBound = Math.ceil((systemPrompt.length + combinedText.length) / 3) + RESPONSE_BUFFER_TOKENS;
 
   // Estimate tokens required for the output entries (cap * 700 tokens per entry),
-  // but ensure it fits within the model's capability and context window limits.
-  const modelMaxOutput = getModelMaxOutput(config.model);
-  const expectedOutputTokens = Math.min(modelMaxOutput, Math.max(requestedMaxTokens, cap * 700));
+  // using the user-configured knowledgeMaxTokens as the upper ceiling.
+  // Don't clamp to getModelMaxOutput() — that returns 4096 for unknown models,
+  // which would override the user's explicit knowledgeMaxTokens setting.
+  const expectedOutputTokens = Math.max(requestedMaxTokens, cap * 700);
 
   const safeMaxTokens = Math.max(512, Math.min(expectedOutputTokens, contextLimit - promptTokensUpperBound));
   const effectiveConfig = { ...config, maxTokens: safeMaxTokens };

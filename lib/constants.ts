@@ -7,6 +7,8 @@ export const STORAGE_KEYS = {
   THEME: 'theme-mode',
   MODEL_SPEED_STATS: 'model-speed-stats',
   SHOW_TRUST_BADGES: 'show-trust-badges',
+  USER_FORUMS: 'user-forums',
+  NEEDS_PERMISSION_REAUTH: 'needs-permission-reauth',
 } as const;
 
 export const DEFAULT_LLM_CONFIG: LLMConfig = {

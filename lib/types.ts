@@ -109,6 +109,14 @@ export interface LLMConfig {
   perProvider?: Partial<Record<LLMProvider, ProviderSpecificConfig>>;
 }
 
+export interface UserForum {
+  id: string;
+  hostname: string;
+  matchPattern: string;
+  origins: string[];
+  addedAt: number;
+}
+
 export type MessageType =
   | 'DETECT_XF'
   | 'SCRAPE_ARTICLE'
@@ -133,7 +141,10 @@ export type MessageType =
   | 'UPSERT_NOTEBOOK_ENTRY'
   | 'DELETE_NOTEBOOK_ENTRY'
   | 'ORPHAN_NOTEBOOK_BY_TOPIC'
-  | 'DELETE_NOTEBOOK_BY_TOPIC';
+  | 'DELETE_NOTEBOOK_BY_TOPIC'
+  | 'GET_USER_FORUMS'
+  | 'ADD_USER_FORUM'
+  | 'REMOVE_USER_FORUM';
 
 export interface LLMTaskRequest {
   taskId: string;

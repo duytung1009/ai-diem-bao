@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-Lội Thớt Hộ ("the Extension") is a browser extension that reads forum thread content on **voz.vn** and **otofun.net**, analyzes it using a large language model (LLM) API key supplied by the user, and displays the results in a local side panel. All processing happens on the user's device or is sent directly from the user's browser to the LLM provider of their choice. The developer does not operate any server, does not receive any user data, and has no access to any information processed by the Extension.
+Lội Thớt Hộ ("the Extension") is a browser extension that reads forum thread content on user-added XenForo forums (such as **voz.vn** or **otofun.net**), analyzes it using a large language model (LLM) API key supplied by the user, and displays the results in a local side panel. All processing happens on the user's device or is sent directly from the user's browser to the LLM provider of their choice. The developer does not operate any server, does not receive any user data, and has no access to any information processed by the Extension.
 
 ---
 
@@ -54,6 +54,8 @@ Forum post content is transmitted **directly from the user's browser** to the LL
 
 The user is responsible for reviewing the privacy policy of their chosen provider. The Extension only contacts the provider endpoint that the user explicitly configures.
 
+**Permission model:** The Extension's manifest does not declare any static `host_permissions` for LLM providers. The first time a user saves their configuration or tests a connection for a given provider, Chrome displays a permission dialog requesting access to that provider's domain (e.g., `api.openai.com`). This permission is remembered and reused on subsequent requests — the dialog only appears once per provider per browser session.
+
 No other third-party services receive any data from the Extension.
 
 ---
@@ -74,7 +76,16 @@ All data stored by the Extension (cached analyses, notebook entries, settings) r
 | `activeTab` | Required to securely read the text content of the currently active forum thread only when the user explicitly interacts with the extension. This ensures strict user privacy by avoiding permanent host permissions across all websites. |
 | `sidePanel` | Required to host the main extension interface alongside the active browser tab. This allows users to read summaries, analyze forum factions, and manage their notebook seamlessly without leaving or disrupting their current reading flow. |
 | `storage` | Required to store the user-configured LLM API keys, cached thread summaries, and persist the user's saved knowledge entries inside the local browser storage (IndexedDB) for offline retrieval. |
-| Host access: `voz.vn`, `otofun.net` | voz.vn and otofun.net are Vietnamese XenForo-based forums. The content script runs exclusively on these two domains to read the visible thread HTML (post text, author name, timestamp, post number, and user metadata such as join date and reaction score) when the user actively opens the extension's side panel. This data is passed locally to the side panel, where it is sent to an LLM provider (OpenAI, Google Gemini, or Anthropic Claude) using an API key supplied by the user. No data is transmitted to any server owned or operated by the extension developer. All saved results (summaries, notebooks) are stored in the browser's local IndexedDB and never leave the user's device. Access is intentionally limited to these two domains. No other sites are matched. The content script is passive. It does not modify the DOM, inject UI, or run any logic until it receives a DETECT_XF message from the side panel triggered by user action. |
+| `scripting` | Required to dynamically register content scripts on user-added forums via `chrome.scripting.registerContentScripts()`. No content script is pre-declared for any domain — the user actively grants permission for each forum they wish to use. |
+
+**Dynamic forum access:** The Extension does not request access to any website at install time. Instead:
+- The user explicitly adds forum domains (e.g., `voz.vn`, `otofun.net`, or any XenForo forum) through the onboarding screen or "Cài đặt" (Settings) → "Forum hỗ trợ" (Supported Forum).
+- Chrome displays a permission dialog when the user clicks "Thêm" (Add) for a domain.
+- Once granted, the Extension registers its content script on that domain via `chrome.scripting.registerContentScripts()`.
+- The content script is passive. It does not modify the DOM, inject UI, or run any logic until it receives a `DETECT_XF` message from the side panel triggered by user action (opening the side panel on a forum thread).
+- Permissions persist across browser restarts. Users can revoke access at any time via "Cài đặt" (Settings) → "Forum hỗ trợ" (Supported Forum) → "Xóa" (Delete).
+
+**Dynamic LLM provider access:** The Extension's manifest does not declare any static host permissions for LLM providers. The first time a user saves their configuration or tests a connection, Chrome prompts for access to that provider's domain (e.g., `api.openai.com`). Each provider's access is requested separately and remembered for future sessions.
 
 ---
 

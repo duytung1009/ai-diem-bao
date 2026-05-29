@@ -95,6 +95,8 @@ Xong. Không cần cài thêm gì cả.
 5. Bấm **Test Connection** cho chắc
 6. **Lưu** là xong
 
+> **Lưu ý quyền truy cập:** Lần đầu Save hoặc Test Connection, Chrome sẽ hiển thị hộp thoại yêu cầu cấp quyền truy cập domain của provider (ví dụ `api.openai.com`). Extension không có sẵn quyền truy cập website nào trong manifest — mỗi provider được cấp quyền riêng lẻ tại thời điểm bạn bấm Lưu/Test. Permission được lưu lại ở các lần sử dụng sau (không hỏi lại).
+
 ### Provider nào dùng model nào?
 
 | Provider | Model gợi ý | Ghi chú |
@@ -112,14 +114,17 @@ Xong. Không cần cài thêm gì cả.
 ## Sử dụng
 
 1. Click icon extension → side panel bật ra bên phải
-2. **Lần đầu:** Bấm "Thêm voz.vn" hoặc "Thêm otofun.net" → Chrome hỏi xác nhận cấp quyền → Approve
-3. Mở một topic trên forum vừa thêm
-4. **Danh sách** — Xem các topic đã lưu, tìm kiếm, lọc
-4. **Tóm tắt** → Bấm "Tóm tắt" → chờ AI cày (thớt càng dài càng lâu, đừng tắt tab)
-5. **Kiến thức** → Trích xuất tips hay, kinh nghiệm, thông tin hữu ích từ thớt
-6. **Phân tích** → Bắt bài, profile user, phân tích luồng tranh luận
-7. **Tra cứu** → Hỏi thẳng về nội dung topic, AI trả lời kèm nguồn
-8. **Xuất** → Copy Markdown hoặc download file `.md`
+2. **Lần đầu (chưa có forum nào):** Màn hình chính sẽ hiển thị onboarding, bấm "Thêm voz.vn" hoặc "Thêm otofun.net" → Chrome hỏi xác nhận cấp quyền → Approve
+3. **Quản lý forum:** Vào **Cài đặt → Forum hỗ trợ** để xem danh sách forum đã thêm, thêm forum khác (vd: `https://forum.example.com`), hoặc xóa forum
+4. Mở một topic trên forum vừa thêm → side panel tự động phát hiện và hiển thị thông tin
+5. **Danh sách** — Xem các topic đã lưu, tìm kiếm, lọc
+6. **Tóm tắt** → Bấm "Tóm tắt" → chờ AI cày (thớt càng dài càng lâu, đừng tắt tab)
+7. **Kiến thức** → Trích xuất tips hay, kinh nghiệm, thông tin hữu ích từ thớt
+8. **Phân tích** → Bắt bài, profile user, phân tích luồng tranh luận
+9. **Tra cứu** → Hỏi thẳng về nội dung topic, AI trả lời kèm nguồn
+10. **Xuất** → Copy Markdown hoặc download file `.md`
+
+> Extension không có quyền truy cập bất cứ website nào khi mới cài đặt. Bạn chủ động cấp quyền cho từng forum (qua onboarding hoặc Settings) và từng LLM provider (qua Save/Test Connection).
 
 ---
 
@@ -210,17 +215,17 @@ Toàn bộ nội dung tóm tắt, chia phe, phân tích luồng tranh luận **p
 - AI "bóp méo" drama vì không hiểu ngữ cảnh ngầm của thớt
 - AI xếp nhầm phe do các thím trong thớt **bẻ lái văn mẫu quá gắt** — kiểu "em ủng hộ mà" nhưng đọc xong 3 trang rõ ràng là đang chửi
 - AI kết luận "không có kẻ thua cuộc" trong một thớt mà cả hai phe đều đang tự đánh nhau
-- Kết quả ra ngược đời đến mức bản thân thím cũng không nhận ra thớt của mình
+- Kết quả ra ngược đời đến mức bản thân thím cũng không nhận ra thớt vừa đọc
 
 Mọi phân tích chỉ mang tính **tham khảo cho vui**. Muốn kết quả chuẩn hơn thì vào **Cài đặt → Prompt Templates** mà tự chỉnh — AI nghe lời chủ nhà hơn lời developer.
 
 ### 🤝 Sản phẩm của hội đồng AI
 
-Codebase này là thành quả hợp tác giữa Claude Code, GitHub Copilot, Cursor, và có thể còn vài em AI khác tớ không nhớ tên. Mỗi em một phong cách, mỗi em một quan điểm về cách đặt tên biến, và không em nào thèm hỏi ý kiến em nào trước khi làm.
+Codebase này là thành quả hợp tác giữa Claude Code, GitHub Copilot, OpenCode, Antigravity, và có thể còn vài em AI khác tớ không nhớ tên. Mỗi em một phong cách, mỗi em một quan điểm về cách đặt tên biến, và không em nào thèm hỏi ý kiến em nào trước khi làm.
 
 Kết quả là một đống bùi nhùi *hoạt động được*, nhưng đôi chỗ có thể hơi **messed up theo những cách khó đoán**. Bug dị? Có thể. Logic kỳ lạ không rõ lý do? Bình thường. Comment tiếng Anh xen tiếng Việt xen pseudocode? Đặc sản.
 
-Rất mong các thím Vozer có kinh nghiệm ghé vào **report bug hoặc PR** nếu thấy chỗ nào sai sai. Cộng đồng cùng fix thì nhanh hơn một mình tớ ngồi hỏi AI tại sao mày lại code như vậy.
+Rất mong các thím Vozer có kinh nghiệm ghé vào **[report bug hoặc PR](https://github.com/duytung1009/ai-diem-bao/issues)** nếu thấy chỗ nào sai sai. Cộng đồng cùng fix thì nhanh hơn một mình tớ ngồi hỏi AI tại sao mày lại code như vậy.
 
 ### 🛋️ Dùng vì đam mê (của chính bản thân)
 

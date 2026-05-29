@@ -209,7 +209,7 @@ async function checkLLMConfigured(): Promise<{ ok: boolean; error?: string }> {
   try {
     const stored = await browser.storage.sync.get(STORAGE_KEYS.SETTINGS);
     const config = stored[STORAGE_KEYS.SETTINGS] as { apiKey?: string; provider?: string } | undefined;
-    if (!config?.apiKey && config?.provider !== 'gemini-free') {
+    if (!config?.apiKey && config?.provider !== 'custom') {
       return { ok: false, error: 'Chưa cấu hình LLM. Vào Cài đặt để nhập API key.' };
     }
     return { ok: true };

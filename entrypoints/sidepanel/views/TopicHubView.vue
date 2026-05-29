@@ -10,10 +10,12 @@ import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryStatus from '../components/SummaryStatus.vue';
+import { useForumManager } from '../composables/useForumManager';
 
 const router = useRouter();
 const store = useTopicStore();
 const { optimisticUpdate } = useOptimisticUpdate(store);
+const { userForums, loadForums, addForumByHostname } = useForumManager();
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
 const pendingDeleteUrl = ref<string | null>(null);
@@ -150,7 +152,7 @@ async function refreshTopicList(showLoading = false) {
   finally { if (showLoading) isLoading.value = false; }
 }
 
-onMounted(() => { refreshTopicList(true); });
+onMounted(() => { refreshTopicList(true); loadForums(); });
 
 onActivated(() => { refreshTopicList(); });
 
@@ -550,14 +552,46 @@ async function toggleBookmark(topic: CachedTopic) {
         </p>
       </div>
 
-      <!-- Empty state -->
+      <!-- Empty state: onboarding for first-time users -->
       <div
-        v-if="allTopics.length === 0 && !store.activeTabDetect.value"
+        v-if="allTopics.length === 0 && userForums.length === 0"
+        class="text-center py-12 space-y-4 px-6"
+      >
+        <div class="text-4xl">🏘️</div>
+        <p class="text-sm font-medium text-(--color-text-primary)">
+          Chưa có forum nào được thêm
+        </p>
+        <p class="text-xs text-(--color-text-secondary)">
+          Extension cần quyền truy cập forum trước khi hoạt động.
+          Thêm forum bên dưới hoặc vào <strong>Cài đặt → Forum hỗ trợ</strong> để quản lý.
+        </p>
+        <div class="flex gap-2 justify-center">
+          <button
+            class="btn btn-sm btn-primary"
+            @click="addForumByHostname('voz.vn')"
+          >
+            Thêm voz.vn
+          </button>
+          <button
+            class="btn btn-sm btn-secondary"
+            @click="addForumByHostname('otofun.net')"
+          >
+            Thêm otofun.net
+          </button>
+        </div>
+        <p class="text-xs text-(--color-text-muted)">
+          Forum khác? Vào <strong>Cài đặt → Forum hỗ trợ</strong> để thêm thủ công.
+        </p>
+      </div>
+
+      <!-- Empty state: have forums but no cached topics yet -->
+      <div
+        v-if="allTopics.length === 0 && userForums.length > 0 && !store.activeTabDetect.value"
         class="text-center py-12 space-y-3"
       >
         <div class="text-3xl">📰</div>
         <p class="text-sm text-(--color-text-secondary)">
-          Chưa có thớt nào. Mở một thớt XenForo để bắt đầu.
+          Chưa tìm thấy thớt nào.
         </p>
       </div>
     </template>

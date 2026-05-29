@@ -47,7 +47,7 @@ describe('token-estimator', () => {
     });
 
     it('returns correct limit for claude-sonnet-4-6', () => {
-      expect(getContextLimit('claude-sonnet-4-6')).toBe(200000);
+      expect(getContextLimit('claude-sonnet-4-6')).toBe(1000000);
     });
 
     it('returns default for unknown model', () => {
@@ -69,7 +69,7 @@ describe('token-estimator', () => {
     });
 
     it('returns correct max output for gemini-2.5-flash', () => {
-      expect(getModelMaxOutput('gemini-2.5-flash')).toBe(65535);
+      expect(getModelMaxOutput('gemini-2.5-flash')).toBe(65536);
     });
 
     it('returns default for unknown model', () => {

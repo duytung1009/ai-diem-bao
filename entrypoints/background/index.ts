@@ -9,7 +9,7 @@ import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
 import { mapExportedTopic, type ImportConflictMode, type ImportResult } from '@/lib/importer';
 import type { ExportedTopic } from '@/lib/exporter';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry } from '@/lib/types';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry, UserForum } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon (Chrome only)
@@ -22,6 +22,18 @@ export default defineBackground(() => {
     .then(() => migrateNormalizedUrls())
     .then(() => migrateCustomPrompts())
     .catch(console.error);
+
+  // Re-register user-added forums on startup (safety net for extension update)
+  reRegisterUserForums().catch(console.error);
+
+  // Migration flag: after update, user may need to re-grant LLM provider permissions
+  // since static host_permissions were removed. The flag is read by SettingsView to
+  // show a banner with "Cấp quyền" button.
+  chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+    if (reason === 'update') {
+      await browser.storage.local.set({ [STORAGE_KEYS.NEEDS_PERMISSION_REAUTH]: true });
+    }
+  });
 
   const activeLLMTasks = new Map<string, AbortController>();
 
@@ -295,6 +307,49 @@ export default defineBackground(() => {
           return true;
         }
 
+        case 'GET_USER_FORUMS': {
+          browser.storage.local.get(STORAGE_KEYS.USER_FORUMS)
+            .then((result) => sendResponse((result[STORAGE_KEYS.USER_FORUMS] as UserForum[]) || []))
+            .catch(() => sendResponse([]));
+          return true;
+        }
+
+        case 'ADD_USER_FORUM': {
+          const forum = message.payload as UserForum;
+          (async () => {
+            await chrome.scripting.registerContentScripts([{
+              id: forum.id,
+              matches: [forum.matchPattern],
+              js: ['content-scripts/content.js'],
+              runAt: 'document_idle',
+              persistAcrossSessions: true,
+            }]);
+            const result = await browser.storage.local.get(STORAGE_KEYS.USER_FORUMS);
+            const forums = (result[STORAGE_KEYS.USER_FORUMS] as UserForum[]) || [];
+            if (!forums.find(f => f.hostname === forum.hostname)) {
+              forums.push(forum);
+              await browser.storage.local.set({ [STORAGE_KEYS.USER_FORUMS]: forums });
+            }
+            sendResponse({ success: true });
+          })().catch((err) => sendResponse({ error: String(err) }));
+          return true;
+        }
+
+        case 'REMOVE_USER_FORUM': {
+          const { id, origins } = message.payload as { id: string; origins: string[] };
+          (async () => {
+            await chrome.scripting.unregisterContentScripts({ ids: [id] }).catch(() => {});
+            await chrome.permissions.remove({ origins }).catch(() => {});
+            const result = await browser.storage.local.get(STORAGE_KEYS.USER_FORUMS);
+            const forums = (result[STORAGE_KEYS.USER_FORUMS] as UserForum[]) || [];
+            await browser.storage.local.set({
+              [STORAGE_KEYS.USER_FORUMS]: forums.filter(f => f.id !== id),
+            });
+            sendResponse({ success: true });
+          })().catch((err) => sendResponse({ error: String(err) }));
+          return true;
+        }
+
         default:
           return false;
       }
@@ -361,6 +416,28 @@ async function migrateNormalizedUrls(): Promise<void> {
     if (existing && existing.cachedAt > topic.cachedAt) continue;
 
     await dbPut({ ...topic, url: normalizedUrl });
+  }
+}
+
+async function reRegisterUserForums(): Promise<void> {
+  if (!chrome.scripting?.registerContentScripts) return; // Firefox MV2
+
+  const result = await browser.storage.local.get(STORAGE_KEYS.USER_FORUMS);
+  const forums = (result[STORAGE_KEYS.USER_FORUMS] as UserForum[]) || [];
+  if (forums.length === 0) return;
+
+  const registered = await chrome.scripting.getRegisteredContentScripts();
+  const registeredIds = new Set(registered.map(s => s.id));
+
+  for (const forum of forums) {
+    if (registeredIds.has(forum.id)) continue;
+    await chrome.scripting.registerContentScripts([{
+      id: forum.id,
+      matches: [forum.matchPattern],
+      js: ['content-scripts/content.js'],
+      runAt: 'document_idle',
+      persistAcrossSessions: true,
+    }]).catch(err => console.warn('[BG] Re-register', forum.hostname, 'failed:', err));
   }
 }
 

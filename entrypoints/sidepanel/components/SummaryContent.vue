@@ -219,6 +219,10 @@ async function handleCopy() {
 
       <!-- Markdown fallback mode (backward compat for old cache / custom prompts) -->
       <template v-else>
+        <div class="text-xs alert alert-warning">
+          Đang hiển thị ở chế độ fallback vì phản hồi LLM bị lỗi và không parse được sang JSON.
+        </div>
+        
         <MarkdownContent v-if="!isStructured" :content="content" />
 
         <div v-else class="space-y-4">

@@ -718,7 +718,7 @@
         ],
         "complexity": 4,
         "recommendedSubtasks": 4,
-        "expansionPrompt": "Chia nhỏ module persistence thành các helper functions cho payload và logic nén segment riêng biệt để dễ dàng thực hiện snapshot testing.",
+        "expansionPrompt": "Xây dựng các hàm helper riêng cho việc tạo payload và nén segment để dễ dàng kiểm thử đơn vị và snapshot testing.",
         "updatedAt": "2026-05-17T15:23:57.970Z"
       },
       {
@@ -7347,13 +7347,1014 @@
         "recommendedSubtasks": 4,
         "expansionPrompt": "Thiết kế kịch bản test vòng lặp: Export -> Clear -> Import -> Verify để đảm bảo tính toàn vẹn dữ liệu 100%.",
         "updatedAt": "2026-05-28T14:30:47.934Z"
+      },
+      {
+        "id": "303",
+        "title": "Xóa static matches khỏi content script",
+        "description": "Thay đổi `entrypoints/content/index.ts` để set mảng `matches` thành `[]`, đảm bảo không có domain nào được hard-code trong manifest.",
+        "details": "Trong file `entrypoints/content/index.ts`, sửa dòng `matches:` thành `matches: []`. Giữ nguyên logic `main()` hiện tại. Dòng mã giả: `export default defineContentScript({ matches: [], main() { ... } });`",
+        "testStrategy": "Kiểm tra file xuất ra `.output/chrome-mv3/manifest.json` không còn `content_scripts` cho bất kỳ domain nào. Chạy `npm run compile` không lỗi.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xác định vị trí mảng matches trong file entrypoints/content/index.ts",
+            "description": "Mở file entrypoints/content/index.ts và tìm dòng khai báo mảng matches trong defineContentScript để chuẩn bị thay đổi.",
+            "dependencies": [],
+            "details": "Dùng trình soạn thảo hoặc lệnh grep để định vị dòng có nội dung 'matches:' trong tệp. Đảm bảo ghi nhận vị trí dòng và cú pháp hiện tại.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thay đổi giá trị matches thành mảng rỗng",
+            "description": "Sửa dòng matches hiện tại thành 'matches: []' để xóa tất cả các domain hard-coded khỏi content script.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thay thế nội dung sau 'matches:' bằng '[]'. Giữ nguyên các dấu phẩy và cấu trúc xung quanh. Không thay đổi định nghĩa main() hoặc các thuộc tính khác.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xác nhận giữ nguyên logic hàm main()",
+            "description": "Kiểm tra để đảm bảo hàm main() trong cùng file không bị ảnh hưởng bởi thay đổi matches.",
+            "dependencies": [
+              2
+            ],
+            "details": "So sánh nội dung hàm main() trước và sau khi sửa. Nếu có bất kỳ thay đổi nào ngoài matches, khôi phục lại. main() phải giữ nguyên logic gốc.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra manifest xuất ra không còn content_scripts tĩnh",
+            "description": "Chạy build (npm run compile) và verify rằng file .output/chrome-mv3/manifest.json không còn mục content_scripts hoặc có mảng rỗng.",
+            "dependencies": [
+              3
+            ],
+            "details": "Thực hiện lệnh build và mở file manifest.json. Xác nhận không có domain nào được khai báo trong content_scripts. Nếu có, kiểm tra lại file nguồn.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run compile và kiểm tra manifest.json không có content_scripts hoặc có giá trị rỗng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Xác nhận build thành công không có lỗi",
+            "description": "Đảm bảo toàn bộ quá trình build diễn ra không lỗi sau khi thay đổi matches.",
+            "dependencies": [
+              4
+            ],
+            "details": "Chạy npm run compile và kiểm tra trạng thái thoát (exit code). Nếu có lỗi, ghi lại log và sửa chữa. Lưu ý các lỗi liên quan đến inject script nếu có.",
+            "status": "pending",
+            "testStrategy": "Chạy build và kiểm tra exit code 0.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Kiểm tra code thay đổi: verify content script vẫn compile ra content-scripts/content.js dù matches rỗng, kiểm tra output manifest không còn content_scripts entry. Chạy npm run compile, npm run test. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 303,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-28T17:57:03.826Z"
+      },
+      {
+        "id": "304",
+        "title": "Cập nhật wxt.config.ts: thêm scripting permission, xóa host_permissions forum",
+        "description": "Thêm quyền `'scripting'` vào permissions (chỉ cho Chrome MV3), xóa host_permissions của voz.vn và otofun.net, giữ `optional_host_permissions`.",
+        "details": "Trong `wxt.config.ts`: thêm `'scripting'` vào mảng `permissions` (sử dụng cấu trúc điều kiện nếu cần cho Firefox). Xóa các mục trong `host_permissions` liên quan đến forum. Đảm bảo `optional_host_permissions` vẫn còn cho custom LLM providers và new forums. Mã giả: `permissions: ['scripting', ...existingPermissions], host_permissions: existingHostPermissions.filter(h => !h.includes('voz.vn') && !h.includes('otofun.net'))`",
+        "testStrategy": "Kiểm tra manifest xuất ra không còn host_permissions cho voz.vn, otofun.net và có quyền `scripting`. Chạy build thành công.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm 'scripting' vào permissions cho Chrome",
+            "description": "Thêm quyền 'scripting' vào mảng permissions chỉ khi browser là Chrome, sử dụng cấu trúc điều kiện trong manifest function.",
+            "dependencies": [],
+            "details": "Trong manifest function của wxt.config.ts, thêm 'scripting' vào permissions khi env.BROWSER === 'chrome'. Ví dụ: permissions: [...existingPermissions, ...(env.BROWSER === 'chrome' ? ['scripting'] : [])].",
+            "status": "pending",
+            "testStrategy": "Build cho Chrome kiểm tra manifest có 'scripting'. Build cho Firefox kiểm tra không có 'scripting'.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xóa host_permissions của voz.vn và otofun.net",
+            "description": "Loại bỏ các mục host_permissions có chứa 'voz.vn' hoặc 'otofun.net' khỏi manifest function.",
+            "dependencies": [
+              1
+            ],
+            "details": "Áp dụng filter cho mảng host_permissions: host_permissions: existingHostPermissions.filter(h => !h.includes('voz.vn') && !h.includes('otofun.net')). Cần đảm bảo không ảnh hưởng đến optional_host_permissions.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra manifest không còn host_permissions nào chứa voz.vn hay otofun.net.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Bảo toàn optional_host_permissions",
+            "description": "Xác nhận rằng optional_host_permissions hiện tại (cho custom LLM providers và new forums) không bị xóa hoặc thay đổi sau khi cập nhật.",
+            "dependencies": [
+              2
+            ],
+            "details": "Giữ nguyên phần optional_host_permissions trong manifest function. Không thực hiện thay đổi nào trên mảng này. Kiểm tra mã nguồn để đảm bảo nó không nằm trong cùng biến với host_permissions.",
+            "status": "pending",
+            "testStrategy": "So sánh optional_host_permissions trước và sau khi sửa, đảm bảo giống nhau.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra tương thích Firefox khi thêm scripting",
+            "description": "Đảm bảo việc thêm 'scripting' không gây lỗi trên Firefox vì chỉ dành cho Chrome.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng điều kiện env.BROWSER === 'chrome' để thêm 'scripting', Firefox sẽ không có. Kiểm tra build Firefox không lỗi và manifest hợp lệ.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run build:firefox và kiểm tra không có lỗi liên quan đến scripting.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Build và xác minh manifest tổng thể",
+            "description": "Thực hiện build cho cả Chrome và Firefox, kiểm tra tệp manifest.json đầu ra đáp ứng yêu cầu.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Chạy lệnh build (npm run build hoặc npm run compile). Đọc manifest output, xác minh: permissions có 'scripting' cho Chrome (không cho Firefox), host_permissions không chứa voz.vn/otofun.net, optional_host_permissions giữ nguyên.",
+            "status": "pending",
+            "testStrategy": "So sánh manifest output với expected manifest. Nếu có sai sót, điều chỉnh lại code.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Kiểm tra wxt.config.ts: scripting permission chỉ thêm cho Chrome (không Firefox), host_permissions đã xóa voz/otofun, optional_host_permissions giữ nguyên. Chạy npm run compile. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 304,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-28T17:57:04.139Z"
+      },
+      {
+        "id": "305",
+        "title": "Thêm interface UserForum và cập nhật Message type",
+        "description": "Thêm `UserForum` interface trong `lib/types.ts` và thêm các hằng message mới: 'GET_USER_FORUMS', 'ADD_USER_FORUM', 'REMOVE_USER_FORUM'.",
+        "details": "Thêm interface UserForum: `{ id: string; hostname: string; matchPattern: string; origins: string[]; addedAt: number; }`. Sử dụng `crypto.randomUUID()` cho id. Mở rộng type Message với các giá trị mới. Mã giả: `export interface UserForum { id: string; hostname: string; matchPattern: string; origins: string[]; addedAt: number; }`; `export type Message = 'GET_USER_FORUMS' | 'ADD_USER_FORUM' | 'REMOVE_USER_FORUM' | ...`",
+        "testStrategy": "Biên dịch TypeScript không lỗi. Kiểm tra các type được export và sử dụng được từ background script.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa interface UserForum trong lib/types.ts",
+            "description": "Thêm interface UserForum với các trường: id (string), hostname (string), matchPattern (string), origins (string[]), addedAt (number). Đảm bảo sử dụng export để có thể import từ file khác.",
+            "dependencies": [],
+            "details": "Thêm vào cuối file lib/types.ts code: export interface UserForum { id: string; hostname: string; matchPattern: string; origins: string[]; addedAt: number; }",
+            "status": "pending",
+            "testStrategy": "Kiểm tra TypeScript compiler không báo lỗi khi import interface từ file khác.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật type Message với các hằng mới",
+            "description": "Mở rộng type Message trong lib/types.ts để bao gồm các giá trị: 'GET_USER_FORUMS', 'ADD_USER_FORUM', 'REMOVE_USER_FORUM'. Đảm bảo các giá trị cũ vẫn tồn tại.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sửa đổi union type Message: thêm 'GET_USER_FORUMS' | 'ADD_USER_FORUM' | 'REMOVE_USER_FORUM' vào danh sách các giá trị.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra TypeScript compiler nhận diện các giá trị mới khi gán biến kiểu Message.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tạo hàm tiện ích tạo đối tượng UserForum với crypto.randomUUID()",
+            "description": "Viết hàm createUserForum(hostname, matchPattern, origins) trả về đối tượng UserForum với id được tạo bằng crypto.randomUUID() và addedAt là Date.now().",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong lib/utils.ts hoặc file mới, import crypto từ 'crypto', định nghĩa hàm xuất khẩu. Sử dụng crypto.randomUUID() để sinh id.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra hàm trả về đối tượng hợp lệ với id không trùng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Cập nhật imports và exports trong các file liên quan",
+            "description": "Đảm bảo rằng type Message mới và interface UserForum được export đúng cách, và các file khác (ví dụ background script) import đúng các type này.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Kiểm tra các file sử dụng type Message (như lib/types.ts, background.ts, messages.ts) để cập nhật import nếu cần. Sửa tất cả các file tham chiếu đến Message hoặc UserForum.",
+            "status": "pending",
+            "testStrategy": "Không có lỗi TypeScript về module resolution.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Chạy TypeScript compiler và fix lỗi (nếu có)",
+            "description": "Thực hiện biên dịch TypeScript với cấu hình hiện tại, kiểm tra không có lỗi type-checking. Nếu có lỗi, sửa lại code cho phù hợp.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Chạy lệnh tsc hoặc npm run build, xác nhận build thành công. Nếu lỗi, fix các vấn đề về type hoặc missing import.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Kiểm tra UserForum interface đúng field, Message type union cập nhật đủ 3 message types mới. Chạy npm run compile. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 305,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-28T17:57:04.618Z"
+      },
+      {
+        "id": "306",
+        "title": "Thêm storage key cho user forums",
+        "description": "Thêm hằng `USER_FORUMS: 'user-forums'` vào `STORAGE_KEYS` trong `lib/constants.ts`.",
+        "details": "Thêm dòng `USER_FORUMS: 'user-forums'` vào object `STORAGE_KEYS`. Key này sẽ được dùng với `chrome.storage.local`.",
+        "testStrategy": "Kiểm tra hằng được import và sử dụng đúng trong background script.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm hằng USER_FORUMS vào object STORAGE_KEYS trong lib/constants.ts",
+            "description": "Thêm dòng `USER_FORUMS: 'user-forums'` vào object `STORAGE_KEYS` trong file lib/constants.ts.",
+            "dependencies": [],
+            "details": "Mở file lib/constants.ts, tìm đến object STORAGE_KEYS, thêm key `USER_FORUMS` với giá trị `'user-forums'` vào cuối object, đảm bảo đúng cú pháp và không làm hỏng các key khác.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra biên dịch TypeScript không lỗi, import hằng USER_FORUMS từ lib/constants và kiểm tra giá trị bằng 'user-forums'.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật type StorageKeys để bao gồm USER_FORUMS",
+            "description": "Nếu có type riêng cho StorageKeys, cần thêm field USER_FORUMS vào type đó trong lib/types.ts hoặc lib/constants.ts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Kiểm tra xem object STORAGE_KEYS có type định nghĩa không. Nếu có, thêm `USER_FORUMS: string` vào interface hoặc type tương ứng. Đảm bảo type an toàn.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra TypeScript type checking không báo lỗi khi truy cập STORAGE_KEYS.USER_FORUMS.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết unit test cho hằng USER_FORUMS",
+            "description": "Tạo test case kiểm tra rằng STORAGE_KEYS.USER_FORUMS tồn tại và có giá trị đúng 'user-forums'.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Sử dụng framework test hiện tại (vitest hoặc jest). Import STORAGE_KEYS từ lib/constants và assert rằng USER_FORUMS không undefined và bằng 'user-forums'.",
+            "status": "pending",
+            "testStrategy": "Chạy unit test và xác nhận test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Sử dụng STORAGE_KEYS.USER_FORUMS trong background script",
+            "description": "Cập nhật background script để dùng hằng USER_FORUMS thay vì hardcode string 'user-forums' khi thao tác với chrome.storage.local.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tìm kiếm trong background script các đoạn code sử dụng storage key 'user-forums', thay thế bằng STORAGE_KEYS.USER_FORUMS. Đảm bảo import đúng.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra background script hoạt động bình thường, không có lỗi runtime khi truy cập storage.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra tổng thể và đảm bảo không có lỗi biên dịch",
+            "description": "Chạy toàn bộ quá trình build và kiểm tra lỗi, đảm bảo mọi thay đổi đều đồng bộ và không xảy ra lỗi.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Chạy lệnh build của dự án (ví dụ: npm run build hoặc yarn build) và kiểm tra không có lỗi TypeScript. Cũng kiểm tra các import xuất hiện trong toàn bộ codebase.",
+            "status": "pending",
+            "testStrategy": "Run build command và verify không có lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Kiểm tra STORAGE_KEYS đã có USER_FORUMS, import đúng trong background. Chạy npm run compile. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 306,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-28T17:57:04.912Z"
+      },
+      {
+        "id": "307",
+        "title": "Triển khai background message handlers và startup re-registration",
+        "description": "Xử lý các message GET_USER_FORUMS, ADD_USER_FORUM, REMOVE_USER_FORUM trong background script. Khi worker khởi động, đăng ký lại tất cả content scripts từ storage.",
+        "details": "- **GET_USER_FORUMS**: Đọc từ `chrome.storage.local` với key `USER_FORUMS`, trả về array. - **ADD_USER_FORUM**: Gọi `chrome.scripting.registerContentScripts()` với script ID từ UserForum.id, matches và js file. Sau đó lưu forum vào storage. - **REMOVE_USER_FORUM**: Gọi `chrome.scripting.unregisterContentScripts({ ids: [forum.id] })`, gọi `chrome.permissions.remove({ origins: forum.origins })`, xóa khỏi storage. - **Startup**: Trong `runtime.onInstalled` hoặc `runtime.onStartup`, đọc toàn bộ storage và gọi `registerContentScripts` cho từng forum. Mã giả: `chrome.runtime.onStartup.addListener(async () => { const { [STORAGE_KEYS.USER_FORUMS]: forums } = await chrome.storage.local.get(STORAGE_KEYS.USER_FORUMS); for (const forum of (forums || [])) { await chrome.scripting.registerContentScripts([{ id: forum.id, matches: [forum.matchPattern], js: ['content-scripts/content.js'], persistAcrossSessions: true }]); } });`",
+        "testStrategy": "Mock chrome API và kiểm tra các handler gọi đúng hàm. Kiểm tra startup re-register thành công.",
+        "priority": "high",
+        "dependencies": [
+          "304",
+          "305",
+          "306"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai handler GET_USER_FORUMS",
+            "description": "Xử lý tin nhắn GET_USER_FORUMS: đọc từ chrome.storage.local key USER_FORUMS, trả về mảng các forum.",
+            "dependencies": [
+              304,
+              305,
+              306
+            ],
+            "details": "Lắng nghe message type GET_USER_FORUMS, gọi chrome.storage.local.get('USER_FORUMS'), nếu không có trả về mảng rỗng, trả kết quả qua callback.",
+            "status": "pending",
+            "testStrategy": "Mock chrome.storage.local.get và kiểm tra kết quả trả về đúng với dữ liệu mẫu.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai handler ADD_USER_FORUM và REMOVE_USER_FORUM",
+            "description": "Xử lý tin nhắn ADD_USER_FORUM và REMOVE_USER_FORUM, tương tác với chrome.scripting và chrome.permissions.",
+            "dependencies": [
+              304,
+              305,
+              306
+            ],
+            "details": "ADD_USER_FORUM: đăng ký content script với id, matches, js; lưu forum vào storage. REMOVE_USER_FORUM: hủy đăng ký content script, xóa permissions, xóa khỏi storage.",
+            "status": "pending",
+            "testStrategy": "Mock chrome.scripting.registerContentScripts, unregisterContentScripts, permissions.remove, storage. Kiểm tra các API gọi đúng tham số.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Triển khai startup re-registration",
+            "description": "Khi worker khởi động, đọc tất cả forum từ storage và đăng ký lại content scripts.",
+            "dependencies": [
+              304,
+              305,
+              306
+            ],
+            "details": "Thêm listener cho runtime.onStartup. Trong listener, đọc storage key USER_FORUMS, lặp qua từng forum, gọi registerContentScripts với các thông số tương ứng. Xử lý lỗi nếu có.",
+            "status": "pending",
+            "testStrategy": "Mock storage và scripting API. Kiểm tra số lần registerContentScripts được gọi bằng số forum có trong storage.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Kiểm tra 3 handlers GET/ADD/REMOVE, startup re-registration, guard Firefox, error handling. Chạy npm run compile. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 307,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tách riêng handler cho từng loại message (GET, ADD, REMOVE) và logic startup riêng biệt để dễ kiểm thử.",
+        "updatedAt": "2026-05-28T17:57:05.273Z"
+      },
+      {
+        "id": "308",
+        "title": "Xây dựng composable useForumManager",
+        "description": "Tạo composable dùng chung trong sidepanel để quản lý forums: tải danh sách, thêm/xóa forum, kiểm tra trùng lặp.",
+        "details": "Tạo file `entrypoints/sidepanel/composables/useForumManager.ts`. Các hàm chính: - `userForums`: reactive ref<Forum[]>. - `loadForums()`: gửi message `GET_USER_FORUMS` đến background, cập nhật ref. - `addForumByHostname(hostname)`: gọi `chrome.permissions.request({ origins: ['*://'+hostname+'/*'] })`, nếu được chấp thuận thì gửi message `ADD_USER_FORUM` với hostname, matchPattern etc. - `addForumFromUrl(url)`: parse URL lấy hostname, kiểm tra trùng lặp, gọi `addForumByHostname`. - `removeForum(forum)`: gửi message `REMOVE_USER_FORUM` với id. Mã giả: `export function useForumManager() { const userForums = ref<Forum[]>([]); async function loadForums() { const response = await sendMessage({ type: 'GET_USER_FORUMS' }); userForums.value = response; } ... return { userForums, loadForums, addForumByHostname, addForumFromUrl, removeForum }; }`",
+        "testStrategy": "Viết unit test với mock chrome API và composable. Kiểm tra các state được update đúng sau mỗi action.",
+        "priority": "high",
+        "dependencies": [
+          "305",
+          "306",
+          "307"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo file composable và implement hàm loadForums",
+            "description": "Tạo file `entrypoints/sidepanel/composables/useForumManager.ts`, định nghĩa reactive state userForums và hàm loadForums để tải danh sách forums từ background.",
+            "dependencies": [],
+            "details": "Tạo file useForumManager.ts, import Vue ref. Định nghĩa export function useForumManager(). Khởi tạo const userForums = ref<Forum[]>([]). Viết async function loadForums: gửi sendMessage({ type: 'GET_USER_FORUMS' }), gán kết quả vào userForums.value. Return { userForums, loadForums }.",
+            "status": "pending",
+            "testStrategy": "Unit test: mock sendMessage, kiểm tra loadForums cập nhật userForums đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement hàm addForumByHostname và addForumFromUrl",
+            "description": "Thêm chức năng thêm forum: addForumByHostname yêu cầu quyền chrome.permissions.request, sau đó gửi message ADD_USER_FORUM. addForumFromUrl parse URL, kiểm tra trùng lặp, gọi addForumByHostname.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong useForumManager, thêm async function addForumByHostname(hostname): gọi chrome.permissions.request({ origins: ['*://'+hostname+'/*'] }), nếu granted thì gửi sendMessage({ type: 'ADD_USER_FORUM', hostname, matchPattern: '*://'+hostname+'/*' }) và gọi loadForums để refresh. Viết addForumFromUrl(url): dùng new URL(url) lấy hostname, kiểm tra userForums không có hostname trùng, nếu hợp lệ gọi addForumByHostname. Thêm vào return của composable.",
+            "status": "pending",
+            "testStrategy": "Mock chrome.permissions.request và sendMessage. Kiểm tra các bước và cập nhật state.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement hàm removeForum và hoàn thiện composable",
+            "description": "Thêm hàm removeForum gửi message REMOVE_USER_FORUM. Export tất cả các hàm từ composable.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong useForumManager, thêm async function removeForum(forum): gửi sendMessage({ type: 'REMOVE_USER_FORUM', id: forum.id }), gọi loadForums để refresh. Cập nhật return object bao gồm cả removeForum và các hàm đã có: userForums, loadForums, addForumByHostname, addForumFromUrl.",
+            "status": "pending",
+            "testStrategy": "Mock sendMessage, kiểm tra removeForum gửi đúng message và state được cập nhật.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Kiểm tra composable: loadForums, addForumByHostname, addForumFromUrl, removeForum hoạt động đúng. Chạy npm run compile. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 308,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia composable thành các hàm riêng lẻ: load, addByHostname, addFromUrl, remove, và kiểm tra trùng lặp.",
+        "updatedAt": "2026-05-28T17:58:14.583Z"
+      },
+      {
+        "id": "309",
+        "title": "Xây dựng giao diện quản lý forum trong SettingsView",
+        "description": "Thêm section 'Forum hỗ trợ' vào Settings, hiển thị danh sách forums đã thêm, nút xóa, nút shortcut thêm voz.vn/otofun.net, input URL thủ công.",
+        "details": "Trong `SettingsView.vue`: - Tạo section với tiêu đề 'Forum hỗ trợ'. - Sử dụng `useForumManager` để lấy `userForums`. - V-for hiển thị từng forum với nút 'Xóa'. - Thêm hai nút 'Thêm voz.vn' và 'Thêm otofun.net' gọi `addForumByHostname`. - Input URL + nút 'Thêm' gọi `addForumFromUrl`. - Xử lý lỗi: duplicate (thông báo 'Forum này đã được thêm'), permission denied (thông báo 'Bạn chưa cấp quyền'), invalid URL. - Disable nếu đã tồn tại hoặc trên Firefox (no scripting API).",
+        "testStrategy": "Kiểm tra UI render đúng với danh sách giả. Test từng action: thêm shortcut, thêm URL, xóa. Kiểm tra thông báo lỗi xuất hiện.",
+        "priority": "high",
+        "dependencies": [
+          "308"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Kiểm tra UI Settings: forum list, shortcut buttons, manual input, error states, loading state. Chạy npm run compile. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 309,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tách riêng section UI forums thành component nhỏ, xử lý các sự kiện thêm/xóa và thông báo lỗi.",
+        "updatedAt": "2026-05-28T18:00:27.183Z"
+      },
+      {
+        "id": "310",
+        "title": "Xây dựng onboarding empty state cho side panel",
+        "description": "Khi user chưa có forum nào, hiển thị màn hình chào mừng với shortcut buttons thêm voz.vn và otofun.net, link đến Settings.",
+        "details": "Trong component chính của side panel (ví dụ `SidePanelView.vue`): - Nếu `userForums.length === 0`, hiển thị empty state. - Nội dung: 'Thêm forum đầu tiên của bạn' + hai nút 'Thêm voz.vn' và 'Thêm otofun.net' (dùng `useForumManager.addForumByHostname`). - Thêm nút 'Cài đặt' để dẫn đến Settings. - Sử dụng các style thân thiện, có icon nếu có. - Ẩn các chức năng khác (chỉ hiện empty state).",
+        "testStrategy": "Kiểm tra khi chưa có forum thì empty state hiển thị. Test click shortcut gọi đúng composable. Test chuyển hướng đến Settings.",
+        "priority": "high",
+        "dependencies": [
+          "308"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Kiểm tra onboarding empty state: hiển thị khi userForums rỗng, shortcut buttons, link đến Settings. Chạy npm run compile. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 310,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Thiết kế component empty state đơn giản với các shortcut và liên kết đến Settings.",
+        "updatedAt": "2026-05-28T18:00:27.265Z"
+      },
+      {
+        "id": "311",
+        "title": "Kiểm tra build và manifest",
+        "description": "Chạy `npm run compile` đảm bảo không lỗi type. Kiểm tra manifest xuất ra không có content_scripts và host_permissions cho forum.",
+        "details": "Thực hiện: `npm run compile`. Nếu lỗi, sửa cho đến khi pass. Mở file `.output/chrome-mv3/manifest.json` (hoặc tương ứng) và xác nhận không có key `content_scripts` và không có host_permissions liên quan đến voz.vn, otofun.net. Nếu có, kiểm tra lại cấu hình.",
+        "testStrategy": "Chạy script kiểm tra tự động: kiểm tra không có `content_scripts` và không có host_permissions chứa 'voz.vn' hoặc 'otofun.net' trong manifest output.",
+        "priority": "high",
+        "dependencies": [
+          "303",
+          "304",
+          "305",
+          "306",
+          "307",
+          "308",
+          "309",
+          "310"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Kiểm tra output manifest không còn content_scripts/host_permissions cho forum, npm run compile pass. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 311,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-28T18:01:09.698Z"
+      },
+      {
+        "id": "312",
+        "title": "Kiểm thử thủ công các kịch bản người dùng",
+        "description": "Thực hiện test plan: onboarding, shortcut, manual add, duplicate, remove, persist, permission denied.",
+        "details": "Làm theo test plan trong PRD: 1) Cài đặt extension lần đầu, kiểm tra empty state. 2) Click shortcut voz.vn, approve dialog, check forum added, navigate voz.vn, side panel hoạt động. 3) Thêm forum tùy ý bằng URL. 4) Thêm domain không phải XF, check không crash. 5) Thêm trùng, check thông báo lỗi. 6) Xóa forum, check side panel không hoạt động trên domain đó. 7) Restart Chrome, check forum vẫn còn và inject đúng. 8) Từ chối cấp quyền, check không thêm vào list và có thông báo.",
+        "testStrategy": "Chạy test thủ công, ghi lại kết quả. Nếu có lỗi, báo cáo để sửa.",
+        "priority": "medium",
+        "dependencies": [
+          "311"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy toàn bộ test plan từ PRD, kiểm tra tất cả kịch bản. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 312,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "",
+        "updatedAt": "2026-05-28T18:01:10.015Z"
+      },
+      {
+        "id": "313",
+        "title": "Update wxt.config.ts to remove static host_permissions",
+        "description": "Remove all LLM provider URLs from host_permissions in wxt.config.ts. Keep optional_host_permissions: ['https://*/*', 'http://*/*'].",
+        "details": "In wxt.config.ts, remove any entries in 'host_permissions' that correspond to LLM provider domains (e.g., 'https://api.openai.com/*', 'https://*.anthropic.com/*', etc.). Keep 'optional_host_permissions' as specified. Then ensure the manifest output no longer contains those permissions.",
+        "testStrategy": "Build the extension with 'npm run compile' and check '.output/chrome-mv3/manifest.json' to confirm that only optional_host_permissions exists and no LLM provider URLs are in host_permissions.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xóa các LLM provider URLs khỏi host_permissions trong wxt.config.ts",
+            "description": "Trong file wxt.config.ts, loại bỏ tất cả các mục trong host_permissions tương ứng với các miền của LLM provider. Giữ nguyên optional_host_permissions: ['https://*/*', 'http://*/*'].",
+            "dependencies": [],
+            "details": "Chỉnh sửa file wxt.config.ts: tìm mảng host_permissions và xóa các URL như 'https://api.openai.com/*', 'https://*.anthropic.com/*', v.v. Sau đó build extension và kiểm tra manifest đầu ra không còn chứa các permission đó.",
+            "status": "pending",
+            "testStrategy": "Chạy 'npm run compile' và kiểm tra file .output/chrome-mv3/manifest.json để xác nhận chỉ có optional_host_permissions và không có host_permissions tĩnh.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Đơn giản chỉ là xóa các dòng host_permissions trong cấu hình và kiểm tra manifest đầu ra.",
+        "updatedAt": "2026-05-29T02:50:57.784Z"
+      },
+      {
+        "id": "314",
+        "title": "Create lib/permissions.ts permission utility module",
+        "description": "Create a new module with functions: originFromUrl, requestOriginPermission, hasOriginPermission. Use chrome.permissions API (callback style) for permission requests. In DEV mode, requestOriginPermission should return true without dialog.",
+        "details": "Implement:\n- originFromUrl(url: string): string | null: Extract origin pattern from URL (e.g., 'https://api.openai.com/*').\n- requestOriginPermission(origin: string): Promise<boolean>: Wrap chrome.permissions.request in a Promise. In DEV mode, immediately resolve true.\n- hasOriginPermission(origin: string): Promise<boolean>: Wrap chrome.permissions.contains.\n\nUse callback API: return new Promise((resolve) => { chrome.permissions.request({ origins: [origin] }, (granted) => resolve(granted)); }).",
+        "testStrategy": "Unit test each function. For requestOriginPermission, test that it calls chrome.permissions.request with correct origin and resolves with granted value. Simulate DEV mode to verify it returns true without calling chrome API.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo cấu trúc module và hàm originFromUrl",
+            "description": "Tạo file lib/permissions.ts, định nghĩa hàm originFromUrl để trích xuất pattern origin từ URL.",
+            "dependencies": [],
+            "details": "Viết hàm originFromUrl(url: string): string | null sử dụng URL constructor và regex để tạo pattern như 'https://api.openai.com/*'. Xử lý trường hợp URL không hợp lệ.",
+            "status": "pending",
+            "testStrategy": "Unit test: kiểm tra với các URL hợp lệ và không hợp lệ.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai hàm requestOriginPermission với xử lý DEV mode",
+            "description": "Thêm hàm requestOriginPermission, gọi chrome.permissions.request dạng callback chuyển thành Promise. Trong DEV mode trả về true mà không gọi API.",
+            "dependencies": [
+              1
+            ],
+            "details": "Định nghĩa hàm async requestOriginPermission(origin: string): Promise<boolean>. Sử dụng điều kiện DEV mode (import.meta.env.DEV) để bỏ qua chrome API. Sử dụng new Promise với callback chrome.permissions.request.",
+            "status": "pending",
+            "testStrategy": "Unit test: mock chrome.permissions.request, kiểm tra resolve giá trị. Test DEV mode mock env variable.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Triển khai hàm hasOriginPermission và hoàn thiện module",
+            "description": "Thêm hàm hasOriginPermission gọi chrome.permissions.contains dạng Promise. Kiểm tra toàn bộ module.",
+            "dependencies": [
+              2
+            ],
+            "details": "Định nghĩa hàm hasOriginPermission(origin: string): Promise<boolean> tương tự sử dụng new Promise. Xuất tất cả các hàm. Thêm type definitions nếu cần.",
+            "status": "pending",
+            "testStrategy": "Unit test: mock chrome.permissions.contains, kiểm tra kết quả. Integration test: kiểm tra module hoạt động cùng nhau.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Phát triển module tiện ích với các hàm originFromUrl, requestOriginPermission, hasOriginPermission, sử dụng chrome.permissions API và xử lý DEV mode.",
+        "updatedAt": "2026-05-29T02:53:00.539Z"
+      },
+      {
+        "id": "315",
+        "title": "Create lib/llm/provider-origins.ts provider origin map",
+        "description": "Create a module that maps each LLM provider to its base URL and provides a function to extract the origin pattern for permission requests.",
+        "details": "Implement:\n- PROVIDER_BASE_URLS: Record<LLMProvider, string> mapping provider names to their API base URLs (e.g., 'openai' -> 'https://api.openai.com', 'anthropic' -> 'https://api.anthropic.com', 'gemini' -> 'https://generativelanguage.googleapis.com', 'openrouter' -> 'https://openrouter.ai').\n- getProviderOrigin(provider: LLMProvider, baseUrl: string): string | null: Given a provider and its base URL, return the origin pattern (e.g., 'https://api.openai.com/*'). If baseUrl is not recognized, derive origin from it.",
+        "testStrategy": "Verify that PROVIDER_BASE_URLS contains expected providers and that getProviderOrigin returns correct origin strings. Test with custom URLs.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo module provider-origins.ts với mapping PROVIDER_BASE_URLS và hàm getProviderOrigin",
+            "description": "Viết file lib/llm/provider-origins.ts bao gồm PROVIDER_BASE_URLS (mapping provider tới base URL) và hàm getProviderOrigin để lấy origin pattern từ provider và base URL.",
+            "dependencies": [],
+            "details": "Định nghĩa PROVIDER_BASE_URLS là Record<LLMProvider, string> với các giá trị mẫu cho openai, anthropic, gemini, openrouter. Viết hàm getProviderOrigin nhận provider và baseUrl, trả về origin pattern (thêm /*) nếu baseUrl khớp với PROVIDER_BASE_URLS hoặc là URL hợp lệ, nếu không trả về null.",
+            "status": "pending",
+            "testStrategy": "Verify PROVIDER_BASE_URLS chứa đúng các provider mong đợi. Kiểm thử getProviderOrigin với các URL chuẩn và tùy chỉnh, đảm bảo trả về đúng origin pattern hoặc null.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Định nghĩa mapping provider->base URL và hàm getProviderOrigin, kiểm thử với các URL tùy chỉnh.",
+        "updatedAt": "2026-05-29T02:53:00.798Z"
+      },
+      {
+        "id": "316",
+        "title": "Update save() method in SettingsView.vue to request provider permission",
+        "description": "Refactor the save() method to use the new permission module: check if permission already granted via hasOriginPermission, if not, request via requestOriginPermission. Rename requestCustomOriginPermission to requestProviderPermission.",
+        "details": "Modify SettingsView.vue:\n- Rename 'requestCustomOriginPermission' to 'requestProviderPermission'.\n- In save(), after validating form, call hasOriginPermission with the provider's origin.\n- If not granted, call requestProviderPermission (which internally calls requestOriginPermission).\n- If request fails, show error message.\n- Only proceed with saving after permission is granted (if requested).\n- For custom URL case, derive origin from the custom URL.",
+        "testStrategy": "Unit test the save logic with mocked permission functions. Integration test: Open extension, go to settings, select a provider, click save, verify Chrome permission dialog appears (first time) and disappears upon grant. Verify that subsequent saves don't show dialog.",
+        "priority": "high",
+        "dependencies": [
+          "314",
+          "315"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Đổi tên phương thức requestCustomOriginPermission thành requestProviderPermission",
+            "description": "Trong SettingsView.vue, thực hiện đổi tên phương thức 'requestCustomOriginPermission' thành 'requestProviderPermission' để đồng bộ với module quyền mới.",
+            "dependencies": [],
+            "details": "Tìm kiếm và thay thế tất cả các lần xuất hiện của 'requestCustomOriginPermission' trong file SettingsView.vue bằng 'requestProviderPermission'. Đảm bảo mọi tham chiếu đều được cập nhật.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai kiểm tra và yêu cầu quyền trong save()",
+            "description": "Trong phương thức save(), sau khi xác thực form, thêm logic gọi hasOriginPermission với origin của provider. Nếu chưa được cấp, gọi requestProviderPermission và chờ cho đến khi quyền được cấp trước khi tiến hành lưu.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng await để gọi hasOriginPermission(origin). Nếu kết quả false, gọi requestProviderPermission(origin). Chỉ khi quyền được cấp (hoặc đã có) mới thực hiện lưu. Đảm bảo luồng bất đồng bộ hoạt động chính xác.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý trường hợp URL tùy chỉnh để lấy origin",
+            "description": "Đối với provider có URL tùy chỉnh, cần trích xuất origin từ URL đó (sử dụng new URL().origin) trước khi gọi hasOriginPermission và requestProviderPermission.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong save(), kiểm tra nếu provider có custom URL, lấy origin từ URL đó. Đảm bảo xử lý lỗi nếu URL không hợp lệ. Tích hợp việc lấy origin vào luồng kiểm tra quyền.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Thêm xử lý lỗi khi yêu cầu quyền thất bại",
+            "description": "Trong save(), nếu requestProviderPermission thất bại (người dùng từ chối hoặc lỗi), hiển thị thông báo lỗi và dừng quá trình lưu.",
+            "dependencies": [
+              2
+            ],
+            "details": "Bắt lỗi từ requestProviderPermission và hiển thị thông báo lỗi phù hợp (ví dụ: 'Không thể cấp quyền cho origin này'). Đảm bảo không lưu cấu hình khi quyền không được cấp.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Tích hợp các module permission và provider-origins vào logic lưu, đảm bảo xử lý quyền trước khi lưu cấu hình provider.",
+        "updatedAt": "2026-05-29T02:54:12.580Z"
+      },
+      {
+        "id": "317",
+        "title": "Update testConnection() method in SettingsView.vue to use permission request",
+        "description": "Modify the testConnection method to ensure that the needed permission is granted before performing the test.",
+        "details": "In SettingsView.vue, within testConnection(), before making the test API call, check if permission is granted for the provider's origin. If not, request it. Proceed with connection test only after permission is granted. If permission request fails, show error and abort test.",
+        "testStrategy": "Manual test: After save (permission granted), test connection should work without dialog. If permissions are revoked, test connection should trigger dialog again. Also verify that test connection works after granting.",
+        "priority": "medium",
+        "dependencies": [
+          "314",
+          "315"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo hàm kiểm tra và yêu cầu quyền cho testConnection",
+            "description": "Tạo một hàm để kiểm tra quyền của provider và yêu cầu nếu chưa được cấp, tương tự logic trong save flow nhưng đơn giản hơn.",
+            "dependencies": [],
+            "details": "Trong SettingsView.vue, tạo hàm requestPermissionForTest(provider) sử dụng hasOriginPermission và requestProviderPermission (đã được đổi tên từ requestCustomOriginPermission). Hàm trả về true nếu quyền đã được cấp hoặc được cấp thành công, false nếu từ chối.",
+            "status": "pending",
+            "testStrategy": "Unit test: mock các hàm permission và kiểm tra hành vi trả về.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật testConnection() để gọi kiểm tra quyền trước khi test",
+            "description": "Sửa phương thức testConnection() để gọi requestPermissionForTest, chỉ thực hiện test API nếu quyền được cấp. Nếu từ chối, hiển thị lỗi và dừng test.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm await requestPermissionForTest(provider) vào đầu testConnection. Nếu trả về false, set error message và return. Nếu true, tiếp tục gọi API test.",
+            "status": "pending",
+            "testStrategy": "Manual test: test connection khi quyền chưa được cấp (phải hiển thị dialog), test sau khi cấp quyền (không dialog), test khi từ chối (hiển thị lỗi).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Kiểm tra testConnection() gọi requestProviderPermission, compile pass. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 317,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Thêm kiểm tra và yêu cầu quyền trước khi test kết nối, đảm bảo hành vi nhất quán với save flow.",
+        "updatedAt": "2026-05-29T02:54:22.459Z"
+      },
+      {
+        "id": "318",
+        "title": "Implement migration background handler on chrome.runtime.onInstalled",
+        "description": "Add a listener in the background script for chrome.runtime.onInstalled to set a 'needs_permission_reauth' flag in chrome.storage.local when the extension is updated.",
+        "details": "In the service worker background script, add:\nchrome.runtime.onInstalled.addListener((details) => {\n  if (details.reason === 'update') {\n    chrome.storage.local.set({ needs_permission_reauth: true });\n  }\n});\n\nThis flag will be read by SettingsView to show a migration banner.",
+        "testStrategy": "After update, check chrome.storage.local for the flag. Simulate update event in test environment.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm listener chrome.runtime.onInstalled trong background script",
+            "description": "Thêm event listener cho chrome.runtime.onInstalled để set flag 'needs_permission_reauth' trong chrome.storage.local khi extension được cập nhật.",
+            "dependencies": [],
+            "details": "Trong service worker background script, thêm chrome.runtime.onInstalled.addListener với kiểm tra details.reason === 'update', sau đó gọi chrome.storage.local.set({ needs_permission_reauth: true }).",
+            "status": "pending",
+            "testStrategy": "Kiểm tra bằng cách mô phỏng sự kiện update và xác nhận flag được set trong chrome.storage.local.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Thêm listener onInstalled để set flag cần cấp lại quyền khi extension được cập nhật.",
+        "updatedAt": "2026-05-29T02:55:46.330Z"
+      },
+      {
+        "id": "319",
+        "title": "Implement migration banner in SettingsView.vue",
+        "description": "On mount, read 'needs_permission_reauth' flag from storage. If true, display a banner with a 'Cấp quyền' button that triggers permission requests for all providers.",
+        "details": "In SettingsView.vue:\n- On mounted, call chrome.storage.local.get('needs_permission_reauth'). If true, display a banner component.\n- Banner contains text indicating that permissions need to be re-granted, and a button 'Cấp quyền'.\n- On button click, iterate through all providers, call requestProviderPermission for each origin. Show loading state.\n- After successful requests, clear the flag (set needs_permission_reauth to false) and hide banner.\n- Handle errors gracefully.",
+        "testStrategy": "Test by setting the flag manually, opening settings, verifying banner appears. Click 'Cấp quyền', accept permissions, verify banner disappears and flag is cleared. Also test that banner does not appear after first grant.",
+        "priority": "medium",
+        "dependencies": [
+          "316",
+          "318"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo component banner cấp quyền lại (ReauthBanner)",
+            "description": "Tạo component banner hiển thị thông báo cần cấp quyền lại và nút 'Cấp quyền'. Button sẽ emit sự kiện để component cha xử lý.",
+            "dependencies": [],
+            "details": "Tạo file ReauthBanner.vue với template chứa div banner, văn bản chỉ dẫn và nút 'Cấp quyền'. Sử dụng emit để gửi sự kiện khi nhấn nút. Thiết lập props nếu cần.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thêm mounted hook và conditional rendering trong SettingsView",
+            "description": "Trong SettingsView.vue, thêm mounted hook để đọc 'needs_permission_reauth' từ storage. Nếu là true, hiển thị banner bằng cách import và sử dụng component ReauthBanner.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm import ReauthBanner, thêm data property showBanner (mặc định false). Trong mounted, gọi chrome.storage.local.get('needs_permission_reauth', callback). Nếu true, set showBanner = true. Thêm component vào template với v-if='showBanner'.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý sự kiện nhấn nút cấp quyền và gọi request cho tất cả providers",
+            "description": "Khi nhận sự kiện từ ReauthBanner, thực hiện vòng lặp qua tất cả providers, gọi requestProviderPermission cho mỗi origin. Hiển thị trạng thái loading, xử lý lỗi gracefully, và khi hoàn thành thành công thì xóa flag trong storage và ẩn banner.",
+            "dependencies": [
+              2
+            ],
+            "details": "Thêm method handleReauth trong SettingsView. Sử dụng providers list (từ store/composable). Duyệt qua từng provider, gọi requestProviderPermission. Sử dụng Promise.all hoặc tuần tự, có trạng thái loading. Khi tất cả thành công, gọi chrome.storage.local.set({ needs_permission_reauth: false }) và set showBanner = false. Xử lý lỗi với try-catch và thông báo lỗi tương ứng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Xây dựng banner hiển thị khi cần cấp lại quyền, nút 'Cấp quyền' gọi request cho tất cả providers, xóa flag sau khi thành công.",
+        "updatedAt": "2026-05-29T02:57:23.569Z"
+      },
+      {
+        "id": "320",
+        "title": "Build verification and manifest check",
+        "description": "After all code changes, run 'npm run compile' to ensure no errors, then inspect the generated manifest to confirm no LLM host_permissions.",
+        "details": "Execute:\n- 'npm run compile' (or build command) to generate extension output.\n- Check for type errors and compilation errors.\n- Open '.output/chrome-mv3/manifest.json' (or equivalent) and verify that:\n  - 'host_permissions' does not contain any LLM provider URLs.\n  - 'optional_host_permissions' contains 'https://*/*' and 'http://*/*'.\n- If any issues, note them for correction.",
+        "testStrategy": "Command-line verification. Expect clean build exit code and manifest content check.",
+        "priority": "medium",
+        "dependencies": [
+          "313",
+          "314",
+          "315",
+          "316",
+          "317",
+          "318",
+          "319"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chạy npm run compile và kiểm tra manifest",
+            "description": "Thực thi npm run compile để build extension, sau đó kiểm tra file manifest.json để xác nhận không có host_permissions cho LLM provider.",
+            "dependencies": [],
+            "details": "Chạy lệnh build, đảm bảo không có lỗi, sau đó mở file .output/chrome-mv3/manifest.json và kiểm tra: host_permissions không chứa URL của LLM provider, và optional_host_permissions chứa https://*/* và http://*/*.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công kết quả build và nội dung manifest.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Kiểm tra build và manifest để đảm bảo không còn host_permissions tĩnh không mong muốn.",
+        "updatedAt": "2026-05-29T02:58:00.577Z"
+      },
+      {
+        "id": "321",
+        "title": "Manual end-to-end testing for each provider save flow",
+        "description": "Test each LLM provider (OpenAI, Anthropic, Gemini, OpenRouter) and custom URL to ensure permission dialog appears correctly on first save and not on subsequent saves.",
+        "details": "Perform on a test extension installation:\n1. Clear all permissions (remove extension, reinstall).\n2. Open settings, select OpenAI, click Save. Confirm Chrome permission dialog shows for 'api.openai.com'. Grant. Verify save succeeds.\n3. Save again without changing provider. Confirm no dialog appears.\n4. Repeat for Anthropic, Gemini, OpenRouter, and a custom URL (e.g., 'https://custom.example.com').\n5. Verify testConnection works after permission granted.\n6. Ensure migration banner appears after update and 'Cấp quyền' triggers requests.",
+        "testStrategy": "Manual test case execution with pass/fail for each step.",
+        "priority": "low",
+        "dependencies": [
+          "320"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Kiểm thử thủ công luồng lưu provider",
+            "description": "Thực hiện kiểm thử thủ công từng bước cho tất cả provider và custom URL, đảm bảo dialog quyền xuất hiện đúng lần đầu và không xuất hiện lần sau.",
+            "dependencies": [
+              320
+            ],
+            "details": "1. Xóa extension, cài lại. 2. Mở settings, chọn OpenAI, bấm Save. Xác nhận dialog quyền cho api.openai.com, cấp quyền, kiểm tra save thành công. 3. Lưu lại lần 2, không thay đổi provider. Xác nhận không dialog. 4. Lặp lại cho Anthropic, Gemini, OpenRouter, custom URL (ví dụ https://custom.example.com). 5. Kiểm tra testConnection hoạt động sau khi cấp quyền. 6. Đảm bảo migration banner xuất hiện sau update và nút 'Cấp quyền' kích hoạt request.",
+            "status": "pending",
+            "testStrategy": "Thực thi thủ công từng bước, ghi nhận pass/fail cho mỗi bước.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Self-review",
+            "description": "Test thủ công từng provider: Save → dialog → grant → test OK, save lần 2 không dialog. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 321,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Chuẩn bị kịch bản test chi tiết cho từng provider và custom URL, kiểm tra dialog quyền xuất hiện đúng lần đầu và không xuất hiện lần sau.",
+        "updatedAt": "2026-05-29T02:58:00.830Z"
+      },
+      {
+        "id": "322",
+        "title": "Verify DEV mode bypass for permission requests",
+        "description": "Confirm that in development server (e.g., 'npm run dev'), the permission request dialog does not appear; instead, permission is automatically considered granted.",
+        "details": "When running in dev mode (process.env.NODE_ENV === 'development' or similar), requestOriginPermission should return true without calling chrome.permissions.request. Verify that:\n- No dialog appears when saving a provider in dev mode.\n- The extension behaves as if permissions are granted.",
+        "testStrategy": "Run the dev server, open extension in development mode, go to settings, save a provider. Confirm no dialog appears and save succeeds. Check console logs if any.",
+        "priority": "low",
+        "dependencies": [
+          "314"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write automated tests for DEV mode bypass in permission requests",
+            "description": "Create unit tests and/or e2e tests to verify that in dev mode, chrome.permissions.request is not called and requestOriginPermission returns true immediately without dialog.",
+            "dependencies": [
+              314
+            ],
+            "details": "Implement test cases: 1) Test that when NODE_ENV is development, requestOriginPermission resolves true without calling chrome.permissions.request. 2) Mock chrome.permissions.request and ensure it is not called. 3) Test that the save provider flow in dev mode does not trigger permission dialog. Use Jest or similar framework.",
+            "status": "pending",
+            "testStrategy": "Run unit tests for permission module. For e2e, simulate dev mode and verify dialog not shown.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Kiểm tra trong chế độ dev rằng permission request không hiển thị dialog và trả về true.",
+        "updatedAt": "2026-05-29T02:58:01.145Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-28T15:01:50.831Z",
-      "taskCount": 148,
-      "completedCount": 136,
+      "lastModified": "2026-05-29T02:58:01.147Z",
+      "taskCount": 168,
+      "completedCount": 156,
       "tags": [
         "master"
       ]

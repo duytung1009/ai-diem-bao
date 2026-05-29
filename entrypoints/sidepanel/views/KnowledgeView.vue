@@ -331,7 +331,7 @@ onActivated(async () => {
           <p class="font-medium">Thớt dài ({{ cachedTopic.segments.length }} phần)</p>
           <p class="mt-0.5">
             Trích xuất kiến thức gọi API <strong>nhiều lần hơn tóm tắt</strong> — mỗi phần cần ít nhất 1 lần gọi, cộng thêm 1 lần tổng hợp cuối.
-            Với thớt này sẽ cần tối thiểu {{ cachedTopic.segments.length + 1 }} lần gọi, thời gian xử lý có thể <strong>lâu gấp đôi</strong> so với khi tóm tắt.
+            Với thớt này sẽ cần tối thiểu {{ cachedTopic.segments.length + 1 }} lần gọi, thời gian xử lý có thể <strong>lâu hơn nhiều</strong> so với khi tóm tắt.
             Nên thực hiện lúc rảnh và không cần kết quả ngay.
           </p>
         </div>

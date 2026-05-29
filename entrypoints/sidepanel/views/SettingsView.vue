@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { sendMessage } from '@/lib/messaging';
-import { DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS } from '@/lib/constants';
+import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, DEFAULT_SCRAPE_DELAY_MS, DEFAULT_SEGMENT_SIZE, DEFAULT_DYNAMIC_SEGMENTS } from '@/lib/constants';
 import type { LLMConfig, LLMProvider, CustomPrompts, CachedTopic, CostEstimate } from '@/lib/types';
+import { getProviderOrigin } from '@/lib/llm/provider-origins';
+import { requestOriginPermission, hasOriginPermission } from '@/lib/permissions';
 import { buildCacheExport } from '@/lib/exporter';
 import { validateCacheExport, type ImportConflictMode, type ImportResult } from '@/lib/importer';
 import { getModelThinkingBudget, modelSupportsThinking } from '@/lib/token-estimator';
 import PillTabs from '../components/PillTabs.vue';
+import { useForumManager } from '../composables/useForumManager';
 import ShowDefaultButton from '../components/ShowDefaultButton.vue';
 import {
   SUMMARY_DEFAULT_TASKS,
@@ -67,6 +70,34 @@ const importError = ref('');
 const conflictMode = ref<ImportConflictMode>('skip');
 const fileInput = ref<HTMLInputElement | null>(null);
 
+const needsReauth = ref(false);
+const reauthGranting = ref(false);
+const reauthMessage = ref('');
+
+async function checkReauthNeeded() {
+  const result = await browser.storage.local.get(STORAGE_KEYS.NEEDS_PERMISSION_REAUTH);
+  needsReauth.value = result[STORAGE_KEYS.NEEDS_PERMISSION_REAUTH] === true;
+}
+
+async function handleReauthGrant() {
+  reauthGranting.value = true;
+  reauthMessage.value = '';
+  try {
+    const granted = await requestProviderPermission(config.value.provider, config.value.baseUrl);
+    if (granted) {
+      await browser.storage.local.remove(STORAGE_KEYS.NEEDS_PERMISSION_REAUTH);
+      needsReauth.value = false;
+      reauthMessage.value = 'Đã cấp quyền thành công!';
+    } else {
+      reauthMessage.value = 'Chưa được cấp quyền.';
+    }
+  } catch (err) {
+    reauthMessage.value = `Lỗi: ${String(err)}`;
+  } finally {
+    reauthGranting.value = false;
+  }
+}
+
 const clearCacheConfirmEstimate: CostEstimate = {
   apiCalls: 0,
   inputTokens: 0,
@@ -78,6 +109,20 @@ const clearCacheConfirmEstimate: CostEstimate = {
 
 const { themeMode: currentTheme, setTheme } = useTheme();
 const { showTrustBadges, loadSetting: loadSeederSetting, setShowTrustBadges } = useSeederDetection();
+const { userForums, loadForums, addForumByHostname, addForumFromUrl, removeForum } = useForumManager();
+const newForumUrl = ref('');
+const addingForum = ref(false);
+const addForumError = ref('');
+
+async function addForum() {
+  addForumError.value = '';
+  const result = await addForumFromUrl(newForumUrl.value);
+  if (result.ok) {
+    newForumUrl.value = '';
+  } else if (result.error) {
+    addForumError.value = result.error;
+  }
+}
 const themeOptions = [
   { value: 'light' as const, label: 'Sáng' },
   { value: 'dark' as const, label: 'Tối' },
@@ -389,6 +434,8 @@ async function refreshCacheSize() {
 
 onMounted(async () => {
   await loadSeederSetting();
+  await loadForums();
+  await checkReauthNeeded();
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
     config.value = {
@@ -469,26 +516,14 @@ watch(activePromptTab, () => {
 });
 
 // Request host permission for a custom endpoint at save-time (must be from a user gesture).
-// Known providers (OpenAI, Anthropic, Gemini, OpenRouter) already have static host_permissions
-// in the manifest. Only the 'custom' provider requires a dynamic permission request.
-//
-// Uses the native chrome.permissions.request callback API directly — the webextension-polyfill
-// (browser.*) may not expose permissions.request reliably in all side panel contexts.
-async function requestCustomOriginPermission(baseUrl: string): Promise<boolean> {
-  let origin: string;
-  try {
-    origin = new URL(baseUrl).origin + '/*';
-  } catch {
-    console.error('[permissions] Invalid baseUrl:', baseUrl);
-    return false;
-  }
+async function requestProviderPermission(provider: LLMProvider, baseUrl: string): Promise<boolean> {
+  const origin = getProviderOrigin(provider, baseUrl);
+  if (!origin) return false;
 
-  try {
-    return await browser.permissions.request({ origins: [origin] });
-  } catch (err) {
-    console.error('[permissions] browser.permissions.request error:', err);
-    return false;
-  }
+  const already = await hasOriginPermission(origin);
+  if (already) return true;
+
+  return requestOriginPermission(origin);
 }
 
 async function save() {
@@ -496,10 +531,10 @@ async function save() {
   saveMessage.value = '';
   try {
     syncCurrentProvider();
-    if (config.value.provider === 'custom' && config.value.baseUrl) {
-      const granted = await requestCustomOriginPermission(config.value.baseUrl);
+    if (config.value.baseUrl) {
+      const granted = await requestProviderPermission(config.value.provider, config.value.baseUrl);
       if (!granted) {
-        saveMessage.value = 'Chưa cấp quyền truy cập endpoint tùy chỉnh.';
+        saveMessage.value = 'Chưa cấp quyền truy cập provider.';
         return;
       }
     }
@@ -518,8 +553,8 @@ async function testConnection() {
   testResult.value = '';
   try {
     syncCurrentProvider();
-    if (config.value.provider === 'custom' && config.value.baseUrl) {
-      const granted = await requestCustomOriginPermission(config.value.baseUrl);
+    if (config.value.baseUrl) {
+      const granted = await requestProviderPermission(config.value.provider, config.value.baseUrl);
       if (!granted) {
         testResult.value = 'fail';
         return;
@@ -681,6 +716,28 @@ async function onImportFileSelected(event: Event) {
 
 <template>
   <div class="p-4 space-y-4">
+    <!-- Permission re-auth banner -->
+    <div
+      v-if="needsReauth"
+      class="alert alert-warning flex items-center justify-between gap-3"
+    >
+      <span class="text-xs">Extension đã được cập nhật. Cần cấp lại quyền truy cập LLM provider để tiếp tục sử dụng.</span>
+      <button
+        class="btn btn-sm btn-primary shrink-0"
+        :disabled="reauthGranting"
+        @click="handleReauthGrant"
+      >
+        {{ reauthGranting ? 'Đang cấp...' : 'Cấp quyền' }}
+      </button>
+    </div>
+    <p
+      v-if="reauthMessage"
+      class="text-xs"
+      :class="reauthMessage === 'Đã cấp quyền thành công!' ? 'text-(--color-success-text)' : 'text-(--color-error-text)'"
+    >
+      {{ reauthMessage }}
+    </p>
+
     <!-- Theme -->
     <div>
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Giao diện</label>
@@ -897,7 +954,7 @@ async function onImportFileSelected(event: Event) {
       <p class="text-xs text-(--color-text-muted) mb-1">
         Giới hạn số token LLM có thể trả về trong một lần gọi tóm tắt. Tăng nếu tóm tắt bị cắt ngắn.
       </p>
-      <div class="flex gap-2 items-center">
+      <div class="flex gap-2">
         <input
           v-model.number="config.maxTokens"
           type="number"
@@ -925,7 +982,7 @@ async function onImportFileSelected(event: Event) {
       <p class="text-xs text-(--color-text-muted) mb-1">
         Giới hạn riêng cho flow trích xuất kiến thức. Để trống = dùng giá trị của Tóm tắt ở trên.
       </p>
-      <div class="flex gap-2 items-center">
+      <div class="flex gap-2">
         <input
           v-model.number="config.knowledgeMaxTokens"
           type="number"
@@ -1031,7 +1088,7 @@ async function onImportFileSelected(event: Event) {
         Giới hạn context window của model. Để trống hoặc 0 = dùng giá trị mặc định (theo model đã biết, hoặc 128K).
         Quan trọng với LLM local/custom có context nhỏ hơn.
       </p>
-      <div class="flex gap-2 items-center">
+      <div class="flex gap-2">
         <input
           v-model.number="config.contextWindow"
           type="number"
@@ -1262,6 +1319,72 @@ async function onImportFileSelected(event: Event) {
       @confirm="executeClearAll"
       @cancel="cancelClearAll"
     />
+
+    <!-- ─── Forum Support ──────────────────────────────── -->
+    <section class="card space-y-3">
+      <h3 class="text-xs font-semibold text-(--color-text-primary)">Forum hỗ trợ</h3>
+
+      <div v-if="userForums.length > 0" class="space-y-1">
+        <div
+          v-for="forum in userForums"
+          :key="forum.id"
+          class="flex items-center justify-between px-2 py-1.5 bg-(--color-bg-muted) rounded-md"
+        >
+          <span class="text-xs text-(--color-text-primary)">{{ forum.hostname }}</span>
+          <button
+            class="text-xs text-(--color-error-text) hover:text-(--color-error-hover) transition-colors"
+            @click="removeForum(forum)"
+          >
+            Xóa
+          </button>
+        </div>
+      </div>
+
+      <div
+        v-if="!userForums.find(f => f.hostname === 'voz.vn') || !userForums.find(f => f.hostname === 'otofun.net')"
+        class="space-y-1"
+      >
+        <p class="text-xs text-(--color-text-secondary)">Thêm nhanh:</p>
+        <div class="flex gap-3">
+          <button
+            v-if="!userForums.find(f => f.hostname === 'voz.vn')"
+            class="text-xs text-(--color-accent) hover:underline cursor-pointer"
+            @click="addForumByHostname('voz.vn')"
+          >
+            + Thêm voz.vn
+          </button>
+          <button
+            v-if="!userForums.find(f => f.hostname === 'otofun.net')"
+            class="text-xs text-(--color-accent) hover:underline cursor-pointer"
+            @click="addForumByHostname('otofun.net')"
+          >
+            + Thêm otofun.net
+          </button>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <input
+          v-model="newForumUrl"
+          type="text"
+          placeholder="https://forum.example.com"
+          class="input flex-1"
+          @keydown.enter="addForum"
+        />
+        <button
+          class="btn btn-sm btn-primary"
+          :disabled="addingForum"
+          @click="addForum"
+        >
+          {{ addingForum ? 'Đang thêm...' : 'Thêm' }}
+        </button>
+      </div>
+      <p v-if="addForumError" class="text-xs alert alert-error">{{ addForumError }}</p>
+
+      <p class="text-xs text-(--color-text-muted)">
+        Chỉ hoạt động với forum XenForo. Khi thêm, Chrome sẽ yêu cầu xác nhận cấp quyền cho domain đó.
+      </p>
+    </section>
 
     <!-- ─── Custom Prompt Templates ──────────────────────────────── -->
     <div class="border border-(--color-border) rounded-lg overflow-hidden">

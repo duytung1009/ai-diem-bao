@@ -1,4 +1,4 @@
-import type { CachedTopic, KnowledgeChunk, KnowledgeEntry, ResearchEntry, ScrapedPost, SummaryJSON, ThreadAnalysisJSON } from './types';
+import type { CachedTopic, KnowledgeChunk, KnowledgeEntry, NotebookEntry, ResearchEntry, ScrapedPost, SummaryJSON, ThreadAnalysisJSON } from './types';
 
 export interface ExportedSegment {
   startPage: number;
@@ -42,11 +42,15 @@ export interface ExportedTopic {
   researchHistory?: ResearchEntry[];
 }
 
+export type ExportScope = 'full' | 'summary' | 'knowledge' | 'notebook';
+
 export interface CacheExport {
   exportedAt: string;
   version: string;
+  scope?: ExportScope;  // undefined = 'full' (backward compat)
   topicCount: number;
   topics: ExportedTopic[];
+  notebookEntries?: NotebookEntry[];  // chỉ có khi scope = 'notebook'
 }
 
 /** Build export payload with full topic data so imports can restore complete state. */
@@ -56,6 +60,87 @@ export function buildCacheExport(topics: CachedTopic[]): CacheExport {
     version: '1.0',
     topicCount: topics.length,
     topics: topics.map(stripTopic),
+  };
+}
+
+/** Trigger a JSON file download in the browser. */
+export function downloadJson(payload: object, filename: string): void {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+/** Sanitize a topic title into a safe filename fragment. */
+export function safeFilename(title: string, maxLen = 60): string {
+  return title.replace(/[^\p{L}\p{N}\s]/gu, '').trim().slice(0, maxLen) || 'topic';
+}
+
+/** Export tóm tắt của 1 thread (không có posts, segments, knowledge). */
+export function buildSummaryExport(topic: CachedTopic): CacheExport {
+  return {
+    exportedAt: new Date().toISOString(),
+    version: '1.0',
+    scope: 'summary',
+    topicCount: 1,
+    topics: [{
+      url: topic.url,
+      title: topic.title,
+      topicType: topic.topicType,
+      version: topic.version,
+      posts: [],
+      lastPostNumber: topic.lastPostNumber,
+      cachedAt: topic.cachedAt,
+      llmConfig: topic.llmConfig,
+      totalPosts: topic.totalPosts,
+      forumPostCount: topic.forumPostCount,
+      summarizedPostCount: topic.summarizedPostCount,
+      totalPages: topic.totalPages,
+      summary: topic.summary,
+      overallSummary: topic.overallSummary,
+    }],
+  };
+}
+
+/** Export kiến thức (KnowledgeEntry[]) của 1 thread. */
+export function buildKnowledgeExport(topic: CachedTopic): CacheExport {
+  return {
+    exportedAt: new Date().toISOString(),
+    version: '1.0',
+    scope: 'knowledge',
+    topicCount: 1,
+    topics: [{
+      url: topic.url,
+      title: topic.title,
+      topicType: topic.topicType,
+      version: topic.version,
+      posts: [],
+      lastPostNumber: topic.lastPostNumber,
+      cachedAt: topic.cachedAt,
+      llmConfig: topic.llmConfig,
+      totalPosts: topic.totalPosts,
+      totalPages: topic.totalPages,
+      summary: '',
+      knowledgeEntries: topic.knowledgeEntries,
+      knowledgeChunks: topic.knowledgeChunks,
+      lastKnowledgePostNumber: topic.lastKnowledgePostNumber,
+      excludedKnowledgePostNumbers: topic.excludedKnowledgePostNumbers,
+    }],
+  };
+}
+
+/** Export các mục đã lưu trong sổ tay (NotebookEntry[]) theo nhóm thread. */
+export function buildNotebookExport(entries: NotebookEntry[]): CacheExport {
+  return {
+    exportedAt: new Date().toISOString(),
+    version: '1.0',
+    scope: 'notebook',
+    topicCount: 0,
+    topics: [],
+    notebookEntries: entries,
   };
 }
 

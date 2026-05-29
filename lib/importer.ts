@@ -1,5 +1,5 @@
 import type { CacheExport, ExportedSegment, ExportedTopic } from './exporter';
-import type { CachedTopic, ScrapedPost, TopicSegment } from './types';
+import type { CachedTopic, NotebookEntry, ScrapedPost, TopicSegment } from './types';
 
 export type ImportConflictMode = 'skip' | 'overwrite';
 
@@ -75,13 +75,13 @@ function mapExportedSegment(segment: ExportedSegment): TopicSegment {
 
 function normalizeTopic(input: unknown, index: number): ExportedTopic {
   if (!isRecord(input)) {
-    throw new Error(`Topic #${index + 1}: dữ liệu không hợp lệ`);
+    throw new Error(`Topic #${index + 1}: du lieu khong hop le`);
   }
 
   const url = asNonEmptyString(input.url);
   const title = asNonEmptyString(input.title);
   if (!url || !title) {
-    throw new Error(`Topic #${index + 1}: thiếu url hoặc title`);
+    throw new Error(`Topic #${index + 1}: thieu url hoac title`);
   }
 
   const segments = Array.isArray(input.segments) ? input.segments.filter(isRecord).map((s) => ({
@@ -130,27 +130,68 @@ function normalizeTopic(input: unknown, index: number): ExportedTopic {
   };
 }
 
+function normalizeNotebookEntry(input: unknown, index: number): NotebookEntry | null {
+  if (!isRecord(input)) return null;
+  const id = asNonEmptyString(input.id);
+  const title = asNonEmptyString(input.title);
+  const content = typeof input.content === 'string' ? input.content : '';
+  const sourceTopicUrl = asNonEmptyString(input.sourceTopicUrl);
+  const sourceTopicTitle = typeof input.sourceTopicTitle === 'string' ? input.sourceTopicTitle : '';
+  if (!id || !title || !sourceTopicUrl) {
+    console.warn(`NotebookEntry #${index + 1}: missing id, title or sourceTopicUrl -- skipping`);
+    return null;
+  }
+  return {
+    id,
+    title,
+    content,
+    tags: Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === 'string') : [],
+    category: typeof input.category === 'string' ? input.category : undefined,
+    source: isRecord(input.source) ? {
+      author: typeof input.source.author === 'string' ? input.source.author : '',
+      postNumber: typeof input.source.postNumber === 'number' ? input.source.postNumber : 0,
+      timestamp: typeof input.source.timestamp === 'string' ? input.source.timestamp : undefined,
+    } : { author: '', postNumber: 0 },
+    extractedAt: typeof input.extractedAt === 'number' ? input.extractedAt : Date.now(),
+    saved: typeof input.saved === 'boolean' ? input.saved : true,
+    sourceTopicUrl,
+    sourceTopicTitle,
+    savedAt: typeof input.savedAt === 'number' ? input.savedAt : Date.now(),
+    orphaned: typeof input.orphaned === 'number' ? input.orphaned : undefined,
+    orphanedAt: typeof input.orphanedAt === 'number' ? input.orphanedAt : undefined,
+  };
+}
+
 export function validateCacheExport(raw: unknown): CacheExport {
   if (!isRecord(raw)) {
-    throw new Error('File import không đúng định dạng JSON object');
+    throw new Error('File import khong dung dinh dang JSON object');
   }
 
-  if (!Array.isArray(raw.topics)) {
-    throw new Error('File import thiếu trường topics[] hợp lệ');
+  // Notebook-only export: topics co the la [] hoac khong co
+  const isNotebook = raw.scope === 'notebook';
+
+  if (!isNotebook && !Array.isArray(raw.topics)) {
+    throw new Error('File import thieu truong topics[] hop le');
   }
 
   const version = typeof raw.version === 'string' ? raw.version : '';
   if (!version) {
-    throw new Error('File import thiếu trường version');
+    throw new Error('File import thieu truong version');
   }
 
-  const topics = raw.topics.map((topic, index) => normalizeTopic(topic, index));
+  const topics = Array.isArray(raw.topics) ? raw.topics.map((topic, index) => normalizeTopic(topic, index)) : [];
+
+  const notebookEntries = Array.isArray(raw.notebookEntries)
+    ? raw.notebookEntries.map((e, i) => normalizeNotebookEntry(e, i)).filter((e): e is NotebookEntry => e !== null)
+    : undefined;
 
   return {
     exportedAt: typeof raw.exportedAt === 'string' ? raw.exportedAt : new Date().toISOString(),
     version,
+    scope: (raw.scope as CacheExport['scope']) ?? undefined,
     topicCount: typeof raw.topicCount === 'number' ? raw.topicCount : topics.length,
     topics,
+    notebookEntries,
   };
 }
 

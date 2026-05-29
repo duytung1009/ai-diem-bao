@@ -21,6 +21,7 @@ import ErrorDisplay from '../components/ErrorDisplay.vue';
 import BackButton from '../components/BackButton.vue';
 import ForwardLink from '../components/ForwardLink.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
+import ExportButton from '../components/ExportButton.vue';
 
 import { useLLM } from '../composables/useLLM';
 import { useSeederDetection } from '../composables/useSeederDetection';
@@ -222,6 +223,7 @@ async function handleConflictGoBack() {
       <div class="flex items-center justify-between">
         <BackButton />
         <h2 class="font-semibold text-sm text-(--color-text-primary)">Tóm tắt tổng quan</h2>
+        <ExportButton v-if="cachedTopic && (summary || segmentSummaries.some(s => s?.summary))" :topic="cachedTopic as unknown as CachedTopic" />
       </div>
 
       <!-- Conflict alert: running task for old topic -->

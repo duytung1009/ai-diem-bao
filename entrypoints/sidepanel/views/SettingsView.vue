@@ -76,7 +76,16 @@ const reauthMessage = ref('');
 
 async function checkReauthNeeded() {
   const result = await browser.storage.local.get(STORAGE_KEYS.NEEDS_PERMISSION_REAUTH);
-  needsReauth.value = result[STORAGE_KEYS.NEEDS_PERMISSION_REAUTH] === true;
+  if (result[STORAGE_KEYS.NEEDS_PERMISSION_REAUTH] !== true) return;
+
+  // Chỉ show banner nếu permission thực sự bị thiếu
+  const origin = getProviderOrigin(config.value.provider, config.value.baseUrl);
+  if (!origin) return;
+
+  needsReauth.value = !(await hasOriginPermission(origin));
+  if (!needsReauth.value) {
+    await browser.storage.local.remove(STORAGE_KEYS.NEEDS_PERMISSION_REAUTH);
+  }
 }
 
 async function handleReauthGrant() {
@@ -435,7 +444,6 @@ async function refreshCacheSize() {
 onMounted(async () => {
   await loadSeederSetting();
   await loadForums();
-  await checkReauthNeeded();
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
     config.value = {
@@ -450,6 +458,7 @@ onMounted(async () => {
       dynamicSegments: loaded.dynamicSegments ?? DEFAULT_DYNAMIC_SEGMENTS,
     };
   }
+  await checkReauthNeeded();
   await refreshCacheSize();
   const loadedPrompts = await sendMessage<CustomPrompts>('GET_CUSTOM_PROMPTS').catch(() => ({}));
   if (loadedPrompts) {
@@ -693,6 +702,7 @@ async function onImportFileSelected(event: Event) {
     const exportData = validateCacheExport(parsed);
     const result = await sendMessage<ImportResult>('IMPORT_CACHE', {
       topics: exportData.topics,
+      notebookEntries: exportData.notebookEntries,
       conflictMode: conflictMode.value,
     });
 

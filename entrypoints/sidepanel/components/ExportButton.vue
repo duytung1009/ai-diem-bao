@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { CachedTopic } from '@/lib/types';
+import { buildSummaryExport, downloadJson, safeFilename } from '@/lib/exporter';
 
 const props = defineProps<{
   topic: CachedTopic;
@@ -71,6 +72,13 @@ async function copyText() {
   showDropdown.value = false;
 }
 
+function downloadSummaryJson() {
+  const payload = buildSummaryExport(props.topic);
+  downloadJson(payload, `${safeFilename(props.topic.title)}_summary.json`);
+  showToast('Đã tải file JSON!');
+  showDropdown.value = false;
+}
+
 function downloadMd() {
   const content = buildMarkdown();
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
@@ -132,6 +140,16 @@ function downloadMd() {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
         Tải file .md
+      </button>
+      <div class="border-t border-(--color-border) my-1" />
+      <button
+        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
+        @click="downloadSummaryJson"
+      >
+        <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Tải JSON tóm tắt
       </button>
     </div>
 

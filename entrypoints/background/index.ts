@@ -123,51 +123,81 @@ export default defineBackground(() => {
         }
 
         case 'IMPORT_CACHE': {
-          const { topics, conflictMode } = message.payload as { topics: ExportedTopic[]; conflictMode: ImportConflictMode };
+          const { topics, notebookEntries, conflictMode } = message.payload as {
+            topics: ExportedTopic[];
+            notebookEntries?: NotebookEntry[];
+            conflictMode: ImportConflictMode;
+          };
 
           (async () => {
             const safeTopics = Array.isArray(topics) ? topics : [];
+            const safeNotebook = Array.isArray(notebookEntries) ? notebookEntries : [];
             const result: ImportResult = {
-              total: safeTopics.length,
+              total: safeTopics.length + safeNotebook.length,
               imported: 0,
               skipped: 0,
               failed: 0,
               errors: [],
             };
 
-            const settled = await Promise.allSettled(
+            // Import topics
+            const topicSettled = await Promise.allSettled(
               safeTopics.map(async (topic, index) => {
                 const label = topic?.url || `topic #${index + 1}`;
                 if (!topic?.url || !topic?.title) {
                   return { kind: 'skipped' as const, error: `${label}: thiếu url hoặc title` };
                 }
-
                 if (conflictMode === 'skip') {
                   const existing = await dbGet(topic.url);
-                  if (existing) {
-                    return { kind: 'skipped' as const };
-                  }
+                  if (existing) return { kind: 'skipped' as const };
                 }
-
                 const mapped = mapExportedTopic(topic);
                 await dbPut(mapped);
                 return { kind: 'imported' as const };
               }),
             );
 
-            for (let i = 0; i < settled.length; i += 1) {
-              const item = settled[i];
+            for (let i = 0; i < topicSettled.length; i += 1) {
+              const item = topicSettled[i];
               if (item.status === 'fulfilled') {
-                if (item.value.kind === 'imported') {
-                  result.imported += 1;
-                } else {
+                if (item.value.kind === 'imported') result.imported += 1;
+                else {
                   result.skipped += 1;
                   if (item.value.error) result.errors.push(item.value.error);
                 }
               } else {
                 result.failed += 1;
-                const label = safeTopics[i]?.url || `topic #${i + 1}`;
-                result.errors.push(`${label}: ${String(item.reason)}`);
+                result.errors.push(`${safeTopics[i]?.url || `topic #${i + 1}`}: ${String(item.reason)}`);
+              }
+            }
+
+            // Import notebook entries
+            const notebookSettled = await Promise.allSettled(
+              safeNotebook.map(async (entry, index) => {
+                const label = entry?.id || `notebook entry #${index + 1}`;
+                if (!entry?.id || !entry?.sourceTopicUrl) {
+                  return { kind: 'skipped' as const, error: `${label}: thiếu id hoặc sourceTopicUrl` };
+                }
+                if (conflictMode === 'skip') {
+                  const all = await notebookGetAll();
+                  if (all.some((e) => e.id === entry.id)) return { kind: 'skipped' as const };
+                }
+                await notebookPut(entry);
+                return { kind: 'imported' as const };
+              }),
+            );
+
+            for (let i = 0; i < notebookSettled.length; i += 1) {
+              const item = notebookSettled[i];
+              if (item.status === 'fulfilled') {
+                if (item.value.kind === 'imported') result.imported += 1;
+                else {
+                  result.skipped += 1;
+                  if (item.value.error) result.errors.push(item.value.error);
+                }
+              } else {
+                result.failed += 1;
+                result.errors.push(`${safeNotebook[i]?.id || `notebook #${i + 1}`}: ${String(item.reason)}`);
               }
             }
 

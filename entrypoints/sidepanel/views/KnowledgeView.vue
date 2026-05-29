@@ -3,6 +3,7 @@ import { ref, onActivated, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { CachedTopic, KnowledgeEntry, LLMConfig } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
+import { buildKnowledgeExport, downloadJson, safeFilename } from '@/lib/exporter';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import { useKnowledge } from '../composables/useKnowledge';
@@ -67,6 +68,12 @@ function onReduceManualClick() {
     return;
   }
   confirmTarget.value = 'reduce';
+}
+
+function handleExportKnowledge() {
+  if (!cachedTopic.value) return;
+  const payload = buildKnowledgeExport(cachedTopic.value as CachedTopic);
+  downloadJson(payload, `${safeFilename(cachedTopic.value.title)}_knowledge.json`);
 }
 
 // Focus scroll / route state
@@ -548,8 +555,9 @@ onActivated(async () => {
       <template v-if="entries.length && !isLoading">
         <!-- Search + Saved filter + Tag filter -->
         <div class="space-y-2">
-          <!-- Search + Saved filter toggle -->
-          <div class="relative">
+          <!-- Search + Saved filter toggle + Export -->
+          <div class="flex items-center gap-2">
+          <div class="relative flex-1">
             <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -565,6 +573,18 @@ onActivated(async () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
               </svg>
             </button>
+          </div>
+          <!-- Export knowledge button -->
+          <button
+            class="shrink-0 flex items-center gap-1 btn btn-secondary btn-sm text-xs"
+            title="Xuất kiến thức ra file JSON"
+            @click="handleExportKnowledge"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Xuất JSON
+          </button>
           </div>
           <!-- Tag filter pills -->
           <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">

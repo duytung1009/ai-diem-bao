@@ -5,6 +5,7 @@ import { sendMessage } from '@/lib/messaging';
 import { formatTopicDate } from '@/lib/topic-utils';
 import type { NotebookEntry } from '@/lib/types';
 import type { NotebookStats } from '@/lib/notebook-db';
+import { buildNotebookExport, downloadJson, safeFilename } from '@/lib/exporter';
 import { useNotebook, type ViewMode } from '../composables/useNotebook';
 import { useTopicStore } from '../composables/useTopicStore';
 
@@ -36,6 +37,12 @@ async function openInExtension(entry: NotebookEntry) {
     // Topic was deleted outside the normal flow — fall back to opening post
     openPostLink(entry);
   }
+}
+
+function handleExportGroup(group: { key: string; entries: NotebookEntry[] }) {
+  const payload = buildNotebookExport(group.entries);
+  const name = group.entries[0]?.sourceTopicTitle ?? group.key;
+  downloadJson(payload, `${safeFilename(name)}_notebook.json`);
 }
 
 function formatTimestamp(ts: string): string {
@@ -188,10 +195,22 @@ onActivated(async () => {
     <!-- Entry groups -->
     <div v-if="filteredEntries.length > 0" class="space-y-4">
       <div v-for="group in groupedEntries" :key="group.key">
-        <h4 class="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide mb-2">
-          {{ group.key }}
-          <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
-        </h4>
+        <div class="flex items-center gap-2 mb-2">
+          <h4 class="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide flex-1">
+            {{ group.key }}
+            <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
+          </h4>
+          <button
+            class="flex items-center gap-1 text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors"
+            title="Xuất nhóm này ra file JSON"
+            @click="handleExportGroup(group)"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Xuất JSON
+          </button>
+        </div>
         <div class="space-y-2">
           <div
             v-for="entry in group.entries"

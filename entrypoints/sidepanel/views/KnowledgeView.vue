@@ -23,6 +23,7 @@ const {
   cachedTopic, activePipeline, canRestore,
   estimatedExtractCost, showExtractCostWarning,
   estimatedRestoreCost, showRestoreCostWarning,
+  estimatedReduceCost,
   allPosts,
   handleExtract, handleRestore, handleCancel,
   handleClearKnowledgeData, toggleSave, handleDelete, handleClearTracking,
@@ -60,7 +61,12 @@ function formatRelativeTime(ts: number | null): string {
 }
 
 function onReduceManualClick() {
-  runReducePhaseManual();
+  const est = estimatedReduceCost.value;
+  if (!est || (est.costUsd === 0 && est.apiCalls <= 3)) {
+    runReducePhaseManual();
+    return;
+  }
+  confirmTarget.value = 'reduce';
 }
 
 // Focus scroll / route state
@@ -758,6 +764,14 @@ onActivated(async () => {
     confirm-text="Tiếp tục"
     :warning="showRestoreCostWarning ? 'Số chunks lớn, quá trình khôi phục sẽ mất nhiều thời gian.' : undefined"
     @confirm="confirmTarget = null; handleRestore()"
+    @cancel="confirmTarget = null"
+  />
+  <CostConfirmModal
+    v-else-if="confirmTarget === 'reduce' && estimatedReduceCost"
+    title="Tổng hợp Kiến thức"
+    :estimate="estimatedReduceCost"
+    confirm-text="Tiếp tục"
+    @confirm="confirmTarget = null; runReducePhaseManual()"
     @cancel="confirmTarget = null"
   />
 </template>

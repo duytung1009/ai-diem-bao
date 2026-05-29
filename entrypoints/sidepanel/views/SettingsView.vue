@@ -977,10 +977,10 @@ async function onImportFileSelected(event: Event) {
     <!-- Max output tokens (Kiến thức) -->
     <div>
       <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
-        Max output tokens (Kiến thức): {{ (config.knowledgeMaxTokens ?? config.maxTokens ?? 16384).toLocaleString() }}
+        Max output tokens (Kiến thức): {{ (config.knowledgeMaxTokens ?? ((config.maxTokens ?? 16384) * 2)).toLocaleString() }}
       </label>
       <p class="text-xs text-(--color-text-muted) mb-1">
-        Giới hạn riêng cho flow trích xuất kiến thức. Để trống = dùng giá trị của Tóm tắt ở trên.
+        Giới hạn số token LLM có thể trả về riêng cho flow trích xuất kiến thức, nên để ít nhất gấp đôi Max output tokens (Tóm tắt). Để trống = Max output tokens (Tóm tắt) x 2.
       </p>
       <div class="flex gap-2">
         <input
@@ -988,14 +988,14 @@ async function onImportFileSelected(event: Event) {
           type="number"
           min="1024"
           step="1024"
-          placeholder="Dùng giá trị Tóm tắt"
+          placeholder="Dùng giá trị Max output tokens (Tóm tắt) x 2"
           class="input flex-1"
         />
         <button
           v-if="config.knowledgeMaxTokens"
           class="btn btn-sm btn-secondary"
           @click="config.knowledgeMaxTokens = undefined"
-          title="Reset về giá trị Tóm tắt"
+          title="Reset về giá trị Max output tokens (Tóm tắt) x 2"
         >
           Reset
         </button>

@@ -404,6 +404,51 @@ posts.push({ author, content, timestamp, postNumber });
 
 ---
 
+### KH5: `reduce_knowledge_chunks` completion_tokens vượt max_tokens — sai lầm khi dùng floor `Math.max(10, ...)` và split theo chunk count
+
+**Triệu chứng:**
+- `reduce_knowledge_chunks` task thường xuyên bị `INCOMPLETE_RESPONSE` (`finish_reason: 'length'` / `stop_reason: 'max_tokens'`)
+- `truncationWarning` tăng bất thường trong Knowledge view
+- Lỗi xảy ra cả khi chưa bật thinking mode, `max_tokens` khớp config
+
+**Root cause:**
+- **`calcMaxOutputEntries()` (`useKnowledge.ts:212`)** dùng `Math.max(10, ...)` làm floor: với `maxOutputTokens = 4096`: `Math.max(10, floor(3276/700)) = 10`. Model chỉ đủ ~4 entries (700 tokens/entry × 4 = 2800 < 4096), nhưng cap=10 → model cố output 10 → completion_tokens vượt budget.
+- **Pre-reduce split theo chunk count** (`useKnowledge.ts:500-501`): mỗi chunk có 0-20+ entries, split theo `allPartial.length` khiến mỗi group có thể chứa 20-50 entries. Pre-reduce không truyền `entryCap` → default `cap=20` (`summarizer.ts:338`).
+- Kết hợp: cap quá lớn + input quá nhiều entries → model buộc phải output vượt `max_tokens`.
+
+**Fix:**
+- Bỏ `Math.max(10, ...)`, thay bằng `Math.max(2, ...)` — để multi-call split path xử lý workload lớn
+- Pre-reduce: flatten entry arrays → split theo entry count (input = 2×maxPerCall entries/group, output cap = maxPerCall) thay vì theo chunk count
+- Truyền `entryCap = maxPerCall` cho mọi pre-reduce call
+
+```typescript
+// ❌ Trước: floor quá cao, split theo chunk count, không có entryCap
+function calcMaxOutputEntries(maxOutputTokens: number): number {
+  return Math.max(10, Math.floor(maxOutputTokens * 0.8 / TOKENS_PER_ENTRY_REDUCE));
+}
+// pre-reduce:
+const groupSize = Math.ceil(allPartial.length / groupCount);
+reduceKnowledgeChunksTask(group); // NO entryCap → defaults to 20
+
+// ✅ Sau: floor thấp, split theo entry count, luôn có entryCap
+function calcMaxOutputEntries(maxOutputTokens: number): number {
+  return Math.max(2, Math.floor(maxOutputTokens * 0.8 / TOKENS_PER_ENTRY_REDUCE));
+}
+// pre-reduce: flatten entries, split by 2×maxPerCall per group
+const maxPerCall = calcMaxOutputEntries(maxOutputTokens);
+const allFlat = allPartial.flat();
+for (let i = 0; i < allFlat.length; i += maxPerCall * 2) {
+  reduceKnowledgeChunksTask([allFlat.slice(i, i + maxPerCall * 2)], maxPerCall);
+}
+```
+
+**Anti-pattern:**
+- Floor `Math.max(10, ...)` cho entry cap — con số 10 cứng này bỏ qua budget thực tế của model nhỏ (2K-4K tokens). Luôn tính cap từ `maxOutputTokens`, để multi-call path xử lý overflow.
+- Split theo chunk count thay vì entry count trong map-reduce — chunk count không phản ánh khối lượng công việc thực tế. Luôn flatten và split theo số lượng entries.
+- Gọi reduce mà không truyền `entryCap` — default 20 thường quá cao. Luôn tính cap từ output budget và truyền tường minh.
+
+---
+
 ## Development Workflow (MANDATORY)
 
 Tuân thủ workflow sau cho **mọi** thay đổi code. AI agent phải tự động áp dụng workflow này, user không cần prompt chi tiết từng step.

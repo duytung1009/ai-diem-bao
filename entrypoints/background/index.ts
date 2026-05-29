@@ -566,8 +566,24 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
       case 'reduce_knowledge_chunks': {
         const { partialEntries, entryCap } = payload as { partialEntries: KnowledgeEntry[][]; entryCap?: number };
         inputTokens = estimateTokens(JSON.stringify(partialEntries));
-        const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress, signal, prompts, entryCap);
-        result = { entries: parseKnowledgeEntries(raw) };
+        try {
+          const raw = await reduceKnowledgeChunks(partialEntries, config, onProgress, signal, prompts, entryCap);
+          result = { entries: parseKnowledgeEntries(raw) };
+        } catch (reduceErr) {
+          if (
+            reduceErr instanceof LLMError &&
+            reduceErr.code === LLMErrorCode.INCOMPLETE_RESPONSE &&
+            reduceErr.partialText
+          ) {
+            let salvaged: KnowledgeEntry[] = [];
+            try {
+              salvaged = parseKnowledgeEntries(reduceErr.partialText);
+            } catch { /* parse failed — salvaged stays [] */ }
+            result = { entries: salvaged, truncated: true };
+          } else {
+            throw reduceErr;
+          }
+        }
         break;
       }
       case 'summarize_segments': {

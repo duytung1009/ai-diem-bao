@@ -105,25 +105,91 @@ describe('useKnowledge - Pure Helpers', () => {
   });
 
   describe('calcMaxOutputEntries', () => {
-    function calcMaxOutputEntries(contextLimit: number, _promptTokens: number, _inputTokens: number): number {
-      const REDUCE_OUTPUT_FRACTION = 0.3;
-      const outputBudget = contextLimit * REDUCE_OUTPUT_FRACTION;
-      return Math.max(10, Math.floor(outputBudget / 300));
+    function calcMaxOutputEntries(maxOutputTokens: number): number {
+      return Math.max(2, Math.floor(maxOutputTokens * 0.8 / 700));
     }
 
-    it('returns minimum 10 for small contexts', () => {
-      expect(calcMaxOutputEntries(10000, 1000, 5000)).toBe(10);
+    it('returns floor = 2 for small output budgets (2000 tokens)', () => {
+      expect(calcMaxOutputEntries(2000)).toBe(2);
     });
 
-    it('scales with context limit', () => {
-      const small = calcMaxOutputEntries(100000, 1000, 5000);
-      const large = calcMaxOutputEntries(200000, 1000, 5000);
-      expect(large).toBeGreaterThan(small);
+    it('returns expected value for 4096 tokens (approx 4 entries)', () => {
+      expect(calcMaxOutputEntries(4096)).toBe(4);
     });
 
-    it('returns expected value for 128k context', () => {
-      const result = calcMaxOutputEntries(128000, 1000, 5000);
-      expect(result).toBe(128);
+    it('returns expected value for 8192 tokens (approx 9 entries)', () => {
+      expect(calcMaxOutputEntries(8192)).toBe(9);
+    });
+
+    it('returns expected value for 16384 tokens (approx 18 entries)', () => {
+      expect(calcMaxOutputEntries(16384)).toBe(18);
+    });
+
+    it('returns 2 for zero or negative values (floor clamp)', () => {
+      expect(calcMaxOutputEntries(0)).toBe(2);
+      expect(calcMaxOutputEntries(-100)).toBe(2);
+    });
+  });
+
+  describe('splitForPreReduce', () => {
+    function splitForPreReduce(chunks: { id: string }[][], maxPerCall: number): { id: string }[][] {
+      const allFlat = chunks.flat();
+      const groups: { id: string }[][] = [];
+      const entriesPerGroup = maxPerCall * 2;
+      for (let i = 0; i < allFlat.length; i += entriesPerGroup) {
+        groups.push(allFlat.slice(i, i + entriesPerGroup));
+      }
+      return groups;
+    }
+
+    it('flattens entries across chunks and splits by entry count', () => {
+      const chunks = [
+        [{ id: '1' }, { id: '2' }],
+        [{ id: '3' }, { id: '4' }],
+        [{ id: '5' }, { id: '6' }],
+      ];
+      const groups = splitForPreReduce(chunks, 2); // maxPerCall=2 → entriesPerGroup=4
+      expect(groups).toHaveLength(2);
+      expect(groups[0]).toHaveLength(4);
+      expect(groups[0].map(e => e.id)).toEqual(['1', '2', '3', '4']);
+      expect(groups[1]).toHaveLength(2);
+      expect(groups[1].map(e => e.id)).toEqual(['5', '6']);
+    });
+
+    it('returns single group when all entries fit in one group', () => {
+      const chunks = [
+        [{ id: '1' }, { id: '2' }],
+        [{ id: '3' }],
+      ];
+      const groups = splitForPreReduce(chunks, 5); // entriesPerGroup=10, only 3 entries total
+      expect(groups).toHaveLength(1);
+      expect(groups[0]).toHaveLength(3);
+    });
+
+    it('handles empty chunks gracefully', () => {
+      const chunks: { id: string }[][] = [[], [], []];
+      const groups = splitForPreReduce(chunks, 2);
+      expect(groups).toHaveLength(0);
+    });
+
+    it('handles single chunk with many entries', () => {
+      const entries = Array.from({ length: 20 }, (_, i) => ({ id: `${i + 1}` }));
+      const groups = splitForPreReduce([entries], 3); // entriesPerGroup=6
+      expect(groups).toHaveLength(4); // 20 / 6 = 4 groups (6+6+6+2)
+      expect(groups[0]).toHaveLength(6);
+      expect(groups[3]).toHaveLength(2);
+    });
+
+    it('works with maxPerCall=1 (minimum cap)', () => {
+      const chunks = [
+        [{ id: '1' }, { id: '2' }, { id: '3' }],
+        [{ id: '4' }, { id: '5' }],
+      ];
+      const groups = splitForPreReduce(chunks, 1); // entriesPerGroup=2
+      expect(groups).toHaveLength(3); // 5 entries / 2 = 3 groups
+      expect(groups[0]).toHaveLength(2);
+      expect(groups[1]).toHaveLength(2);
+      expect(groups[2]).toHaveLength(1);
     });
   });
 

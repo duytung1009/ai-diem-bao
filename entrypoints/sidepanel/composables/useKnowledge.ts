@@ -44,7 +44,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   const totalChunks = ref(0);
   const currentPhase = ref<'idle' | 'extracting' | 'reducing'>('idle');
   const currentConfig = ref<LLMConfig | null>(null);
-  const confirmTarget = ref<'extract' | 'restore' | null>(null);
+  const confirmTarget = ref<'extract' | 'restore' | 'reduce' | null>(null);
   const showClearDataAction = ref(false);
   const truncationWarning = ref(0);  // count of truncated chunks in last run
 
@@ -122,6 +122,19 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   });
 
   const showRestoreCostWarning = computed(() => estimatedRestoreApiCalls.value > LLM_WARN_THRESHOLD_CALLS);
+
+  const estimatedReduceCost = computed<CostEstimate | null>(() => {
+    if (!currentConfig.value) return null;
+    const chunks = (cachedTopic.value?.knowledgeChunks ?? []).filter(c => c.entries.length > 0);
+    if (!chunks.length) return null;
+    const model = currentConfig.value.model;
+    const apiCalls = Math.max(1, chunks.length);
+    const avgTokens = chunks.length > 0
+      ? Math.round(chunks.reduce((s, c) => s + c.entries.length * 200, 0) / chunks.length)
+      : 2000;
+    const maxOutput = knowledgeMaxTokens.value ?? getModelMaxOutput(model);
+    return estimateExtractCost(apiCalls, avgTokens, model, maxOutput);
+  });
 
   // Effective max output tokens for knowledge flow — uses dedicated field with fallback to summarize
   const knowledgeMaxTokens = computed(() =>
@@ -209,7 +222,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     // (title + content chi tiết + tags + source + JSON overhead). 500 gây underestimate
     // dẫn đến cap quá lớn → completion_tokens vượt max khi LLM trả về entries verbose.
     const TOKENS_PER_ENTRY_REDUCE = 700;
-    return Math.max(10, Math.floor(maxOutputTokens * 0.8 / TOKENS_PER_ENTRY_REDUCE));
+    return Math.max(2, Math.floor(maxOutputTokens * 0.8 / TOKENS_PER_ENTRY_REDUCE));
   }
 
   // F33: find which segment index a post belongs to (undefined if no segments / not found)
@@ -494,37 +507,42 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       const usableTokens = Math.floor((contextLimit - maxOutput) * CONTEXT_USAGE_RATIO) - promptOverhead;
       const totalTokens = estimateTokens(JSON.stringify(allPartial)) * 1.4;
 
+      const maxPerCall = calcMaxOutputEntries(knowledgeMaxTokens.value ?? currentConfig.value?.maxTokens ?? 2000);
+
       let entriesToReduce = allPartial;
 
       if (totalTokens > usableTokens && allPartial.length >= 2) {
-        const groupCount = Math.max(2, Math.ceil(totalTokens / usableTokens));
-        const groupSize = Math.ceil(allPartial.length / groupCount);
-        const groupResults: KnowledgeEntry[][] = [];
+        const allFlatEntries = allPartial.flat();
+        const entriesPerGroup = maxPerCall * 2;
+        const flatGroups: KnowledgeEntry[][] = [];
 
-        for (let g = 0; g < allPartial.length; g += groupSize) {
-          if (knowledgeGuard.isStale(guardId)) return;
-          const groupIndex = Math.floor(g / groupSize) + 1;
-          updateReduceStepLabel(`Gộp sơ bộ (${groupIndex}/${groupCount})`);
-          const group = allPartial.slice(g, g + groupSize);
-          const { taskId, result } = reduceKnowledgeChunksTask(group);
-          llmTaskId.value = taskId;
-          const st = getTaskState(taskId);
-          if (st && pl.pipeline.value) {
-            st.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
-          }
-          const groupResult = await result;
-          if (knowledgeGuard.isStale(guardId)) return;
-          groupResults.push(
-            ((groupResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
-          );
-          if (g + groupSize < allPartial.length) {
-            await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
-          }
+        for (let i = 0; i < allFlatEntries.length; i += entriesPerGroup) {
+          flatGroups.push(allFlatEntries.slice(i, i + entriesPerGroup));
         }
-        entriesToReduce = groupResults;
-      }
 
-      const maxPerCall = calcMaxOutputEntries(knowledgeMaxTokens.value ?? currentConfig.value?.maxTokens ?? 2000);
+        if (flatGroups.length > 0) {
+          const groupResults: KnowledgeEntry[][] = [];
+          for (let g = 0; g < flatGroups.length; g++) {
+            if (knowledgeGuard.isStale(guardId)) return;
+            updateReduceStepLabel(`Gộp sơ bộ (${g + 1}/${flatGroups.length})`);
+            const { taskId, result } = reduceKnowledgeChunksTask([flatGroups[g]], maxPerCall);
+            llmTaskId.value = taskId;
+            const st = getTaskState(taskId);
+            if (st && pl.pipeline.value) {
+              st.pipeline = JSON.parse(JSON.stringify(pl.pipeline.value));
+            }
+            const groupResult = await result;
+            if (knowledgeGuard.isStale(guardId)) return;
+            groupResults.push(
+              ((groupResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
+            );
+            if (g < flatGroups.length - 1) {
+              await new Promise(r => setTimeout(r, MAP_REDUCE_CHUNK_DELAY_MS));
+            }
+          }
+          entriesToReduce = groupResults;
+        }
+      }
 
       let rawFinalEntries: KnowledgeEntry[];
       if (finalCap <= maxPerCall) {
@@ -536,6 +554,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
         }
         const reduceResult = await result;
         if (knowledgeGuard.isStale(guardId)) return;
+        const wasTruncated = (reduceResult.data as { truncated?: boolean })?.truncated === true;
+        if (wasTruncated) truncationWarning.value++;
         rawFinalEntries = ((reduceResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [];
       } else {
         const numCalls = Math.ceil(finalCap / maxPerCall);
@@ -555,6 +575,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
           }
           const groupResult = await result;
           if (knowledgeGuard.isStale(guardId)) return;
+          const wasTruncated = (groupResult.data as { truncated?: boolean })?.truncated === true;
+          if (wasTruncated) truncationWarning.value++;
           allRaw.push(
             ...((groupResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
           );
@@ -723,6 +745,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     currentPhase.value = 'reducing';
     currentChunkIndex.value = 0;
     totalChunks.value = 0;
+    truncationWarning.value = 0;
 
     if (!currentConfig.value) {
       const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
@@ -786,6 +809,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     if (toProcess.length === 0) return;
 
     isBatchExtracting.value = true;
+    truncationWarning.value = 0;
     try {
       for (const segIdx of toProcess) {
         if (!isBatchExtracting.value) break;
@@ -948,6 +972,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     currentPhase.value = 'reducing';
     currentChunkIndex.value = 0;
     totalChunks.value = 0;
+    truncationWarning.value = 0;
 
     if (!currentConfig.value) {
       const cfg = await sendMessage<LLMConfig>('GET_SETTINGS').catch(() => null);
@@ -1004,6 +1029,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     estimatedRestoreApiCalls,
     estimatedRestoreCost,
     showRestoreCostWarning,
+    estimatedReduceCost,
     allPosts,
     extractKnowledgeChunkTask,
     reduceKnowledgeChunksTask,

@@ -40,7 +40,7 @@ const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; bas
   custom: { model: '', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
   claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
   gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
-  'gemini-free': { model: 'gemini-2.5-flash-lite', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
+
 };
 
 function syncCurrentProvider() {
@@ -370,7 +370,7 @@ const cacheQuotaText = computed(() => storageQuotaBytes.value > 0 ? formatBytes(
 const cacheUsagePercent = computed(() => storageQuotaBytes.value > 0 ? Math.round((cacheSizeBytes.value / storageQuotaBytes.value) * 100) : 0);
 const cacheNearFull = computed(() => cacheUsagePercent.value >= 90);
 const isClaude = computed(() => config.value.provider === 'claude');
-const isGemini = computed(() => config.value.provider === 'gemini' || config.value.provider === 'gemini-free');
+const isGemini = computed(() => config.value.provider === 'gemini');
 const isOpenRouter = computed(() => config.value.provider === 'openrouter');
 const modelHasThinkingSupport = computed(() => modelSupportsThinking(config.value.model));
 const modelMaxThinkingBudget = computed(() => getModelThinkingBudget(config.value.model));
@@ -774,7 +774,7 @@ async function onImportFileSelected(event: Event) {
         <option value="openrouter">OpenRouter (multi-model)</option>
         <option value="openai">OpenAI</option>
         <option value="gemini">Google Gemini</option>
-        <option value="gemini-free">Google Gemini (Free Tier)</option>
+
         <option value="claude">Anthropic Claude</option>
       </select>
     </div>

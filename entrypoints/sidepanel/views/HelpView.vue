@@ -140,7 +140,7 @@
       <div class="card space-y-1.5 mb-3">
         <div class="flex items-center gap-2">
           <span class="badge bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">1.3</span>
-          <h3 class="text-xs font-semibold text-(--color-text-primary)">Gemini API Free Tier (Google AI Studio)</h3>
+          <h3 class="text-xs font-semibold text-(--color-text-primary)">Gemini API (Google AI Studio)</h3>
         </div>
         <div class="text-xs alert alert-warning">
           ⚠ Free tier hay gặp lỗi kết nối và giới hạn ~20 lượt gọi API mỗi ngày. Dùng cho mục đích dùng thử, không nên dùng thường xuyên.
@@ -165,7 +165,7 @@
             <span
               class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">4</span>
             <span>Mở extension → tab <strong class="text-(--color-text-primary)">Cài đặt</strong> → chọn Provider <strong
-                class="text-(--color-text-primary)">"Google Gemini (Free Tier)"</strong></span>
+                class="text-(--color-text-primary)">"Google Gemini"</strong>. Nếu dùng free tier, chọn model <code class="font-mono text-(--color-accent-text)">gemini-2.5-flash-lite</code>.</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span

@@ -8348,13 +8348,269 @@
         "recommendedSubtasks": 1,
         "expansionPrompt": "Kiểm tra trong chế độ dev rằng permission request không hiển thị dialog và trả về true.",
         "updatedAt": "2026-05-29T02:58:01.145Z"
+      },
+      {
+        "id": "323",
+        "title": "Remove 'gemini-free' from LLMProvider type in types.ts",
+        "description": "Delete 'gemini-free' string from the union type definition of LLMProvider in lib/types.ts.",
+        "details": "Edit lib/types.ts: locate the LLMProvider type (e.g., `export type LLMProvider = 'openai' | 'gemini' | 'gemini-free' | ...`) and remove `'gemini-free'`. The resulting type should only contain distinct providers (e.g., `'custom' | 'openai' | 'openai-compatible' | 'gemini'`). Ensure no other code uses the removed literal directly. After change, run `npm run compile` to check for type errors that might appear in other files referencing `LLMProvider`. It might be necessary to update those references, but this task focuses solely on the type definition.",
+        "testStrategy": "Verify that `npm run compile` passes with zero type errors. Temporarily add a test that asserts a variable of type LLMProvider cannot be assigned `'gemini-free'`.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Xóa literal 'gemini-free' khỏi union type LLMProvider.",
+        "updatedAt": "2026-05-29T04:08:08.817Z"
+      },
+      {
+        "id": "324",
+        "title": "Remove 'gemini-free' case from factory.ts",
+        "description": "Delete the `case 'gemini-free':` branch from the provider factory function in lib/llm/factory.ts, leaving only `case 'gemini':`.",
+        "details": "In lib/llm/factory.ts, find the switch statement that maps provider strings to adapter instances. Remove the entire `case 'gemini-free':` block. The `case 'gemini':` remains unchanged. Ensure no logic depends on the removed case (e.g., default model selection for 'gemini-free' should be handled by the model dropdown, not the factory). After removal, verify that selecting 'gemini' in settings still creates the correct adapter.",
+        "testStrategy": "Run `npm run compile` to ensure no syntax or type errors. Write a unit test that calls factory with 'gemini' and expects an instance of GeminiAdapter, and that calling factory with 'gemini-free' now throws or returns undefined (if not handled elsewhere).",
+        "priority": "high",
+        "dependencies": [
+          "323"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Xóa case 'gemini-free' khỏi factory.ts, compile không lỗi. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 324,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Xóa case 'gemini-free' khỏi switch statement trong factory.",
+        "updatedAt": "2026-05-29T04:08:18.563Z"
+      },
+      {
+        "id": "325",
+        "title": "Remove 'gemini-free' entry from provider-origins.ts",
+        "description": "Delete the `'gemini-free'` key–value pair from the PROVIDER_BASE_URLS map in lib/llm/provider-origins.ts.",
+        "details": "Open lib/llm/provider-origins.ts. Locate the `PROVIDER_BASE_URLS` object (e.g., `const PROVIDER_BASE_URLS = { 'openai': '...', 'gemini': '...', 'gemini-free': '...' }`). Remove the line for `'gemini-free'`. Verify that the object now contains only the desired base URLs. This ensures that any origin-based logic (e.g., connection validation) no longer treats 'gemini-free' as a separate provider.",
+        "testStrategy": "Verify that `npm run compile` passes. Write a test that checks `PROVIDER_BASE_URLS` does not have a property `'gemini-free'` and that `'gemini'` still exists with the correct value.",
+        "priority": "medium",
+        "dependencies": [
+          "323"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Xóa key 'gemini-free' khỏi PROVIDER_BASE_URLS.",
+        "updatedAt": "2026-05-29T04:08:27.924Z"
+      },
+      {
+        "id": "326",
+        "title": "Remove 'gemini-free' from providerDefaults in SettingsView.vue",
+        "description": "Delete the `'gemini-free'` property from the `providerDefaults` object inside entrypoints/sidepanel/views/SettingsView.vue.",
+        "details": "In SettingsView.vue, find the `providerDefaults` reactive object (likely in `setup()` or `data`). It might look like `providerDefaults: { 'openai': {...}, 'gemini': {...}, 'gemini-free': {...}, ... }`. Remove the `'gemini-free'` property. Ensure that the remaining defaults still provide a valid configuration for 'gemini'. The removal does not affect the 'gemini' default. After removal, any code that tries to access `providerDefaults['gemini-free']` will fail at compile time if typed stringly; if dynamic key usage exists, it may cause runtime errors. Adjust any such code in this same file or elsewhere as needed (but this task focuses solely on the object).",
+        "testStrategy": "Run `npm run compile` to catch type errors. Manually check that SettingsView loads without console errors and that selecting 'gemini' provider shows correct defaults.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Xóa 'gemini-free' khỏi providerDefaults, compile không lỗi. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 326,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Xóa property 'gemini-free' khỏi providerDefaults trong SettingsView.vue.",
+        "updatedAt": "2026-05-29T04:08:37.311Z"
+      },
+      {
+        "id": "327",
+        "title": "Simplify isGemini computed in SettingsView.vue",
+        "description": "Change the `isGemini` computed property in SettingsView.vue from a string match that included 'gemini-free' to a simple equality check `config.value.provider === 'gemini'`.",
+        "details": "Locate the computed property `isGemini` in SettingsView.vue. Its current implementation might be `config.value.provider === 'gemini' || config.value.provider === 'gemini-free'`. Replace it with `config.value.provider === 'gemini'`. This computed is used to conditionally show Gemini-specific UI elements (e.g., model selection). Ensure that the change does not break any conditional rendering that previously depended on the old expression. If any code relied on `isGemini` being true for 'gemini-free', it will now need to handle 'gemini' only. That is intended.",
+        "testStrategy": "Run `npm run compile` to verify no type errors. Manually test the settings UI: when 'Google Gemini' is selected, Gemini‑related UI should appear; when another provider is selected, it should hide.",
+        "priority": "medium",
+        "dependencies": [
+          "326"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Simplify isGemini computed, compile không lỗi. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 327,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Đơn giản hóa computed isGemini thành kiểm tra equality với 'gemini'.",
+        "updatedAt": "2026-05-29T04:08:46.700Z"
+      },
+      {
+        "id": "328",
+        "title": "Remove gemini-free option from provider dropdown in SettingsView.vue",
+        "description": "Delete the `<option value=\"gemini-free\">` element from the provider selection dropdown in SettingsView.vue.",
+        "details": "In the template of SettingsView.vue, find the `<select>` element used for provider selection. Remove the `<option value=\"gemini-free\">Google Gemini (Free Tier)</option>` line. Ensure that the remaining options include only the desired providers. The 'gemini' option should remain (e.g., `<option value=\"gemini\">Google Gemini</option>`). The label text for 'gemini' may need to be updated to match the new naming (e.g., 'Google Gemini' without mentioning free tier). That is covered in HelpView task, but ensure consistency here if needed.",
+        "testStrategy": "Run `npm run compile` to ensure no template errors. Manually check the settings UI: the dropdown should no longer have a 'Google Gemini (Free Tier)' option; only 'Google Gemini' remains.",
+        "priority": "medium",
+        "dependencies": [
+          "327"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Xóa option gemini-free khỏi dropdown, compile không lỗi. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 328,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Xóa option 'gemini-free' khỏi dropdown provider.",
+        "updatedAt": "2026-05-29T04:08:56.940Z"
+      },
+      {
+        "id": "329",
+        "title": "Update HelpView.vue text to remove 'Free Tier' reference",
+        "description": "Modify the text in entrypoints/sidepanel/views/HelpView.vue to replace 'Google Gemini (Free Tier)' with 'Google Gemini' and add a note about model selection for free usage.",
+        "details": "Open HelpView.vue and find any text that mentions 'Google Gemini (Free Tier)'. Replace it with 'Google Gemini'. Additionally, add a sentence such as: 'To use the free tier, select the gemini-2.5-flash-lite model from the model dropdown.' Ensure the update is clear and consistent with the new unified provider model. Only modify the Vue template part; no logic changes needed.",
+        "testStrategy": "Run `npm run compile` to verify no template errors. Manually inspect HelpView in the sidepanel to ensure the text is updated correctly and no 'Free Tier' reference remains.",
+        "priority": "low",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Update HelpView text, compile không lỗi. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 329,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Cập nhật văn bản trong HelpView.vue để xóa đề cập 'Free Tier'.",
+        "updatedAt": "2026-05-29T04:09:06.110Z"
+      },
+      {
+        "id": "330",
+        "title": "Search and clean up remaining 'gemini-free' references in the codebase",
+        "description": "Perform a comprehensive search for any leftover occurrences of 'gemini-free' in the entire codebase and update or remove them accordingly.",
+        "details": "Use a global search tool (e.g., grep, VS Code search) to find all occurrences of the string 'gemini-free' in the project. Check in: .ts, .vue, .json, .md files, test files, configuration files, and any other source files. For each occurrence, decide whether to remove it, replace it with 'gemini', or update the comment. Ensure no file still references 'gemini-free' as a valid provider. Special attention to test files that might have hardcoded the old provider string. Update those tests to use 'gemini' instead. If the occurrence is in documentation (e.g., README.md), update the text to reflect the merge.",
+        "testStrategy": "After cleanup, run `grep -r 'gemini-free' --include='*' .` and confirm no results are returned. Then run `npm run compile` to ensure no breakage due to the changes.",
+        "priority": "medium",
+        "dependencies": [
+          "323",
+          "324",
+          "325",
+          "326",
+          "327",
+          "328",
+          "329"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Search toàn bộ codebase tìm gemini-free còn sót, xóa hết. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 330,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Tìm kiếm toàn bộ codebase để xóa hoặc cập nhật các tham chiếu còn lại đến 'gemini-free'.",
+        "updatedAt": "2026-05-29T04:09:17.602Z"
+      },
+      {
+        "id": "331",
+        "title": "Verify build succeeds with zero TypeScript errors",
+        "description": "Run the project build command (e.g., `npm run compile`) to ensure all changes compile successfully without any type errors or warnings.",
+        "details": "Execute `npm run compile` from the project root. If there are any errors, investigate and fix them. The goal is to have a clean compilation that passes. This step validates that all previous code modifications are consistent and complete. If errors remain, go back and adjust the relevant files until the build passes.",
+        "testStrategy": "Exit code 0 from `npm run compile` with no stderr output.",
+        "priority": "high",
+        "dependencies": [
+          "330"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Build verify zero TS errors, kiểm tra output. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 331,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Chạy lệnh build và kiểm tra không có lỗi TypeScript."
+      },
+      {
+        "id": "332",
+        "title": "Perform manual QA: select Gemini and test connection",
+        "description": "Manually test the sidepanel to ensure the Gemini provider works correctly post-merge.",
+        "details": "1. Load the extension in development mode. 2. Open the sidepanel and go to Settings. 3. In the provider dropdown, confirm that only 'Google Gemini' appears (no 'Google Gemini (Free Tier)'). 4. Select 'Google Gemini'. 5. In the model dropdown, verify that models including 'gemini-2.5-flash-lite' are listed. 6. Select 'gemini-2.5-flash-lite'. 7. Click 'Test Connection' and verify it succeeds. 8. Also check HelpView: ensure the text mentions only 'Google Gemini' and includes the note about selecting the free model. 9. Switch to another provider and back to Gemini to ensure no state issues.",
+        "testStrategy": "Connection test returns success. UI elements match the expected post-merge design. No console errors during interaction.",
+        "priority": "medium",
+        "dependencies": [
+          "331"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Manual QA: select Gemini, test connection, verify HelpView text. Fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 332,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 1,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Kiểm tra thủ công việc chọn Gemini và test kết nối."
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-29T02:58:01.147Z",
-      "taskCount": 168,
-      "completedCount": 156,
+      "lastModified": "2026-05-29T04:09:17.604Z",
+      "taskCount": 178,
+      "completedCount": 164,
       "tags": [
         "master"
       ]

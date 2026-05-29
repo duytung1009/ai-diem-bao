@@ -5,7 +5,7 @@ export const PROVIDER_BASE_URLS: Record<LLMProvider, string> = {
   openai: 'https://api.openai.com/v1',
   claude: 'https://api.anthropic.com',
   gemini: 'https://generativelanguage.googleapis.com',
-  'gemini-free': 'https://generativelanguage.googleapis.com',
+
   openrouter: 'https://openrouter.ai/api/v1',
   custom: '',
 };

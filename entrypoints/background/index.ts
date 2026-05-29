@@ -5,7 +5,8 @@ import { computeTrustScores } from '@/lib/trust-scorer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
 import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats } from '@/lib/notebook-db';
-import { extractArticle } from '@/lib/scrapers/article-extractor';
+// TODO(Feature 36): SCRAPE_ARTICLE disabled - requires cross-origin host_permissions
+// import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
 import { mapExportedTopic, type ImportConflictMode, type ImportResult } from '@/lib/importer';
 import type { ExportedTopic } from '@/lib/exporter';
@@ -101,8 +102,8 @@ export default defineBackground(() => {
           return true;
 
         case 'SCRAPE_ARTICLE': {
-          const { url: articleUrl } = message.payload as { url: string };
-          extractArticle(articleUrl).then(sendResponse).catch(() => sendResponse(null));
+          // TODO(Feature 36): disabled - requires cross-origin host_permissions
+          sendResponse(null);
           return true;
         }
 

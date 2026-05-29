@@ -1,8 +1,9 @@
 import { ref } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { scrapePageRange } from '@/lib/scrapers/page-loader';
-import { detectNewsThread } from '@/lib/scrapers/news-detector';
-import type { ArticleContent } from '@/lib/scrapers/article-extractor';
+// TODO(Feature 36): unused while SCRAPE_ARTICLE is disabled
+// import { detectNewsThread } from '@/lib/scrapers/news-detector';
+// TODO(Feature 36): ArticleContent import removed with SCRAPE_ARTICLE disable
 import type { ScrapedPost, XenForoVersion } from '@/lib/types';
 
 export interface ScrapeProgress {
@@ -86,44 +87,46 @@ export function useTopicScraper() {
   }
 
   /**
-   * Detect news threads and enrich the first post with original article content.
-   * Returns the (possibly enriched) posts unchanged if not a news thread.
+   * TODO(Feature 36): Disabled - SCRAPE_ARTICLE requires cross-origin host_permissions
+   * that were removed when switching to dynamic permissions.
+   * Re-enable when a permission-safe approach is implemented.
    */
   async function enrichWithNewsArticles(
     posts: ScrapedPost[],
-    topicUrl: string,
-    callbacks?: EnrichCallbacks,
+    _topicUrl: string,
+    _callbacks?: EnrichCallbacks,
   ): Promise<ScrapedPost[]> {
-    try {
-      const forumDomain = new URL(topicUrl).hostname;
-      const newsCheck = detectNewsThread(posts, forumDomain);
-      if (!newsCheck.isNews || !newsCheck.articleUrls.length) return posts;
+    // try {
+    //   const forumDomain = new URL(topicUrl).hostname;
+    //   const newsCheck = detectNewsThread(posts, forumDomain);
+    //   if (!newsCheck.isNews || !newsCheck.articleUrls.length) return posts;
 
-      callbacks?.onStatus('Phát hiện thớt tin tức — đang tải bài báo gốc...');
-      const articles = (await Promise.all(
-        newsCheck.articleUrls.map(url =>
-          sendMessage<ArticleContent | null>('SCRAPE_ARTICLE', { url }).catch(() => null),
-        ),
-      )).filter(Boolean) as ArticleContent[];
+    //   callbacks?.onStatus('Phát hiện thớt tin tức — đang tải bài báo gốc...');
+    //   const articles = (await Promise.all(
+    //     newsCheck.articleUrls.map(url =>
+    //       sendMessage<ArticleContent | null>('SCRAPE_ARTICLE', { url }).catch(() => null),
+    //     ),
+    //   )).filter(Boolean) as ArticleContent[];
 
-      if (!articles.length) return posts;
+    //   if (!articles.length) return posts;
 
-      const firstPostIndex = posts.findIndex(p => p.postNumber > 0);
-      if (firstPostIndex === -1) return posts;
+    //   const firstPostIndex = posts.findIndex(p => p.postNumber > 0);
+    //   if (firstPostIndex === -1) return posts;
 
-      const articleText = articles.map(a =>
-        `[BÀI BÁO GỐC — ${a.source}]\nTiêu đề: ${a.title}\n\nNội dung:\n${a.content}`,
-      ).join('\n\n---\n\n');
+    //   const articleText = articles.map(a =>
+    //     `[BÀI BÁO GỐC — ${a.source}]\nTiêu đề: ${a.title}\n\nNội dung:\n${a.content}`,
+    //   ).join('\n\n---\n\n');
 
-      const updatedPosts = [...posts];
-      updatedPosts[firstPostIndex] = {
-        ...updatedPosts[firstPostIndex],
-        content: `${articleText}\n\n---\n\n${updatedPosts[firstPostIndex].content}`,
-      };
+    //   const updatedPosts = [...posts];
+    //   updatedPosts[firstPostIndex] = {
+    //     ...updatedPosts[firstPostIndex],
+    //     content: `${articleText}\n\n---\n\n${updatedPosts[firstPostIndex].content}`,
+    //   };
 
-      callbacks?.onInfo(`Đã tải ${articles.length} bài báo gốc: ${articles.map(a => a.source).join(', ')}`);
-      return updatedPosts;
-    } catch { return posts; }
+    //   callbacks?.onInfo(`Đã tải ${articles.length} bài báo gốc: ${articles.map(a => a.source).join(', ')}`);
+    //   return updatedPosts;
+    // } catch { return posts; }
+    return posts;
   }
 
   return {

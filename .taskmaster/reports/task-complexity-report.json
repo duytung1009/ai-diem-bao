@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-29T02:44:20.880Z",
+		"generatedAt": "2026-05-29T04:05:19.140Z",
 		"tasksAnalyzed": 22,
-		"totalTasks": 168,
+		"totalTasks": 178,
 		"analysisCount": 22,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -15,7 +15,7 @@
 			"complexityScore": 4,
 			"recommendedSubtasks": 4,
 			"expansionPrompt": "Xây dựng các hàm helper riêng cho việc tạo payload và nén segment để dễ dàng kiểm thử đơn vị và snapshot testing.",
-			"reasoning": "Nhiệm vụ này yêu cầu hợp nhất logic lưu trữ segment vào một module duy nhất với các hàm buildSegmentSavePayload và makeDenseSegments, tích hợp stale-guard token. Độ phức tạp vừa phải vì chỉ làm việc với logic thuần, không tương tác UI hay side-effect phức tạp. Có thể phân tách thành 4 subtask: khởi tạo module, xây dựng hàm makeDenseSegments, xây dựng buildSegmentSavePayload, và tích hợp stale-guard."
+			"reasoning": "Nhiệm vụ hợp nhất logic lưu segment và promotion vào một module duy nhất. Công việc đã được phân rã thành các subtask rõ ràng, độ phức tạp trung bình do cần tích hợp stale-guard token và đảm bảo tính tương thích với code cũ."
 		},
 		{
 			"taskId": 170,
@@ -23,7 +23,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 5,
 			"expansionPrompt": "Phân tách logic scraping trang đơn và logic xử lý vòng lặp trang để tăng tính tái sử dụng và dễ kiểm thử bằng mock.",
-			"reasoning": "Nhiệm vụ này đòi hỏi tái cấu trúc logic cào dữ liệu phức tạp, bao gồm vòng lặp trang, enrichment, dedup, và callbacks. Cần xử lý nhiều trạng thái thread và đảm bảo tính nhất quán. Độ phức tạp khá cao do sự tương tác giữa các thành phần và yêu cầu kiểm thử kỹ lưỡng. Phân tách thành 5 subtask hợp lý."
+			"reasoning": "Tách logic cào dữ liệu trang và enrichment thành một composable riêng biệt. Yêu cầu đóng gói nhiều chức năng (scrape range, vòng lặp, xử lý thread, callback) và đảm bảo logic dedup re-scrape, độ phức tạp khá cao."
 		},
 		{
 			"taskId": 171,
@@ -31,7 +31,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 4,
 			"expansionPrompt": "Tập trung vào cơ chế đồng bộ trạng thái giữa StepTimeline và LLMTaskState để đảm bảo giao diện người dùng luôn phản ánh đúng tiến trình xử lý.",
-			"reasoning": "Nhiệm vụ này yêu cầu xây dựng composable quản lý pipeline với khả năng rebuild và reconcile, đồng thời loại bỏ các hack progressive-append cũ. Cần hiểu rõ luồng xử lý và tương tác với useSummarize. Độ phức tạp khá cao do liên quan đến nhiều trạng thái và logic điều chỉnh."
+			"reasoning": "Yêu cầu quản lý StepTimeline tập trung, xây dựng buildSummarizePipeline và reconcile khi số segment thay đổi. Cần đồng bộ trạng thái task và loại bỏ legacy code, đòi hỏi hiểu biết sâu về pipeline."
 		},
 		{
 			"taskId": 172,
@@ -39,7 +39,7 @@
 			"complexityScore": 7,
 			"recommendedSubtasks": 4,
 			"expansionPrompt": "Xây dựng các bộ test case mock LLM chi tiết cho từng hàm primitive để đảm bảo cơ chế stale-guard và short-circuit hoạt động chính xác.",
-			"reasoning": "Nhiệm vụ này triển khai hai hàm cốt lõi summarizeOneSegment và reduceOverall, bao gồm gọi LLM, persist dữ liệu, và tuân thủ stale-guard. Độ phức tạp cao do cần xử lý đồng thời, race condition, và đảm bảo tính toàn vẹn dữ liệu. Việc kiểm thử đòi hỏi mock LLM và snapshot testing."
+			"reasoning": "Định nghĩa hai đơn vị thực thi cốt lõi: summarizeOneSegment và reduceOverall. Yêu cầu tích hợp LLM call, persist, stale-guard và xử lý lỗi. Độ phức tạp cao do phải đảm bảo tính toàn vẹn và xử lý race condition."
 		},
 		{
 			"taskId": 173,
@@ -47,7 +47,7 @@
 			"complexityScore": 8,
 			"recommendedSubtasks": 5,
 			"expansionPrompt": "Mô tả chi tiết luồng điều phối giữa Scraper, Planner và Summarizer trong driver trước khi triển khai để bao quát hết các kịch bản resume/retry.",
-			"reasoning": "Nhiệm vụ này là trung tâm điều phối toàn bộ quy trình tóm tắt, kết nối scraper, pipeline, và các hàm primitive. Phải xử lý nhiều chế độ (mode) và khả năng resume, retry. Độ phức tạp rất cao, yêu cầu kiến thức sâu về toàn bộ hệ thống và kiểm thử characterization."
+			"reasoning": "Hợp nhất 5 flow tóm tắt vào một driver điều hướng duy nhất. Phải điều phối pipeline, scraper, vòng lặp summarizeOneSegment và reduceOverall. Đây là task trung tâm, có độ phức tạp cao nhất trong loạt task này."
 		},
 		{
 			"taskId": 283,
@@ -55,7 +55,7 @@
 			"complexityScore": 3,
 			"recommendedSubtasks": 3,
 			"expansionPrompt": "Định nghĩa interface mở rộng, cập nhật schema cho IndexedDB và thực hiện audit toàn bộ codebase cho các hàm khởi tạo object.",
-			"reasoning": "Nhiệm vụ này chỉ thêm các trường optional vào interface TypeScript, cập nhật schema IndexedDB và đảm bảo backward compatibility. Không có thay đổi logic phức tạp. Độ phức tạp thấp, có thể thực hiện nhanh chóng."
+			"reasoning": "Thêm trường mới vào interface và cập nhật schema database. Công việc tương đối đơn giản, mainly là thay đổi type và đảm bảo backward compatibility. Cần audit codebase để cập nhật logic khởi tạo."
 		},
 		{
 			"taskId": 284,
@@ -63,7 +63,7 @@
 			"complexityScore": 5,
 			"recommendedSubtasks": 4,
 			"expansionPrompt": "Xây dựng các computed properties cho trạng thái segment, logic kiểm tra stale dữ liệu và quản lý refs cho index hiện hành.",
-			"reasoning": "Nhiệm vụ này yêu cầu tính toán trạng thái dựa trên dữ liệu chunks và segments, bao gồm kiểm tra tính lỗi thời. Cần xử lý các trường hợp legacy chunks và đảm bảo reactive. Độ phức tạp trung bình, cần kiểm thử kỹ lưỡng."
+			"reasoning": "Thêm computed properties phức tạp dựa trên dữ liệu segment và chunks. Yêu cầu logic tính toán trạng thái, kiểm tra stale và đồng bộ. Độ phức tạp trung bình do cần xử lý nhiều trường hợp biên."
 		},
 		{
 			"taskId": 285,
@@ -71,7 +71,7 @@
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
 			"expansionPrompt": "Tách rời logic định vị segment và logic gọi LLM trích xuất thành các hàm pure hoặc helper độc lập để dễ dàng unit test.",
-			"reasoning": "Nhiệm vụ này refactor mã nguồn hiện tại để tách các hàm findSegmentForPost và runChunkExtraction nhằm tăng tính tái sử dụng. Độ phức tạp vừa phải, chủ yếu là di chuyển mã và đảm bảo không thay đổi hành vi."
+			"reasoning": "Tách logic hiện tại thành các hàm helper riêng biệt. Công việc refactor khá rõ ràng, cần đảm bảo không phá vỡ luồng cũ. Độ phức tạp thấp đến trung bình."
 		},
 		{
 			"taskId": 286,
@@ -79,7 +79,7 @@
 			"complexityScore": 6,
 			"recommendedSubtasks": 5,
 			"expansionPrompt": "Chi tiết hóa luồng: tính resume point -> lấy danh sách post -> gọi extraction -> merge kết quả vào store theo segmentIndex.",
-			"reasoning": "Nhiệm vụ này xây dựng hàm extractSegment với khả năng resume, bao gồm tính toán điểm bắt đầu dựa trên chunks hiện có. Cần tích hợp với các helper đã tạo và quản lý trạng thái segment. Độ phức tạp khá cao do phải xử lý nhiều bước và merge dữ liệu."
+			"reasoning": "Xây dựng hàm extractSegment hỗ trợ resume và cập nhật trạng thái. Yêu cầu tương tác với nhiều module (segment-planner, storage, LLM) và xử lý merge/persist. Độ phức tạp khá cao."
 		},
 		{
 			"taskId": 287,
@@ -87,7 +87,7 @@
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
 			"expansionPrompt": "Xây dựng logic lọc dữ liệu (filter) theo segmentIndex và quy trình gọi lại hàm trích xuất một cách an toàn.",
-			"reasoning": "Nhiệm vụ này thêm các hàm clearSegment và reExtractSegment, cần xử lý đúng thứ tự bất đồng bộ và không reset knowledgeReducedAt. Độ phức tạp vừa phải, dễ kiểm thử vì logic rõ ràng."
+			"reasoning": "Thêm hàm clearSegment và reExtractSegment. Công việc chủ yếu là xử lý mảng và gọi lại quy trình trích xuất. Độ phức tạp thấp, nhưng cần cẩn thận với trạng thái stale."
 		},
 		{
 			"taskId": 288,
@@ -95,7 +95,7 @@
 			"complexityScore": 5,
 			"recommendedSubtasks": 4,
 			"expansionPrompt": "Chỉnh sửa logic handleExtract để gán index tự động và cập nhật timestamp knowledgeReducedAt sau khi pha reduce hoàn tất.",
-			"reasoning": "Nhiệm vụ này yêu cầu cập nhật quy trình Extract All để gán segmentIndex cho tất cả chunks và lưu timestamp reduce. Cần đảm bảo tương thích với dữ liệu cũ và kiểm tra kỹ lưỡng. Độ phức tạp trung bình, yêu cầu kiểm thử tích hợp."
+			"reasoning": "Cập nhật flow hiện tại để gán segmentIndex và lưu timestamp. Yêu cầu hiểu biết về quy trình hiện tại và đảm bảo dữ liệu cũ vẫn hoạt động. Độ phức tạp trung bình."
 		},
 		{
 			"taskId": 297,
@@ -103,87 +103,87 @@
 			"complexityScore": 3,
 			"recommendedSubtasks": 3,
 			"expansionPrompt": "Thiết lập UI cho việc chọn file, chọn chế độ xung đột và đồng nhất style với khối cache hiện tại.",
-			"reasoning": "Nhiệm vụ này chỉ thêm các thành phần UI cơ bản như input file, nút bấm, radio buttons. Không có logic phức tạp. Độ phức tạp thấp, chủ yếu là HTML/CSS và event binding đơn giản."
+			"reasoning": "Thay đổi giao diện thuần túy, thêm input file, nút bấm và radio button. Công việc thiên về frontend, độ phức tạp thấp."
 		},
 		{
-			"taskId": 313,
-			"taskTitle": "Update wxt.config.ts to remove static host_permissions",
+			"taskId": 323,
+			"taskTitle": "Remove 'gemini-free' from LLMProvider type in types.ts",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Xóa literal 'gemini-free' khỏi union type LLMProvider.",
+			"reasoning": "Thay đổi đơn giản: xóa một string khỏi type definition. Không cần chia nhỏ subtask."
+		},
+		{
+			"taskId": 324,
+			"taskTitle": "Remove 'gemini-free' case from factory.ts",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Xóa case 'gemini-free' khỏi switch statement trong factory.",
+			"reasoning": "Thay đổi đơn giản: xóa một branch trong switch. Không cần chia nhỏ."
+		},
+		{
+			"taskId": 325,
+			"taskTitle": "Remove 'gemini-free' entry from provider-origins.ts",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Xóa key 'gemini-free' khỏi PROVIDER_BASE_URLS.",
+			"reasoning": "Thay đổi đơn giản: xóa một property khỏi object. Không cần chia nhỏ."
+		},
+		{
+			"taskId": 326,
+			"taskTitle": "Remove 'gemini-free' from providerDefaults in SettingsView.vue",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Xóa property 'gemini-free' khỏi providerDefaults trong SettingsView.vue.",
+			"reasoning": "Thay đổi đơn giản: xóa một property khỏi reactive object. Không cần chia nhỏ."
+		},
+		{
+			"taskId": 327,
+			"taskTitle": "Simplify isGemini computed in SettingsView.vue",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Đơn giản hóa computed isGemini thành kiểm tra equality với 'gemini'.",
+			"reasoning": "Thay đổi đơn giản: sửa biểu thức boolean. Không cần chia nhỏ."
+		},
+		{
+			"taskId": 328,
+			"taskTitle": "Remove gemini-free option from provider dropdown in SettingsView.vue",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Xóa option 'gemini-free' khỏi dropdown provider.",
+			"reasoning": "Thay đổi đơn giản: xóa một thẻ option trong template. Không cần chia nhỏ."
+		},
+		{
+			"taskId": 329,
+			"taskTitle": "Update HelpView.vue text to remove 'Free Tier' reference",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Cập nhật văn bản trong HelpView.vue để xóa đề cập 'Free Tier'.",
+			"reasoning": "Thay đổi đơn giản: sửa text trong template. Không cần chia nhỏ."
+		},
+		{
+			"taskId": 330,
+			"taskTitle": "Search and clean up remaining 'gemini-free' references in the codebase",
 			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Đơn giản chỉ là xóa các dòng host_permissions trong cấu hình và kiểm tra manifest đầu ra.",
-			"reasoning": "Nhiệm vụ này là thay đổi cấu hình đơn giản, không yêu cầu viết code logic. Độ phức tạp rất thấp."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Tìm kiếm toàn bộ codebase để xóa hoặc cập nhật các tham chiếu còn lại đến 'gemini-free'.",
+			"reasoning": "Công việc tìm kiếm và dọn dẹp, có thể phát hiện nhiều file cần sửa. Độ phức tạp thấp nhưng có thể tốn thời gian. Không cần chia nhỏ subtask vì bản chất là một nhiệm vụ duy nhất."
 		},
 		{
-			"taskId": 314,
-			"taskTitle": "Create lib/permissions.ts permission utility module",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Phát triển module tiện ích với các hàm originFromUrl, requestOriginPermission, hasOriginPermission, sử dụng chrome.permissions API và xử lý DEV mode.",
-			"reasoning": "Nhiệm vụ này yêu cầu tạo module mới với các hàm gọi chrome.permissions API dạng callback, chuyển đổi thành Promise, và xử lý riêng cho DEV mode. Cần kiểm thử đơn vị với mock chrome API. Độ phức tạp trung bình."
+			"taskId": 331,
+			"taskTitle": "Verify build succeeds with zero TypeScript errors",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Chạy lệnh build và kiểm tra không có lỗi TypeScript.",
+			"reasoning": "Công việc kiểm tra đơn giản, chỉ cần chạy lệnh và fix lỗi nếu có. Độ phức tạp thấp."
 		},
 		{
-			"taskId": 315,
-			"taskTitle": "Create lib/llm/provider-origins.ts provider origin map",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Định nghĩa mapping provider->base URL và hàm getProviderOrigin, kiểm thử với các URL tùy chỉnh.",
-			"reasoning": "Nhiệm vụ này chỉ tạo một file mapping tĩnh và hàm helper đơn giản. Độ phức tạp rất thấp."
-		},
-		{
-			"taskId": 316,
-			"taskTitle": "Update save() method in SettingsView.vue to request provider permission",
-			"complexityScore": 6,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Tích hợp các module permission và provider-origins vào logic lưu, đảm bảo xử lý quyền trước khi lưu cấu hình provider.",
-			"reasoning": "Nhiệm vụ này yêu cầu tích hợp các module mới vào quy trình lưu settings, kiểm tra và yêu cầu quyền động. Cần xử lý các trường hợp thành công, thất bại, và custom URL. Độ phức tạp khá cao vì liên quan đến async flow và tương tác với Chrome API."
-		},
-		{
-			"taskId": 317,
-			"taskTitle": "Update testConnection() method in SettingsView.vue to use permission request",
-			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Thêm kiểm tra và yêu cầu quyền trước khi test kết nối, đảm bảo hành vi nhất quán với save flow.",
-			"reasoning": "Nhiệm vụ này sửa đổi phương thức testConnection để kiểm tra quyền truy cập trước khi gọi API. Độ phức tạp vừa phải, vì logic tương tự save nhưng đơn giản hơn."
-		},
-		{
-			"taskId": 318,
-			"taskTitle": "Implement migration background handler on chrome.runtime.onInstalled",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Thêm listener onInstalled để set flag cần cấp lại quyền khi extension được cập nhật.",
-			"reasoning": "Nhiệm vụ này chỉ thêm một event listener đơn giản để lưu flag vào storage. Độ phức tạp rất thấp."
-		},
-		{
-			"taskId": 319,
-			"taskTitle": "Implement migration banner in SettingsView.vue",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Xây dựng banner hiển thị khi cần cấp lại quyền, nút 'Cấp quyền' gọi request cho tất cả providers, xóa flag sau khi thành công.",
-			"reasoning": "Nhiệm vụ này yêu cầu phát triển UI banner kết hợp với logic yêu cầu quyền hàng loạt. Cần xử lý trạng thái loading, lỗi và đồng bộ storage. Độ phức tạp trung bình."
-		},
-		{
-			"taskId": 320,
-			"taskTitle": "Build verification and manifest check",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Kiểm tra build và manifest để đảm bảo không còn host_permissions tĩnh không mong muốn.",
-			"reasoning": "Nhiệm vụ này chỉ chạy lệnh build và kiểm tra file manifest. Độ phức tạp rất thấp, không yêu cầu viết code."
-		},
-		{
-			"taskId": 321,
-			"taskTitle": "Manual end-to-end testing for each provider save flow",
-			"complexityScore": 3,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Chuẩn bị kịch bản test chi tiết cho từng provider và custom URL, kiểm tra dialog quyền xuất hiện đúng lần đầu và không xuất hiện lần sau.",
-			"reasoning": "Nhiệm vụ này là kiểm thử thủ công, không yêu cầu phát triển code. Độ phức tạp thấp, chủ yếu là kỹ năng test và ghi nhận kết quả."
-		},
-		{
-			"taskId": 322,
-			"taskTitle": "Verify DEV mode bypass for permission requests",
-			"complexityScore": 2,
-			"recommendedSubtasks": 1,
-			"expansionPrompt": "Kiểm tra trong chế độ dev rằng permission request không hiển thị dialog và trả về true.",
-			"reasoning": "Nhiệm vụ này đơn giản là xác nhận hành vi trong môi trường dev. Độ phức tạp thấp."
+			"taskId": 332,
+			"taskTitle": "Perform manual QA: select Gemini and test connection",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Kiểm tra thủ công việc chọn Gemini và test kết nối.",
+			"reasoning": "QA thủ công đơn giản, không yêu cầu kỹ thuật phức tạp. Độ phức tạp thấp."
 		}
 	]
 }

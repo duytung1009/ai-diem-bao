@@ -6,7 +6,7 @@ defineEmits<{
 
 <template>
   <button
-    class="inline-flex items-center gap-1 text-xs text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors py-0.5 px-1.5 rounded-md hover:bg-(--color-bg-muted)"
+    class="link inline-flex items-center gap-1 text-xs"
     @click="$emit('click')"
   >
     <slot />

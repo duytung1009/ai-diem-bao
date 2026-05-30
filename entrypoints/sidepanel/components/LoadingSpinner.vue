@@ -6,9 +6,11 @@ defineProps<{
 
 <template>
   <div class="flex flex-col items-center justify-center py-8 gap-3">
-    <div
-      class="w-8 h-8 border-3 border-(--color-bg-muted) border-t-(--color-accent) rounded-full animate-spin"
-    ></div>
+    <div class="flex items-center gap-1">
+      <span class="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse-soft" style="animation-delay: 0ms"></span>
+      <span class="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse-soft" style="animation-delay: 200ms"></span>
+      <span class="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse-soft" style="animation-delay: 400ms"></span>
+    </div>
     <p v-if="text" class="text-sm text-(--color-text-secondary)">{{ text }}</p>
   </div>
 </template>

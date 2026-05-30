@@ -75,7 +75,7 @@ const tooltipText = computed(() => {
 <template>
   <span
     v-if="level !== null"
-    :class="['inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium leading-none cursor-help', badgeClass]"
+    :class="['badge cursor-help', badgeClass]"
     :title="tooltipText"
   >{{ badgeLabel }}</span>
 </template>

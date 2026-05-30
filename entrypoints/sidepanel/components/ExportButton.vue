@@ -97,9 +97,8 @@ function downloadMd() {
 
 <template>
   <div class="relative" @keydown.escape.window="showDropdown = false">
-    <!-- Trigger button -->
     <button
-      class="flex items-center gap-1.5 btn btn-secondary btn-sm"
+      class="btn btn-sm btn-ghost"
       title="Xuất kết quả"
       @click="showDropdown = !showDropdown"
     >
@@ -109,13 +108,12 @@ function downloadMd() {
       Xuất
     </button>
 
-    <!-- Dropdown -->
     <div
       v-if="showDropdown"
-      class="absolute right-0 top-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-lg shadow-lg z-10 min-w-max"
+      class="absolute right-0 top-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-xl shadow-dropdown z-10 min-w-max p-1"
     >
       <button
-        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
+        class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
         @click="copyMarkdown"
       >
         <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,7 +122,7 @@ function downloadMd() {
         Sao chép Markdown
       </button>
       <button
-        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
+        class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
         @click="copyText"
       >
         <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +131,7 @@ function downloadMd() {
         Sao chép văn bản
       </button>
       <button
-        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
+        class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
         @click="downloadMd"
       >
         <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +141,7 @@ function downloadMd() {
       </button>
       <div class="border-t border-(--color-border) my-1" />
       <button
-        class="w-full text-left px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-bg-muted) flex items-center gap-2"
+        class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
         @click="downloadSummaryJson"
       >
         <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,14 +151,12 @@ function downloadMd() {
       </button>
     </div>
 
-    <!-- Click-outside overlay -->
     <div
       v-if="showDropdown"
       class="fixed inset-0 z-0"
       @click="showDropdown = false"
     />
 
-    <!-- Toast notification -->
     <Transition
       enter-active-class="transition-all duration-200"
       enter-from-class="opacity-0 translate-y-1"
@@ -169,7 +165,7 @@ function downloadMd() {
     >
       <div
         v-if="toast"
-        class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50"
+        class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-(--color-text-primary) text-(--color-bg-base) text-sm px-4 py-2 rounded-lg shadow-elevated z-50"
       >
         {{ toast }}
       </div>

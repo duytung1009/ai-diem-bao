@@ -156,7 +156,7 @@ function formatDate(ts: number): string {
 </script>
 
 <template>
-  <div class="p-4 space-y-4">
+  <div class="p-3 space-y-2">
     <!-- No topic selected -->
     <div v-if="!cachedTopic" class="text-center py-8">
       <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
@@ -168,7 +168,7 @@ function formatDate(ts: number): string {
       <!-- Back button + Refresh -->
       <div class="flex items-center justify-between">
         <BackButton />
-        <h2 class="font-semibold text-sm text-(--color-text-primary)">Tra cứu thớt</h2>
+        <h2 class="section-heading">Tra cứu thớt</h2>
       </div>
 
       <!-- Conflict alert: running task for old topic -->
@@ -184,7 +184,7 @@ function formatDate(ts: number): string {
       <template v-if="!pendingConflict">
 
       <!-- No cache warning -->
-      <div v-if="!allPosts.length" class="text-xs alert alert-warning">
+      <div v-if="!allPosts.length" class="alert alert-warning text-xs">
         Chưa có dữ liệu của thớt. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
@@ -206,7 +206,7 @@ function formatDate(ts: number): string {
           <p class="text-xs text-(--color-text-secondary) font-medium">Gợi ý câu hỏi:</p>
           <div class="flex flex-wrap gap-2">
             <button v-for="q in suggestedQuestions" :key="q"
-              class="text-xs px-2 py-1 rounded-full bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft) hover:text-(--color-accent-text) transition-colors text-left"
+              class="badge badge-neutral text-left"
               @click="useSuggestion(q)">
               {{ q }}
             </button>
@@ -224,12 +224,12 @@ function formatDate(ts: number): string {
         <div v-if="history.length" class="space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-medium text-(--color-text-secondary)">Lịch sử tra cứu</h3>
-            <button class="text-xs text-(--color-text-muted) hover:text-red-500 transition-colors" @click="clearHistory">
+            <button class="btn btn-ghost btn-sm text-xs hover:text-(--color-error-text)" @click="clearHistory">
               Xóa tất cả
             </button>
           </div>
 
-          <div v-for="entry in history" :key="entry.askedAt" class="border border-(--color-border) rounded-lg overflow-hidden">
+          <div v-for="entry in history" :key="entry.askedAt" class="card overflow-hidden">
             <!-- Question -->
             <div class="bg-(--color-bg-muted) px-3 py-2 border-b border-(--color-border)">
               <div class="flex items-start justify-between gap-2">

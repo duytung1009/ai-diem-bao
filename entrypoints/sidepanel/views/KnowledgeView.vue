@@ -305,7 +305,7 @@ onActivated(async () => {
 </script>
 
 <template>
-  <div class="p-4 space-y-4">
+  <div class="p-3 space-y-2">
     <!-- No topic selected -->
     <div v-if="!topicInfo" class="text-center py-8">
       <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
@@ -317,7 +317,7 @@ onActivated(async () => {
       <!-- Back button + Refresh -->
       <div class="flex items-center justify-between">
         <BackButton />
-        <h2 class="font-semibold text-sm text-(--color-text-primary)">Trích xuất kiến thức</h2>
+        <h2 class="section-heading">Trích xuất kiến thức</h2>
       </div>
 
       <!-- Conflict alert: running task for old topic -->
@@ -333,14 +333,14 @@ onActivated(async () => {
       <template v-if="!pendingConflict">
 
       <!-- No posts warning -->
-      <div v-if="!allPosts.length" class="text-xs alert alert-warning">
+      <div v-if="!allPosts.length" class="alert alert-warning text-xs">
         Chưa có dữ liệu của thớt. Vui lòng tóm tắt thớt ở tab "Tóm tắt" trước.
       </div>
 
       <!-- F33: Per-segment extraction grid (Task 289+290) -->
       <template v-if="cachedTopic?.segments?.length && allPosts.length">
         <!-- Info banner: chỉ hiển thị khi > 5 phân đoạn để giải thích thời gian tốn -->
-        <div v-if="cachedTopic.segments.length > 5" class="text-xs alert alert-info">
+        <div v-if="cachedTopic.segments.length > 5" class="alert alert-info text-xs">
           <p class="font-medium">Thớt dài ({{ cachedTopic.segments.length }} phần)</p>
           <p class="mt-0.5">
             Trích xuất kiến thức gọi API <strong>nhiều lần hơn tóm tắt</strong> — mỗi phần cần ít nhất 1 lần gọi, cộng thêm 1 lần tổng hợp cuối.
@@ -353,11 +353,11 @@ onActivated(async () => {
             <span class="text-xs font-semibold text-(--color-text-secondary)">
               {{ knowledgeSegments.filter(s => s.status === 'done' || s.status === 'partial').length }} / {{ knowledgeSegments.length }} đoạn đã trích xuất
             </span>
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-3">
               <!-- Batch in progress between segments -->
               <template v-if="isBatchExtracting && !isLoading">
                 <span class="text-xs text-(--color-text-muted) mr-1">Đang chờ...</span>
-                <button class="btn text-xs text-red-500 dark:text-red-400" @click="handleCancel">Hủy</button>
+                <button class="btn text-xs text-(--color-error-text)" @click="handleCancel">Hủy</button>
               </template>
               <!-- Extract all button -->
               <button
@@ -376,7 +376,7 @@ onActivated(async () => {
             </div>
           </div>
           <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
-            <div class="h-full rounded-full bg-blue-500 transition-all duration-300" :style="{ width: progressPercent + '%' }" />
+            <div class="h-full rounded-full bg-(--color-accent) transition-all duration-300" :style="{ width: progressPercent + '%' }" />
           </div>
           <div v-if="segmentGridExpanded" class="space-y-1">
             <template v-for="seg in knowledgeSegments" :key="seg.segmentIndex">
@@ -393,7 +393,7 @@ onActivated(async () => {
                     </svg>
                   </template>
                   <template v-else-if="seg.status === 'extracting'">
-                    <svg class="w-3.5 h-3.5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+                    <svg class="w-3.5 h-3.5 animate-spin text-(--color-accent)" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                     </svg>
@@ -419,21 +419,21 @@ onActivated(async () => {
                 <!-- Action button -->
                 <button
                   v-if="seg.status === 'pending' || seg.status === 'partial'"
-                  class="text-xs font-medium shrink-0 no-underline disabled:cursor-not-allowed disabled:text-(--color-text-muted) hover:enabled:text-blue-500"
+                  class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)"
                   :disabled="isLoading"
                   @click.stop="extractSegment(seg.segmentIndex)">
                   {{ seg.status === 'pending' ? 'Trích xuất' : 'Trích xuất lại' }}
                 </button>
                 <button
                   v-else-if="seg.status === 'done'"
-                  class="text-xs font-medium shrink-0 no-underline disabled:cursor-not-allowed disabled:text-(--color-text-muted) hover:enabled:text-blue-500"
+                  class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)"
                   :disabled="isLoading"
                   @click.stop="reExtractSegment(seg.segmentIndex)">
                   Làm lại
                 </button>
                 <button
                   v-if="seg.status === 'extracting'"
-                  class="text-xs font-medium shrink-0 no-underline disabled:cursor-not-allowed disabled:text-(--color-text-muted) hover:enabled:text-blue-500"
+                  class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)"
                   @click.stop="handleCancel">
                   Hủy
                 </button>
@@ -445,7 +445,7 @@ onActivated(async () => {
                 </div>
                 <template v-else>
                   <div class="flex items-center gap-2 py-0.5">
-                    <span class="badge text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
+                    <span class="badge bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
                       Chưa tổng hợp ({{ seg.rawEntryCount }} mục thô)
                     </span>
                   </div>
@@ -467,10 +467,10 @@ onActivated(async () => {
       </template>
 
       <!-- F33: Stale reduce banner + reduce prompt (Task 291) -->
-      <div v-if="isReduceStale && entries.length > 0 && !isLoading" class="text-xs alert alert-warning">
+      <div v-if="isReduceStale && entries.length > 0 && !isLoading" class="alert alert-warning text-xs">
         <div class="flex items-center justify-between gap-2">
           <span>⚠ Có đoạn mới trích xuất chưa được tổng hợp vào danh sách.</span>
-          <button class="btn btn-sm text-xs shrink-0" @click="onReduceManualClick">Tổng hợp lại</button>
+          <button class="btn btn-sm btn-soft text-xs shrink-0" @click="onReduceManualClick">Tổng hợp lại</button>
         </div>
       </div>
       <div v-else-if="hasAnyExtractedSegment && entries.length === 0 && !isLoading"
@@ -514,7 +514,7 @@ onActivated(async () => {
       <ProgressIndicator v-else-if="isLoading" :task-id="llmTaskId" :fallback-message="progressLabel" :show-cancel="isLoading" @cancel="handleCancel" />
 
       <!-- Error -->
-      <div v-if="error" class="text-xs alert alert-error">
+      <div v-if="error" class="alert alert-error text-xs">
         <div class="flex items-start gap-3">
           <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -534,18 +534,18 @@ onActivated(async () => {
       </div>
 
       <!-- Truncation warning banner -->
-      <div v-if="truncationWarning > 0 && !isLoading" class="text-xs alert alert-warning">
+      <div v-if="truncationWarning > 0 && !isLoading" class="alert alert-warning text-xs">
         <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 shrink-0 mt-0.5 text-(--color-warning-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <div class="flex-1 text-sm text-amber-800 dark:text-amber-200">
+          <div class="flex-1 text-sm text-(--color-warning-text)">
             {{ truncationWarning }} chunk bị cắt ngắn (max_tokens). Kết quả có thể thiếu entries.
             Tăng <strong>Max output tokens</strong> trong Cài đặt rồi thử lại.
           </div>
         </div>
-        <button class="btn btn-sm mt-2 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/60 border-amber-300 dark:border-amber-700"
+        <button class="btn btn-sm btn-soft mt-2 text-xs"
           @click="onExtractClick">
           Trích xuất lại
         </button>
@@ -588,22 +588,22 @@ onActivated(async () => {
           </div>
           <!-- Tag filter pills -->
           <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
-            <button v-for="tag in allTags" :key="tag" class="px-2 py-0.5 rounded-full text-xs transition-colors" :class="selectedTags.includes(tag)
+            <button v-for="tag in allTags" :key="tag" class="badge transition-colors" :class="selectedTags.includes(tag)
               ? getTagClass(tag)
-              : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'" @click="toggleTag(tag)">
+              : 'badge-neutral'" @click="toggleTag(tag)">
               {{ tag }}
             </button>
           </div>
           <!-- Category filter pills -->
           <div v-if="allCategories.length > 0" class="flex flex-wrap gap-1.5">
             <button v-if="selectedCategory"
-              class="px-2 py-0.5 rounded-full text-xs transition-colors bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
+              class="badge badge-neutral"
               @click="selectedCategory = null">
               Tất cả
             </button>
-            <button v-for="cat in allCategories" :key="cat" class="px-2 py-0.5 rounded-full text-xs transition-colors" :class="selectedCategory === cat
-              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
-              : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+            <button v-for="cat in allCategories" :key="cat" class="badge transition-colors" :class="selectedCategory === cat
+              ? 'badge-accent'
+              : 'badge-neutral'"
               @click="selectedCategory = selectedCategory === cat ? null : cat">
               {{ cat }}
             </button>
@@ -613,7 +613,7 @@ onActivated(async () => {
         <div class="flex items-center justify-between">
           <!-- Re-extract -->
           <div class="flex items-center gap-2">
-            <button class="btn text-xs flex items-center gap-1" @click="router.push('/notebook')">
+            <button class="btn btn-ghost btn-sm flex items-center gap-1" @click="router.push('/notebook')">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
@@ -625,7 +625,7 @@ onActivated(async () => {
                 <!-- Backdrop to close dropdown -->
                 <div v-if="showExtractDropdown" class="fixed inset-0 z-9" @click="showExtractDropdown = false" />
                 <button
-                  class="btn text-xs flex items-center gap-1"
+                  class="btn btn-ghost btn-sm flex items-center gap-1"
                   :disabled="isLoading"
                   @click="showExtractDropdown = !showExtractDropdown">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -638,7 +638,7 @@ onActivated(async () => {
                 </button>
                 <div
                   v-if="showExtractDropdown"
-                  class="absolute left-0 top-full mt-1 z-10 bg-(--color-bg-elevated) border border-(--color-border) rounded shadow-lg min-w-max">
+                  class="absolute left-0 top-full mt-1 z-10 bg-(--color-bg-surface) border border-(--color-border) rounded shadow-elevated min-w-max">
                   <button
                     class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
                     @click="showExtractDropdown = false; onExtractClick()">
@@ -654,14 +654,14 @@ onActivated(async () => {
             </template>
             <!-- Fallback: no segments — keep original buttons (Task 292) -->
             <template v-else>
-              <button v-if="hasFailed && !truncationWarning" class="btn text-xs flex items-center gap-1 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+              <button v-if="hasFailed && !truncationWarning" class="btn btn-ghost btn-sm flex items-center gap-1 text-(--color-warning-text)"
                 @click="onExtractClick">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 Trích xuất lại
               </button>
-              <button v-if="allPosts.length && newPostsCount > 0" class="btn text-xs flex items-center gap-1" @click="handleExtract">
+              <button v-if="allPosts.length && newPostsCount > 0" class="btn btn-ghost btn-sm flex items-center gap-1" @click="handleExtract">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
@@ -671,7 +671,7 @@ onActivated(async () => {
           </div>
           <!-- Clear tracking button -->
           <div v-if="excludedCount > 0" class="flex items-center justify-end">
-            <button class="btn text-xs flex items-center gap-1 hover:text-red-600 dark:hover:text-red-400" @click="handleClearTracking">
+            <button class="btn btn-ghost btn-sm flex items-center gap-1 hover:text-(--color-error-text)" @click="handleClearTracking">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -699,7 +699,7 @@ onActivated(async () => {
         <div class="space-y-4">
           <template v-for="group in groupedEntries" :key="group.category">
             <div>
-              <h4 class="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide mb-2">
+              <h4 class="section-heading">
                 {{ group.category }}
                 <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
               </h4>
@@ -715,8 +715,8 @@ onActivated(async () => {
                     <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
                     <!-- Save button -->
                     <button class="p-0.5 transition-colors rounded" :class="entry.saved
-                      ? 'text-yellow-500 dark:text-yellow-400'
-                      : 'text-gray-300 dark:text-gray-600 hover:text-yellow-500 dark:hover:text-yellow-400'" :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'"
+                      ? 'text-yellow-500'
+                      : 'text-(--color-text-muted) hover:text-yellow-500'" :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'"
                       @click.stop="toggleSave(entry)">
                       <svg v-if="entry.saved" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
@@ -726,7 +726,7 @@ onActivated(async () => {
                       </svg>
                     </button>
                     <!-- Delete button -->
-                    <button class="p-0.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded"
+                    <button class="p-0.5 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded"
                       title="Xóa kiến thức" @click.stop="handleDelete(entry)">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -743,13 +743,13 @@ onActivated(async () => {
                         <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
                         <!-- Tags -->
                         <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
-                          <span v-for="tag in entry.tags" :key="tag" class="px-1.5 py-0.5 rounded text-xs" :class="getTagClass(tag)">
+                          <span v-for="tag in entry.tags" :key="tag" class="badge text-xs" :class="getTagClass(tag)">
                             {{ tag }}
                           </span>
                         </div>
                         <!-- Source citation with timestamp -->
                         <p class="text-xs text-(--color-text-muted)">
-                          — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài <button class="font-mono hover:underline cursor-pointer"
+                          — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài <button class="font-mono link"
                               @click="openPostLink(entry.source.postNumber)">#{{ entry.source.postNumber }}</button></template><span
                             v-if="entry.source.timestamp">{{ formatTimestamp(entry.source.timestamp)
                             }}</span>

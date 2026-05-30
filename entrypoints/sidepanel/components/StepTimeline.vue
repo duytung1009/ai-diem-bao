@@ -105,16 +105,15 @@ const timelineRows = computed<TimelineRow[]>(() => {
 <template>
   <div class="space-y-0">
     <div class="relative">
-      <!-- Vertical line -->
-      <div class="absolute left-2.75 top-3 bottom-3 w-0.5 bg-(--color-border) z-0" />
+      <div class="absolute left-[11px] top-3 bottom-3 w-0.5 bg-(--color-border) z-0" />
 
       <div
         v-for="row in timelineRows"
         :key="row.key"
-        class="relative flex items-start gap-3 py-2 pl-0"
+        class="relative flex items-start gap-3 py-2"
       >
         <template v-if="row.kind === 'ellipsis'">
-          <div class="relative z-10 shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-(--color-bg-surface)">
+          <div class="relative z-10 shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-(--color-bg-base) ring-1 ring-(--color-border)">
             <svg
               class="w-5 h-5 text-(--color-text-muted)"
               viewBox="0 0 24 24"
@@ -126,18 +125,15 @@ const timelineRows = computed<TimelineRow[]>(() => {
               <circle cx="19" cy="12" r="1.75" />
             </svg>
           </div>
-
           <div class="flex-1 min-w-0 pt-0.5">
-            <span class="text-sm font-medium text-(--color-text-muted)">
+            <span class="text-sm font-heading text-(--color-text-muted)">
               Ẩn {{ row.hiddenCount }} bước đã hoàn thành
             </span>
           </div>
         </template>
 
         <template v-else>
-          <!-- Icon column -->
-          <div class="relative z-10 shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-(--color-bg-surface)">
-            <!-- Done -->
+          <div class="relative z-10 shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-(--color-bg-base)">
             <svg
               v-if="row.step.status === 'done'"
               class="w-5 h-5 text-(--color-success-text)"
@@ -149,7 +145,6 @@ const timelineRows = computed<TimelineRow[]>(() => {
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
 
-            <!-- Running -->
             <svg
               v-else-if="row.step.status === 'running'"
               class="w-5 h-5 text-(--color-accent) animate-spin"
@@ -160,7 +155,6 @@ const timelineRows = computed<TimelineRow[]>(() => {
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
 
-            <!-- Error -->
             <svg
               v-else-if="row.step.status === 'error'"
               class="w-5 h-5 text-(--color-error-text)"
@@ -172,24 +166,22 @@ const timelineRows = computed<TimelineRow[]>(() => {
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
 
-            <!-- Pending -->
             <div
               v-else
               class="w-3.5 h-3.5 rounded-full border-2 border-(--color-text-muted)"
             />
           </div>
 
-          <!-- Content column -->
           <div class="flex-1 min-w-0 pt-0.5">
             <div class="flex items-center gap-2 flex-wrap">
               <span
-                class="text-sm font-medium"
+                class="text-sm"
                 :class="{
-                  'text-(--color-success-text)': row.step.status === 'done',
-                  'text-(--color-accent)': row.step.status === 'running',
-                  'text-(--color-error-text)': row.step.status === 'error',
+                  'text-(--color-success-text) font-heading': row.step.status === 'done',
+                  'text-(--color-accent) font-heading': row.step.status === 'running',
+                  'text-(--color-error-text) font-heading': row.step.status === 'error',
                   'text-(--color-text-muted)': row.step.status === 'pending',
-                  'animate-pulse': row.step.status === 'running',
+                  'animate-pulse-soft': row.step.status === 'running',
                 }"
               >
                 {{ row.step.label }}
@@ -197,7 +189,7 @@ const timelineRows = computed<TimelineRow[]>(() => {
 
               <span
                 v-if="row.step.status === 'running' && localEta.has(row.step.id) && formatETA(localEta.get(row.step.id)!)"
-                class="text-xs text-(--color-accent) bg-(--color-accent-soft) px-1.5 py-0.5 rounded"
+                class="text-xs badge badge-accent"
               >
                 {{ formatETA(localEta.get(row.step.id)!) }}
               </span>
@@ -214,10 +206,9 @@ const timelineRows = computed<TimelineRow[]>(() => {
       </div>
     </div>
 
-    <!-- Cancel button -->
     <button
       v-if="showCancel"
-      class="mt-3 w-full btn btn-sm btn-secondary"
+      class="mt-2 w-full btn btn-sm btn-secondary text-xs"
       @click="$emit('cancel')"
     >
       Huỷ

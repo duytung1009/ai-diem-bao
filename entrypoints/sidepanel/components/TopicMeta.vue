@@ -64,50 +64,46 @@ const modelLabel = computed(() => {
 
 async function navigateToTopic() {
   if (!props.topic.url) return;
-  // Dùng tabs.create thay vì tabs.update — không cần tabs permission.
-  // UX: mở tab mới thay vì navigate in-place (acceptable tradeoff để giảm permissions).
   await browser.tabs.create({ url: props.topic.url });
 }
 </script>
 
 <template>
-  <div class="card">
-    <!-- Row 1: Title + badge -->
+  <div class="card space-y-1.5">
     <div class="flex items-start justify-between gap-2">
-      <h2 class="font-semibold text-sm text-(--color-text-primary) leading-snug">
+      <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">
         {{ topic.title }}
-        <!-- News badge -->
         <span v-if="topic.topicType === 'news'"
-          class="text-purple-700 dark:text-purple-400 font-regular text-xs ml-1"
+          class="text-(--color-accent-text) font-regular text-xs ml-1"
         >
           Tin tức
         </span>
-      </h2>
+      </p>
     </div>
 
-    <!-- Row 2: Summary status -->
-    <div class="flex items-center gap-2 mt-2 text-xs">
+    <div class="flex items-center gap-2">
       <SummaryStatus :status="summaryStatus" />
     </div>
 
-    <!-- Row 3: Metadata -->
-    <div class="flex flex-wrap gap-3 mt-2 text-xs text-(--color-text-secondary)">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--color-text-secondary)">
       <span>
         <template v-if="isPartial">
           {{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) + (hasForumPostCount ? `/${formatNumber(topic.forumPostCount!)}` : '') }} bài
         </template>
         <template v-else>{{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }} bài</template>
-        <span v-if="newPostCount > 0" class="text-(--color-accent-text)">(+{{ formatNumber(newPostCount) }} mới)</span>
+        <span v-if="newPostCount > 0" class="text-(--color-accent-text) font-medium">(+{{ formatNumber(newPostCount) }} mới)</span>
       </span>
+      <span class="text-(--color-border-strong)">|</span>
       <span>{{ formatNumber(topic.totalPages) }} trang</span>
-      <span v-if="summaryDateLabel" class="text-(--color-text-secondary)">{{ summaryDateLabel }}</span>
-      <span v-if="modelLabel" class="text-(--color-text-secondary) italic">{{ modelLabel }}</span>
+      <span v-if="summaryDateLabel" class="text-(--color-border-strong)">|</span>
+      <span v-if="summaryDateLabel">{{ summaryDateLabel }}</span>
+      <span v-if="modelLabel" class="text-(--color-border-strong)">|</span>
+      <span v-if="modelLabel" class="italic">{{ modelLabel }}</span>
     </div>
-    
-    <!-- Row 4: URL -->
+
     <button
       v-if="topic.url"
-      class="mt-1.5 text-xs text-(--color-accent-text) hover:text-(--color-accent-hover) truncate max-w-full text-left"
+      class="link text-xs truncate max-w-full text-left block"
       :title="topic.url"
       @click="navigateToTopic"
     >

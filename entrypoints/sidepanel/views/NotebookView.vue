@@ -84,7 +84,7 @@ onActivated(async () => {
 </script>
 
 <template>
-  <div class="p-4 space-y-4">
+  <div class="p-3 space-y-2">
     <!-- Header -->
     <div class="space-y-2">
       <!-- Search -->
@@ -101,7 +101,7 @@ onActivated(async () => {
         <!-- Orphan filter toggle -->
         <button
           class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
-          :class="filters.orphanOnly ? 'text-amber-600 dark:text-amber-500' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
+          :class="filters.orphanOnly ? 'text-amber-600' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
           :title="filters.orphanOnly ? 'Xem tất cả' : `Chỉ hiện kiến thức từ thớt đã xoá${stats.orphanCount > 0 ? ` (${stats.orphanCount})` : ''}`"
           @click="filters.orphanOnly = !filters.orphanOnly"
         >
@@ -123,7 +123,7 @@ onActivated(async () => {
       <div v-if="stats.categories.length > 0" class="flex flex-wrap gap-1.5">
         <button
           v-if="filters.category"
-          class="px-2 py-0.5 rounded-full text-xs bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
+          class="badge badge-neutral"
           @click="filters.category = null"
         >
           Tất cả danh mục
@@ -131,10 +131,10 @@ onActivated(async () => {
         <button
           v-for="cat in stats.categories"
           :key="cat"
-          class="px-2 py-0.5 rounded-full text-xs transition-colors"
+          class="badge transition-colors"
           :class="filters.category === cat
-            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
-            : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+            ? 'badge-accent'
+            : 'badge-neutral'"
           @click="filters.category = filters.category === cat ? null : cat"
         >
           {{ cat }}
@@ -144,7 +144,7 @@ onActivated(async () => {
       <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
         <button
           v-if="filters.tag"
-          class="px-2 py-0.5 rounded-full text-xs bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)"
+          class="badge badge-neutral"
           @click="filters.tag = null"
         >
           Tất cả thẻ
@@ -152,10 +152,10 @@ onActivated(async () => {
         <button
           v-for="tag in allTags"
           :key="tag"
-          class="px-2 py-0.5 rounded-full text-xs transition-colors"
+          class="badge transition-colors"
           :class="filters.tag === tag
             ? getTagClass(tag)
-            : 'bg-(--color-bg-muted) text-(--color-text-secondary) hover:bg-(--color-accent-soft)'"
+            : 'badge-neutral'"
           @click="filters.tag = filters.tag === tag ? null : tag"
         >
           {{ tag }}
@@ -169,10 +169,10 @@ onActivated(async () => {
       <button
         v-for="vm in viewModes"
         :key="vm.value"
-        class="px-2 py-0.5 rounded-full transition-colors"
+        class="badge transition-colors"
         :class="viewMode === vm.value
-          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 font-medium'
-          : 'text-(--color-text-secondary) hover:text-(--color-text-primary) hover:bg-(--color-bg-muted)'"
+          ? 'badge-accent'
+          : 'badge-neutral'"
         @click="viewMode = vm.value"
       >
         {{ vm.label }}
@@ -185,7 +185,7 @@ onActivated(async () => {
     </div>
 
     <!-- Error -->
-    <div v-if="error" class="text-xs alert alert-error">{{ error }}</div>
+    <div v-if="error" class="alert alert-error text-xs">{{ error }}</div>
 
     <!-- Empty state -->
     <div v-if="!isLoading && entries.length === 0" class="text-center py-12 space-y-3">
@@ -196,12 +196,12 @@ onActivated(async () => {
     <div v-if="filteredEntries.length > 0" class="space-y-4">
       <div v-for="group in groupedEntries" :key="group.key">
         <div class="flex items-center gap-2 mb-2">
-          <h4 class="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide flex-1">
+          <h4 class="section-heading flex-1">
             {{ group.key }}
             <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
           </h4>
           <button
-            class="flex items-center gap-1 text-xs text-(--color-text-muted) hover:text-(--color-text-secondary) transition-colors"
+            class="btn btn-ghost btn-sm text-xs"
             title="Xuất nhóm này ra file JSON"
             @click="handleExportGroup(group)"
           >
@@ -228,10 +228,10 @@ onActivated(async () => {
               </svg>
               <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
               <!-- Orphan badge -->
-              <span v-if="entry.orphaned" class="px-1.5 py-0.5 rounded text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0">Mồ côi</span>
+              <span v-if="entry.orphaned" class="badge-warning shrink-0">Mồ côi</span>
               <!-- Unsave button -->
               <button
-                class="p-0.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded shrink-0"
+                class="p-0.5 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded shrink-0"
                 title="Bỏ lưu"
                 @click.stop="handleUnsave(entry)"
               >
@@ -241,7 +241,7 @@ onActivated(async () => {
               </button>
               <!-- Open source button -->
               <button
-                class="p-0.5 text-gray-300 dark:text-gray-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors rounded shrink-0"
+                class="p-0.5 text-(--color-text-muted) hover:text-(--color-secondary) transition-colors rounded shrink-0"
                 title="Mở bài viết gốc"
                 @click.stop="openPostLink(entry)"
               >
@@ -264,7 +264,7 @@ onActivated(async () => {
                     <span
                       v-for="tag in entry.tags"
                       :key="tag"
-                      class="px-1.5 py-0.5 rounded text-xs"
+                      class="badge text-xs"
                       :class="getTagClass(tag)"
                     >
                       {{ tag }}
@@ -281,7 +281,7 @@ onActivated(async () => {
                       class="text-start"
                       :class="entry.orphaned
                         ? 'text-(--color-text-muted) cursor-not-allowed'
-                        : 'text-blue-600 hover:text-blue-700'"
+                        : 'link'"
                       :title="entry.orphaned ? 'Thớt gốc đã xoá khỏi bộ nhớ đệm' : 'Mở trong extension'"
                       @click="entry.orphaned ? undefined : openInExtension(entry)"
                     >

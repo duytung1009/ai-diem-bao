@@ -59,6 +59,7 @@ function syncCurrentProvider() {
   };
 }
 const testResult = ref<'success' | 'fail' | ''>('');
+const testErrorDetail = ref('');
 const saveMessage = ref('');
 const cacheSizeBytes = ref(0);
 const storageQuotaBytes = ref(0);
@@ -351,7 +352,13 @@ const claudeModels = [
   'claude-opus-4-6',
 ];
 
-const geminiModels = [
+const DEFAULT_GEMINI_MODELS = [
+  'gemma-4-26b-a4b-it',
+  'gemma-4-31b-it',
+  'gemma-3-1b-it',
+  'gemma-3-4b-it',
+  'gemma-3-12b-it',
+  'gemma-3-27b-it',
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
   'gemini-2.5-pro',
@@ -360,11 +367,10 @@ const geminiModels = [
   'gemini-3.1-pro-preview',
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
-  'gemma-3-1b-it',
-  'gemma-3-4b-it',
-  'gemma-3-12b-it',
-  'gemma-3-27b-it',
 ];
+
+const geminiModels = ref<string[]>([...DEFAULT_GEMINI_MODELS]);
+const fetchingGeminiModels = ref(false);
 
 const showModelDropdown = ref(false);
 
@@ -372,6 +378,43 @@ function selectModel(model: string) {
   config.value.model = model;
   showModelDropdown.value = false;
 }
+
+const GEMMA_PREFIXES = ['gemma-4', 'gemma-3'];
+
+async function fetchGeminiModels() {
+  const key = (config.value.apiKey || '').trim();
+  if (!key) return;
+  fetchingGeminiModels.value = true;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
+      { signal: AbortSignal.timeout(10000) },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const models: string[] = (data.models || [])
+      .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m: any) => m.name?.replace(/^models\//, '') || '')
+      .filter(Boolean);
+    if (models.length === 0) throw new Error('No models returned');
+    const gemma = models.filter((m) => GEMMA_PREFIXES.some((p) => m.startsWith(p)));
+    const rest = models.filter((m) => !GEMMA_PREFIXES.some((p) => m.startsWith(p)));
+    geminiModels.value = [...gemma, ...rest];
+  } catch {
+    geminiModels.value = [...DEFAULT_GEMINI_MODELS];
+  } finally {
+    fetchingGeminiModels.value = false;
+  }
+}
+
+watch(
+  () => config.value.provider,
+  (newProvider) => {
+    if (newProvider === 'gemini' && (config.value.apiKey || '').length >= 20) {
+      fetchGeminiModels();
+    }
+  },
+);
 
 function closeModelDropdown() {
   setTimeout(() => { showModelDropdown.value = false; }, 150);
@@ -571,20 +614,26 @@ async function save() {
 async function testConnection() {
   testing.value = true;
   testResult.value = '';
+  testErrorDetail.value = '';
   try {
     syncCurrentProvider();
     if (config.value.baseUrl) {
       const granted = await requestProviderPermission(config.value.provider, config.value.baseUrl);
       if (!granted) {
         testResult.value = 'fail';
+        testErrorDetail.value = 'Permission denied for provider host.';
         return;
       }
     }
     await sendMessage('SAVE_SETTINGS', config.value);
     const result = await sendMessage<{ ok: boolean; error?: string }>('TEST_CONNECTION');
     testResult.value = result.ok ? 'success' : 'fail';
-  } catch {
+    if (!result.ok && result.error) {
+      testErrorDetail.value = result.error;
+    }
+  } catch (err) {
     testResult.value = 'fail';
+    testErrorDetail.value = String(err);
   } finally {
     testing.value = false;
   }
@@ -758,7 +807,7 @@ async function onImportFileSelected(event: Event) {
     <div class="card space-y-2">
       <h3 class="section-heading">Hiển thị chỉ số độ tin cậy tài khoản</h3>
       <div class="flex items-start gap-3">
-        <label class="mt-2 relative inline-flex items-center cursor-pointer">
+        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
           <input :checked="showTrustBadges" @change="setShowTrustBadges(($event.target as HTMLInputElement).checked)" type="checkbox" class="sr-only peer" />
           <div
             class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
@@ -780,8 +829,8 @@ async function onImportFileSelected(event: Event) {
         <select v-model="config.provider" class="input">
           <option value="custom">Custom (OpenAI-compatible)</option>
           <option value="openrouter">OpenRouter (multi-model)</option>
+          <option value="gemini">Google Gemini (Google AI Studio)</option>
           <option value="openai">OpenAI</option>
-          <option value="gemini">Google Gemini</option>
           <option value="claude">Anthropic Claude</option>
         </select>
       </div>
@@ -840,7 +889,18 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Model selector for Gemini -->
       <div v-if="isGemini">
-        <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Model</label>
+        <label class="flex items-center justify-between text-xs font-medium text-(--color-text-secondary) mb-1">
+          <span>Model</span>
+          <button type="button" class="text-(--color-accent) hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="!config.apiKey || fetchingGeminiModels" @click="fetchGeminiModels()">
+            <span v-if="fetchingGeminiModels" class="inline-flex items-center gap-1">
+              <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              Đang quét...
+            </span>
+            <span v-else>Quét model từ API</span>
+          </button>
+        </label>
+        <p class="text-xs text-(--color-text-muted) mb-1">Nhập API key rồi bấm "Quét model từ API" để lấy danh sách model thực tế.</p>
         <div class="relative">
           <input v-model="config.model" type="text" placeholder="gemini-2.5-flash" class="input pr-7" @focus="showModelDropdown = true"
             @blur="closeModelDropdown" />
@@ -938,7 +998,7 @@ async function onImportFileSelected(event: Event) {
       <div class="space-y-2">
         <!-- Thinking toggle -->
         <div class="flex items-start gap-3">
-          <label class="mt-2 relative inline-flex items-center cursor-pointer">
+          <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
             <input :checked="config.thinkingEnabled !== false" @change="handleThinkingToggle(($event.target as HTMLInputElement).checked)" type="checkbox"
               class="sr-only peer" />
             <div
@@ -1021,7 +1081,7 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Dynamic segments toggle -->
       <div class="flex items-start gap-3">
-        <label class="mt-2 relative inline-flex items-center cursor-pointer">
+        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
           <input v-model="config.dynamicSegments" type="checkbox" class="sr-only peer" />
           <div
             class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
@@ -1049,7 +1109,7 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Config change warning -->
       <div class="alert alert-warning text-xs">
-        ⚠️ Thay đổi cấu hình model/segment sẽ khiến các thread đang tóm tắt dở phải tóm tắt và chia segment lại từ đầu.
+        ⚠️ Thay đổi cấu hình model/segment có thể khiến các thread đang tóm tắt dở phải tóm tắt và chia segment lại từ đầu.
       </div>
     </div>
 
@@ -1074,66 +1134,70 @@ async function onImportFileSelected(event: Event) {
       <div v-if="testResult === 'success'" class="alert alert-success text-xs text-center">
         Kết nối thành công!
       </div>
-      <div v-if="testResult === 'fail'" class="alert alert-error text-xs text-center">
-        Kết nối thất bại. Kiểm tra lại API Key và Base URL.
+      <div v-if="testResult === 'fail'" class="alert alert-error text-xs">
+        <p class="font-medium">Kết nối thất bại.</p>
+        <p v-if="testErrorDetail" class="mt-0.5 break-all text-(--color-text-secondary)">{{ testErrorDetail }}</p>
       </div>
     </div>
 
     <!-- Cache storage info -->
-    <div class="card space-y-2">
-      <div class="flex items-center justify-between text-xs">
-        <span class="font-medium text-(--color-text-primary)">Cache local</span>
-        <span :class="cacheNearFull ? 'text-(--color-warning-text) font-medium' : 'text-(--color-text-secondary)'">
-          {{ cacheSizeText }} / {{ cacheQuotaText }} ({{ cacheUsagePercent }}%)
-        </span>
-      </div>
-      <div class="w-full bg-(--color-bg-muted) rounded-full h-1.5">
-        <div class="h-1.5 rounded-full transition-all" :class="cacheNearFull ? 'bg-(--color-warning-text)' : 'bg-(--color-accent)'"
-          :style="{ width: `${Math.min(cacheUsagePercent, 100)}%` }" />
-      </div>
-      <p v-if="cacheNearFull" class="text-xs text-(--color-warning-text)">
-        ⚠ Cache đang sử dụng {{ cacheUsagePercent }}% dung lượng lưu trữ. Cân nhắc xoá bớt cache cũ.
-      </p>
-      <button class="w-full btn btn-sm btn-danger" @click="confirmClearAll">
-        Xóa tất cả cache
-      </button>
-      <input ref="fileInput" type="file" accept=".json,application/json" class="hidden" @change="onImportFileSelected" />
-      <div class="grid grid-cols-2 gap-2">
-        <button class="w-full btn btn-sm btn-secondary" :disabled="exporting || importing" @click="exportCache">
-          {{ exporting ? 'Đang xuất...' : 'Xuất dữ liệu (JSON)' }}
-        </button>
-        <button class="w-full btn btn-sm btn-primary" :disabled="importing || exporting" @click="triggerImportPicker">
-          {{ importing ? 'Đang nhập...' : 'Nhập dữ liệu (JSON)' }}
-        </button>
-      </div>
-      <div class="space-y-1">
-        <p class="block text-xs font-medium text-(--color-text-secondary)">Khi trùng dữ liệu, bạn muốn:</p>
-        <div class="grid grid-cols-1 gap-1.5">
-          <label class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer" :class="conflictMode === 'skip'
-            ? 'text-(--color-text-primary)'
-            : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'">
-            <input v-model="conflictMode" type="radio" name="import-conflict-mode" value="skip"
-              class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30" />
-            <span class="text-xs font-medium text-(--color-text-secondary)">Giữ dữ liệu hiện có</span>
-          </label>
-          <label class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer" :class="conflictMode === 'overwrite'
-            ? 'text-(--color-text-primary)'
-            : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'">
-            <input v-model="conflictMode" type="radio" name="import-conflict-mode" value="overwrite"
-              class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30" />
-            <span class="text-xs font-medium text-(--color-text-secondary)">Ghi đè bằng dữ liệu từ file</span>
-          </label>
+    <div class="card space-y-3">
+      <h3 class="section-heading">Dữ liệu</h3>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-medium text-(--color-text-primary)">IndexedDB</span>
+          <span :class="cacheNearFull ? 'text-(--color-warning-text) font-medium' : 'text-(--color-text-secondary)'">
+            {{ cacheSizeText }} / {{ cacheQuotaText }} ({{ cacheUsagePercent }}%)
+          </span>
         </div>
+        <div class="w-full bg-(--color-bg-muted) rounded-full h-1.5">
+          <div class="h-1.5 rounded-full transition-all" :class="cacheNearFull ? 'bg-(--color-warning-text)' : 'bg-(--color-accent)'"
+            :style="{ width: `${Math.min(cacheUsagePercent, 100)}%` }" />
+        </div>
+        <p v-if="cacheNearFull" class="text-xs text-(--color-warning-text)">
+          ⚠ Cache đang sử dụng {{ cacheUsagePercent }}% dung lượng lưu trữ. Cân nhắc xoá bớt cache cũ.
+        </p>
+        <button class="w-full btn btn-sm btn-danger" @click="confirmClearAll">
+          Xóa tất cả cache
+        </button>
+        <input ref="fileInput" type="file" accept=".json,application/json" class="hidden" @change="onImportFileSelected" />
+        <div class="grid grid-cols-2 gap-2">
+          <button class="w-full btn btn-sm btn-secondary" :disabled="exporting || importing" @click="exportCache">
+            {{ exporting ? 'Đang xuất...' : 'Xuất dữ liệu (JSON)' }}
+          </button>
+          <button class="w-full btn btn-sm btn-primary" :disabled="importing || exporting" @click="triggerImportPicker">
+            {{ importing ? 'Đang nhập...' : 'Nhập dữ liệu (JSON)' }}
+          </button>
+        </div>
+        <div class="space-y-1">
+          <p class="block text-xs font-medium text-(--color-text-secondary)">Khi trùng dữ liệu, bạn muốn:</p>
+          <div class="grid grid-cols-1 gap-1.5">
+            <label class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer" :class="conflictMode === 'skip'
+              ? 'text-(--color-text-primary)'
+              : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'">
+              <input v-model="conflictMode" type="radio" name="import-conflict-mode" value="skip"
+                class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30" />
+              <span class="text-xs font-medium text-(--color-text-secondary)">Giữ dữ liệu hiện có</span>
+            </label>
+            <label class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer" :class="conflictMode === 'overwrite'
+              ? 'text-(--color-text-primary)'
+              : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'">
+              <input v-model="conflictMode" type="radio" name="import-conflict-mode" value="overwrite"
+                class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30" />
+              <span class="text-xs font-medium text-(--color-text-secondary)">Ghi đè bằng dữ liệu từ file</span>
+            </label>
+          </div>
+        </div>
+        <div v-if="importResult" class="alert text-xs" :class="importResult.failed > 0 ? 'alert-warning' : 'alert-success'">
+          Đã nhập {{ importResult.imported }} topic (bỏ qua {{ importResult.skipped }}, lỗi {{ importResult.failed }}).
+        </div>
+        <div v-if="importError" class="alert alert-error text-xs">
+          {{ importError }}
+        </div>
+        <ul v-if="importResult?.errors?.length" class="text-xs text-(--color-text-muted) list-disc pl-5 space-y-0.5">
+          <li v-for="(err, idx) in importResult.errors.slice(0, 5)" :key="idx">{{ err }}</li>
+        </ul>
       </div>
-      <div v-if="importResult" class="alert text-xs" :class="importResult.failed > 0 ? 'alert-warning' : 'alert-success'">
-        Đã nhập {{ importResult.imported }} topic (bỏ qua {{ importResult.skipped }}, lỗi {{ importResult.failed }}).
-      </div>
-      <div v-if="importError" class="alert alert-error text-xs">
-        {{ importError }}
-      </div>
-      <ul v-if="importResult?.errors?.length" class="text-xs text-(--color-text-muted) list-disc pl-5 space-y-0.5">
-        <li v-for="(err, idx) in importResult.errors.slice(0, 5)" :key="idx">{{ err }}</li>
-      </ul>
     </div>
 
     <CostConfirmModal v-if="showClearConfirm" title="Xóa tất cả cache" :estimate="clearCacheConfirmEstimate"

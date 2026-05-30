@@ -19,15 +19,15 @@ export class OpenAIAdapter implements LLMProvider {
     return response;
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
     try {
       await this.chatCompletion([
         { role: 'user', content: 'Respond with "OK" only.' },
       ], undefined, { jsonMode: false });
-      return true;
+      return { ok: true };
     } catch (err) {
       console.error('Error testing LLM connection:', err);
-      return false;
+      return { ok: false, error: String(err) };
     }
   }
 

@@ -55,10 +55,12 @@ const PRICING_TABLE: Record<string, ModelSpec> = {
   'gemini-2.0-flash': { inputPrice: 0.10, outputPrice: 0.40, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
   'gemini-2.0-flash-lite': { inputPrice: 0.075, outputPrice: 0.30, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
   // Gemma models (free / open-weight via Gemini API)
-  'gemma-3-1b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
-  'gemma-3-4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
-  'gemma-3-12b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-4-26b-a4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 262144, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-4-31b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 262144, maxOutputTokens: 8192, thinkingBudget: 0 },
   'gemma-3-27b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-3-12b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 128000, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-3-4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
+  'gemma-3-1b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 32768, maxOutputTokens: 8192, thinkingBudget: 0 },
 };
 
 /**

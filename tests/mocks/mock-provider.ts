@@ -61,8 +61,8 @@ export class MockLLMProvider implements LLMProvider {
     return { content: response, tokensUsed: { prompt: 100, completion: 50 } };
   }
 
-  async testConnection(): Promise<boolean> {
-    return true;
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
+    return { ok: true };
   }
 
   getCallCount(): number {

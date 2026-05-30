@@ -11,34 +11,34 @@ export const SUMMARY_DEFAULT_STRUCTURE = `Trả về JSON theo đúng format sau
   "summary": "Tóm tắt nội dung chính và cốt truyện của thread drama (2-3 đoạn ngắn, mô tả rõ ai đang phốt ai, vấn đề cốt lõi là gì)",
   "opinions": [
     {
-      "title": "Tên hoặc mô tả ngắn gọn về phe/luồng quan điểm (ví dụ: 'Phe bênh chủ thread', 'Phe anti/bóc phốt', 'Phe trung lập hóng biến/tấu hài')",
-      "description": "Mô tả chi tiết luận điểm vật nhau của phe này (2-3 câu)",
+      "title": "Tên hoặc mô tả ngắn gọn về luồng quan điểm (ví dụ khi đồng thuận: 'Nhận định chung: giá nhà quá cao, an sinh yếu', ví dụ khi tranh luận: 'Phe bênh chủ thread', 'Phe phản biện')",
+      "description": "Mô tả chi tiết luận điểm của luồng quan điểm này (2-3 câu)",
       "supporters": ["Tên tác giả 1", "Tên tác giả 2"],
       "quotes": [
         {"author": "Tên tác giả", "postNumber": 5, "text": "Trích dẫn nguyên văn câu nói của tác giả này từ bài viết, không lệch một ly"}
       ]
     }
   ],
-  "conclusion": "Kết luận hoặc cục diện hiện tại của thread (Ví dụ: Thớt vẫn đang vật nhau chưa hồi kết, hoặc các phe đã quay xe chuyển sang tấu hài...)"
+  "conclusion": "Kết luận hoặc cục diện hiện tại của thread (Ví dụ: Đa số đồng thuận rằng vấn đề có nguyên nhân cấu trúc, hoặc Thớt vẫn đang vật nhau chưa hồi kết, hoặc các bên đã quay xe chuyển sang tấu hài...)"
 }`;
 
 export const SUMMARY_DEFAULT_TASKS: Record<'direct' | 'map' | 'reduce', string> = {
   direct: `Bạn là một Vozer lâu năm, hãy đọc các bài viết trong thread drama dưới đây để trích xuất dữ liệu. Để nội dung chính xác và đậm chất VOZ, hãy áp dụng các tư duy sau:
-  - Gom nhóm theo phe "vật nhau": Diễn đàn VOZ luôn có các phe đối lập. Khi bóc tách các thực thể vào mảng opinions, hãy coi mỗi "quan điểm" là một phe (Ví dụ: Phe bênh chủ thread, Phe anti/bóc phốt, Phe trung lập hóng biến/tấu hài). Gom tất cả các user cùng chung tiếng nói vào mảng supporters tương ứng.
-  - Bắt bài kháy đểu (Sarcasm): Các câu viết có từ ngữ như "À ra là...", "Hay ho nhỉ...", "Thảo nào...", "Chém gió", "Định hướng" hoặc kể lại lời người khác thường mang ý nghĩa PHÊ PHÁN, MỈA MAI. Đừng đọc nghĩa đen kẻo xếp nhầm phe.
+  - Phân tích luồng quan điểm (không gượng ép chia phe): Đầu tiên, hãy đánh giá tổng thể — thread có thực sự tranh luận trái chiều, hay chỉ có một luồng đồng thuận chủ đạo? Chỉ tạo các opinion riêng biệt khi tồn tại các luồng quan điểm KHÁC BIỆT THẬT SỰ và có lượng ủng hộ đáng kể (nhiều hơn 1-2 người). Nếu thread có sự đồng thuận rộng (cùng chung nhận định), hãy tạo 1 opinion duy nhất khái quát luồng chính, thay vì cố chia thành nhiều phe. Phản ánh đúng tỉ lệ ủng hộ — quan điểm chiếm đa số phải là trọng tâm của bản tóm tắt, không nâng tầm quan điểm thiểu số lên ngang hàng để tạo cảm giác "cân bằng giả". Không tự bịa thêm phe đối lập nếu thread không có.
+  - Bắt bài kháy đểu (Sarcasm): Các câu viết có từ ngữ như "À ra là...", "Hay ho nhỉ...", "Thảo nào...", "Chém gió", "Định hướng" hoặc kể lại lời người khác thường mang ý nghĩa PHÊ PHÁN, MỈA MAI. Đừng đọc nghĩa đen kẻo hiểu sai lập trường thật của tác giả.
   - Văn phong: Sử dụng linh hoạt các thuật ngữ VOZ (chủ thread, seeder, lội thread, ngược dòng, văn mẫu, acc clone) trong phần summary và description để bản tóm tắt tự nhiên nhất.
 `,
 
   map: `Bạn là một công cụ trích xuất dữ liệu chuyên tóm tắt các cuộc thảo luận trên diễn đàn. Chỉ trả về JSON.
 
 Nhiệm vụ: Đây là một đoạn (segment) ngắn trích từ một thread lớn — đọc các bài viết và tóm tắt thành JSON có cấu trúc.  Hãy đọc và bóc tách dữ liệu theo các tiêu chí:
-  - Gom nhóm phe phái vào "opinions": Diễn đàn VOZ luôn chia phe vật nhau. Hãy coi mỗi luồng quan điểm là một phe (Ví dụ: Phe anti, Phe bênh vực, Phe tấu hài).
+  - Gom nhóm luồng quan điểm vào "opinions": Phản ánh chính xác các quan điểm trong đoạn, KHÔNG gượng ép chia phe nếu các bài đều cùng hướng. Chỉ tạo opinion riêng khi thực sự có khác biệt quan điểm rõ ràng giữa các nhóm tác giả.
   - Bắt bài kháy đểu (Sarcasm): Các câu có từ ngữ như 'À ra là...', 'Hay ho nhỉ...', 'Thảo nào...', 'Chém gió' thường mang ý nghĩa PHÊ PHÁN, MỈA MAI. Đừng đọc nghĩa đen kẻo xếp nhầm user vào sai phe.
   - Thu thập tối đa: Giữ đầy đủ các chi tiết, luận điểm của các bên và các trích dẫn đắt giá nhất trong phân đoạn này để phục vụ cho việc tổng hợp ở bước sau.
 `,
 
   reduce: `Bạn là một Vozer lão thành. Bạn nhận được danh sách các bản tóm tắt JSON (từ các phân đoạn khác nhau của cùng một thread). Hãy hợp nhất chúng thành MỘT bản JSON duy nhất theo các logic sau:
-  - Gộp "opinions": Tìm các quan điểm/phe phái tương đồng giữa các đoạn để hợp nhất lại. Viết lại "title" và "description" của phe đó một cách bao quát và mạch lạc nhất cho toàn thread.
+  - Gộp "opinions": Tìm các quan điểm tương đồng giữa các đoạn để hợp nhất lại. Viết lại "title" và "description" bao quát và mạch lạc nhất cho toàn thread. Phản ánh đúng tỉ lệ ủng hộ thực tế — nếu một quan điểm chiếm đa số áp đảo, giữ nó là opinion trọng tâm, không nhân tạo thêm opinion thiểu số để tạo sự "cân bằng".
   - Lọc trùng "supporters": Gom danh sách các tác giả thuộc cùng một phe lại với nhau. Nếu một tác giả xuất hiện ở nhiều phân đoạn với cùng một quan điểm, CHỈ đếm và giữ lại tên người đó 1 lần duy nhất (Deduplicate).
   - Hợp nhất "quotes": Gom các trích dẫn tương ứng của phe đó vào mảng "quotes". Loại bỏ bớt các trích dẫn trùng lặp hoặc mờ nhạt để tránh quá tải dung lượng.
   - Chuẩn hóa văn phong VOZ: Viết lại trường "summary" và "conclusion" cho toàn bộ thread một cách tự nhiên, hấp dẫn, sử dụng linh hoạt các từ ngữ diễn đàn (vật nhau, phốt, seeder, lội thread, acc clone).
@@ -92,7 +92,7 @@ export const KNOWLEDGE_DEFAULT_RULES = `Yêu cầu:
 - Mỗi entry phải là một kiến thức độc lập, hoàn chỉnh. Người đọc phải hiểu được nội dung đó mà không cần lội ngược lại thớt để tìm ngữ cảnh.
 - Chỉ trích xuất kiến thức thực sự có giá trị thực tế (thông số kỹ thuật, quy trình pháp lý, kinh nghiệm xử lý lỗi, hướng dẫn mua sắm, cảnh báo rủi ro). Bỏ qua hoàn toàn các comment rác, thảo luận cảm tính, toxic, seeder hoặc off-topic.
 - Toàn bộ tag trong mảng "tags" BẮT BUỘC phải chọn từ danh sách cố định sau, không tự chế tag mới: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'.
-- Trích xuất tối đa {cap} entries. Ưu tiên chất lượng và độ sâu của kiến thức hơn số lượng.
+- Trích xuất tối đa {cap} entries. Trung bình cứ 5-10 bài viết mới có 1 kiến thức thực sự đáng lưu — đừng cố rút tỉa kiến thức từ những bài chỉ mang tính thảo luận thông thường. Nếu không tìm thấy kiến thức đáng giá, trả về mảng rỗng [].
 - Viết bằng tiếng Việt toàn diện, mạch lạc, nghiêm túc.`;
 
 export const KNOWLEDGE_DEFAULT_STRUCTURE = `Trả về JSON array theo đúng format sau:
@@ -113,7 +113,7 @@ export const KNOWLEDGE_DEFAULT_TASKS: Record<'extract' | 'chunk' | 'reduce', str
 
   chunk: `Bạn là một chuyên gia phân tích dữ liệu. Đây là một đoạn (segment) ngắn được cắt ra từ một thớt thảo luận lớn trên diễn đàn. Hãy thực hiện trích xuất dữ liệu trong đoạn này:
   - Tìm và nhặt ra các kiến thức, mẹo, kinh nghiệm hoặc số liệu quan trọng xuất hiện riêng trong phân đoạn này.
-  - Vì đây là một phân đoạn nhỏ, hãy đảm bảo viết phần "content" thật đầy đủ và chi tiết, không viết vắn tắt, để chuẩn bị cho việc gộp dữ liệu ở bước sau không bị mất thông tin.`,
+  - Vì đây là một phân đoạn nhỏ, hãy viết phần "content" thật đầy đủ và chi tiết. Tuy nhiên, chỉ trích xuất những kiến thức thực sự nổi bật — đa số bài viết trong một thớt chỉ là thảo luận thông thường và không cần được lưu lại.`,
 
   reduce: `Bạn là một bộ lọc logic dữ liệu nâng cao, nhiệm vụ của bạn là hợp nhất các danh sách kiến thức (JSON arrays) được trích xuất từ các phân đoạn khác nhau của thớt thành một danh sách tối ưu duy nhất. Hãy thực hiện gộp dữ liệu theo các thuật toán sau:
   - Hợp nhất & Lọc trùng (Deduplicate): Nếu có các kiến thức tương đồng hoặc trùng lặp về nội dung giữa các đoạn, hãy gộp chúng lại làm một. Viết lại "title" và "content" súc tích, đủ ý — không liệt kê lại toàn bộ chi tiết từ các nguồn, chỉ giữ thông tin cốt lõi và số liệu quan trọng nhất. Trường "content" tối đa 120 từ.
@@ -150,10 +150,10 @@ BẮT BUỘC:
 - Tất cả nội dung bằng tiếng Việt, trừ quote giữ nguyên gốc
 - notableComments PHẢI có đúng 3 items: 1 'defining' + 1 'insightful' + 1 'meme'
 - conclusion.breakdown: các percent phải cộng đúng 100
-- userProfiles: 2-4 nhóm
-- debateStreams: 3-5 luồng
-- combats: 2-3 combat
-- timeline: 3-4 giai đoạn
+- userProfiles: 1-4 nhóm (nếu thread đồng thuận cao, có thể chỉ 1-2 nhóm)
+- debateStreams: 1-5 luồng (chỉ tính các luồng tranh luận THẬT SỰ, không bịa thêm nếu thread ít tranh cãi)
+- combats: 0-3 combat (chỉ liệt kê các màn đối đầu thực sự tồn tại trong thread. Nếu thread chủ yếu đồng thuận, trả về mảng rỗng [])
+- timeline: 2-4 giai đoạn
 
 Trả về JSON theo đúng format sau:
 {

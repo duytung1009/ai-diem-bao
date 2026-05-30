@@ -281,7 +281,7 @@ async function handleConflictGoBack() {
           <!-- Segment tabs -->
           <div v-if="summary" class="space-y-2">
             <!-- Row 1: Tổng quan + Tiếp theo -->
-            <div class="flex items-between gap-2 flex-wrap">
+            <div class="flex justify-between gap-2 flex-wrap">
               <button class="badge transition-colors" :class="activeSegmentIndex === null
                 ? 'badge-accent'
                 : 'badge-neutral'" @click="activeSegmentIndex = null">

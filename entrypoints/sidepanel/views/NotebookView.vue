@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ref, onActivated, computed } from 'vue';
+import { ref, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
-import { formatTopicDate } from '@/lib/topic-utils';
-import type { NotebookEntry } from '@/lib/types';
-import type { NotebookStats } from '@/lib/notebook-db';
+import type { NotebookEntry, CachedTopic } from '@/lib/types';
 import { buildNotebookExport, downloadJson, safeFilename } from '@/lib/exporter';
 import { useNotebook, type ViewMode } from '../composables/useNotebook';
 import { useTopicStore } from '../composables/useTopicStore';
@@ -29,12 +27,11 @@ function openPostLink(entry: NotebookEntry) {
 
 async function openInExtension(entry: NotebookEntry) {
   if (entry.orphaned) return;
-  const cached = await sendMessage<import('@/lib/types').CachedTopic | null>('GET_CACHED_TOPIC', entry.sourceTopicUrl);
+  const cached = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', entry.sourceTopicUrl);
   if (cached) {
     store.selectTopic(cached);
     router.push(`/knowledge?focus=${entry.id}`);
   } else {
-    // Topic was deleted outside the normal flow — fall back to opening post
     openPostLink(entry);
   }
 }
@@ -43,6 +40,12 @@ function handleExportGroup(group: { key: string; entries: NotebookEntry[] }) {
   const payload = buildNotebookExport(group.entries);
   const name = group.entries[0]?.sourceTopicTitle ?? group.key;
   downloadJson(payload, `${safeFilename(name)}_notebook.json`);
+}
+
+function handleExportEntry(entry: NotebookEntry) {
+  const payload = buildNotebookExport([entry]);
+  const name = entry.sourceTopicTitle || entry.title;
+  downloadJson(payload, `${safeFilename(name)}_entry.json`);
 }
 
 function formatTimestamp(ts: string): string {
@@ -195,8 +198,8 @@ onActivated(async () => {
     <!-- Entry groups -->
     <div v-if="filteredEntries.length > 0" class="space-y-4">
       <div v-for="group in groupedEntries" :key="group.key">
-        <div class="flex items-center gap-2 mb-2">
-          <h4 class="section-heading flex-1">
+        <div class="flex items-end gap-2 mb-1">
+          <h4 class="section-heading flex-1 mb-1">
             {{ group.key }}
             <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
           </h4>
@@ -247,6 +250,16 @@ onActivated(async () => {
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </button>
+              <!-- Export button -->
+              <button
+                class="p-0.5 text-(--color-text-muted) hover:text-(--color-secondary) transition-colors rounded shrink-0"
+                title="Xuất JSON"
+                @click.stop="handleExportEntry(entry)"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
               </button>
             </div>

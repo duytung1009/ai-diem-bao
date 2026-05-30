@@ -17,15 +17,15 @@ export class ClaudeAdapter implements LLMProvider {
     return response;
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
     try {
       await this.chatCompletion(
         [{ role: 'user', content: 'Respond with "OK" only.' }],
         'You are a helpful assistant.',
       );
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
     }
   }
 

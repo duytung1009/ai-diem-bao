@@ -8,7 +8,7 @@ export interface LLMOptions {
 
 export interface LLMProvider {
   summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal, options?: LLMOptions): Promise<LLMResponse>;
-  testConnection(): Promise<boolean>;
+  testConnection(): Promise<{ ok: boolean; error?: string }>;
 }
 
 export interface LLMResponse {

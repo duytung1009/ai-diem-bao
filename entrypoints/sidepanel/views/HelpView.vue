@@ -142,8 +142,8 @@
           <span class="badge badge-accent">1.3</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">Gemini API (Google AI Studio)</h3>
         </div>
-        <div class="alert alert-warning text-xs">
-          ⚠ Free tier hay gặp lỗi kết nối và giới hạn ~20 lượt gọi API mỗi ngày. Dùng cho mục đích dùng thử, không nên dùng thường xuyên.
+        <div class="alert alert-success text-xs">
+          💡 Nên dùng model <strong>Gemma 4 / Gemma 3</strong> (miễn phí, rate limit cao ~1.500 requests/ngày) — phù hợp sử dụng thường xuyên. Các model Gemini (trả phí) dành cho nhu cầu chất lượng cao hơn.
         </div>
         <ol class="space-y-1.5 pl-1 mt-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
@@ -165,7 +165,7 @@
             <span
               class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">4</span>
             <span>Mở extension → tab <strong class="text-(--color-text-primary)">Cài đặt</strong> → chọn Provider <strong
-                class="text-(--color-text-primary)">"Google Gemini"</strong>. Nếu dùng free tier, chọn model <code class="font-mono text-(--color-accent-text)">gemini-2.5-flash-lite</code>.</span>
+                class="text-(--color-text-primary)">"Google Gemini"</strong>. Dùng free tier, chọn model <code class="font-mono text-(--color-accent-text)">gemma-4-26b-a4b-it</code> hoặc <code class="font-mono text-(--color-accent-text)">gemma-4-31b-it</code>.</span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span
@@ -175,7 +175,8 @@
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span
               class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">6</span>
-            <span>Chọn model <code class="font-mono text-(--color-accent-text)">gemini-2.5-flash-lite</code> (nhanh, đủ dùng cho tóm tắt)</span>
+            <span>Chọn model <code class="font-mono text-(--color-accent-text)">gemma-4-26b-a4b-it</code> hoặc <code class="font-mono text-(--color-accent-text)">gemma-4-31b-it</code>
+            </span>
           </li>
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
             <span

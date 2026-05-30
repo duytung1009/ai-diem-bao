@@ -5,7 +5,7 @@ import { withRetry } from './retry';
 import { mergeAbortSignals, formatPostsForLLM } from './utils';
 
 export class GeminiAdapter implements LLMProvider {
-  constructor(private config: LLMConfig) {}
+  constructor(private config: LLMConfig) { }
 
   async summarize(posts: ScrapedPost[], systemPrompt: string, signal?: AbortSignal, options?: LLMOptions): Promise<LLMResponse> {
     const userContent = formatPostsForLLM(posts);
@@ -13,7 +13,7 @@ export class GeminiAdapter implements LLMProvider {
     return this.generateContent(systemPrompt, userContent, signal, options?.jsonMode !== false);
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
     try {
       await this.generateContent(
         'You are a helpful assistant.',
@@ -21,9 +21,9 @@ export class GeminiAdapter implements LLMProvider {
         undefined,
         false,
       );
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
     }
   }
 
@@ -73,13 +73,9 @@ export class GeminiAdapter implements LLMProvider {
               temperature: this.config.temperature,
               maxOutputTokens: this.config.maxTokens ?? 4096,
               ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
-              ...(this.config.thinkingEnabled === false
-                ? { thinkingConfig: { thinkingBudget: 0 } }
-                : {
-                    thinkingConfig: {
-                      thinkingBudget: this.config.thinkingBudget ?? -1,
-                    },
-                  }),
+              ...(this.config.thinkingEnabled
+                ? { thinkingConfig: { thinkingBudget: this.config.thinkingBudget ?? -1 } }
+                : {}),
             },
           }),
           signal: merged.signal,
@@ -93,7 +89,7 @@ export class GeminiAdapter implements LLMProvider {
         const data = await res.json();
 
         const content =
-          data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          data.candidates?.[0]?.content?.parts?.find((p: { text?: string; thought?: string }) => !p.thought)?.text || '';
 
         const finishReason = data.candidates?.[0]?.finishReason as string | undefined;
         if (finishReason && finishReason !== 'STOP') {
@@ -115,9 +111,9 @@ export class GeminiAdapter implements LLMProvider {
           content,
           tokensUsed: data.usageMetadata
             ? {
-                prompt: data.usageMetadata.promptTokenCount ?? 0,
-                completion: data.usageMetadata.candidatesTokenCount ?? 0,
-              }
+              prompt: data.usageMetadata.promptTokenCount ?? 0,
+              completion: data.usageMetadata.candidatesTokenCount ?? 0,
+            }
             : undefined,
         };
       } catch (err) {

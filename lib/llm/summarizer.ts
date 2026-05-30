@@ -98,10 +98,18 @@ function repairUnescapedQuotes(text: string): string {
       const c = text[i];
 
       if (c === '\\') {
-        // Valid escape sequence — copy both chars
-        out.push(c);
         i++;
-        if (i < len) { out.push(text[i]); i++; }
+        if (i < len) {
+          const next = text[i];
+          if ('"\\/bfnrtu'.includes(next)) {
+            out.push('\\', next);
+          } else {
+            out.push('\\\\', next);
+          }
+          i++;
+        } else {
+          out.push('\\\\');
+        }
         continue;
       }
 
@@ -159,8 +167,9 @@ export function parseSummaryJSON(raw: string): SummaryJSON | null {
   // Fix broken Unicode escape sequences where \u is not followed by 4 hex digits
   // (e.g. \usage, \update, \user in forum text — JSON.parse treats \u as escape prefix)
   text = text.replace(/\\u(?![0-9a-fA-F]{4})/g, 'u');
-  // Sanitize other invalid JSON escape sequences (e.g. \N, \T produced by LLMs)
-  text = text.replace(/\\([^"\\\/bfnrtu0-9])/g, (_, ch) => ch);
+  // Sanitize other invalid JSON escape sequences (e.g. \N, \T, \o produced by LLMs)
+  // Escape the backslash instead of dropping it, to preserve literal backslashes in data
+  text = text.replace(/\\([^"\\\/bfnrtu0-9])/g, '\\\\$1');
 
   const isValidSummaryJSON = (parsed: unknown): parsed is SummaryJSON => {
     const obj = parsed as SummaryJSON;
@@ -420,7 +429,7 @@ export function planKnowledgeChunks(
   return chunks;
 }
 
-export async function testLLMConnection(config: LLMConfig): Promise<boolean> {
+export async function testLLMConnection(config: LLMConfig): Promise<{ ok: boolean; error?: string }> {
   const provider = createProvider(config);
   return provider.testConnection();
 }
@@ -435,7 +444,7 @@ export function parseThreadAnalysisJSON(raw: string): ThreadAnalysisJSON | null 
     if (singleBacktickMatch) text = singleBacktickMatch[1].trim();
   }
   text = text.replace(/\u00A0/g, ' ');
-  text = text.replace(/\\([^"\\\/bfnrtu])/g, (_, ch) => ch);
+  text = text.replace(/\\([^"\\\/bfnrtu0-9])/g, '\\\\$1');
 
   const isValid = (parsed: unknown): parsed is ThreadAnalysisJSON => {
     const p = parsed as ThreadAnalysisJSON;

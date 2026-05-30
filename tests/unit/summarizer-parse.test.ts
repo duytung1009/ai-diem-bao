@@ -71,6 +71,13 @@ describe('parseSummaryJSON', () => {
     expect(result).not.toBeNull();
   });
 
+  it('preserves literal backslash in usernames with invalid escapes like \\o', () => {
+    const json = '{"summary":"Tóm.","opinions":[{"title":"A","description":"d","supporters":["oo/\\oovoz"],"quotes":[]}],"conclusion":"Kết."}';
+    const result = parseSummaryJSON(json);
+    expect(result).not.toBeNull();
+    expect(result?.opinions[0].supporters[0]).toBe('oo/\\oovoz');
+  });
+
   it('repairs unescaped quotes inside string values', () => {
     const broken = '{"summary":"mục đích "cắm" tài sản","opinions":[],"conclusion":"kết luận"}';
     const result = parseSummaryJSON(broken);

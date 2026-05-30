@@ -107,7 +107,7 @@ Xong. Không cần cài thêm gì cả.
 | Ollama | `llama3` | Như LM Studio nhưng CLI cho thím nào thích gõ lệnh |
 | OpenRouter | *(tùy chọn)* | Aggregator, pick model nào cũng được, tính phí từng model |
 
-> **Mẹo thực tế:** Thường thì xài local LLM (qwen, llama...) hoặc đồ free như openai/gpt-oss-20b:free là đủ. Thớt 500+ bài phức tạp mới cần đến GPT-5/Gemini Flash/Gemini Pro. Dùng model rẻ nhất cho tiết kiệm — AI nào cũng biết đọc, không cần hàng xịn mới hiểu Vozer đang nói gì.
+> **Mẹo thực tế:** Thường thì xài local LLM (qwen, llama...) hoặc đồ free như gemma-4-26b-a4b-it/gpt-oss-20b là đủ. Thớt 500+ bài phức tạp mới cần đến GPT-5/Gemini Flash/Gemini Pro. Dùng model rẻ nhất cho tiết kiệm — AI nào cũng biết đọc, không cần hàng xịn mới hiểu Vozer đang nói gì.
 
 ---
 
@@ -194,7 +194,7 @@ Vì tác giả không có tiền bao key cho cả Voz. Mỗi thím tự dùng ke
 Mọi forum chạy XenForo 1.x và 2.x. Vào **Cài đặt → Forum hỗ trợ**, bấm "Thêm voz.vn" / "Thêm otofun.net" để bắt đầu, hoặc nhập URL bất kỳ forum XenForo nào. Chrome sẽ hỏi xác nhận cấp quyền cho từng domain — không có domain nào được truy cập mà không có sự cho phép của bạn.
 
 **Model nào tóm tắt hay nhất?**  
-Tùy khẩu vị. Gemini Flash có context window lớn nên tóm tắt thớt dài tốt, ít hallucinate. DeepSeek V4 Flash nhanh và rẻ cho thớt thường. Claude Sonnet nếu thím muốn chất lượng cao và không tiếc tiền. Local LLM context window bé nên hay bị ảo giác, dễ mất niềm tin. Nhưng quan trọng vẫn là prompt, thím có thể vào Cài Đặt -> Prompt Templates để tùy biến prompt cho bay bổng hơn.
+Tùy khẩu vị. Gemini Flash có context window lớn nên tóm tắt thớt dài tốt, ít hallucinate. DeepSeek V4 Flash nhanh và rẻ cho thớt thường. Claude Sonnet/Opus nếu thím thừa tiền. Local LLM context window bé nên hay bị ảo giác, dễ mất niềm tin. Prompt cũng là yếu tố quan trọng, thím có thể vào Cài Đặt -> Prompt Templates để tùy biến prompt cho bay bổng hơn.
 
 ---
 
@@ -219,7 +219,7 @@ Toàn bộ nội dung tóm tắt, chia phe, phân tích luồng tranh luận **p
 
 Mọi phân tích chỉ mang tính **tham khảo cho vui**. Muốn kết quả chuẩn hơn thì vào **Cài đặt → Prompt Templates** mà tự chỉnh — AI nghe lời chủ nhà hơn lời developer.
 
-### 🤝 Sản phẩm của hội đồng AI
+### 🤝 Sản phẩm của hội đồng AI (Vibe Code)
 
 Codebase này là thành quả hợp tác giữa Claude Code, GitHub Copilot, OpenCode, Antigravity, và có thể còn vài em AI khác tớ không nhớ tên. Mỗi em một phong cách, mỗi em một quan điểm về cách đặt tên biến, và không em nào thèm hỏi ý kiến em nào trước khi làm.
 

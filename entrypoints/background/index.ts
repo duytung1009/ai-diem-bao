@@ -87,7 +87,7 @@ export default defineBackground(() => {
         case 'TEST_CONNECTION':
           getSettings()
             .then((config) => testLLMConnection(config))
-            .then((ok) => sendResponse({ ok }))
+            .then((result) => sendResponse(result))
             .catch((err) => sendResponse({ ok: false, error: String(err) }));
           return true;
 
@@ -703,6 +703,8 @@ function parseKnowledgeEntries(raw: string): KnowledgeEntry[] {
   }
   // Fix broken \u sequences (same as parseSummaryJSON)
   text = text.replace(/\\u(?![0-9a-fA-F]{4})/g, 'u');
+  // Sanitize other invalid JSON escape sequences (e.g. \N, \T, \o produced by LLMs)
+  text = text.replace(/\\([^"\\\/bfnrtu0-9])/g, '\\\\$1');
 
   function mapEntries(parsed: unknown[]): KnowledgeEntry[] {
     const flat = parsed.flat();

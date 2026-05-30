@@ -467,6 +467,9 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       complete: chunkTokens >= budget * 0.8,
     };
 
+    // Persist raw chunk immediately — never lose LLM output even if save below fails
+    await persistChunks([chunk], guardId, topicUrl);
+
     const savedEntries = entries.value.filter(e => e.saved);
     const excludedNums = new Set(cachedTopic.value?.excludedKnowledgePostNumbers ?? []);
     const filteredNew = newEntries.filter(e => !excludedNums.has(e.source.postNumber));
@@ -496,8 +499,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   ): Promise<void> {
     currentPhase.value = 'reducing';
     const allPartial = chunks.map(c => c.entries);
-    const dynamicMin = Math.max(chunks.length, 3);
-    const finalCap = Math.min(200, Math.max(dynamicMin, chunks.length * 4));
+    const totalPosts = cachedTopic.value?.totalPosts ?? chunks.reduce((s, c) => s + (c.endPostNumber - c.startPostNumber + 1), 0);
+    const finalCap = Math.max(3, Math.min(200, Math.ceil(totalPosts / 5)));
 
     let finalEntries: KnowledgeEntry[];
     if (allPartial.length === 1) {
@@ -592,6 +595,15 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       }
       finalEntries = enrichEntries(rawFinalEntries);
     }
+
+    // Early save: persist raw reduce output immediately so LLM investment is never lost
+    const rawFiltered = finalEntries.filter(e => !excludedNums.has(e.source.postNumber));
+    sendMessage('SAVE_CACHED_TOPIC', {
+      url: topicUrl,
+      knowledgeEntries: rawFiltered,
+      knowledgeChunks: chunks,
+      lastKnowledgePostNumber: chunks[chunks.length - 1].endPostNumber,
+    }).catch(() => {});
 
     if (finalEntries.length === 0) {
       throw new Error('Gộp kiến thức không trả về kết quả. LLM có thể trả về dữ liệu không hợp lệ — vui lòng thử lại hoặc tăng Context window trong Cài đặt.');

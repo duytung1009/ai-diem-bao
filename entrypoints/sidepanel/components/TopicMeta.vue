@@ -24,9 +24,12 @@ const hasSummary = computed(() =>
 
 const totalRef = computed(() => props.topic.forumPostCount ?? props.topic.totalPosts ?? 0);
 
+const isCurrentTab = computed(() =>
+  store.activeTabUrl.value && isSameTopicUrl(store.activeTabUrl.value, props.topic.url),
+);
+
 const liveCount = computed(() =>
-  (store.activeTabDetect.value && store.activeTabUrl.value &&
-    isSameTopicUrl(store.activeTabUrl.value, props.topic.url))
+  (isCurrentTab.value && store.activeTabDetect.value)
     ? store.activeTabDetect.value.postCount
     : 0,
 );
@@ -73,6 +76,9 @@ async function navigateToTopic() {
     <div class="flex items-start justify-between gap-2">
       <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">
         {{ topic.title }}
+        <span v-if="isCurrentTab" class="badge badge-accent ml-1 shrink-0">
+          Tab hiện tại
+        </span>
         <span v-if="topic.topicType === 'news'"
           class="text-(--color-accent-text) font-regular text-xs ml-1"
         >

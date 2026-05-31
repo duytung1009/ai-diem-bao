@@ -28,6 +28,7 @@ import LoadingSpinner from '../components/LoadingSpinner.vue';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
 import { useTheme } from '../composables/useTheme';
 import { useSeederDetection } from '../composables/useSeederDetection';
+import { useAlertSettings } from '../composables/useAlertSettings';
 
 const config = ref<LLMConfig>({ ...DEFAULT_LLM_CONFIG });
 const showApiKey = ref(false);
@@ -119,6 +120,7 @@ const clearCacheConfirmEstimate: CostEstimate = {
 
 const { themeMode: currentTheme, setTheme } = useTheme();
 const { showTrustBadges, loadSetting: loadSeederSetting, setShowTrustBadges } = useSeederDetection();
+const { hideInfoAlerts, hideWarningAlerts, loadSettings: loadAlertSettings, setHideInfoAlerts, setHideWarningAlerts } = useAlertSettings();
 const { userForums, loadForums, addForumByHostname, addForumFromUrl, removeForum } = useForumManager();
 const newForumUrl = ref('');
 const addingForum = ref(false);
@@ -496,6 +498,7 @@ async function refreshCacheSize() {
 }
 
 onMounted(async () => {
+  await loadAlertSettings();
   await loadSeederSetting();
   await loadForums();
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
@@ -1108,7 +1111,7 @@ async function onImportFileSelected(event: Event) {
       </div>
 
       <!-- Config change warning -->
-      <div class="alert alert-warning text-xs">
+      <div v-if="!hideWarningAlerts" class="alert alert-warning text-xs">
         ⚠️ Thay đổi cấu hình model/segment có thể khiến các thread đang tóm tắt dở phải tóm tắt và chia segment lại từ đầu.
       </div>
     </div>
@@ -1339,6 +1342,33 @@ async function onImportFileSelected(event: Event) {
 
         <p v-if="promptSaveMessage" class="text-xs text-(--color-success-text)">{{ promptSaveMessage }}</p>
         <p v-if="promptError" class="text-xs text-(--color-error-text)">{{ promptError }}</p>
+      </div>
+    </div>
+    
+    <!-- Alert display settings -->
+    <div class="card space-y-2">
+      <h3 class="section-heading">Ẩn thông báo</h3>
+      <div class="flex items-start gap-3">
+        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
+          <input :checked="hideInfoAlerts" @change="setHideInfoAlerts(($event.target as HTMLInputElement).checked)" type="checkbox" class="sr-only peer" />
+          <div
+            class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
+        </label>
+        <div>
+          <p class="text-xs font-medium text-(--color-text-secondary)">Ẩn thông báo thông tin</p>
+          <p class="text-xs text-(--color-text-muted)">Ẩn các thông báo dạng <code class="font-mono">alert-info</code> trên toàn app (gợi ý, mẹo, ...).</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
+          <input :checked="hideWarningAlerts" @change="setHideWarningAlerts(($event.target as HTMLInputElement).checked)" type="checkbox" class="sr-only peer" />
+          <div
+            class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
+        </label>
+        <div>
+          <p class="text-xs font-medium text-(--color-text-secondary)">Ẩn cảnh báo</p>
+          <p class="text-xs text-(--color-text-muted)">Ẩn các thông báo dạng <code class="font-mono">alert-warning</code> trên toàn app (cảnh báo, lưu ý, ...).</p>
+        </div>
       </div>
     </div>
   </div>

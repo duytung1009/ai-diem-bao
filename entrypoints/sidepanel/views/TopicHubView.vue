@@ -390,9 +390,9 @@ async function toggleBookmark(topic: CachedTopic) {
       <div v-if="domainNames.length > 0" class="space-y-4">
         <div v-for="domain in domainNames" :key="domain">
           <!-- Domain header -->
-          <h3 class="section-heading">
+          <h4 class="section-heading flex-1 mb-1">
             {{ domain }}
-          </h3>
+          </h4>
 
           <!-- Topic cards -->
           <div class="space-y-2">

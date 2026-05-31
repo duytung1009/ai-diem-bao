@@ -14,6 +14,9 @@ import { getModelMaxOutput } from '@/lib/token-estimator';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
+import { useAlertSettings } from '../composables/useAlertSettings';
+
+const { hideInfoAlerts, hideWarningAlerts } = useAlertSettings();
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import SummaryContent from '../components/SummaryContent.vue';
@@ -262,7 +265,7 @@ async function handleConflictGoBack() {
         <!-- SEGMENT MODE (always) -->
         <template v-if="isSegmentMode && !isProcessing">
           <!-- Info banner: chỉ hiển thị khi > 1 segment -->
-          <div v-if="segments.length > 1" class="text-xs alert alert-info">
+          <div v-if="segments.length > 1 && !hideInfoAlerts" class="text-xs alert alert-info">
             <p class="font-medium">Thớt dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
             <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần theo độ dài nội dung. Tóm tắt từng phần
               rồi tạo tổng quan.</p>

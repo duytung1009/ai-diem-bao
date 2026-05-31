@@ -4,6 +4,9 @@ import MarkdownContent from './MarkdownContent.vue';
 import AccordionItem from './AccordionItem.vue';
 import TrustBadge from './TrustBadge.vue';
 import type { SummaryJSON, TrustScore } from '@/lib/types';
+import { useAlertSettings } from '../composables/useAlertSettings';
+
+const { hideWarningAlerts } = useAlertSettings();
 
 const props = defineProps<{
   content: string;
@@ -220,12 +223,12 @@ async function handleCopy() {
       </div>
 
       <template v-else>
-        <div class="alert alert-warning flex items-start gap-2">
-          <svg class="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-          </svg>
-          <span>Đang hiển thị ở chế độ fallback vì phản hồi LLM bị lỗi và không parse được sang JSON.</span>
-        </div>
+      <div v-if="!hideWarningAlerts" class="alert alert-warning flex items-start gap-2">
+        <svg class="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+        </svg>
+        <span>Đang hiển thị ở chế độ fallback vì phản hồi LLM bị lỗi và không parse được sang JSON.</span>
+      </div>
         
         <MarkdownContent v-if="!isStructured" :content="content" />
 

@@ -149,7 +149,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
   const knowledgeSegments = computed<KnowledgeSegmentView[]>(() => {
     const segs = cachedTopic.value?.segments ?? [];
     const chunks = (cachedTopic.value?.knowledgeChunks ?? []) as KnowledgeChunk[];
-    return segs.map((seg, i) => {
+    return segs.reduce<KnowledgeSegmentView[]>((acc, seg, i) => {
+      if (!seg) return acc;
       const segChunks = chunks.filter(c => c.segmentIndex === i);
       const hasFailed = segChunks.some(c => c.failed);
       let status: KnowledgeSegmentView['status'];
@@ -166,7 +167,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       const lastExtractedAt = segChunks.length > 0
         ? Math.max(...segChunks.map(c => c.extractedAt))
         : null;
-      return {
+      acc.push({
         segmentIndex: i,
         startPage: seg.startPage,
         endPage: seg.endPage,
@@ -175,8 +176,9 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
         chunks: segChunks,
         rawEntryCount,
         lastExtractedAt,
-      };
-    });
+      });
+      return acc;
+    }, []);
   });
 
   // F33: true when any chunk was extracted AFTER the last reduce (entries are stale)

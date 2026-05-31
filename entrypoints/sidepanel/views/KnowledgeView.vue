@@ -8,6 +8,9 @@ import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import { useKnowledge } from '../composables/useKnowledge';
 import { useTopicStore } from '../composables/useTopicStore';
+import { useAlertSettings } from '../composables/useAlertSettings';
+
+const { hideInfoAlerts, hideWarningAlerts } = useAlertSettings();
 import { useSummarize } from '../composables/useSummarize';
 import BackButton from '../components/BackButton.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
@@ -360,7 +363,7 @@ onActivated(async () => {
         <!-- F33: Per-segment extraction grid (Task 289+290) -->
         <template v-if="cachedTopic?.segments?.length && allPosts.length">
           <!-- Info banner: chỉ hiển thị khi > 5 phân đoạn để giải thích thời gian tốn -->
-          <div v-if="cachedTopic.segments.length > 5" class="alert alert-info text-xs">
+          <div v-if="cachedTopic.segments.length > 5 && !hideInfoAlerts" class="alert alert-info text-xs">
             <p class="font-medium">Thớt dài ({{ cachedTopic.segments.length }} phần)</p>
             <p class="mt-0.5">
               Trích xuất kiến thức gọi API <strong>nhiều lần hơn tóm tắt</strong> — mỗi phần cần ít nhất 1 lần gọi, cộng thêm 1 lần tổng hợp cuối.
@@ -369,7 +372,7 @@ onActivated(async () => {
               Nên thực hiện lúc rảnh và không cần kết quả ngay.
             </p>
           </div>
-          <div v-if="hasPartialSegments" class="alert alert-warning text-xs mt-2">
+          <div v-if="hasPartialSegments && !hideWarningAlerts" class="alert alert-warning text-xs mt-2">
             <p class="font-medium">
               Trích xuất chưa hoàn tất, một số đoạn gặp lỗi
             </p>
@@ -484,7 +487,7 @@ onActivated(async () => {
         </template>
 
         <!-- F33: Stale reduce banner + reduce prompt (Task 291) -->
-        <div v-if="isReduceStale && entries.length > 0 && !isLoading" class="alert alert-warning text-xs">
+        <div v-if="isReduceStale && entries.length > 0 && !isLoading && !hideWarningAlerts" class="alert alert-warning text-xs">
           <div class="flex items-center justify-between gap-2">
             <span>⚠ Có đoạn mới trích xuất chưa được tổng hợp vào danh sách.</span>
             <button class="btn btn-sm btn-soft text-xs shrink-0" @click="onReduceManualClick">Tổng hợp lại</button>
@@ -550,7 +553,7 @@ onActivated(async () => {
         </div>
 
         <!-- Truncation warning banner -->
-        <div v-if="truncationWarning > 0 && !isLoading" class="alert alert-warning text-xs">
+        <div v-if="truncationWarning > 0 && !isLoading && !hideWarningAlerts" class="alert alert-warning text-xs">
           <div class="flex items-start gap-3">
             <svg class="w-5 h-5 shrink-0 mt-0.5 text-(--color-warning-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

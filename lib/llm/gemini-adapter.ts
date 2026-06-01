@@ -42,7 +42,7 @@ export class GeminiAdapter implements LLMProvider {
     }
 
     return withRetry(async () => {
-      const model = this.config.model || 'gemini-2.0-flash';
+      const model = this.config.model || 'gemini-2.5-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
       const timeoutCtrl = new AbortController();

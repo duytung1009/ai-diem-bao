@@ -51,9 +51,15 @@ const PRICING_TABLE: Record<string, ModelSpec> = {
   'gemini-2.5-pro': { inputPrice: 1.25, outputPrice: 10.00, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 32768 },
   'gemini-2.5-flash': { inputPrice: 0.30, outputPrice: 2.50, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 24576 },
   'gemini-2.5-flash-lite': { inputPrice: 0.10, outputPrice: 0.40, contextLimit: 1048576, maxOutputTokens: 65536, thinkingBudget: 0 },
-  // Gemini 2.0 (deprecated — will be shut down June 1 2026)
-  'gemini-2.0-flash': { inputPrice: 0.10, outputPrice: 0.40, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
-  'gemini-2.0-flash-lite': { inputPrice: 0.075, outputPrice: 0.30, contextLimit: 1048576, maxOutputTokens: 8192, thinkingBudget: 0 },
+  // ── DeepSeek models ────────────────────────────────────────────────
+  // DeepSeek V4 family (1M context, supports thinking)
+  'deepseek-v4-flash': { inputPrice: 0.14, outputPrice: 0.28, contextLimit: 1000000, maxOutputTokens: 393216, thinkingBudget: 0 },
+  'deepseek-v4-pro': { inputPrice: 0.435, outputPrice: 0.87, contextLimit: 1000000, maxOutputTokens: 393216, thinkingBudget: 0 },
+
+  // ── xAI Grok models ─────────────────────────────────────────────────
+  'grok-4': { inputPrice: 2.50, outputPrice: 10.00, contextLimit: 1000000, maxOutputTokens: 131072, thinkingBudget: 0 },
+  'grok-4-mini': { inputPrice: 0.50, outputPrice: 3.00, contextLimit: 1000000, maxOutputTokens: 131072, thinkingBudget: 0 },
+
   // Gemma models (free / open-weight via Gemini API)
   'gemma-4-26b-a4b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 262144, maxOutputTokens: 8192, thinkingBudget: 0 },
   'gemma-4-31b-it': { inputPrice: 0, outputPrice: 0, contextLimit: 262144, maxOutputTokens: 8192, thinkingBudget: 0 },

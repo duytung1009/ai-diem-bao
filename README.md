@@ -97,6 +97,19 @@ Xong. Không cần cài thêm gì cả.
 
 > **Lưu ý quyền truy cập:** Lần đầu Save hoặc Test Connection, Chrome sẽ hiển thị hộp thoại yêu cầu cấp quyền truy cập domain của provider (ví dụ `api.openai.com`). Extension không có sẵn quyền truy cập website nào trong manifest — mỗi provider được cấp quyền riêng lẻ tại thời điểm bạn bấm Lưu/Test. Permission được lưu lại ở các lần sử dụng sau (không hỏi lại).
 
+#### Option 1 — Google AI Studio
+1. Truy cập vào [Google AI Studio](https://aistudio.google.com/api-keys) → Đăng nhập bằng tài khoản Google bất kỳ.
+2. Bấm vào nút Create API key → Chọn dự án và bấm tạo để hệ thống sinh chuỗi Key.
+3. Copy đoạn key nhận được → Mở Extension → Chuyển sang tab Cài đặt.  
+4. Tại mục Provider, chọn Gemini → Dán key vào ô API Key → Chọn model (gợi ý gemma-4-26b-a4b-it).  
+5. Bấm Test Connection -> Approve quyền truy cập -> bấm Lưu.  
+
+#### Option 2 — OpenRouter API (Nhiều model free, tha hồ đổi gió)
+OpenRouter là một cổng tổng hợp (Aggregator) hàng trăm model lớn nhỏ. Điểm cộng lớn là nó có một danh sách dài các model mã nguồn mở được gắn tag $0 (Free hoàn toàn) như mấy dòng Gemma, Llama, Qwen tinh chỉnh... để các thím tha hồ đổi vị prompt mà không lo hết hạn ngạch.  
+1. Truy cập vào trang chủ [OpenRouter](https://openrouter.ai/) → Tạo tài khoản nhanh qua Google hoặc Discord.Vào mục Keys trên thanh menu (hoặc truy cập trực tiếp openrouter.ai/keys) → Bấm Create Key.Đặt tên cho key (ví dụ: loithotho-key) → Bấm tạo và copy lại chuỗi key hiển thị trên màn hình.Mở Extension → Chuyển sang tab Cài đặt → Tại mục Provider, chọn OpenRouter.  
+2. Dán key vào ô API Key → Chọn một model free bất kỳ trong danh sách. 
+5. Bấm Test Connection -> Approve quyền truy cập -> bấm Lưu.  
+
 ### Provider nào dùng model nào?
 
 | Provider | Model gợi ý | Ghi chú |

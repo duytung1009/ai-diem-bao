@@ -8,6 +8,8 @@ export const PROVIDER_BASE_URLS: Record<LLMProvider, string> = {
 
   openrouter: 'https://openrouter.ai/api/v1',
   custom: '',
+  deepseek: 'https://api.deepseek.com/v1',
+  grok: 'https://api.x.ai/v1',
 };
 
 export function getProviderOrigin(provider: LLMProvider, baseUrl: string): string | null {

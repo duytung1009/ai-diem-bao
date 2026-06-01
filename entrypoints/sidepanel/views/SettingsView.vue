@@ -41,7 +41,8 @@ const providerDefaults: Record<LLMProvider, { model: string; apiKey: string; bas
   custom: { model: '', apiKey: '', baseUrl: 'https://api.openai.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: undefined, thinkingEnabled: false, thinkingBudget: undefined },
   claude: { model: 'claude-sonnet-4-6', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
   gemini: { model: 'gemini-2.5-flash', apiKey: '', baseUrl: '', temperature: 0.3, timeoutMs: 120000, maxTokens: 4096, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
-
+  deepseek: { model: 'deepseek-v4-flash', apiKey: '', baseUrl: 'https://api.deepseek.com/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 8192, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
+  grok: { model: 'grok-4', apiKey: '', baseUrl: 'https://api.x.ai/v1', temperature: 0.3, timeoutMs: 120000, maxTokens: 8192, contextWindow: 1000000, thinkingEnabled: false, thinkingBudget: undefined },
 };
 
 function syncCurrentProvider() {
@@ -367,8 +368,6 @@ const DEFAULT_GEMINI_MODELS = [
   'gemini-3-flash-preview',
   'gemini-3.1-flash-lite-preview',
   'gemini-3.1-pro-preview',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
 ];
 
 const geminiModels = ref<string[]>([...DEFAULT_GEMINI_MODELS]);
@@ -835,6 +834,8 @@ async function onImportFileSelected(event: Event) {
           <option value="gemini">Google Gemini (Google AI Studio)</option>
           <option value="openai">OpenAI</option>
           <option value="claude">Anthropic Claude</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="grok">Grok (xAI)</option>
         </select>
       </div>
 
@@ -927,7 +928,7 @@ async function onImportFileSelected(event: Event) {
         <input v-model="config.model" type="text" placeholder="gpt-4o-mini" class="input" />
         <p v-if="isOpenRouter" class="text-xs text-(--color-text-muted) mt-1">Dùng format <code class="font-mono">provider/model</code>, VD: <code
             class="font-mono">meta-llama/llama-3.1-8b-instruct:free</code>, <code class="font-mono">openai/gpt-4o-mini</code>, <code
-            class="font-mono">google/gemini-2.0-flash-001:free</code>. Xem đầy đủ tại <code class="font-mono">openrouter.ai/models</code></p>
+            class="font-mono">deepseek/deepseek-v4-flash:free</code>. Xem đầy đủ tại <code class="font-mono">openrouter.ai/models</code></p>
       </div>
 
       <!-- Temperature -->

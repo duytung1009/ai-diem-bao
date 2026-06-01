@@ -222,6 +222,83 @@
           </li>
         </ol>
       </div>
+
+      <!-- DeepSeek -->
+      <div class="card space-y-1.5">
+        <div class="flex items-center gap-2">
+          <span class="badge badge-accent">1.5</span>
+          <h3 class="text-xs font-semibold text-(--color-text-primary)">DeepSeek API</h3>
+          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Giá rẻ</span>
+        </div>
+        <div class="alert alert-info text-xs">
+          DeepSeek V4 Flash có giá chỉ $0.14/1M input, $0.28/1M output — rẻ hơn GPT-4o-mini. Hỗ trợ 1M context window, output lên đến 384K tokens. Dùng OpenAI-compatible API.
+        </div>
+        <ol class="space-y-1.5 pl-1 mt-1">
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <span>Đăng ký tại <code class="font-mono text-(--color-accent-text)">https://platform.deepseek.com</code></span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+            <span>Vào API Keys → "Create API Key" → Copy key (bắt đầu bằng <code class="font-mono text-(--color-accent-text)">sk-...</code>)</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+            <span>Mở Cài đặt → chọn Provider <strong class="text-(--color-text-primary)">"DeepSeek"</strong> → dán API key</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+            <span>Model mặc định <code class="font-mono text-(--color-accent-text)">deepseek-v4-flash</code> đã được thiết lập sẵn</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">5</span>
+            <span>Nhấn <strong class="text-(--color-text-primary)">"Test Connection"</strong> → hiện "Kết nối thành công!" là OK</span>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Grok (xAI) -->
+      <div class="card space-y-1.5">
+        <div class="flex items-center gap-2">
+          <span class="badge badge-accent">1.6</span>
+          <h3 class="text-xs font-semibold text-(--color-text-primary)">Grok API (xAI)</h3>
+        </div>
+        <div class="alert alert-info text-xs">
+          Grok 4 có context 1M, phù hợp xử lý topic dài. Dùng OpenAI-compatible API. Giá $2.50/1M input, $10/1M output cho Grok 4.
+        </div>
+        <ol class="space-y-1.5 pl-1 mt-1">
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <span>Đăng ký tại <code class="font-mono text-(--color-accent-text)">https://console.x.ai</code></span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+            <span>Vào API Keys → tạo key mới → Copy key</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+            <span>Mở Cài đặt → chọn Provider <strong class="text-(--color-text-primary)">"Grok (xAI)"</strong> → dán API key</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+            <span>Model mặc định <code class="font-mono text-(--color-accent-text)">grok-4</code> đã được thiết lập sẵn</span>
+          </li>
+          <li class="flex gap-2 text-xs text-(--color-text-secondary)">
+            <span
+              class="shrink-0 w-4 h-4 rounded-full bg-(--color-bg-muted) text-(--color-accent-text) text-xs font-bold flex items-center justify-center mt-0.5">5</span>
+            <span>Nhấn <strong class="text-(--color-text-primary)">"Test Connection"</strong> → hiện "Kết nối thành công!" là OK</span>
+          </li>
+        </ol>
+      </div>
     </div>
 
     <!-- ─── Section 2: Flow tóm tắt ───────────────────── -->

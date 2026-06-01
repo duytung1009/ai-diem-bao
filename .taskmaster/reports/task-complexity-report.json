@@ -1,9 +1,9 @@
 {
 	"meta": {
-		"generatedAt": "2026-05-29T07:18:44.848Z",
-		"tasksAnalyzed": 19,
-		"totalTasks": 183,
-		"analysisCount": 19,
+		"generatedAt": "2026-06-01T03:54:37.352Z",
+		"tasksAnalyzed": 29,
+		"totalTasks": 193,
+		"analysisCount": 29,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
 		"usedResearch": true
@@ -14,152 +14,232 @@
 			"taskTitle": "Triển khai Module Segment-Persistence cho logic lưu trữ (R2)",
 			"complexityScore": 4,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Xây dựng các hàm helper riêng cho việc tạo payload và nén segment để dễ dàng kiểm thử đơn vị và snapshot testing.",
-			"reasoning": "Hợp nhất logic lưu segment vào module pure, khối lượng công việc trung bình do phải refactor và test snapshot."
+			"expansionPrompt": "Xác định rõ cấu trúc payload cho cả trường hợp segment đơn và đa segment trước khi triển khai logic buildSegmentSavePayload.",
+			"reasoning": "Yêu cầu chuyển đổi logic từ một cấu trúc hiện có sang module pure, cần đảm bảo tính tương đương của dữ liệu thông qua snapshot testing."
 		},
 		{
 			"taskId": 170,
 			"taskTitle": "Refactor logic scraping thành Composable useTopicScraper (R4)",
 			"complexityScore": 6,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Phân tách logic scraping trang đơn và logic xử lý vòng lặp trang để tăng tính tái sử dụng và dễ kiểm thử bằng mock.",
-			"reasoning": "Tách logic scraping thành composable, cần xử lý vòng lặp, enrichment và dedup, độ phức tạp cao hơn."
+			"expansionPrompt": "Phân tách rõ ràng giữa logic điều khiển vòng lặp (iteration logic) và logic xử lý nội dung trang đơn lẻ (page-level logic).",
+			"reasoning": "Phức tạp do phải quản lý trạng thái bất đồng bộ, xử lý các lỗi đặc thù của thread (locked/deleted) và cơ chế deduplication dữ liệu."
 		},
 		{
 			"taskId": 171,
 			"taskTitle": "Thống nhất Pipeline Building và usePipeline Composable (R6, R8)",
 			"complexityScore": 6,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Tập trung vào cơ chế đồng bộ trạng thái giữa StepTimeline và LLMTaskState để đảm bảo giao diện người dùng luôn phản ánh đúng tiến trình xử lý.",
-			"reasoning": "Xây dựng pipeline quản lý StepTimeline và reconcile, yêu cầu đồng bộ trạng thái chặt chẽ."
+			"expansionPrompt": "Thiết kế cơ chế reconcile để có thể cập nhật danh sách các bước một cách an toàn mà không làm mất trạng thái của các bước đã hoàn thành.",
+			"reasoning": "Việc quản lý trạng thái tập trung cho Pipeline đòi hỏi sự phối hợp nhịp nhàng giữa logic xử lý và hiển thị UI, tránh tình trạng giao diện bị giật khi cập nhật."
 		},
 		{
 			"taskId": 172,
 			"taskTitle": "Xây dựng các hàm Primitive trong useSummarize",
 			"complexityScore": 7,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Xây dựng các bộ test case mock LLM chi tiết cho từng hàm primitive để đảm bảo cơ chế stale-guard và short-circuit hoạt động chính xác.",
-			"reasoning": "Triển khai các hàm primitive xử lý LLM và persist, yêu cầu tích hợp stale-guard và xử lý lỗi."
+			"expansionPrompt": "Xây dựng các bộ mock dữ liệu LLM phức tạp để kiểm tra các kịch bản stale-guard và lỗi mạng giữa chừng.",
+			"reasoning": "Đây là nhân tố cốt lõi xử lý LLM. Sự phức tạp nằm ở việc đảm bảo an toàn dữ liệu qua stale-guard và xử lý logic rút gọn (short-circuit) một cách chính xác."
 		},
 		{
 			"taskId": 173,
 			"taskTitle": "Triển khai Driver trung tâm runSummarizeJob (R7)",
 			"complexityScore": 8,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Mô tả chi tiết luồng điều phối giữa Scraper, Planner và Summarizer trong driver trước khi triển khai để bao quát hết các kịch bản resume/retry.",
-			"reasoning": "Hợp nhất 5 flow thành driver trung tâm, phức tạp do điều phối nhiều module."
+			"expansionPrompt": "Lập sơ đồ luồng dữ liệu giữa Scraper, Planner và Summarizer để xử lý tất cả các trường hợp resume/retry.",
+			"reasoning": "Độ phức tạp cao nhất do đóng vai trò điều phối (orchestrator) toàn bộ các thành phần khác, yêu cầu quản lý lỗi và trạng thái khôi phục cực kỳ chặt chẽ."
 		},
 		{
 			"taskId": 283,
 			"taskTitle": "Cập nhật Data Model cho Knowledge Chunk và Topic",
 			"complexityScore": 3,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Định nghĩa interface mở rộng, cập nhật schema cho IndexedDB và thực hiện audit toàn bộ codebase cho các hàm khởi tạo object.",
-			"reasoning": "Thay đổi data model đơn giản, thêm trường optional, cần backward compatibility."
+			"expansionPrompt": "Rà soát toàn bộ các interface liên quan đến dữ liệu Knowledge để đảm bảo tính nhất quán sau khi thêm trường mới.",
+			"reasoning": "Công việc chủ yếu là định nghĩa lại kiểu dữ liệu và schema, rủi ro thấp nhưng cần đảm bảo tính tương thích ngược (backward compatibility)."
 		},
 		{
 			"taskId": 284,
 			"taskTitle": "Refactor useKnowledge: Thêm các biến Derived State",
 			"complexityScore": 5,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Xây dựng các computed properties cho trạng thái segment, logic kiểm tra stale dữ liệu và quản lý refs cho index hiện hành.",
-			"reasoning": "Thêm computed properties vào useKnowledge, cần xử lý legacy data."
+			"expansionPrompt": "Sử dụng Vue computed để tự động hóa việc tính toán trạng thái segment dựa trên các chunk hiện có trong store.",
+			"reasoning": "Cần logic tính toán chính xác để phản ánh đúng trạng thái tiến độ trên UI, đặc biệt là xử lý các kịch bản dữ liệu cũ không có index."
 		},
 		{
 			"taskId": 285,
 			"taskTitle": "Tách helper runChunkExtraction và hàm tìm kiếm Segment",
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tách rời logic định vị segment và logic gọi LLM trích xuất thành các hàm pure hoặc helper độc lập để dễ dàng unit test.",
-			"reasoning": "Tách helper định vị segment và trích xuất, dễ test."
+			"expansionPrompt": "Tách biệt logic định vị vị trí bài viết và logic gọi API trích xuất để dễ dàng thực hiện unit test độc lập.",
+			"reasoning": "Tập trung vào tính mô-đun hóa, yêu cầu các hàm phải là hàm thuần (pure functions) để đảm bảo tính dự đoán được."
 		},
 		{
 			"taskId": 286,
 			"taskTitle": "Triển khai logic trích xuất theo phân đoạn (extractSegment)",
 			"complexityScore": 6,
 			"recommendedSubtasks": 5,
-			"expansionPrompt": "Chi tiết hóa luồng: tính resume point -> lấy danh sách post -> gọi extraction -> merge kết quả vào store theo segmentIndex.",
-			"reasoning": "Triển khai extractSegment với resume và merge, khá phức tạp."
+			"expansionPrompt": "Xây dựng logic so sánh dải bài viết (post range) để quyết định điểm bắt đầu trích xuất một cách thông minh (resume).",
+			"reasoning": "Phức tạp ở việc kết hợp giữa dữ liệu đã có và dữ liệu mới cần trích xuất, yêu cầu quản lý trạng thái lưu trữ chính xác."
 		},
 		{
 			"taskId": 287,
 			"taskTitle": "Triển khai logic xóa và trích xuất lại phân đoạn",
 			"complexityScore": 4,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Xây dựng logic lọc dữ liệu (filter) theo segmentIndex và quy trình gọi lại hàm trích xuất một cách an toàn.",
-			"reasoning": "Thêm chức năng xóa và trích xuất lại, logic rõ ràng."
+			"expansionPrompt": "Đảm bảo logic xóa chỉ tác động đến phân đoạn chỉ định và kích hoạt trạng thái stale cho bước tổng hợp (reduce).",
+			"reasoning": "Yêu cầu quản lý state cẩn thận để UI nhận biết được khi nào dữ liệu tổng hợp không còn khớp với dữ liệu phân đoạn."
 		},
 		{
 			"taskId": 288,
 			"taskTitle": "Cập nhật flow Extract All và Persist ReducedAt",
 			"complexityScore": 5,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Chỉnh sửa logic handleExtract để gán index tự động và cập nhật timestamp knowledgeReducedAt sau khi pha reduce hoàn tất.",
-			"reasoning": "Cập nhật flow cũ để thêm trường, cần kiểm tra tích hợp."
+			"expansionPrompt": "Tích hợp timestamp vào cuối quy trình reduce để theo dõi tính tươi mới của dữ liệu tổng hợp.",
+			"reasoning": "Chỉnh sửa luồng làm việc chính hiện có, cần kiểm tra kỹ để tránh gây lỗi hồi quy (regression) cho tính năng cũ."
 		},
 		{
 			"taskId": 297,
 			"taskTitle": "Cập nhật UI SettingsView.vue: Thêm các điều khiển Import",
 			"complexityScore": 3,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Thiết lập UI cho việc chọn file, chọn chế độ xung đột và đồng nhất style với khối cache hiện tại.",
-			"reasoning": "Thêm UI settings, yêu cầu UI nhất quán."
-		},
-		{
-			"taskId": 331,
-			"taskTitle": "Verify build succeeds with zero TypeScript errors",
-			"complexityScore": 1,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Chạy lệnh build và kiểm tra không có lỗi TypeScript.",
-			"reasoning": "Kiểm tra build đơn giản, không cần chia nhỏ subtask."
-		},
-		{
-			"taskId": 332,
-			"taskTitle": "Perform manual QA: select Gemini and test connection",
-			"complexityScore": 1,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Kiểm tra thủ công việc chọn Gemini và test kết nối.",
-			"reasoning": "Kiểm tra thủ công đơn giản."
+			"expansionPrompt": "Đảm bảo trải nghiệm người dùng mượt mà khi chọn file và hiển thị rõ ràng các tùy chọn xử lý xung đột dữ liệu.",
+			"reasoning": "Công việc UI thuần túy, độ phức tạp thấp, tập trung vào tính tiện dụng và thẩm mỹ."
 		},
 		{
 			"taskId": 333,
-			"taskTitle": "Sửa `calcMaxOutputEntries` giảm floor từ 10 xuống 2",
+			"taskTitle": "Sửa calcMaxOutputEntries giảm floor từ 10 xuống 2",
 			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Sửa hằng số floor và kiểm thử đơn vị.",
-			"reasoning": "Thay đổi nhỏ trong một hàm, dễ kiểm thử."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Kiểm tra giới hạn token của các model LLM khác nhau để đảm bảo giá trị floor mới không gây lãng phí tài nguyên.",
+			"reasoning": "Thay đổi tham số nhỏ nhưng có tác động đến hiệu quả sử dụng token, cần test kiểm chứng trên nhiều mức input."
 		},
 		{
 			"taskId": 334,
 			"taskTitle": "Tái cấu trúc pre-reduce split theo entry count thay vì chunk count",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Chia làm: (1) thay đổi logic split thành flat-based, (2) xử lý edge cases, (3) kiểm thử và self-review.",
-			"reasoning": "Refactor logic split cần xử lý nhiều edge case và đảm bảo không regression."
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Sử dụng thuật toán flatten mảng và slice dựa trên dung lượng tối đa (entry count) để tối ưu hóa số lượng lời gọi LLM.",
+			"reasoning": "Thay đổi thuật toán cốt lõi cho pha xử lý dữ liệu lớn, ảnh hưởng trực tiếp đến giới hạn ngữ cảnh (context window) của AI."
 		},
 		{
 			"taskId": 335,
-			"taskTitle": "Đảm bảo truyền `entryCap` cho pre-reduce calls",
+			"taskTitle": "Đảm bảo truyền entryCap cho pre-reduce calls",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Thêm tham số entryCap vào các lời gọi pre-reduce.",
-			"reasoning": "Thay đổi nhỏ về truyền tham số, dễ thực hiện."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Rà soát tất cả các điểm gọi hàm trong pha pre-reduce để chắc chắn tham số giới hạn đầu ra luôn được truyền vào.",
+			"reasoning": "Đảm bảo tính nhất quán của API nội bộ sau khi thay đổi logic split."
 		},
 		{
 			"taskId": 336,
 			"taskTitle": "Viết unit tests cho các thay đổi",
 			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Viết test cho calcMaxOutputEntries và pre-reduce split, kiểm tra edge cases.",
-			"reasoning": "Viết test bao phủ các hàm sửa đổi, cần test nhiều kịch bản."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tập trung vào các trường hợp biên như dữ liệu rỗng hoặc dữ liệu chỉ có một phân đoạn duy nhất.",
+			"reasoning": "Đảm bảo độ bao phủ của test cho các logic mới về split và giới hạn entry."
 		},
 		{
 			"taskId": 337,
 			"taskTitle": "Kiểm thử tích hợp và xác nhận không regression",
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Sử dụng các thread dữ liệu thực tế với quy mô khác nhau để kiểm chứng tính ổn định của toàn bộ pipeline.",
+			"reasoning": "Yêu cầu kiểm chứng thực tế với model AI để xác nhận không còn lỗi tràn token (overflow) và kết quả trả về đầy đủ."
+		},
+		{
+			"taskId": 338,
+			"taskTitle": "Review & Cleanup: Xóa Gemini 2.0 deprecated models và kiểm tra pricing",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Cập nhật bảng giá và danh sách model dựa trên tài liệu chính thức mới nhất của Google.",
+			"reasoning": "Dọn dẹp code và cập nhật dữ liệu cấu hình, yêu cầu sự tỉ mỉ trong việc kiểm tra thông tin pricing."
+		},
+		{
+			"taskId": 339,
+			"taskTitle": "Thêm DeepSeek provider core (type, factory, origins)",
 			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Thực hiện kiểm thử tích hợp với model thật, xác nhận không overflow completion_tokens.",
-			"reasoning": "Kiểm thử tích hợp cần chạy thử nghiệm với dữ liệu thật."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Mở rộng các interface hệ thống để hỗ trợ DeepSeek như một provider chính thức tương đương OpenAI.",
+			"reasoning": "Thay đổi cấu trúc cốt lõi của hệ thống adapter LLM, cần đảm bảo tính tương thích của factory."
+		},
+		{
+			"taskId": 347,
+			"taskTitle": "Verification: compile, test, và kiểm thử UI",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Kiểm tra khả năng kết nối thực tế với các provider mới (DeepSeek, Grok) thông qua UI Settings.",
+			"reasoning": "Giai đoạn kiểm chứng cuối cùng để đảm bảo tất cả các thay đổi về provider và model hoạt động trơn tru trên môi trường thực tế."
+		},
+		{
+			"taskId": 331,
+			"taskTitle": "Verify build succeeds with zero TypeScript errors",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on verify build succeeds with zero typescript errors.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 332,
+			"taskTitle": "Perform manual QA: select Gemini and test connection",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on perform manual qa: select gemini and test connection.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 340,
+			"taskTitle": "Thêm DeepSeek pricing vào PRICING_TABLE",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on thêm deepseek pricing vào pricing_table.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 341,
+			"taskTitle": "Cập nhật SettingsView.vue cho DeepSeek",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on cập nhật settingsview.vue cho deepseek.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 342,
+			"taskTitle": "Cập nhật HelpView.vue cho DeepSeek",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on cập nhật helpview.vue cho deepseek.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 343,
+			"taskTitle": "Thêm Grok (xAI) provider core (type, factory, origins)",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on thêm grok (xai) provider core (type, factory, origins).",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 344,
+			"taskTitle": "Thêm Grok pricing vào PRICING_TABLE",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on thêm grok pricing vào pricing_table.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 345,
+			"taskTitle": "Cập nhật SettingsView.vue cho Grok",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on cập nhật settingsview.vue cho grok.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 346,
+			"taskTitle": "Cập nhật HelpView.vue cho Grok",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on cập nhật helpview.vue cho grok.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
 		}
 	]
 }

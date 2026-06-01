@@ -9,6 +9,8 @@ export function createProvider(config: LLMConfig): LLMProvider {
     case 'openai':
     case 'openrouter':
     case 'custom':
+    case 'deepseek':
+    case 'grok':
       return new OpenAIAdapter(config);
     case 'claude':
       return new ClaudeAdapter(config);

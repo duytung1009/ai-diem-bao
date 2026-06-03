@@ -3,7 +3,8 @@ import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl } from '@/lib/cache-manager';
-import type { LLMConfig, CachedTopic } from '@/lib/types';
+import type { LLMConfig, CachedTopic, TopReactItem } from '@/lib/types';
+import { computeTopReacts } from '@/lib/top-reacts';
 import { calculateSegmentBudget, estimateTokens } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import type { CostEstimate } from '@/lib/types';
@@ -125,6 +126,13 @@ const modelLabel = computed(() => {
   const cfg = cachedTopic?.value?.llmConfig;
   if (!cfg?.provider || !cfg?.model) return null;
   return `${cfg.provider}: ${cfg.model}`;
+});
+
+const topReacts = computed<TopReactItem[]>(() => {
+  const topic = cachedTopic?.value;
+  if (!topic) return [];
+  const posts = (topic.posts.length ? topic.posts : topic.segments?.flatMap((s) => s?.posts ?? []) ?? []) as import('@/lib/types').ScrapedPost[];
+  return computeTopReacts(posts, 3);
 });
 
 // postNumber → page mapping, built from all cached posts (top-level + segments)
@@ -338,7 +346,7 @@ async function handleConflictGoBack() {
                   Tóm tắt bởi {{ modelLabel }}
                 </div>
                 <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url"
-                  :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
+                  :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                   <template #actions>
                     <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(0)">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,7 +402,7 @@ async function handleConflictGoBack() {
                 <div v-if="modelLabel" class="text-xs text-(--color-text-muted) italic">
                   Tóm tắt bởi {{ modelLabel }}
                 </div>
-                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
+                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                   <template #actions>
                     <template v-if="segments.length > 1">
                       <button class="btn btn-ghost btn-sm flex items-center gap-1" @click="onAutoSummarizeClick">
@@ -468,7 +476,7 @@ async function handleConflictGoBack() {
                 <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(segmentSummaries[activeSegmentIndex].postCount) }} bài viết</span>
               </div>
               <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" :json="segmentSummaries[activeSegmentIndex].summaryJson"
-                :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
+                :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
                 <template #actions>
                   <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(activeSegmentIndex)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

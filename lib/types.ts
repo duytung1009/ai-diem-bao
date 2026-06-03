@@ -24,6 +24,18 @@ export interface TrustScore {
   meta?: UserMeta;
 }
 
+export interface PostReactions {
+  like?: number;
+  dislike?: number;
+}
+
+export interface TopReactItem {
+  type: 'like' | 'dislike';
+  count: number;
+  author: string;
+  postNumber: number;
+}
+
 export interface ScrapedPost {
   author: string;
   content: string;
@@ -31,6 +43,7 @@ export interface ScrapedPost {
   postNumber: number;
   page?: number;
   userMeta?: UserMeta;
+  reactions?: PostReactions;
 }
 
 export interface TopicData {

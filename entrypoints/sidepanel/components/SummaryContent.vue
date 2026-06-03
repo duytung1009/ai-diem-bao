@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import MarkdownContent from './MarkdownContent.vue';
 import AccordionItem from './AccordionItem.vue';
 import TrustBadge from './TrustBadge.vue';
-import type { SummaryJSON, TrustScore } from '@/lib/types';
+import type { SummaryJSON, TrustScore, TopReactItem } from '@/lib/types';
 import { useAlertSettings } from '../composables/useAlertSettings';
 
 const { hideWarningAlerts } = useAlertSettings();
@@ -13,6 +13,7 @@ const props = defineProps<{
   json?: SummaryJSON;
   topicUrl?: string;
   postPageMap?: Record<number, number>;
+  topReacts?: TopReactItem[];
   userTrustScores?: Record<string, TrustScore>;
   showTrustBadges?: boolean;
 }>();
@@ -23,6 +24,19 @@ function openPostLink(postNumber: number) {
   const base = props.topicUrl.replace(/\/$/, '');
   const pageSegment = page && page > 1 ? `/page-${page}` : '';
   browser.tabs.create({ url: `${base}${pageSegment}/post-${postNumber}` });
+}
+
+function getTopReactLabel(item: TopReactItem, index: number): string {
+  const likeIndex = props.topReacts?.slice(0, index).filter((r) => r.type === 'like').length ?? 0;
+  if (item.type === 'like') {
+    return likeIndex === 0 ? 'Top Ưng' : `Top Ưng #${likeIndex + 1}`;
+  }
+  const dislikeIndex = index - (props.topReacts?.filter((r) => r.type === 'like').length ?? 0);
+  return dislikeIndex <= 0 ? 'Top Gạch' : `Top Gạch #${dislikeIndex + 1}`;
+}
+
+function getTopReactClass(item: TopReactItem): string {
+  return item.type === 'like' ? 'badge-accent' : 'badge-error';
 }
 
 // --- Markdown fallback parse (backward compat for old cache entries) ---
@@ -106,6 +120,19 @@ function formatSummaryAsText(): string {
     if (props.json.conclusion) {
       lines.push('## Kết luận');
       lines.push(props.json.conclusion);
+    }
+    if (props.topReacts?.length) {
+      lines.push('');
+      lines.push('## Bình luận nổi bật');
+      for (const item of props.topReacts) {
+        const prefix = item.type === 'like' ? 'Top Ưng' : 'Top Gạch';
+        const likeCount = props.topReacts.filter((r) => r.type === 'like').length;
+        const indexInType = item.type === 'like'
+          ? props.topReacts.indexOf(item)
+          : props.topReacts.indexOf(item) - likeCount;
+        const label = indexInType === 0 ? prefix : `${prefix} #${indexInType + 1}`;
+        lines.push(`* ${label} (${item.count}): ${item.author}`);
+      }
     }
     return lines.join('\n');
   }
@@ -279,6 +306,24 @@ async function handleCopy() {
           </div>
         </div>
       </template>
+
+        <!-- Top reacts -->
+        <div v-if="topReacts && topReacts.length > 0">
+          <h3 class="section-heading mb-2">B&#236;nh lu&#7853;n n&#7893;i b&#7853;t</h3>
+          <div class="space-y-1.5">
+            <div v-for="(item, i) in topReacts" :key="i" class="flex items-center gap-2 text-xs">
+              <span class="badge whitespace-nowrap" :class="getTopReactClass(item)">
+                {{ getTopReactLabel(item, i) }} ({{ item.count }})
+              </span>
+              <span class="text-(--color-text-secondary)">{{ item.author }}</span>
+              <button
+                v-if="topicUrl"
+                class="link font-mono"
+                @click="openPostLink(item.postNumber)"
+              >Xem bình luận</button>
+            </div>
+          </div>
+        </div>
     </div>
   </div>
 </template>

@@ -1,4 +1,4 @@
-import type { ScrapedPost, TopicData } from '../types';
+import type { ScrapedPost, TopicData, PostReactions } from '../types';
 import type { TopicScraper } from './types';
 import { normalizeWhitespace } from '../text-utils';
 
@@ -69,14 +69,55 @@ export class XF2Scraper implements TopicScraper {
       const content = this.extractContent(article);
       const timestamp = this.extractTimestamp(article);
       const postNumber = this.extractPostNumber(article);
+      const reactions = this.extractReactions(article);
 
       const userMeta = seenUsers.has(author) ? undefined : this.extractUserMeta(article);
       if (userMeta !== undefined) seenUsers.add(author);
 
-      posts.push({ author, content, timestamp, postNumber, userMeta });
+      posts.push({ author, content, timestamp, postNumber, userMeta, reactions });
     });
 
     return posts;
+  }
+
+  private extractReactions(article: Element): PostReactions | undefined {
+    try {
+      const bar = article.querySelector('.message-reactionBar, .reactionsBar');
+      if (!bar) return undefined;
+
+      const list = bar.querySelector('.reactionsBar-reactionList');
+      if (!list) return undefined;
+
+      const items = list.querySelectorAll('li');
+      if (!items.length) return undefined;
+
+      let like: number | undefined;
+      let dislike: number | undefined;
+
+      items.forEach((li) => {
+        const img = li.querySelector('img[alt]');
+        const countEl = li.querySelector('span');
+        if (!img || !countEl) return;
+
+        const alt = img.getAttribute('alt')?.toLowerCase() ?? '';
+        const count = parseInt(countEl.textContent?.trim()?.replace(/[,.]/g, '') ?? '', 10);
+        if (isNaN(count)) return;
+
+        const likeNames = ['ưng', 'like', 'thích'];
+        const dislikeNames = ['gạch', 'dislike', 'brick'];
+
+        if (likeNames.includes(alt)) {
+          like = count;
+        } else if (dislikeNames.includes(alt)) {
+          dislike = count;
+        }
+      });
+
+      if (like === undefined && dislike === undefined) return undefined;
+      return { like, dislike };
+    } catch {
+      return undefined;
+    }
   }
 
   private extractUserMeta(article: Element): import('../types').UserMeta | undefined {

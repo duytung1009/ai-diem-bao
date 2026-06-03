@@ -9467,13 +9467,259 @@
         "recommendedSubtasks": 4,
         "expansionPrompt": "Kiểm tra khả năng kết nối thực tế với các provider mới (DeepSeek, Grok) thông qua UI Settings.",
         "updatedAt": "2026-06-01T04:07:53.659Z"
+      },
+      {
+        "id": "348",
+        "title": "Thêm kiểu dữ liệu PostReactions và TopReactItem",
+        "description": "Thêm interface PostReactions { like?: number; dislike?: number } và TopReactItem { type: 'like' | 'dislike'; count: number; author: string; postNumber: number } vào lib/types.ts. Cập nhật ScrapedPost để có trường reactions?: PostReactions.",
+        "details": "Mở file lib/types.ts. Thêm các type mới:\n\n```typescript\nexport interface PostReactions {\n  like?: number;\n  dislike?: number;\n}\n\nexport interface TopReactItem {\n  type: 'like' | 'dislike';\n  count: number;\n  author: string;\n  postNumber: number;\n}\n\n// Cập nhật ScrapedPost\nexport interface ScrapedPost {\n  // ... existing fields\n  reactions?: PostReactions;\n}\n```\n\nSử dụng optional field để đảm bảo backward compatibility. Không thay đổi cache schema.",
+        "testStrategy": "Viết unit test kiểm tra kiểu dữ liệu mới được định nghĩa đúng, biên dịch không lỗi. Dùng assert type để kiểm tra tính tương thích.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 2,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Đảm bảo các interface mới tương thích ngược với dữ liệu cũ và không làm hỏng biên dịch.",
+        "updatedAt": "2026-06-01T04:18:13.530Z"
+      },
+      {
+        "id": "349",
+        "title": "Triển khai hàm extractReactions trong XF2 scraper",
+        "description": "Thêm hàm extractReactions(article: Element): PostReactions | undefined trong lib/scrapers/xf2-scraper.ts. Hàm này sẽ trích xuất số lượng reaction 'Ưng' và 'Gạch' từ DOM mỗi bài viết, sử dụng các selector như .reactionsBar, .js-reactionBarContainer, .reactionsBar-link. Ánh xạ tên reaction: 'Ưng', 'Like', 'Thích' → like; 'Gạch', 'Dislike', 'Brick' → dislike. Trả về undefined nếu không tìm thấy.",
+        "details": "Trong xf2-scraper.ts, thêm hàm:\n\n```typescript\nfunction extractReactions(article: Element): PostReactions | undefined {\n  const reactionBar = article.querySelector('.reactionsBar, .js-reactionBarContainer');\n  if (!reactionBar) return undefined;\n  \n  const reactionLinks = reactionBar.querySelectorAll('.reactionsBar-link');\n  let like = 0;\n  let dislike = 0;\n  \n  reactionLinks.forEach(link => {\n    const text = link.textContent?.trim() || '';\n    const countMatch = text.match(/(\\d+)/);\n    const count = countMatch ? parseInt(countMatch[1], 10) : 0;\n    \n    if (/Ưng|Like|Thích/i.test(text)) {\n      like = count;\n    } else if (/Gạch|Dislike|Brick/i.test(text)) {\n      dislike = count;\n    }\n  });\n  \n  // Chỉ trả về nếu có ít nhất một reaction > 0\n  if (like > 0 || dislike > 0) {\n    return { like, dislike };\n  }\n  return undefined;\n}\n```\n\nCần inspect DOM thực tế của VOZ để đảm bảo selectors chính xác. Fallback an toàn.",
+        "testStrategy": "Viết unit test với mock DOM giả lập các trường hợp: có cả like và dislike, chỉ like, chỉ dislike, không có reaction, selector không tồn tại. Đảm bảo trả về đúng object hoặc undefined.",
+        "priority": "high",
+        "dependencies": [
+          "348"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Kiểm tra kỹ selectors trên DOM thực tế của VOZ để đảm bảo trích xuất chính xác các reaction.",
+        "updatedAt": "2026-06-01T04:18:38.611Z"
+      },
+      {
+        "id": "350",
+        "title": "Tích hợp extractReactions vào hàm scrapePosts",
+        "description": "Gọi hàm extractReactions trong vòng lặp scrapePosts cho mỗi article element và gán kết quả vào reactions của ScrapedPost. Đảm bảo graceful degradation nếu extractReactions trả về undefined.",
+        "details": "Trong hàm scrapePosts, sau khi tạo post object, thêm:\n\n```typescript\nconst reactions = extractReactions(article);\nif (reactions) {\n  post.reactions = reactions;\n}\n```\n\nKhông thay đổi logic cũ, chỉ thêm optional field. Xử lý đa luồng nếu có (thêm reactions là thread-safe).",
+        "testStrategy": "Viết integration test với page HTML mock chứa danh sách bài viết có/không có reaction. Kiểm tra posts đầu ra có reactions đúng. Đảm bảo compatibility khi không có reaction data.",
+        "priority": "high",
+        "dependencies": [
+          "349"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 350,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Đảm bảo graceful degradation khi không tìm thấy reaction và không ảnh hưởng đến hiệu năng scrape.",
+        "updatedAt": "2026-06-01T04:18:46.809Z"
+      },
+      {
+        "id": "351",
+        "title": "Tạo file computeTopReacts với hàm computeTopReacts",
+        "description": "Tạo file mới lib/top-reacts.ts, export hàm computeTopReacts(posts: ScrapedPost[], topN: number = 3): TopReactItem[]. Hàm lọc các post có reactions, sort giảm dần theo count, lấy topN mỗi loại (like/dislike), trả về mảng kết hợp: likes trước, dislikes sau.",
+        "details": "```typescript\nimport { ScrapedPost, TopReactItem } from './types';\n\nexport function computeTopReacts(posts: ScrapedPost[], topN: number = 3): TopReactItem[] {\n  const postsWithReactions = posts.filter(p => p.reactions);\n  \n  const topLikes: TopReactItem[] = postsWithReactions\n    .filter(p => (p.reactions!.like || 0) > 0)\n    .sort((a, b) => (b.reactions!.like || 0) - (a.reactions!.like || 0))\n    .slice(0, topN)\n    .map(p => ({\n      type: 'like',\n      count: p.reactions!.like || 0,\n      author: p.author,\n      postNumber: p.postNumber\n    }));\n  \n  const topDislikes: TopReactItem[] = postsWithReactions\n    .filter(p => (p.reactions!.dislike || 0) > 0)\n    .sort((a, b) => (b.reactions!.dislike || 0) - (a.reactions!.dislike || 0))\n    .slice(0, topN)\n    .map(p => ({\n      type: 'dislike',\n      count: p.reactions!.dislike || 0,\n      author: p.author,\n      postNumber: p.postNumber\n    }));\n  \n  return [...topLikes, ...topDislikes];\n}\n```\n\nSử dụng optional chaining và nullish coalescing. postsWithReactions filter posts có reactions !== undefined.",
+        "testStrategy": "Viết unit test kiểm tra: danh sách posts có mix reaction, test topN, test không có reaction → [], test posts rỗng. Sắp xếp đúng thứ tự, giới hạn đúng số lượng.",
+        "priority": "high",
+        "dependencies": [
+          "348"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Xử lý đúng thứ tự ưu tiên: likes trước, dislikes sau, theo thứ tự giảm dần của count.",
+        "updatedAt": "2026-06-01T04:19:37.743Z"
+      },
+      {
+        "id": "352",
+        "title": "Cập nhật SummaryView.vue để tính topReacts",
+        "description": "Trong SummaryView.vue, sau khi có cachedTopic.posts, flatten các segments nếu có (nếu posts được lưu theo segment), gọi computeTopReacts và truyền xuống SummaryContent qua prop topReacts.",
+        "details": "Trong script setup của SummaryView.vue, import computeTopReacts từ lib/top-reacts. Tính toán:\n\n```typescript\nconst topReacts = computed(() => {\n  if (!cachedTopic.value?.posts) return [];\n  const posts = cachedTopic.value.posts; // có thể cần flatten nếu có segments\n  // Nếu posts là mảng các mảng (segments), flatten: const allPosts = posts.flat();\n  return computeTopReacts(posts, 3);\n});\n```\n\nTruyền xuống SummaryContent:\n```html\n<SummaryContent :topReacts=\"topReacts\" ... />\n```\n\nKiểm tra .value đúng cách.",
+        "testStrategy": "Test component: mount SummaryView với mock cachedTopic có posts có/không reactions, kiểm tra prop topReacts được tính đúng. Dùng vi-test hoặc jest với Vue Test Utils.",
+        "priority": "high",
+        "dependencies": [
+          "350",
+          "351"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 352,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Xử lý trường hợp cachedTopic.posts có cấu trúc segment (mảng lồng) để flatten đúng cách.",
+        "updatedAt": "2026-06-01T04:19:45.873Z"
+      },
+      {
+        "id": "353",
+        "title": "Cập nhật SummaryContent.vue hiển thị section 'Bình luận nổi bật'",
+        "description": "Thêm prop topReacts?: TopReactItem[] vào SummaryContent.vue. Hiển thị section 'Bình luận nổi bật' sau 'Kết luận' nếu topReacts.length > 0. Format: 'Top Ưng'/'Top Ưng #2'/'Top Gạch'/... . Mỗi item có link dùng openPostLink(postNumber) + postPageMap.",
+        "details": "Trong SummaryContent.vue, thêm prop:\n```typescript\nconst props = defineProps<{\n  // ... existing props\n  topReacts?: TopReactItem[]\n}>()\n```\n\nTemplate thêm section:\n```html\n<template v-if=\"topReacts && topReacts.length > 0\">\n  <div class=\"summary-section\">\n    <h3>Bình luận nổi bật</h3>\n    <ul>\n      <li v-for=\"(item, index) in topReacts\" :key=\"index\" class=\"top-react-item\">\n        <template v-if=\"item.type === 'like'\">\n          <span v-if=\"index === 0\">Top Ưng ({{ item.count }}):</span>\n          <span v-else>Top Ưng #{{ index + 1 }} ({{ item.count }}):</span>\n        </template>\n        <template v-else>\n          <span>Top Gạch ({{ item.count }}):</span>\n        </template>\n        {{ item.author }} - \n        <a :href=\"openPostLink(item.postNumber)\" target=\"_blank\" rel=\"noopener\">Xem bình luận</a>\n      </li>\n    </ul>\n  </div>\n</template>\n```\n\nCần xử lý postPageMap (từ props hoặc computed) để tạo đúng URL. Sử dụng openPostLink helper nếu có sẵn.",
+        "testStrategy": "Test component: mount với topReacts rỗng → section không hiện. Với dữ liệu mẫu, kiểm tra render đúng text, link có href chính xác. Kiểm tra khi chỉ có like/dislike.",
+        "priority": "high",
+        "dependencies": [
+          "352"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 353,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Sử dụng openPostLink helper và postPageMap để tạo link chính xác đến từng bình luận.",
+        "updatedAt": "2026-06-01T04:20:47.249Z"
+      },
+      {
+        "id": "354",
+        "title": "Cập nhật formatSummaryAsText để bao gồm topReacts",
+        "description": "Cập nhật hàm formatSummaryAsText trong SummaryContent.vue để thêm topReacts vào chuỗi text summary, giữ định dạng tương tự UI.",
+        "details": "Trong hàm formatSummaryAsText, thêm phần nối topReacts sau phần kết luận:\n\n```typescript\nfunction formatSummaryAsText() {\n  let text = '';\n  // ... existing sections\n  \n  if (topReacts.value && topReacts.value.length > 0) {\n    text += '\\nBình luận nổi bật:\\n';\n    topReacts.value.forEach((item, index) => {\n      const prefix = item.type === 'like' \n        ? (index === 0 ? 'Top Ưng' : `Top Ưng #${index + 1}`)\n        : 'Top Gạch';\n      text += `${prefix} (${item.count}): ${item.author} - Xem bình luận: ${getPostUrl(item.postNumber)}\\n`;\n    });\n  }\n  \n  return text;\n}\n```\n\nĐảm bảo sử dụng đường dẫn tuyệt đối hoặc relative phù hợp.",
+        "testStrategy": "Unit test hàm formatSummaryAsText: gọi với các giá trị topReacts khác nhau, kiểm tra output text đúng. Đặc biệt khi topReacts undefined.",
+        "priority": "medium",
+        "dependencies": [
+          "353"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 354,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Giữ định dạng văn bản nhất quán với các phần khác trong summary text.",
+        "updatedAt": "2026-06-01T04:20:57.277Z"
+      },
+      {
+        "id": "355",
+        "title": "Xử lý backward compatibility cho topic cũ không có reaction",
+        "description": "Đảm bảo khi posts không có trường reactions hoặc computeTopReacts trả về rỗng thì section 'Bình luận nổi bật' không hiển thị. Không thay đổi code XF1 scraper. Đảm bảo không ảnh hưởng cache hiện có.",
+        "details": "Kiểm tra:\n- Trong SummaryView.vue, nếu posts không có reactions, computeTopReacts trả về [] → topReacts computed là [].\n- Trong SummaryContent.vue, v-if=\"topReacts && topReacts.length > 0\" xử lý đúng.\n- Không có thay đổi ở XF1 scraper (không extractReactions).\n- Không cần migration cache vì reactions field optional.\n\nThêm test case: topic cũ không có reactions → section không xuất hiện.",
+        "testStrategy": "Viết test tích hợp: mock dữ liệu topic cũ (không có reactions) → component không render section. Đảm bảo không crash. Kiểm tra formatSummaryAsText trả về text không có phần reactions.",
+        "priority": "medium",
+        "dependencies": [
+          "353"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 355,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Kiểm tra rằng mọi chỗ đọc reactions đều xử lý được trường hợp undefined.",
+        "updatedAt": "2026-06-01T04:21:08.045Z"
+      },
+      {
+        "id": "356",
+        "title": "Viết unit test cho computeTopReacts",
+        "description": "Viết unit test toàn diện cho hàm computeTopReacts trong lib/top-reacts.ts, bao gồm các trường hợp: danh sách rỗng, không có reactions, chỉ like, chỉ dislike, cả hai, nhiều hơn topN, ít hơn topN, thứ tự sắp xếp.",
+        "details": "Sử dụng Jest hoặc Vitest. Tạo file __tests__/top-reacts.spec.ts. Mock ScrapedPost.\n\nVí dụ:\n```typescript\ndescribe('computeTopReacts', () => {\n  it('returns empty array when posts empty', () => {\n    expect(computeTopReacts([])).toEqual([]);\n  });\n  it('returns empty when no reactions', () => {\n    const posts = [{ author: 'a', postNumber: 1 }];\n    expect(computeTopReacts(posts)).toEqual([]);\n  });\n  it('sorts likes descending and limits to topN', () => {\n    const posts = [\n      { author: 'a', postNumber: 1, reactions: { like: 5 } },\n      { author: 'b', postNumber: 2, reactions: { like: 10 } },\n      { author: 'c', postNumber: 3, reactions: { like: 3 } },\n    ];\n    const result = computeTopReacts(posts, 2);\n    expect(result).toHaveLength(2);\n    expect(result[0].count).toBe(10);\n    expect(result[1].count).toBe(5);\n  });\n  // ... thêm các test khác\n});\n```",
+        "testStrategy": "Chạy unit test với coverage. Đảm bảo tất cả các case pass. Tổ chức test theo mô tả.",
+        "priority": "medium",
+        "dependencies": [
+          "351"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 356,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Tạo dữ liệu mock đa dạng để kiểm tra các kịch bản lọc và sắp xếp.",
+        "updatedAt": "2026-06-01T04:23:51.092Z"
+      },
+      {
+        "id": "357",
+        "title": "Viết integration test cho scraper với reactions",
+        "description": "Viết integration test cho quá trình scrape XF2 với post có reactions. Tạo mock HTML page chứa reaction bar và kiểm tra rằng extractReactions được gọi và dữ liệu được gán đúng.",
+        "details": "Sử dụng thư viện testing cho scraper (ví dụ: jsdom + fetch mock). Tạo file __tests__/xf2-scraper.reactions.spec.ts.\n\nTạo fixture HTML với một page XF2 có reactions. Gọi scrapePosts với URL mock. Kiểm tra kết quả:\n- posts có reactions với like/dislike đúng count.\n- Nếu page không có reactions, reactions undefined.\n- Kiểm tra graceful degradation khi selector không tồn tại.\n\nVí dụ cấu trúc test:\n```typescript\ndescribe('XF2 scraper with reactions', () => {\n  it('extracts reactions from post', async () => {\n    const html = `...<article>...reactions bar...</article>...`;\n    const posts = await scrapePosts(mockDom);\n    expect(posts[0].reactions).toEqual({ like: 10, dislike: 3 });\n  });\n});\n```",
+        "testStrategy": "Dùng mock HTML với nhiều kịch bản: có cả hai reaction, chỉ một loại, nhiều bài viết. Đảm bảo scraper vẫn hoạt động nếu không có reaction (backward compat).",
+        "priority": "medium",
+        "dependencies": [
+          "350"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 357,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Tạo fixture HTML mô phỏng nhiều tình huống reaction khác nhau.",
+        "updatedAt": "2026-06-01T04:23:59.299Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-01T04:07:53.668Z",
-      "taskCount": 193,
-      "completedCount": 174,
+      "lastModified": "2026-06-01T04:23:59.300Z",
+      "taskCount": 203,
+      "completedCount": 184,
       "tags": [
         "master"
       ]

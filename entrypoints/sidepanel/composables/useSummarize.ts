@@ -867,14 +867,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         });
 
         pl.markRunning('plan');
-        const newBoundaries = planDynamicSegments(postsToPlan, budget);
+        const rawNewBoundaries = planDynamicSegments(postsToPlan, budget);
         console.log('[runSummarizeJob] Incremental planned segments:', {
           budget,
-          boundaryCount: newBoundaries.length,
-          boundaries: newBoundaries.map(b => ({ start: b.start, end: b.end })),
+          boundaryCount: rawNewBoundaries.length,
+          boundaries: rawNewBoundaries.map(b => ({ start: b.start, end: b.end })),
         });
 
-        // Merge: replace last existing boundary with new boundaries
         const existingBoundaries = dynamicSegmentBoundaries.value.length > 0
           ? dynamicSegmentBoundaries.value.map(b => ({ start: b.start, end: b.end }))
           : existingCompletedSegments.map(s => ({ start: s.startPage, end: s.endPage }));
@@ -886,11 +885,26 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           existingBoundaries: existingBoundaries.map(b => `${b.start}-${b.end}`),
         });
 
+        // Keep all completed segments; only the last one is dropped for re-planning
+        const kept = existingBoundaries.slice(0, -1);
+        const maxKeptEnd = kept.length > 0 ? Math.max(...kept.map(b => b.end)) : 0;
+
+        // Adjust new boundaries to prevent overlap with kept segments.
+        // Without this, new boundary [1-18] + kept [1-12] would produce
+        // overlapping page ranges where segment post sets diverge,
+        // causing summarizedPostCount to diverge from forumPostCount.
+        const newBoundaries = rawNewBoundaries
+          .map(b => ({
+            start: Math.max(b.start, maxKeptEnd + 1),
+            end: b.end,
+          }))
+          .filter(b => b.start <= b.end);
+
         const allBoundaries: { start: number; end: number }[] = [
-          ...existingBoundaries.slice(0, -1),
+          ...kept,
           ...newBoundaries,
         ];
-        const firstNewSegIdx = existingBoundaries.length - 1;
+        const firstNewSegIdx = kept.length;
 
         console.log('[runSummarizeJob] Merged boundaries:', {
           allBoundaries: allBoundaries.map(b => `${b.start}-${b.end}`),

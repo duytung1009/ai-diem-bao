@@ -23,6 +23,12 @@ export default defineContentScript({
 
     browser.runtime?.onMessage.addListener(
       (message: Message, _sender, sendResponse) => {
+        // GET_PAGE_URL works on any page, no XF version needed
+        if (message.type === 'GET_PAGE_URL') {
+          sendResponse({ url: location.href });
+          return false;
+        }
+
         if (version === 'unknown') {
           return false;
         }

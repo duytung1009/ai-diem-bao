@@ -11,6 +11,8 @@ export const STORAGE_KEYS = {
   HIDE_WARNING_ALERTS: 'hide-warning-alerts',
   USER_FORUMS: 'user-forums',
   NEEDS_PERMISSION_REAUTH: 'needs-permission-reauth',
+  NEWS_FEED_SETTINGS: 'news-feed-settings',
+  NEWS_FEED_HISTORY: 'news-feed-history',
 } as const;
 
 export const DEFAULT_LLM_CONFIG: LLMConfig = {
@@ -52,3 +54,13 @@ export const REDUCE_OUTPUT_FRACTION = 0.35;
 // Knowledge chunks — hard cap on post tokens per chunk to prevent LLM overload
 // (models with 128K+ context would otherwise get 80K+ token chunks, degrading output quality)
 export const KNOWLEDGE_MAX_CHUNK_BUDGET = 12_000;
+
+// News Feed defaults
+export const DEFAULT_NEWS_FEED_SETTINGS = {
+  maxThreads: 10,
+  maxAgeHours: 24,
+  autoRefresh: false,
+  selectedForums: [] as string[],
+  heatThresholds: { fire: 1000, hot: 300 },
+  weights: { reply: 3, view: 0.01, page: 10 },
+};

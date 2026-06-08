@@ -8,6 +8,7 @@ export function mountApp(): void {
     history: createWebHashHistory(),
     routes: [
       { path: '/', name: 'hub', component: () => import('@/entrypoints/sidepanel/views/TopicHubView.vue') },
+      { path: '/newsfeed', name: 'newsfeed', component: () => import('@/entrypoints/sidepanel/views/NewsFeedView.vue') },
       { path: '/summary', name: 'summary', component: () => import('@/entrypoints/sidepanel/views/SummaryView.vue') },
       { path: '/knowledge', name: 'knowledge', component: () => import('@/entrypoints/sidepanel/views/KnowledgeView.vue') },
       { path: '/analysis', name: 'analysis', component: () => import('@/entrypoints/sidepanel/views/AnalysisView.vue') },

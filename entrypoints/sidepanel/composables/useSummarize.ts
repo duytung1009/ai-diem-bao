@@ -438,6 +438,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       segments: savePayload.segments,
       ...(savePayload.summary ? { summary: savePayload.summary } : {}),
       ...(savePayload.summaryJson ? { summaryJson: savePayload.summaryJson } : {}),
+      ...(currentConfig.value ? { llmConfig: { provider: currentConfig.value.provider, model: currentConfig.value.model } } : {}),
     } as Partial<CachedTopic>);
 
     if (isSingleSegment) {
@@ -467,6 +468,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         summary: seg.summary,
         summaryJson: seg.summaryJson ?? undefined,
         summarizedPostCount: seg.postCount,
+        ...(currentConfig.value ? { llmConfig: { provider: currentConfig.value.provider, model: currentConfig.value.model } } : {}),
       });
       cacheFreshness.value = 'fresh';
       pl.markDone('overall');
@@ -493,8 +495,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const overallSummaryJson = parseSummaryJSON(overallSummaryText);
 
       if (summarizeGuard.isStale(thisId)) {
-        const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
-          segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+        const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
         await saveTopic(topic, {
           forumPostCount: getLiveForumPostCount(),
           summary: overallSummaryText,
@@ -509,8 +510,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       summaryJson.value = overallSummaryJson;
       activeSegmentIndex.value = null;
 
-      const totalSummarized = store.selectedTopic.value?.summarizedPostCount ??
-        segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+      const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
       await sendMessage('SAVE_CACHED_TOPIC', {
         url: topic.url,
         title: topic.title,
@@ -522,7 +522,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         summarizedPostCount: totalSummarized,
         segments: segmentSummaries.value,
       });
-      store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized, segments: segmentSummaries.value });
+      store.updateSelectedTopic({ summary: overallSummaryText, summarizedPostCount: totalSummarized, segments: segmentSummaries.value, ...(currentConfig.value ? { llmConfig: { provider: currentConfig.value.provider, model: currentConfig.value.model } } : {}) });
       cacheFreshness.value = 'fresh';
     } catch (err) {
       if (summarizeGuard.isStale(thisId)) return;
@@ -549,6 +549,11 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     error.value = '';
     scraper.scrapingWarnings.value = [];
     scraper.scrapingInfo.value = [];
+    // Reset pipeline if it's from a previous complete run (all steps resolved).
+    // Otherwise the "Tóm tắt lại" button reuses stale "done" states.
+    if (pl.pipeline.value && pl.pipeline.value.steps.every(s => s.status !== 'running')) {
+      pl.pipeline.value = null;
+    }
     // Build pipeline if not already set by parent (e.g. handleAutoSummarizeAll or handleSegmentUpdate loops)
     if (!pl.pipeline.value) {
         pl.buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
@@ -924,14 +929,30 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           const segId = allBoundaries.length <= 1 ? 'summarize' : `summarize_${segIdx}`;
           const boundary = newBoundaries[j];
 
-          const segPosts = postsToPlan.filter(p => {
+          const rawPosts = postsToPlan.filter(p => {
             const pg = p.page ?? 1;
             return pg >= boundary.start && pg <= boundary.end;
           });
 
+          // Merge existing segment posts to prevent data loss across incremental runs.
+          // Without this, each run rewrites segment.posts with only postsToPlan (which
+          // may be incomplete if the prior run's stored posts were already truncated),
+          // progressively losing more posts with each update cycle.
+          const existingSeg = segmentSummaries.value[segIdx];
+          const segPosts = [...rawPosts];
+          if (existingSeg?.posts?.length) {
+            const seenNums = new Set(segPosts.map(p => p.postNumber));
+            for (const p of existingSeg.posts) {
+              const pg = p.page ?? 1;
+              if (pg >= boundary.start && pg <= boundary.end && !seenNums.has(p.postNumber)) {
+                segPosts.push(p);
+                seenNums.add(p.postNumber);
+              }
+            }
+          }
+
           // Resume optimization: skip LLM call if matching segment already summarized
           // and post count hasn't changed (no new posts in this boundary)
-          const existingSeg = segmentSummaries.value[segIdx];
           const isAlreadyDone = existingSeg?.summary
             && existingSeg.startPage === boundary.start
             && existingSeg.endPage === boundary.end
@@ -1231,6 +1252,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       forumPostCount: savePayload.forumPostCount,
       summarizedPostCount: savePayload.summarizedPostCount,
       segments: savePayload.segments as TopicSegment[],
+      ...(currentConfig.value ? { llmConfig: { provider: currentConfig.value.provider, model: currentConfig.value.model } } : {}),
     };
     if (isSingleSeg) {
       storeUpdate.summary = savePayload.summary;

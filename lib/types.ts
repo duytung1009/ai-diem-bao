@@ -46,6 +46,38 @@ export interface ScrapedPost {
   reactions?: PostReactions;
 }
 
+export interface ForumThreadSummary {
+  title: string;
+  url: string;
+  author: string;
+  authorUrl?: string;
+  startDate: string;
+  replyCount: number;
+  viewCount: number;
+  lastPostAuthor: string;
+  lastPostTime: string;
+  lastPostUrl?: string;
+  isSticky: boolean;
+  isLocked: boolean;
+  pageCount: number;
+  forumName?: string;
+  hasPoll?: boolean;
+}
+
+export interface ForumListRequest {
+  forumUrl: string;
+  page?: number;
+}
+
+export interface ForumListResult {
+  threads: ForumThreadSummary[];
+  page: number;
+  totalPages?: number;
+  errors: string[];
+  forumUrl: string;
+  forumName?: string;
+}
+
 export interface TopicData {
   url: string;
   title: string;
@@ -130,6 +162,15 @@ export interface UserForum {
   addedAt: number;
 }
 
+export interface NewsFeedSettings {
+  maxThreads: number;
+  maxAgeHours: number;
+  autoRefresh: boolean;
+  selectedForums: string[];
+  heatThresholds: { fire: number; hot: number };
+  weights: { reply: number; view: number; page: number };
+}
+
 export type MessageType =
   | 'DETECT_XF'
   | 'SCRAPE_ARTICLE'
@@ -157,7 +198,10 @@ export type MessageType =
   | 'DELETE_NOTEBOOK_BY_TOPIC'
   | 'GET_USER_FORUMS'
   | 'ADD_USER_FORUM'
-  | 'REMOVE_USER_FORUM';
+  | 'REMOVE_USER_FORUM'
+  | 'FETCH_FORUM_LIST'
+  | 'FORUM_LIST_RESULT'
+  | 'GET_PAGE_URL';
 
 export interface LLMTaskRequest {
   taskId: string;

@@ -63,6 +63,41 @@ function syncCurrentProvider() {
 const testResult = ref<'success' | 'fail' | ''>('');
 const testErrorDetail = ref('');
 const saveMessage = ref('');
+const newsFeedMaxThreads = ref(10);
+const newsFeedMaxAgeHours = ref(24);
+
+async function loadNewsFeedSettings() {
+  const result = await browser.storage.sync.get(STORAGE_KEYS.NEWS_FEED_SETTINGS);
+  const settings = result[STORAGE_KEYS.NEWS_FEED_SETTINGS] as { maxThreads?: number; maxAgeHours?: number } | undefined;
+  if (settings) {
+    newsFeedMaxThreads.value = settings.maxThreads ?? 10;
+    newsFeedMaxAgeHours.value = settings.maxAgeHours ?? 24;
+  }
+}
+
+async function saveNewsFeedSettings() {
+  await browser.storage.sync.set({
+    [STORAGE_KEYS.NEWS_FEED_SETTINGS]: {
+      maxThreads: newsFeedMaxThreads.value,
+      maxAgeHours: newsFeedMaxAgeHours.value,
+    },
+  });
+}
+
+function setNewsFeedMaxThreads(n: number) {
+  if (n < 1) n = 1;
+  if (n > 50) n = 50;
+  newsFeedMaxThreads.value = n;
+  saveNewsFeedSettings();
+}
+
+function setNewsFeedMaxAgeHours(n: number) {
+  if (n < 1) n = 1;
+  if (n > 168) n = 168;
+  newsFeedMaxAgeHours.value = n;
+  saveNewsFeedSettings();
+}
+
 const cacheSizeBytes = ref(0);
 const storageQuotaBytes = ref(0);
 const showClearConfirm = ref(false);
@@ -500,6 +535,7 @@ onMounted(async () => {
   await loadAlertSettings();
   await loadSeederSetting();
   await loadForums();
+  await loadNewsFeedSettings();
   const loaded = await sendMessage<LLMConfig>('GET_SETTINGS');
   if (loaded?.apiKey !== undefined) {
     config.value = {
@@ -1207,6 +1243,27 @@ async function onImportFileSelected(event: Event) {
     <CostConfirmModal v-if="showClearConfirm" title="Xóa tất cả cache" :estimate="clearCacheConfirmEstimate"
       warning="Hành động này sẽ xóa toàn bộ dữ liệu cache cục bộ và không thể hoàn tác." confirm-text="Xóa tất cả cache" @confirm="executeClearAll"
       @cancel="cancelClearAll" />
+
+    <!-- ─── News Feed Settings ──────────────────────────── -->
+    <div class="card space-y-3">
+      <h3 class="section-heading">Điểm báo</h3>
+
+      <div class="flex items-center justify-between">
+        <label class="text-xs text-(--color-text-primary)">Số thớt hiển thị tối đa</label>
+        <input type="number" min="1" max="50" :value="newsFeedMaxThreads" class="input w-20 text-xs text-right"
+          @change="setNewsFeedMaxThreads(Number(($event.target as HTMLInputElement).value))" />
+      </div>
+
+      <div class="flex items-center justify-between">
+        <label class="text-xs text-(--color-text-primary)">Giới hạn thời gian (giờ)</label>
+        <input type="number" min="1" max="168" :value="newsFeedMaxAgeHours" class="input w-20 text-xs text-right"
+          @change="setNewsFeedMaxAgeHours(Number(($event.target as HTMLInputElement).value))" />
+      </div>
+
+      <p class="text-xs text-(--color-text-muted)">
+        Các cài đặt này ảnh hưởng đến cách hiển thị thớt hot trên tab "Điểm báo".
+      </p>
+    </div>
 
     <!-- ─── Forum Support ──────────────────────────────── -->
     <div class="card space-y-3">

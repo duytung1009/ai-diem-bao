@@ -10,6 +10,7 @@ import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryStatus from '../components/SummaryStatus.vue';
+import CostConfirmModal from '../components/CostConfirmModal.vue';
 import { useForumManager } from '../composables/useForumManager';
 
 const router = useRouter();
@@ -18,8 +19,9 @@ const { optimisticUpdate } = useOptimisticUpdate(store);
 const { userForums, loadForums, addForumByHostname } = useForumManager();
 const allTopics = ref<CachedTopic[]>([]);
 const isLoading = ref(true);
-const pendingDeleteUrl = ref<string | null>(null);
-const pendingDeleteNotebookCount = ref<number | undefined>(undefined);
+const showDeleteModal = ref(false);
+const deleteTopicUrl = ref<string | null>(null);
+const deleteNotebookCount = ref(0);
 const searchQuery = ref('');
 const sortBy = ref<'recent' | 'posts' | 'title'>('recent');
 const showBookmarkedOnly = ref(false);
@@ -185,56 +187,37 @@ function selectTopic(topic: CachedTopic) {
   router.push('/summary');
 }
 
-function confirmDelete(topic: CachedTopic) {
-  pendingDeleteUrl.value = topic.url;
-  pendingDeleteNotebookCount.value = undefined;
-  sendMessage<NotebookEntry[]>('GET_NOTEBOOK_ENTRIES', { topicUrl: topic.url })
-    .then(entries => { pendingDeleteNotebookCount.value = entries.length; })
-    .catch(() => {});
+async function confirmDelete(topic: CachedTopic) {
+  deleteTopicUrl.value = topic.url;
+  const entries = await sendMessage<NotebookEntry[]>('GET_NOTEBOOK_ENTRIES', { topicUrl: topic.url });
+  deleteNotebookCount.value = entries.length;
+  showDeleteModal.value = true;
 }
 
 function cancelDelete() {
-  pendingDeleteUrl.value = null;
-  pendingDeleteNotebookCount.value = undefined;
+  showDeleteModal.value = false;
+  deleteTopicUrl.value = null;
+  deleteNotebookCount.value = 0;
 }
 
 async function executeDelete() {
-  if (!pendingDeleteUrl.value) return;
+  const url = deleteTopicUrl.value;
+  if (!url) return;
   try {
-    const url = pendingDeleteUrl.value;
-    const entries = allTopics.value.find(t => t.url === url)?.knowledgeEntries ?? [];
-    if (entries.length > 0) return; // use executeDeleteOrphan / executeDeleteAll instead
     await deleteCachedTopic(url);
-  } catch {
-    // Silently fail — topic list sẽ refresh khi onActivated
   } finally {
-    pendingDeleteUrl.value = null;
+    cancelDelete();
   }
 }
 
 async function executeDeleteOrphan() {
-  if (!pendingDeleteUrl.value) return;
+  const url = deleteTopicUrl.value;
+  if (!url) return;
   try {
-    const url = pendingDeleteUrl.value;
     await sendMessage('ORPHAN_NOTEBOOK_BY_TOPIC', { topicUrl: url });
     await deleteCachedTopic(url);
-  } catch {
-    // Silently fail
   } finally {
-    pendingDeleteUrl.value = null;
-  }
-}
-
-async function executeDeleteAll() {
-  if (!pendingDeleteUrl.value) return;
-  try {
-    const url = pendingDeleteUrl.value;
-    await sendMessage('DELETE_NOTEBOOK_BY_TOPIC', { topicUrl: url });
-    await deleteCachedTopic(url);
-  } catch {
-    // Silently fail
-  } finally {
-    pendingDeleteUrl.value = null;
+    cancelDelete();
   }
 }
 
@@ -484,63 +467,21 @@ async function toggleBookmark(topic: CachedTopic) {
                   </button>
                 </div>
               </div>
-
-              <!-- Inline confirmation -->
-              <div
-                v-if="pendingDeleteUrl === topic.url"
-                class="text-xs alert alert-error mt-1"
-              >
-                <!-- 2-choice dialog when topic has saved knowledge entries -->
-                <template v-if="((pendingDeleteNotebookCount ?? topic.knowledgeEntries?.length) ?? 0) > 0">
-                  <p class="text-xs mb-2">
-                    Thớt này có <strong>{{ pendingDeleteNotebookCount ?? topic.knowledgeEntries?.length ?? 0 }}</strong> kiến thức đã lưu.
-                  </p>
-                  <div class="space-y-1.5">
-                    <button
-                      class="w-full btn btn-sm btn-secondary text-xs"
-                      @click.stop="executeDeleteOrphan"
-                    >
-                      Chỉ xoá thớt — giữ kiến thức
-                    </button>
-                    <button
-                      class="w-full btn btn-sm btn-danger text-xs"
-                      @click.stop="executeDeleteAll"
-                    >
-                      Xoá cả thớt và kiến thức
-                    </button>
-                    <button
-                      class="w-full text-xs text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors py-1"
-                      @click.stop="cancelDelete"
-                    >
-                      Hủy
-                    </button>
-                  </div>
-                </template>
-                <!-- Simple confirm when no saved entries -->
-                <template v-else>
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs">Xoá thớt này?</span>
-                    <div class="flex gap-2">
-                      <button
-                        class="btn btn-sm btn-danger"
-                        @click.stop="executeDelete"
-                      >
-                        Xóa
-                      </button>
-                      <button
-                        class="btn btn-sm btn-secondary"
-                        @click.stop="cancelDelete"
-                      >
-                        Hủy
-                      </button>
-                    </div>
-                  </div>
-                </template>
-              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Delete confirmation modal -->
+      <CostConfirmModal
+        v-if="showDeleteModal"
+        title="Xoá thớt"
+        message="Hành động này không thể hoàn tác."
+        :warning="deleteNotebookCount > 0 ? `Thớt này có ${deleteNotebookCount} kiến thức đã lưu.` : undefined"
+        :danger-confirm-text="deleteNotebookCount > 0 ? 'Chỉ xoá thớt' : 'Xóa'"
+        @dangerConfirm="deleteNotebookCount > 0 ? executeDeleteOrphan() : executeDelete()"
+        @cancel="cancelDelete"
+      />
 
       <!-- No search results -->
       <div

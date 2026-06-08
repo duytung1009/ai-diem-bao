@@ -23,8 +23,8 @@ function createScraperForVersion(version: XenForoVersion): TopicScraper | null {
 }
 
 function buildPageUrl(baseUrl: string, page: number): string {
-  // Remove existing page-N and trailing slash
-  const clean = baseUrl.replace(/\/page-\d+\/?$/, '').replace(/\/$/, '');
+  // Remove hash fragment (e.g. #post-42389552 from location.href), existing page-N, and trailing slash
+  const clean = baseUrl.replace(/#.*$/, '').replace(/\/page-\d+\/?$/, '').replace(/\/$/, '');
   return page === 1 ? clean : `${clean}/page-${page}`;
 }
 

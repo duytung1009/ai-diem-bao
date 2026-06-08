@@ -249,7 +249,7 @@ Side Panel (Vue): render summary, opinions, research
 - Button `?` cạnh tab Cài đặt để truy cập
 - Route `/help` + `HelpView.vue`
 
-**Phase 9 — Tab Restructuring: Nhóm chức năng vào tab Thớt**
+**Phase 9 — Tab Restructuring: Nhóm chức năng vào tab Thớt** [x]
 - Top-level tabs chỉ còn: Thớt, Sổ tay, Cài đặt, ? (Hướng dẫn)
 - Các chức năng Tóm tắt, Kiến thức, Phân tích, Tra cứu → sub-tabs bên trong tab "Thớt"
 - Sub-tab bar hiển thị khi đã chọn thớt, có nút "← Danh sách" quay về hub
@@ -257,3 +257,13 @@ Side Panel (Vue): render summary, opinions, research
 - Tạo composable `useThreadAnalysis.ts` để quản lý state phân tích
 - Xóa sub-tab "Tóm tắt / Phân tích" khỏi SummaryView
 - PRD: `.taskmaster/docs/prd-tab-restructure.md`
+
+**Phase 10 — News Feed / Hot Threads**
+- Scrape forum listing pages (trang danh sách thớt) để thu thập metadata các thớt
+- Lọc thớt có hoạt động trong ngày (last post ≤ 24h)
+- Tính điểm "hot" dựa trên: số reply, số view, số trang, thời gian gần đây
+- Hiển thị danh sách 5‑10 thread hot theo định dạng giống trang forum view (sticky threads ở trên, thread thường bên dưới, có phân trang)
+- Giao diện tương tự file HTML mẫu (Điểm báo _ VOZ): title, author, start date, page jump, reply count, view count, latest activity
+- Thêm route `/newsfeed` và tab "Điểm báo" trong top-level tabs
+- Click vào thread → mở tab mới đưa user đến thread đó
+- PRD: `.taskmaster/docs/prd-news-feed.md`

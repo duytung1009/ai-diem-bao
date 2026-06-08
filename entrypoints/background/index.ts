@@ -381,6 +381,26 @@ export default defineBackground(() => {
           return true;
         }
 
+        case 'FETCH_FORUM_LIST': {
+          const req = message.payload as { forumUrl: string; page?: number };
+          const cleanUrl = req.forumUrl.replace(/\/$/, '');
+          const pageUrl = req.page && req.page > 1 ? `${cleanUrl}/page-${req.page}` : cleanUrl;
+
+          fetch(pageUrl, { credentials: 'include' })
+            .then(async (res) => {
+              if (!res.ok) {
+                sendResponse({ ok: false, status: res.status, html: '', forumUrl: req.forumUrl, errors: [`HTTP ${res.status}`] });
+                return;
+              }
+              const html = await res.text();
+              sendResponse({ ok: true, status: res.status, html, forumUrl: req.forumUrl, errors: [] });
+            })
+            .catch((err) => {
+              sendResponse({ ok: false, status: 0, html: '', forumUrl: req.forumUrl, errors: [String(err)] });
+            });
+          return true;
+        }
+
         default:
           return false;
       }

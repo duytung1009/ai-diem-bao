@@ -5,7 +5,8 @@ import { formatEstimatedTime } from '@/lib/format';
 
 const props = withDefaults(defineProps<{
   title: string;
-  estimate: CostEstimate;
+  estimate?: CostEstimate;
+  message?: string;
   warning?: string;
   confirmText?: string;
   cancelText?: string;
@@ -37,7 +38,10 @@ const emit = defineEmits<{
       </button>
     </div>
 
-    <div class="card-flat space-y-2">
+    <div v-if="message" class="py-1">
+      <p class="text-sm text-(--color-text-secondary)">{{ message }}</p>
+    </div>
+    <div v-else-if="estimate" class="card-flat space-y-2">
       <p class="section-heading">Ước tính thao tác</p>
       <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
         <span class="text-(--color-text-secondary)">API calls</span>
@@ -75,7 +79,7 @@ const emit = defineEmits<{
       <button v-if="dangerConfirmText" class="btn btn-sm btn-danger flex-1" @click="emit('dangerConfirm')">
         {{ dangerConfirmText }}
       </button>
-      <button class="btn btn-sm btn-primary flex-1" @click="emit('confirm')">
+      <button v-else class="btn btn-sm btn-primary flex-1" @click="emit('confirm')">
         {{ confirmText }}
       </button>
     </div>

@@ -20,6 +20,18 @@ import { useLLM } from './useLLM';
 import { useTopicScraper } from './useTopicScraper';
 import { usePipeline } from './usePipeline';
 
+/** Deduplicate by postNumber and sort ascending. Local copy avoids import from mocked page-loader. */
+function deduplicatePosts(posts: ScrapedPost[]): ScrapedPost[] {
+  const seen = new Set<number>();
+  const unique = posts.filter(p => {
+    if (p.postNumber === 0) return true;
+    if (seen.has(p.postNumber)) return false;
+    seen.add(p.postNumber);
+    return true;
+  });
+  return unique.sort((a, b) => a.postNumber - b.postNumber);
+}
+
 export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const { summarize, summarizeSegmentsTask, threadAnalysisTask, cancelTask, getTaskState, checkLLMConfigured } = useLLM();
   const scraper = useTopicScraper();
@@ -118,6 +130,15 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   });
 
   const isNewsTopic = computed(() => cachedTopic.value?.topicType === 'news');
+
+  const hasPartialScrape = computed(() => {
+    const topic = cachedTopic.value;
+    if (!topic || topic.summary) return false;
+    const lastPage = topic.lastScrapedPage;
+    const hasPosts = (topic.posts?.length ?? 0) > 0;
+    const hasSegments = (topic.segments?.length ?? 0) > 0;
+    return hasPosts && !hasSegments && !!lastPage && lastPage > 0;
+  });
 
   // --- Watch ---
   watch(activeTabPostCount, (newCount) => {
@@ -263,6 +284,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           version: fresh.version,
           title: fresh.title,
           posts: fresh.posts,
+          lastScrapedPage: fresh.lastScrapedPage,
           ...threadStatusUpdates,
         });
         if (fresh.summary) {
@@ -1410,9 +1432,13 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
       // Persist accumulated posts + lastScrapedPage every 5 pages during scrape phase.
       // Also always save on the last page to preserve full scrape state before summarization.
+      // Merge with existing posts from store to prevent data loss on resume
+      // (otherwise only allPosts = new posts would overwrite old scraped posts in IDB).
       if (cachedTopic.value && (page % 5 === 0 || page === totalPages)) {
+        const existingPosts = cachedTopic.value.posts ?? [];
+        const mergedPosts = deduplicatePosts([...existingPosts, ...allPosts]);
         await saveTopic(cachedTopic.value, {
-          posts: allPosts,
+          posts: mergedPosts,
           lastScrapedPage: page,
         }).catch(() => { });
       }
@@ -1593,6 +1619,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     progressPercent,
     nextPendingSegmentIndex,
     isNewsTopic,
+    hasPartialScrape,
     // functions
     loadTopicData,
     evaluateFreshness,

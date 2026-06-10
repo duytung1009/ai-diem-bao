@@ -46,6 +46,7 @@ const {
   summarizedCount, progressPercent, nextPendingSegmentIndex,
   loadTopicData, handleCancel,
   handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
+  hasPartialScrape,
 } = useSummarize(store);
 const { getTaskState } = useLLM();
 const { showTrustBadges, loadSetting: loadSeederSetting } = useSeederDetection();
@@ -279,6 +280,20 @@ async function handleConflictGoBack() {
               rồi tạo tổng quan.</p>
             <p v-else class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần, mỗi phần ~{{ formatNumber(segmentSize) }} trang. Tóm tắt từng phần rồi
               tạo tổng quan.</p>
+          </div>
+
+          <!-- Resume banner: partial scrape detected from previous interrupted run -->
+          <div v-if="hasPartialScrape && !summary" class="text-xs alert alert-warning flex items-center justify-between">
+            <div>
+              <p class="font-medium">Đã scrape {{ formatNumber(cachedTopic!.posts.length) }} bài viết ({{ formatNumber(cachedTopic!.lastScrapedPage!) }}/{{ formatNumber(topicInfo!.pageCount) }} trang)</p>
+              <p class="mt-0.5">Có thể tiếp tục scrape từ trang {{ formatNumber(cachedTopic!.lastScrapedPage! + 1) }}</p>
+            </div>
+            <button class="btn-llm btn-sm shrink-0" :disabled="isProcessing" @click="handleAutoSummarizeAll()">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+              Tiếp tục
+            </button>
           </div>
 
           <button v-if="summary && cacheFreshness && cacheFreshness !== 'fresh' && newPostCount > 0" class="btn-llm" @click="handleSegmentUpdate">

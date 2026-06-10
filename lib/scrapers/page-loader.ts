@@ -91,17 +91,20 @@ export async function scrapePageRange(
       }
 
       if (isThreadDeleted(doc)) {
+        // Deleted thread: no content to scrape, return immediately
         return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors, threadDeleted: true, threadLocked: false };
       }
 
-      if (isThreadLocked(doc)) {
-        return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors, threadDeleted: false, threadLocked: true };
-      }
-
+      // Scrape posts before locked check — XF2 locked threads still show
+      // all content, just prevent new replies.
       const pageData = scraper.scrape(doc, pageUrl);
       allPosts.push(...pageData.posts.map(p => ({ ...p, page })));
       pagesScraped++;
       onProgress?.(pagesScraped, totalPagesInRange, allPosts.length);
+
+      if (isThreadLocked(doc)) {
+        return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors, threadDeleted: false, threadLocked: true };
+      }
     } catch (err) {
       errors.push(`Page ${page}: ${String(err)}`);
     }

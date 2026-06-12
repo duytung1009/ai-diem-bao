@@ -182,16 +182,19 @@ onMounted(async () => {
             title="Hot">⚡</span>
 
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-medium text-(--color-accent-text) leading-snug truncate">
+            <div class="text-sm font-medium text-(--color-text-primary) leading-snug truncate">
               {{ item.thread.title }}
               <span v-if="item.thread.isLocked" class="text-(--color-text-muted) text-xs">🔒</span>
               <span v-if="item.thread.hasPoll" class="text-(--color-text-muted) text-xs">📊</span>
             </div>
 
-            <div class="text-xs text-(--color-text-secondary) mt-0.5 space-x-2">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--color-text-secondary) mt-0.5">
               <span>{{ item.thread.author }}</span>
+              <span class="text-(--color-border-strong)">|</span>
               <span>{{ compactNumber(item.thread.replyCount) }} replies</span>
+              <span class="text-(--color-border-strong)">|</span>
               <span>{{ compactNumber(item.thread.viewCount) }} views</span>
+              <span v-if="item.thread.pageCount > 1" class="text-(--color-border-strong)">|</span>
               <span v-if="item.thread.pageCount > 1">{{ item.thread.pageCount }} trang</span>
             </div>
           </div>

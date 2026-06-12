@@ -22,9 +22,12 @@ export function useNotebook() {
   const viewMode = ref<ViewMode>('topic');
 
   const allTags = computed(() => {
-    const tags = new Set<string>();
-    entries.value.forEach(e => e.tags.forEach(t => tags.add(t)));
-    return [...tags].sort().slice(0, 6); // limit to 6 tags for UI simplicity
+    const seen = new Map<string, string>();
+    entries.value.forEach(e => e.tags.forEach(t => {
+      const key = t.trim().toLowerCase();
+      if (!seen.has(key)) seen.set(key, t.trim());
+    }));
+    return [...seen.values()].sort().slice(0, 6);
   });
 
   const allTopicUrls = computed(() => {
@@ -51,13 +54,22 @@ export function useNotebook() {
     const items = filteredEntries.value;
     switch (viewMode.value) {
       case 'topic': {
-        const groups: Record<string, NotebookEntry[]> = {};
+        const topicGroups: Record<string, Record<string, NotebookEntry[]>> = {};
         for (const e of items) {
-          const key = e.sourceTopicTitle || e.sourceTopicUrl;
-          if (!groups[key]) groups[key] = [];
-          groups[key].push(e);
+          const topicKey = e.sourceTopicTitle || e.sourceTopicUrl;
+          const catKey = e.category || 'Khác';
+          if (!topicGroups[topicKey]) topicGroups[topicKey] = {};
+          if (!topicGroups[topicKey][catKey]) topicGroups[topicKey][catKey] = [];
+          topicGroups[topicKey][catKey].push(e);
         }
-        return Object.entries(groups).map(([key, entries]) => ({ key, entries }));
+        const result: { key: string; entries: NotebookEntry[]; subLabel: string }[] = [];
+        for (const [topicKey, cats] of Object.entries(topicGroups)) {
+          const catKeys = Object.keys(cats).sort((a, b) => a === 'Khác' ? 1 : b === 'Khác' ? -1 : a.localeCompare(b, 'vi'));
+          for (const catKey of catKeys) {
+            result.push({ key: topicKey, entries: cats[catKey], subLabel: catKey });
+          }
+        }
+        return result;
       }
       case 'category': {
         const groups: Record<string, NotebookEntry[]> = {};
@@ -68,7 +80,7 @@ export function useNotebook() {
         }
         return Object.entries(groups)
           .sort(([a], [b]) => a === 'Khác' ? 1 : b === 'Khác' ? -1 : a.localeCompare(b, 'vi'))
-          .map(([key, entries]) => ({ key, entries }));
+          .map(([key, entries]) => ({ key, entries, subLabel: '' }));
       }
       case 'tag': {
         const groups: Record<string, NotebookEntry[]> = {};
@@ -81,7 +93,7 @@ export function useNotebook() {
         }
         return Object.entries(groups)
           .sort(([a], [b]) => a.localeCompare(b, 'vi'))
-          .map(([key, entries]) => ({ key, entries }));
+          .map(([key, entries]) => ({ key, entries, subLabel: '' }));
       }
       case 'timeline': {
         const groups: Record<string, NotebookEntry[]> = {};
@@ -111,7 +123,7 @@ export function useNotebook() {
             if (bi !== -1) return 1;
             return b.localeCompare(a, 'vi');
           })
-          .map(([key, entries]) => ({ key, entries }));
+          .map(([key, entries]) => ({ key, entries, subLabel: '' }));
       }
       default:
         return [];

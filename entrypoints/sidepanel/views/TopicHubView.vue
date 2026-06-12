@@ -333,7 +333,7 @@ async function toggleBookmark(topic: CachedTopic) {
               { value: 'title', label: 'Tên A-Z' },
             ]"
             :key="option.value"
-            class="badge transition-colors"
+            class="badge capitalize transition-colors"
             :class="sortBy === option.value
               ? 'badge-accent'
               : 'badge-neutral'"
@@ -408,9 +408,8 @@ async function toggleBookmark(topic: CachedTopic) {
                       <SummaryStatus :status="isSameTopicUrl(store.summarizingUrl.value, topic.url) ? 'in-progress' : topicSummaryStatus(topic, false)" />
                     </div>
 
-                    <div class="flex items-center gap-2 justify-start flex-wrap">
-                      <!-- Post count -->
-                      <span class="text-xs text-(--color-text-secondary)">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--color-text-secondary)">
+                      <span>
                         <template v-if="topic.forumPostCount && topic.forumPostCount > topic.totalPosts">
                           {{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) }}/{{ formatNumber(topic.forumPostCount) }} bài
                         </template>
@@ -423,16 +422,12 @@ async function toggleBookmark(topic: CachedTopic) {
                           class="text-(--color-accent-text) ml-0.5"
                         >(+{{ formatNumber(newPostsMap[topic.url]) }} mới)</span>
                       </span>
-                      <!-- Page -->
-                      <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(topic.totalPages) }} trang</span>
-                      <!-- Time -->
-                      <span v-if="topic.cachedAt" class="text-xs text-(--color-text-secondary)">
-                        {{ formatTopicDate(topic.cachedAt) }}
-                      </span>
-                      <!-- Model -->
-                      <span v-if="topic.llmConfig?.model && (topic.summary || topic.segments?.some(s => s?.summary))" class="text-xs text-(--color-text-secondary) italic truncate max-w-24" :title="`${topic.llmConfig.model}`">
-                        {{ topic.llmConfig.model }}
-                      </span>
+                      <span class="text-(--color-border-strong)">|</span>
+                      <span>{{ formatNumber(topic.totalPages) }} trang</span>
+                      <span v-if="topic.cachedAt" class="text-(--color-border-strong)">|</span>
+                      <span v-if="topic.cachedAt">{{ formatTopicDate(topic.cachedAt) }}</span>
+                      <span v-if="topic.llmConfig?.model && (topic.summary || topic.segments?.some(s => s?.summary))" class="text-(--color-border-strong)">|</span>
+                      <span v-if="topic.llmConfig?.model && (topic.summary || topic.segments?.some(s => s?.summary))" class="italic truncate max-w-24" :title="`${topic.llmConfig.model}`">{{ topic.llmConfig.model }}</span>
                     </div>
                   </div>
                 </button>

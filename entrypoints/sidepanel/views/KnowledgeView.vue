@@ -36,7 +36,7 @@ const {
   estimatedReduceCost,
   allPosts,
   handleExtract, handleRestore, handleCancel,
-  handleClearKnowledgeData, toggleSave, handleDelete, handleClearTracking,
+  handleClearKnowledgeData, toggleSave, saveAll, handleDelete, handleClearTracking,
   onExtractClick, onRestoreClick,
   knowledgeGuard,
   // F33 additions
@@ -171,10 +171,8 @@ function toggleExpand(id: string) {
 
 function openPostLink(postNumber: number) {
   if (!cachedTopic.value) return;
-  const post = allPosts.value.find(p => p.postNumber === postNumber);
   const base = cachedTopic.value.url.replace(/\/$/, '');
-  const pageSegment = post?.page && post.page > 1 ? `/page-${post.page}` : '';
-  browser.tabs.create({ url: `${base}${pageSegment}/post-${postNumber}` });
+  browser.tabs.create({ url: `${base}/post-${postNumber}` });
 }
 
 function formatTimestamp(ts: string): string {
@@ -191,9 +189,12 @@ function toggleTag(tag: string) {
 }
 
 const allTags = computed(() => {
-  const tags = new Set<string>();
-  entries.value.forEach(e => e.tags.forEach(t => tags.add(t)));
-  return [...tags].sort();
+  const seen = new Map<string, string>();
+  entries.value.forEach(e => e.tags.forEach(t => {
+    const key = t.trim().toLowerCase();
+    if (!seen.has(key)) seen.set(key, t.trim());
+  }));
+  return [...seen.values()].sort();
 });
 
 const savedCount = computed(() => entries.value.filter(e => e.saved).length);
@@ -367,8 +368,9 @@ onActivated(async () => {
             <p class="font-medium">Thớt dài ({{ cachedTopic.segments.length }} phần)</p>
             <p class="mt-0.5">
               Trích xuất kiến thức gọi API <strong>nhiều lần hơn tóm tắt</strong> — mỗi phần cần ít nhất 1 lần gọi, cộng thêm 1 lần tổng hợp cuối.
-              Với thớt này sẽ cần tối thiểu {{ cachedTopic.segments.length + 1 }} lần gọi, thời gian xử lý có thể <strong>lâu hơn nhiều</strong> so với khi tóm
+              Với thớt này sẽ cần tối thiểu {{ cachedTopic.segments.length + 1 }} lần gọi, thời gian xử lý sẽ <strong>lâu hơn nhiều</strong> so với khi tóm
               tắt.
+              <br/>
               Nên thực hiện lúc rảnh và không cần kết quả ngay.
             </p>
           </div>
@@ -603,7 +605,7 @@ onActivated(async () => {
             </div>
             <!-- Tag filter pills -->
             <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
-              <button v-for="tag in allTags" :key="tag" class="badge transition-colors" :class="selectedTags.includes(tag)
+              <button v-for="tag in allTags" :key="tag" class="badge capitalize transition-colors" :class="selectedTags.includes(tag)
                 ? getTagClass(tag)
                 : 'badge-neutral'" @click="toggleTag(tag)">
                 {{ tag }}
@@ -614,7 +616,7 @@ onActivated(async () => {
               <button v-if="selectedCategory" class="badge badge-neutral" @click="selectedCategory = null">
                 Tất cả
               </button>
-              <button v-for="cat in allCategories" :key="cat" class="badge transition-colors" :class="selectedCategory === cat
+              <button v-for="cat in allCategories.slice(0, 10)" :key="cat" class="badge capitalize transition-colors" :class="selectedCategory === cat
                 ? 'badge-accent'
                 : 'badge-neutral'" @click="selectedCategory = selectedCategory === cat ? null : cat">
                 {{ cat }}
@@ -631,6 +633,13 @@ onActivated(async () => {
                     d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
                 Sổ tay
+              </button>
+              <button v-if="savedCount < entries.length" class="btn btn-ghost btn-sm flex items-center gap-1" title="Lưu tất cả kiến thức"
+                :disabled="isLoading" @click="saveAll()">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                </svg>
+                Lưu tất cả <span class="text-(--color-text-muted)">({{ entries.length - savedCount }})</span>
               </button>
               <!-- Task 292: Extract dropdown when segments exist -->
               <template v-if="cachedTopic?.segments?.length">
@@ -750,15 +759,15 @@ onActivated(async () => {
                           <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
                           <!-- Tags -->
                           <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
-                            <span v-for="tag in entry.tags" :key="tag" class="badge text-xs" :class="getTagClass(tag)">
+                            <span v-for="tag in entry.tags" :key="tag" class="badge text-xs capitalize" :class="getTagClass(tag)">
                               {{ tag }}
                             </span>
                           </div>
                           <!-- Source citation with timestamp -->
                           <p class="text-xs text-(--color-text-muted)">
-                            — {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài <button class="font-mono link"
+                            {{ entry.source.author }}<template v-if="entry.source.postNumber"> · bài <button class="font-mono link"
                                 @click="openPostLink(entry.source.postNumber)">#{{ entry.source.postNumber }}</button></template><span
-                              v-if="entry.source.timestamp">{{ formatTimestamp(entry.source.timestamp)
+                              v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp)
                               }}</span>
                           </p>
                         </div>

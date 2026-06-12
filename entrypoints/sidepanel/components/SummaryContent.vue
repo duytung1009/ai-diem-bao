@@ -20,10 +20,8 @@ const props = defineProps<{
 
 function openPostLink(postNumber: number) {
   if (!props.topicUrl) return;
-  const page = props.postPageMap?.[postNumber];
   const base = props.topicUrl.replace(/\/$/, '');
-  const pageSegment = page && page > 1 ? `/page-${page}` : '';
-  browser.tabs.create({ url: `${base}${pageSegment}/post-${postNumber}` });
+  browser.tabs.create({ url: `${base}/post-${postNumber}` });
 }
 
 function getTopReactLabel(item: TopReactItem, index: number): string {

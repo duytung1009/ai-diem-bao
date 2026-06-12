@@ -8,6 +8,7 @@ import { LLM_WARN_THRESHOLD_CALLS, CONTEXT_USAGE_RATIO, RESPONSE_BUFFER_TOKENS, 
 import { buildKnowledgePrompt } from '@/lib/prompts';
 import { buildKnowledgePipeline } from '@/lib/pipeline-builder';
 import { createRunGuard } from '@/lib/run-guard';
+import { normalizeCategories } from '@/lib/category-normalizer';
 import { useLLM } from './useLLM';
 import { usePipeline } from './usePipeline';
 import { useTopicStore } from './useTopicStore';
@@ -199,7 +200,8 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
   function enrichEntries(newEntries: KnowledgeEntry[]): KnowledgeEntry[] {
     const postMap = new Map(allPosts.value.map(p => [p.postNumber, p]));
-    return newEntries.map(e => {
+    const normalized = normalizeCategories(newEntries);
+    return normalized.map(e => {
       const post = postMap.get(e.source.postNumber);
       return post?.timestamp ? { ...e, source: { ...e.source, timestamp: post.timestamp } } : e;
     });
@@ -874,6 +876,32 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
+  async function saveAll() {
+    const unsaved = entries.value.filter(e => !e.saved);
+    if (unsaved.length === 0) return;
+
+    const updated = entries.value.map(e =>
+      e.saved ? e : { ...e, saved: true }
+    ) as KnowledgeEntry[];
+    entries.value = updated;
+
+    await optimisticUpdate({ knowledgeEntries: updated });
+
+    const topic = cachedTopic.value;
+    if (!topic) return;
+
+    for (const entry of unsaved) {
+      const notebookEntry: NotebookEntry = {
+        ...entry,
+        saved: true,
+        sourceTopicUrl: topic.url,
+        sourceTopicTitle: topic.title,
+        savedAt: Date.now(),
+      };
+      sendMessageQuiet('UPSERT_NOTEBOOK_ENTRY', notebookEntry);
+    }
+  }
+
   async function handleDelete(entry: KnowledgeEntry) {
     const updated = entries.value.filter(e => e.id !== entry.id) as KnowledgeEntry[];
     const excluded = [
@@ -1064,6 +1092,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     handleCancel,
     handleClearKnowledgeData,
     toggleSave,
+    saveAll,
     handleDelete,
     handleClearTracking,
     progressPercent,

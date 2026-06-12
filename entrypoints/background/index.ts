@@ -8,6 +8,7 @@ import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebo
 // TODO(Feature 36): SCRAPE_ARTICLE disabled - requires cross-origin host_permissions
 // import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
+import { normalizeCategories } from '@/lib/category-normalizer';
 import { mapExportedTopic, type ImportConflictMode, type ImportResult } from '@/lib/importer';
 import type { ExportedTopic } from '@/lib/exporter';
 import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry, UserForum } from '@/lib/types';
@@ -246,6 +247,14 @@ export default defineBackground(() => {
                   topic.userTrustScores = hasMeta ? computeTrustScores(postsForScoring) : undefined;
                 } catch (e) {
                   console.warn('[BG] Trust scorer failed (non-fatal):', e);
+                }
+              }
+            }
+            if (topic.knowledgeEntries?.length) topic.knowledgeEntries = normalizeCategories(topic.knowledgeEntries);
+            if (topic.knowledgeChunks?.length) {
+              for (let i = 0; i < topic.knowledgeChunks.length; i++) {
+                if (topic.knowledgeChunks[i].entries?.length) {
+                  topic.knowledgeChunks[i].entries = normalizeCategories(topic.knowledgeChunks[i].entries);
                 }
               }
             }

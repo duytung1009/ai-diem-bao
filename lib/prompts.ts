@@ -92,7 +92,7 @@ export const KNOWLEDGE_DEFAULT_RULES = `Yêu cầu:
 - Mỗi entry phải là một kiến thức độc lập, hoàn chỉnh. Người đọc phải hiểu được nội dung đó mà không cần lội ngược lại thớt để tìm ngữ cảnh.
 - Chỉ trích xuất kiến thức thực sự có giá trị thực tế (thông số kỹ thuật, quy trình pháp lý, kinh nghiệm xử lý lỗi, hướng dẫn mua sắm, cảnh báo rủi ro). Bỏ qua hoàn toàn các comment rác, thảo luận cảm tính, toxic, seeder hoặc off-topic.
 - Toàn bộ tag trong mảng "tags" BẮT BUỘC phải chọn từ danh sách cố định sau, không tự chế tag mới: 'kinh nghiệm', 'mẹo', 'cảnh báo', 'thống kê', 'so sánh', 'hướng dẫn', 'đánh giá', 'tài nguyên'.
-- Trích xuất tối đa {cap} entries. Trung bình cứ 5-10 bài viết mới có 1 kiến thức thực sự đáng lưu — đừng cố rút tỉa kiến thức từ những bài chỉ mang tính thảo luận thông thường. Nếu không tìm thấy kiến thức đáng giá, trả về mảng rỗng [].
+- Trích xuất TỐI ĐA {cap} entries. Đừng cố rút tỉa kiến thức từ những bài chỉ mang tính thảo luận thông thường. Nếu không tìm thấy kiến thức đáng giá, trả về mảng rỗng [].
 - Viết bằng tiếng Việt toàn diện, mạch lạc, nghiêm túc.`;
 
 export const KNOWLEDGE_DEFAULT_STRUCTURE = `Trả về JSON array theo đúng format sau:
@@ -117,7 +117,7 @@ export const KNOWLEDGE_DEFAULT_TASKS: Record<'extract' | 'chunk' | 'reduce', str
 
   reduce: `Bạn là một bộ lọc logic dữ liệu nâng cao, nhiệm vụ của bạn là hợp nhất các danh sách kiến thức (JSON arrays) được trích xuất từ các phân đoạn khác nhau của thớt thành một danh sách tối ưu duy nhất. Hãy thực hiện gộp dữ liệu theo các thuật toán sau:
   - Hợp nhất & Lọc trùng (Deduplicate): Nếu có các kiến thức tương đồng hoặc trùng lặp về nội dung giữa các đoạn, hãy gộp chúng lại làm một. Viết lại "title" và "content" súc tích, đủ ý — không liệt kê lại toàn bộ chi tiết từ các nguồn, chỉ giữ thông tin cốt lõi và số liệu quan trọng nhất. Trường "content" tối đa 120 từ.
-  - Đồng bộ hóa mảng "tags" và "category" để chúng nhất quán sau khi gộp.
+  - Chuẩn hóa "category": các category đồng nghĩa hoặc gần nghĩa phải được gộp về cùng một tên (VD: 'Chăm sóc bé', 'Chăm sóc trẻ', 'Chăm sóc trẻ em' → 'Chăm sóc trẻ em'). Category viết hoa chữ cái đầu, dùng từ ngữ tổng quát nhất có thể để bao quát các biến thể.
   - Sắp xếp và chọn lọc lại để giữ lại tối đa {cap} entries có giá trị cao nhất theo đúng cấu trúc yêu cầu.`,
 };
 

@@ -122,6 +122,20 @@ onActivated(async () => {
 
     <!-- Filter bar -->
     <div class="space-y-2">
+      <!-- Tag pills -->
+      <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
+        <button
+          v-for="tag in allTags"
+          :key="tag"
+          class="badge capitalize transition-colors"
+          :class="filters.tag === tag
+            ? getTagClass(tag)
+            : 'badge-neutral'"
+          @click="filters.tag = filters.tag === tag ? null : tag"
+        >
+          {{ tag }}
+        </button>
+      </div>
       <!-- Category pills -->
       <div v-if="stats.categories.length > 0" class="flex flex-wrap gap-1.5">
         <button
@@ -132,36 +146,15 @@ onActivated(async () => {
           Tất cả danh mục
         </button>
         <button
-          v-for="cat in stats.categories"
+          v-for="cat in stats.categories.slice(0, 10)"
           :key="cat"
-          class="badge transition-colors"
+          class="badge capitalize transition-colors"
           :class="filters.category === cat
             ? 'badge-accent'
             : 'badge-neutral'"
           @click="filters.category = filters.category === cat ? null : cat"
         >
           {{ cat }}
-        </button>
-      </div>
-      <!-- Tag pills -->
-      <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
-        <button
-          v-if="filters.tag"
-          class="badge badge-neutral"
-          @click="filters.tag = null"
-        >
-          Tất cả thẻ
-        </button>
-        <button
-          v-for="tag in allTags"
-          :key="tag"
-          class="badge transition-colors"
-          :class="filters.tag === tag
-            ? getTagClass(tag)
-            : 'badge-neutral'"
-          @click="filters.tag = filters.tag === tag ? null : tag"
-        >
-          {{ tag }}
         </button>
       </div>
     </div>
@@ -172,7 +165,7 @@ onActivated(async () => {
       <button
         v-for="vm in viewModes"
         :key="vm.value"
-        class="badge transition-colors"
+        class="badge capitalize transition-colors"
         :class="viewMode === vm.value
           ? 'badge-accent'
           : 'badge-neutral'"
@@ -197,10 +190,13 @@ onActivated(async () => {
 
     <!-- Entry groups -->
     <div v-if="filteredEntries.length > 0" class="space-y-4">
-      <div v-for="group in groupedEntries" :key="group.key">
+      <div v-for="group in groupedEntries" :key="group.key + (group.subLabel || '')">
         <div class="flex items-end gap-2 mb-1">
           <h4 class="section-heading flex-1 mb-1">
             {{ group.key }}
+            <span v-if="group.subLabel" class="text-(--color-text-muted) font-normal normal-case">
+              · {{ group.subLabel }}
+            </span>
             <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
           </h4>
           <button
@@ -277,7 +273,7 @@ onActivated(async () => {
                     <span
                       v-for="tag in entry.tags"
                       :key="tag"
-                      class="badge text-xs"
+                      class="badge text-xs capitalize"
                       :class="getTagClass(tag)"
                     >
                       {{ tag }}
@@ -285,8 +281,9 @@ onActivated(async () => {
                   </div>
                   <!-- Source info -->
                   <p class="text-xs text-(--color-text-muted)">
-                    {{ entry.source.author }}<template v-if="entry.source.postNumber">, bài #{{ entry.source.postNumber }}</template>
-                    <span v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp) }}</span>
+                    {{ entry.source.author }}<template v-if="entry.source.postNumber"> · bài <button class="font-mono link"
+                        @click="openPostLink(entry)">#{{ entry.source.postNumber }}</button></template><span
+                      v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp) }}</span>
                   </p>
                   <!-- Source topic link -->
                   <p class="text-xs">

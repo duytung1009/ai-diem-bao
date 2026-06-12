@@ -308,7 +308,7 @@ async function handleConflictGoBack() {
           <div v-if="summary" class="space-y-2">
             <!-- Row 1: Tổng quan + Tiếp theo -->
             <div class="flex justify-between gap-2 flex-wrap">
-              <button class="badge transition-colors" :class="activeSegmentIndex === null
+              <button class="badge capitalize transition-colors" :class="activeSegmentIndex === null
                 ? 'badge-accent'
                 : 'badge-neutral'" @click="activeSegmentIndex = null">
                 Tổng quan
@@ -335,7 +335,7 @@ async function handleConflictGoBack() {
                 </div>
                 <div v-if="segmentGridExpanded"
                   class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thin">
-                  <button v-for="(seg, i) in segments" :key="i" class="badge transition-colors flex items-center gap-1" :class="activeSegmentIndex === i
+                  <button v-for="(seg, i) in segments" :key="i" class="badge capitalize transition-colors flex items-center gap-1" :class="activeSegmentIndex === i
                     ? 'badge-accent'
                     : 'badge-neutral'" @click="activeSegmentIndex = i">
                     {{ seg.label }}

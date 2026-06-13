@@ -196,16 +196,22 @@ export type MessageType =
   | 'DELETE_NOTEBOOK_ENTRY'
   | 'ORPHAN_NOTEBOOK_BY_TOPIC'
   | 'DELETE_NOTEBOOK_BY_TOPIC'
+  | 'BULK_UPDATE_NOTEBOOK_ENTRIES'
+  | 'BULK_DELETE_NOTEBOOK_ENTRIES'
   | 'GET_USER_FORUMS'
   | 'ADD_USER_FORUM'
   | 'REMOVE_USER_FORUM'
   | 'FETCH_FORUM_LIST'
   | 'FORUM_LIST_RESULT'
-  | 'GET_PAGE_URL';
+  | 'GET_PAGE_URL'
+  | 'GET_ALL_KNOWLEDGE'
+  | 'UPSERT_KNOWLEDGE_ENTRY'
+  | 'DELETE_KNOWLEDGE_ENTRY'
+  | 'INSERT_KNOWLEDGE_WITH_DEDUP';
 
 export interface LLMTaskRequest {
   taskId: string;
-  taskType: 'summarize' | 'analyze_opinions' | 'research' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks' | 'thread_analysis';
+  taskType: 'summarize' | 'analyze_opinions' | 'research' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks' | 'thread_analysis' | 'notebook_qa';
   payload: unknown;
 }
 
@@ -307,19 +313,37 @@ export interface ResearchEntry {
   askedAt: number;
 }
 
+export interface KnowledgeSource {
+  topicUrl?: string;
+  topicTitle?: string;
+  author: string;
+  postNumber: number;
+  timestamp?: string;
+}
+
 export interface KnowledgeEntry {
   id: string;
   title: string;
   content: string;
   tags: string[];
   category?: string;
-  source: {
-    author: string;
-    postNumber: number;
-    timestamp?: string;
-  };
+  source: KnowledgeSource;
   extractedAt: number;
   saved?: boolean;
+}
+
+export interface GlobalKnowledgeEntry {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  category?: string;
+  sources: KnowledgeSource[];
+  topicRefs: string[];
+  extractedAt: number;
+  updatedAt: number;
+  mergedCount?: number;
+  vector?: number[];
 }
 
 export interface NotebookEntry extends KnowledgeEntry {
@@ -328,6 +352,21 @@ export interface NotebookEntry extends KnowledgeEntry {
   savedAt: number;
   orphaned?: number;
   orphanedAt?: number;
+  userNote?: string;    // ghi chú cá nhân của user
+  pinned?: number;      // 1 = ghim lên đầu (number để IDB index được)
+  editedAt?: number;    // timestamp lần sửa cuối
+  manual?: number;      // 1 = entry user tự tạo, không từ LLM extract
+}
+
+export interface NotebookEntryForQA {
+  id: string;
+  title: string;
+  content: string;
+  userNote?: string;
+  category?: string;
+  tags: string[];
+  sourceTopicTitle: string;
+  source: { author: string; postNumber: number };
 }
 
 export interface KnowledgeChunk {

@@ -222,3 +222,30 @@ Trả về JSON theo đúng format sau:
   },
   "wuxia": "Đoạn văn phong kiếm hiệp 10-15 dòng, mô tả cuộc tranh luận như một trận đại chiến võ lâm"
 }`;
+
+/**
+ * Stage-1 prompt: given question + entry list, return JSON { ids: [] } of relevant entries.
+ * Used when entry count exceeds the direct-answer threshold.
+ */
+export const NOTEBOOK_QA_SELECT_PROMPT = `Bạn là trợ lý tra cứu sổ tay kiến thức cá nhân.
+Nhiệm vụ: Chọn những ghi chú liên quan nhất đến câu hỏi của người dùng.
+
+Quy tắc:
+- Chỉ trả về JSON hợp lệ, KHÔNG giải thích, KHÔNG thêm text nào khác.
+- Format: { "ids": ["id1", "id2", ...] }
+- Tối đa 15 IDs, ưu tiên ghi chú có nội dung cụ thể và liên quan trực tiếp.
+- Nếu không có ghi chú nào liên quan, trả về { "ids": [] }.`;
+
+/**
+ * Stage-2 prompt: given question + selected entries, produce a markdown answer with citations.
+ * Must end with a SOURCES line listing cited entry IDs.
+ */
+export const NOTEBOOK_QA_PROMPT = `Bạn là trợ lý tra cứu sổ tay kiến thức cá nhân.
+Trả lời câu hỏi của người dùng DỰA TRÊN các ghi chú được cung cấp. Không suy diễn ngoài nội dung có sẵn.
+
+Quy tắc trích dẫn:
+- Khi dùng thông tin từ một ghi chú, thêm [số thứ tự] ngay sau câu đó, VD: "Điều này đúng theo [1][3]."
+- Cuối câu trả lời, thêm dòng (bắt buộc, ở dòng cuối cùng):
+SOURCES: id1, id2, id3
+  (Chỉ liệt kê ID của các ghi chú được trích dẫn, cách nhau bằng dấu phẩy)
+- Nếu không có thông tin đủ để trả lời, hãy nói thẳng là không tìm thấy thông tin liên quan trong sổ tay.`;

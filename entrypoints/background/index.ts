@@ -1,17 +1,20 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
-import { summarizeTopic, researchTopic, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis } from '@/lib/llm/summarizer';
+import { summarizeTopic, researchTopic, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis, answerFromNotebook } from '@/lib/llm/summarizer';
 import { LLMError, LLMErrorCode } from '@/lib/errors';
 import { computeTrustScores } from '@/lib/trust-scorer';
-import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic } from '@/lib/cache-manager';
+import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic, getAllKnowledge, upsertKnowledgeEntry, deleteKnowledgeEntry } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
-import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats } from '@/lib/notebook-db';
+import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats, notebookBulkUpdate, notebookBulkDelete } from '@/lib/notebook-db';
+import type { NotebookBulkPatch } from '@/lib/notebook-db';
 // TODO(Feature 36): SCRAPE_ARTICLE disabled - requires cross-origin host_permissions
 // import { extractArticle } from '@/lib/scrapers/article-extractor';
 import { estimateTokens } from '@/lib/token-estimator';
 import { normalizeCategories } from '@/lib/category-normalizer';
 import { mapExportedTopic, type ImportConflictMode, type ImportResult } from '@/lib/importer';
 import type { ExportedTopic } from '@/lib/exporter';
-import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry, UserForum } from '@/lib/types';
+import { migrateKnowledge } from '@/lib/migration';
+import { insertWithDedup } from '@/lib/knowledge-merge';
+import type { LLMConfig, Message, ScrapedPost, CachedTopic, CustomPrompts, LLMTaskRequest, ModelSpeedStats, KnowledgeEntry, KnowledgeChunk, SummaryJSON, PipelineDefinition, PipelineStep, NotebookEntry, NotebookEntryForQA, UserForum, GlobalKnowledgeEntry } from '@/lib/types';
 
 export default defineBackground(() => {
   // Open side panel when clicking the extension icon (Chrome only)
@@ -23,6 +26,7 @@ export default defineBackground(() => {
   migrateStorageLocalToIDB()
     .then(() => migrateNormalizedUrls())
     .then(() => migrateCustomPrompts())
+    .then(() => migrateKnowledge())
     .catch(console.error);
 
   // Re-register user-added forums on startup (safety net for extension update)
@@ -347,6 +351,51 @@ export default defineBackground(() => {
           return true;
         }
 
+
+        case 'BULK_UPDATE_NOTEBOOK_ENTRIES': {
+          const { ids, patch } = message.payload as { ids: string[]; patch: NotebookBulkPatch };
+          notebookBulkUpdate(ids, patch)
+            .then((count) => sendResponse({ success: true, count }))
+            .catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+        }
+
+        case 'BULK_DELETE_NOTEBOOK_ENTRIES': {
+          const { ids } = message.payload as { ids: string[] };
+          notebookBulkDelete(ids)
+            .then((count) => sendResponse({ success: true, count }))
+            .catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+        }
+
+        case 'GET_ALL_KNOWLEDGE':
+          getAllKnowledge()
+            .then(sendResponse)
+            .catch(() => sendResponse([]));
+          return true;
+
+        case 'UPSERT_KNOWLEDGE_ENTRY':
+          upsertKnowledgeEntry(message.payload as GlobalKnowledgeEntry)
+            .then(() => sendResponse({ success: true }))
+            .catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+
+        case 'DELETE_KNOWLEDGE_ENTRY': {
+          const { id } = message.payload as { id: string };
+          deleteKnowledgeEntry(id)
+            .then(() => sendResponse({ success: true }))
+            .catch((err) => sendResponse({ success: false, error: String(err) }));
+          return true;
+        }
+
+        case 'INSERT_KNOWLEDGE_WITH_DEDUP': {
+          const { entries, topic } = message.payload as { entries: KnowledgeEntry[]; topic: { url: string; title: string } };
+          insertWithDedup(entries, topic)
+            .then((result) => sendResponse(result))
+            .catch((err) => sendResponse({ inserted: 0, merged: 0, error: String(err) }));
+          return true;
+        }
+
         case 'GET_USER_FORUMS': {
           browser.storage.local.get(STORAGE_KEYS.USER_FORUMS)
             .then((result) => sendResponse((result[STORAGE_KEYS.USER_FORUMS] as UserForum[]) || []))
@@ -550,6 +599,8 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
       return { workflow: 'research', steps: [pendingStep('research', 'Tra cứu và phân tích')] };
     case 'thread_analysis':
       return { workflow: 'knowledge', steps: [pendingStep('analyze', 'Phân tích thớt')] };
+    case 'notebook_qa':
+      return { workflow: 'research', steps: [pendingStep('qa', 'Tra cứu sổ tay')] };
     default:
       return null;
   }
@@ -657,6 +708,14 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         result = { analysis: await generateThreadAnalysis(summaryJson, meta, config, onProgress, prompts, signal) };
         break;
       }
+
+      case 'notebook_qa': {
+        const { question, entries } = payload as { question: string; entries: NotebookEntryForQA[] };
+        inputTokens = estimateTokens(question + entries.map(e => e.content).join(''));
+        result = await answerFromNotebook(question, entries, config, onProgress, signal);
+        break;
+      }
+
       default:
         throw new Error(`Unknown taskType: ${taskType}`);
     }

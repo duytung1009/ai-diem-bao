@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-06-03T06:14:52.794Z",
+		"generatedAt": "2026-06-12T17:10:43.893Z",
 		"tasksAnalyzed": 10,
-		"totalTasks": 10,
+		"totalTasks": 31,
 		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 358,
-			"taskTitle": "Thêm types và interfaces cho tính năng Điểm báo",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Công việc đơn giản chỉ thêm các khai báo TypeScript, không có logic xử lý."
-		},
-		{
-			"taskId": 359,
-			"taskTitle": "Xây dựng Forum Lister Scraper cho XF2",
-			"complexityScore": 5,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Yêu cầu phân tích DOM XF2 và trích xuất nhiều trường, nhưng có thể thực hiện trong một hàm. Có thể tách thành các hàm nhỏ nếu cần."
-		},
-		{
-			"taskId": 360,
-			"taskTitle": "Xây dựng Hot Thread Scoring Engine",
+			"taskId": 379,
+			"taskTitle": "Data Model - Định nghĩa GlobalKnowledgeEntry",
 			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Thuật toán tính điểm và lọc đơn giản, có thể viết trong một file duy nhất."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tách thành 2 subtask: 1) Định nghĩa interface GlobalKnowledgeEntry mới trong lib/types.ts. 2) Cập nhật KnowledgeSource thành interface riêng và sửa các tham chiếu cho phù hợp.",
+			"reasoning": "Task định nghĩa kiểu dữ liệu đơn giản, chỉ thêm và sửa interface, ít phức tạp."
 		},
 		{
-			"taskId": 361,
-			"taskTitle": "Thêm background handler cho FETCH_FORUM_LIST",
+			"taskId": 380,
+			"taskTitle": "Cache Layer - Thêm object store knowledge vào IndexedDB",
 			"complexityScore": 5,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Xử lý message background, fetch HTML và parse, có kiểm soát lỗi, nhưng không quá phức tạp."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tách thành 3 subtask: 1) Bump DB version và tạo object store 'knowledge' trong onupgradeneeded. 2) Triển khai các hàm API: getAllKnowledge, upsertKnowledgeEntry, deleteKnowledgeEntry trong cache-manager.ts. 3) Thêm message handlers cho background để sidepanel giao tiếp.",
+			"reasoning": "Task liên quan đến IndexedDB, cần xử lý version, tạo store, viết API và handler, độ phức tạp trung bình."
 		},
 		{
-			"taskId": 362,
-			"taskTitle": "Tạo component NewsFeedView với layout cơ bản",
+			"taskId": 381,
+			"taskTitle": "Migration - Backfill kho knowledge global từ dữ liệu cũ",
 			"complexityScore": 6,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Component Vue có nhiều state, gọi API background, hiển thị danh sách, tích hợp scoring. Độ phức tạp trung bình."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tách thành 3 subtask: 1) Viết hàm migrateKnowledge đọc CachedTopic và tạo GlobalKnowledgeEntry. 2) Tích hợp gọi migration sau khi nâng cấp DB version. 3) Viết unit test kiểm tra tính idempotent.",
+			"reasoning": "Cần xử lý dữ liệu cũ, đảm bảo không trùng lặp, và tích hợp với upgrade flow, độ phức tạp khá cao."
 		},
 		{
-			"taskId": 363,
-			"taskTitle": "Thêm route /newsfeed và tab 'Điểm báo' trong điều hướng",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Cấu hình route và thêm tab đơn giản, chỉ vài dòng code."
+			"taskId": 382,
+			"taskTitle": "Text Similarity Utility - Tách hàm tokenize và tính similarity",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tách thành 2 subtask: 1) Tạo module lib/text-similarity.ts với hàm tokenize. 2) Thêm hàm keywordSimilarity tính Jaccard similarity và unit test.",
+			"reasoning": "Task tách hàm thuần utility, không phụ thuộc Vue, dễ thực hiện."
 		},
 		{
-			"taskId": 364,
-			"taskTitle": "Cài đặt auto-detect forum từ URL tab đang active",
-			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Sử dụng chrome.tabs API, message passing, URL parsing. Có thể tách thành composable nhưng vẫn đơn giản."
+			"taskId": 383,
+			"taskTitle": "Knowledge Merge - Triển khai insertWithDedup",
+			"complexityScore": 7,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tách thành 3 subtask: 1) Xây dựng logic tìm entry trùng lặp dùng keywordSimilarity. 2) Triển khai merge sources, topicRefs, tags, content và tăng mergedCount. 3) Viết unit test với các kịch bản merge, tạo mới, và gộp.",
+			"reasoning": "Thuật toán merge phức tạp, cần xử lý nhiều trường hợp biên và đảm bảo tính đúng đắn."
 		},
 		{
-			"taskId": 365,
-			"taskTitle": "Hoàn thiện giao diện: relative time, heat indicators, loading skeleton, empty/error states",
-			"complexityScore": 4,
+			"taskId": 384,
+			"taskTitle": "Extraction Flow - Ghi kết quả vào kho global qua insertWithDedup",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tách thành 3 subtask: 1) Xác định vị trí gọi extractKnowledge và thay bằng insertWithDedup. 2) Loại bỏ lưu per-topic (hoặc giữ tạm) và cập nhật luồng dữ liệu. 3) Cập nhật composable useKnowledge để lấy từ global store.",
+			"reasoning": "Cần sửa đổi logic trích xuất hiện tại, đảm bảo tương thích và chuyển đổi dữ liệu."
+		},
+		{
+			"taskId": 385,
+			"taskTitle": "Q&A trên kho global - Tổng quát hóa useNotebookQA",
+			"complexityScore": 7,
 			"recommendedSubtasks": 4,
-			"expansionPrompt": "Chia thành 4 subtask: 1) RelativeTime component, 2) HeatIndicator component, 3) SkeletonLoader component, 4) EmptyErrorState component. Mỗi subtask có thể phát triển độc lập.",
-			"reasoning": "Nhiều cải tiến UI riêng biệt, có thể phát triển song song dưới dạng các component nhỏ."
+			"expansionPrompt": "Tách thành 4 subtask: 1) Tham số hóa nguồn dữ liệu trong useNotebookQA. 2) Cập nhật hàm scoreEntry để khớp với GlobalKnowledgeEntry. 3) Sửa prompt và xử lý citation với sources từ GlobalKnowledgeEntry. 4) Xử lý trường hợp kho rỗng và giới hạn TOP_K.",
+			"reasoning": "Cần tổng quát hóa composable, thay đổi logic scoring và prompt, độ phức tạp cao."
 		},
 		{
-			"taskId": 366,
-			"taskTitle": "Triển khai Forum Lister Scraper cho XF1",
-			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Tương tự task 359 nhưng với DOM XF1. Cần nghiên cứu selectors, nhưng có thể sử dụng pattern có sẵn."
-		},
-		{
-			"taskId": 367,
-			"taskTitle": "Tích hợp cài đặt News Feed vào Settings",
+			"taskId": 386,
+			"taskTitle": "UI - Thêm 3 tab Sổ tay / Hỏi đáp / Kiến thức trong Notebook",
 			"complexityScore": 5,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Mở rộng type, thêm UI settings, lưu storage.sync, kết nối với scoring engine. Độ phức tạp trung bình."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tách thành 3 subtask: 1) Thêm tab navigation trong NotebookView.vue. 2) Tạo component cho tab Kiến thức hiển thị danh sách GlobalKnowledgeEntry. 3) Tích hợp Q&A tab với dữ liệu global.",
+			"reasoning": "Task giao diện, cần thiết kế tab, load dữ liệu và tích hợp các component, độ phức tạp trung bình."
+		},
+		{
+			"taskId": 387,
+			"taskTitle": "Pin to Notebook - Nút ghim từ tab Kiến thức",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tách thành 2 subtask: 1) Thêm nút ghim trong tab Kiến thức. 2) Triển khai hàm createNotebookEntry và kiểm tra idempotent.",
+			"reasoning": "Task thêm nút và xử lý ghim, logic đơn giản, chỉ cần đảm bảo không trùng."
+		},
+		{
+			"taskId": 388,
+			"taskTitle": "Per-topic Knowledge View - Lọc global store theo topic",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Tách thành 2 subtask: 1) Sửa KnowledgeView.vue để lấy dữ liệu từ global store và lọc theo topicRefs. 2) Giữ action 'Trích xuất' và xử lý fallback nếu cần.",
+			"reasoning": "Cần chuyển đổi nguồn dữ liệu và đảm bảo các action hoạt động đúng, độ phức tạp trung bình."
 		}
 	]
 }

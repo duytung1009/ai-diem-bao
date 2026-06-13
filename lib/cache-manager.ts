@@ -1,5 +1,5 @@
-import { dbGet, dbPut, dbDelete, dbGetAll } from './cache-db';
-import type { CachedTopic } from './types';
+import { dbGet, dbPut, dbDelete, dbGetAll, dbGetAllKnowledge, dbUpsertKnowledge, dbDeleteKnowledge } from './cache-db';
+import type { CachedTopic, GlobalKnowledgeEntry } from './types';
 
 export function mergePartialTopic(
   partial: Partial<CachedTopic> & { url?: string },
@@ -91,4 +91,16 @@ export async function getCacheSize(): Promise<number> {
     size += JSON.stringify(topic).length * 2; // rough byte estimate (UTF-16)
   }
   return size;
+}
+
+export async function getAllKnowledge(): Promise<GlobalKnowledgeEntry[]> {
+  return dbGetAllKnowledge();
+}
+
+export async function upsertKnowledgeEntry(entry: GlobalKnowledgeEntry): Promise<void> {
+  await dbUpsertKnowledge(entry);
+}
+
+export async function deleteKnowledgeEntry(id: string): Promise<void> {
+  await dbDeleteKnowledge(id);
 }

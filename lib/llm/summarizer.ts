@@ -1,10 +1,12 @@
-import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback, KnowledgeEntry, ThreadAnalysisJSON, KnowledgePromptParts, SummaryPromptParts } from '../types';
+import type { ScrapedPost, LLMConfig, CustomPrompts, SummaryJSON, LLMProgressCallback, KnowledgeEntry, ThreadAnalysisJSON, KnowledgePromptParts, SummaryPromptParts, NotebookEntryForQA } from '../types';
 import { createProvider } from './factory';
 import {
   RESEARCH_PROMPT,
   buildSummaryPrompt,
   buildKnowledgePrompt,
   THREAD_ANALYSIS_PROMPT,
+  NOTEBOOK_QA_SELECT_PROMPT,
+  NOTEBOOK_QA_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget, getThinkingOverhead } from '../token-estimator';
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO, KNOWLEDGE_MAX_CHUNK_BUDGET } from '../constants';
@@ -805,6 +807,96 @@ export async function summarizeSegments(
     return JSON.stringify(deduped);
   }
   return resultText;
+}
+
+// ─── Notebook Q&A ─────────────────────────────────────────────────────────────
+
+export interface NotebookQAResult {
+  answer: string;
+  usedEntryIds: string[];
+}
+
+/** Threshold: if <= this many entries, skip the select stage and answer directly. */
+const QA_DIRECT_THRESHOLD = 20;
+
+function buildEntryListForSelect(entries: NotebookEntryForQA[]): string {
+  return entries.map((e, i) =>
+    `[${i + 1}] ID:${e.id}\nTiêu đề: ${e.title}\n${e.content.slice(0, 200)}${e.content.length > 200 ? '...' : ''}`,
+  ).join('\n\n');
+}
+
+function buildEntryListForAnswer(entries: NotebookEntryForQA[]): string {
+  return entries.map((e, i) => {
+    const parts: string[] = [`[${i + 1}] ${e.title} (ID:${e.id})`];
+    if (e.category) parts.push(`Danh mục: ${e.category}`);
+    if (e.tags.length) parts.push(`Tags: ${e.tags.join(', ')}`);
+    parts.push(e.content);
+    if (e.userNote) parts.push(`Ghi chú của bạn: ${e.userNote}`);
+    if (e.sourceTopicTitle) parts.push(`Từ thớt: ${e.sourceTopicTitle}`);
+    return parts.join('\n');
+  }).join('\n\n---\n\n');
+}
+
+function parseQAResponse(raw: string, entries: NotebookEntryForQA[]): NotebookQAResult {
+  const lines = raw.split('\n');
+  // Find last SOURCES: line
+  let sourcesIdx = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].trim().match(/^SOURCES:/i)) { sourcesIdx = i; break; }
+  }
+  if (sourcesIdx === -1) return { answer: raw.trim(), usedEntryIds: [] };
+
+  const sourcesLine = lines[sourcesIdx].replace(/^SOURCES:\s*/i, '').replace(/[\[\]]/g, '');
+  const usedEntryIds = sourcesLine.split(',').map(s => s.trim()).filter(id => entries.some(e => e.id === id));
+  const answer = lines.slice(0, sourcesIdx).join('\n').trimEnd();
+  return { answer, usedEntryIds };
+}
+
+/**
+ * Answer a question using the notebook knowledge store.
+ * Uses up to 2 LLM calls:
+ *  - Stage 1 (if entries > QA_DIRECT_THRESHOLD): LLM selects relevant entry IDs
+ *  - Stage 2: LLM answers with selected entries + citations
+ */
+export async function answerFromNotebook(
+  question: string,
+  entries: NotebookEntryForQA[],
+  config: LLMConfig,
+  onProgress?: (message: string) => void,
+  signal?: AbortSignal,
+): Promise<NotebookQAResult> {
+  const provider = createProvider(config);
+  let selectedEntries = entries;
+
+  if (entries.length > QA_DIRECT_THRESHOLD) {
+    onProgress?.('Đang tìm kiếm ghi chú liên quan...');
+    const selectInput: ScrapedPost = {
+      author: 'INPUT',
+      content: `Câu hỏi: ${question}\n\nDanh sách ghi chú:\n${buildEntryListForSelect(entries)}`,
+      timestamp: '',
+      postNumber: 0,
+    };
+    const selectResult = await provider.summarize([selectInput], NOTEBOOK_QA_SELECT_PROMPT, signal, { jsonMode: true });
+    try {
+      const raw = selectResult.content.trim().replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+      const parsed = JSON.parse(raw) as { ids?: string[] };
+      const ids = new Set(parsed.ids ?? []);
+      if (ids.size > 0) {
+        const filtered = entries.filter(e => ids.has(e.id));
+        if (filtered.length > 0) selectedEntries = filtered;
+      }
+    } catch { /* selection failed — fall back to all entries */ }
+  }
+
+  onProgress?.('Đang soạn câu trả lời...');
+  const answerInput: ScrapedPost = {
+    author: 'INPUT',
+    content: `Câu hỏi: ${question}\n\nCác ghi chú:\n\n${buildEntryListForAnswer(selectedEntries)}`,
+    timestamp: '',
+    postNumber: 0,
+  };
+  const answerResult = await provider.summarize([answerInput], NOTEBOOK_QA_PROMPT, signal, { jsonMode: false });
+  return parseQAResponse(answerResult.content, selectedEntries);
 }
 
 /**

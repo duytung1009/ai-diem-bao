@@ -266,7 +266,7 @@ function navigateTo(path: string) {
     </nav>
 
     <!-- Sub-tab bar -->
-    <nav v-if="hasSelectedTopic && isThreadActive" class="px-3 pt-2.5 pb-0 shrink-0">
+    <nav v-if="isThreadActive" class="px-3 pt-2.5 pb-0 shrink-0">
       <PillTabs :tabs="subTabs" :modelValue="activeSubTab" :loadingTabs="loadingSubTab" @update:modelValue="onSubTabChange" />
     </nav>
 

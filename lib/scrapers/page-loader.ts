@@ -61,7 +61,10 @@ export async function scrapePageRange(
 
     const pageUrl = buildPageUrl(baseUrl, page);
     try {
-      const fetchResult = await sendMessage<{ ok: boolean; status: number; html: string; finalUrl: string; error?: string }>('FETCH_HTML', { url: pageUrl });
+      const fetchResult = await sendMessage<{ ok: boolean; status: number; html: string; finalUrl: string; error?: string; needPermission?: boolean; origin?: string }>('FETCH_HTML', { url: pageUrl });
+      if (fetchResult.needPermission) {
+        throw new PermissionRequiredError(fetchResult.origin || new URL(pageUrl).origin);
+      }
       if (fetchResult.status === 401 || fetchResult.status === 403) {
         errors.push(`Trang ${page}: Không có quyền truy cập.`);
         continue;
@@ -116,4 +119,13 @@ export async function scrapePageRange(
   }
 
   return { posts: deduplicateAndSort(allPosts), totalPages: endPage, pagesScraped, errors, threadDeleted: false, threadLocked: false };
+}
+
+export class PermissionRequiredError extends Error {
+  origin: string;
+  constructor(origin: string) {
+    super(`Cần cấp quyền truy cập ${origin}`);
+    this.name = 'PermissionRequiredError';
+    this.origin = origin;
+  }
 }

@@ -45,7 +45,7 @@ const {
   // F33 additions
   knowledgeSegments, isReduceStale, hasAnyExtractedSegment,
   extractSegment, reExtractSegment, runReducePhaseManual,
-  isBatchExtracting, extractAllSegments, progressPercent,
+  isBatchExtracting, extractAllSegments, reExtractAllFromSegments, progressPercent,
 } = knowledge;
 
 // UI state (local to view)
@@ -701,14 +701,18 @@ onActivated(async () => {
                   </button>
                   <div v-if="showExtractDropdown"
                     class="absolute left-0 top-full mt-1 z-10 bg-(--color-bg-surface) border border-(--color-border) rounded shadow-elevated min-w-max">
-                    <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                      @click="showExtractDropdown = false; onExtractClick()">
-                      Trích xuất đoạn chưa xong
-                    </button>
-                    <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                      @click="showExtractDropdown = false; handleClearKnowledgeData().then(() => handleExtract())">
-                      Trích xuất lại tất cả
-                    </button>
+                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; onExtractClick()">
+                    Trích xuất đoạn chưa xong
+                  </button>
+                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; reExtractAllFromSegments()">
+                    Trích xuất lại kiến thức
+                  </button>
+                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; handleClearKnowledgeData().then(() => handleExtract())">
+                    Trích xuất lại tất cả
+                  </button>
                   </div>
                 </div>
               </template>

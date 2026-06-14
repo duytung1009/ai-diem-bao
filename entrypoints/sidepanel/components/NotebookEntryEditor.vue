@@ -133,7 +133,7 @@ function handleSave() {
 
     <!-- Actions -->
     <div class="flex gap-2 justify-end pt-1">
-      <button class="btn btn-ghost btn-sm text-xs" @click="emit('cancel')">Huỷ</button>
+      <button class="btn btn-ghost btn-sm text-xs" @click="emit('cancel')">Hủy</button>
       <button
         class="btn btn-primary btn-sm text-xs"
         :disabled="!editTitle.trim() || !editContent.trim()"

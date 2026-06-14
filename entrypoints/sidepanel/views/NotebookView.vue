@@ -25,7 +25,7 @@ const notebookSubTab = ref<'entries' | 'qa' | 'knowledge'>('entries');
 const subTabs = [
   { value: 'entries' as const, label: 'Sổ tay' },
   { value: 'qa' as const, label: 'Hỏi đáp' },
-  { value: 'knowledge' as const, label: 'Kiến thức' },
+  { value: 'knowledge' as const, label: 'Kho kiến thức' },
 ];
 
 // Q&A (notebook)
@@ -36,12 +36,41 @@ const knowledgeEntries = ref<GlobalKnowledgeEntry[]>([]);
 const knowledgeLoading = ref(false);
 const knowledgeSearchInput = ref('');
 const knowledgeExpandedIds = ref(new Set<string>());
+const knowledgeSort = ref<'recent' | 'title' | 'sources'>('recent');
 const knowledgeFiltered = computed(() => {
   if (!knowledgeSearchInput.value) return knowledgeEntries.value;
   const q = knowledgeSearchInput.value.toLowerCase();
   return knowledgeEntries.value.filter(e =>
     e.title.toLowerCase().includes(q) || e.content.toLowerCase().includes(q) || e.tags.some(t => t.toLowerCase().includes(q))
   );
+});
+
+const knowledgeSorted = computed(() => {
+  const items = [...knowledgeFiltered.value];
+  switch (knowledgeSort.value) {
+    case 'recent':
+      items.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      break;
+    case 'title':
+      items.sort((a, b) => a.title.localeCompare(b.title, 'vi'));
+      break;
+    case 'sources':
+      items.sort((a, b) => b.sources.length - a.sources.length);
+      break;
+  }
+  return items;
+});
+
+const knowledgeGrouped = computed(() => {
+  const groups: Record<string, GlobalKnowledgeEntry[]> = {};
+  for (const e of knowledgeSorted.value) {
+    const label = e.sources[0]?.topicTitle ?? e.topicRefs[0] ?? 'Khác';
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(e);
+  }
+  return Object.entries(groups)
+    .sort(([, a], [, b]) => b.length - a.length)
+    .map(([key, entries]) => ({ key, entries }));
 });
 
 // Convert global knowledge entries to NotebookEntry shape for the QA composable.
@@ -238,11 +267,11 @@ function startCreateEntry() {
   showCreateForm.value = true;
 }
 
-async function handleSaveQAAsNote(question: string, answer: string, selectedEntryIds: string[]) {
+async function handleSaveQAAsNote(question: string, answer: string, selectedEntryIds: string[], citedEntryIds?: string[]) {
   const htmlContent = parseAnswerHtml(answer, selectedEntryIds);
-  const citedMeta = selectedEntryIds.length > 0 ? JSON.stringify({
-    ids: selectedEntryIds,
-    titles: selectedEntryIds.map(id => knowledgeEntries.value.find(e => e.id === id)?.title ?? id),
+  const citedMeta = (citedEntryIds && citedEntryIds.length > 0) ? JSON.stringify({
+    ids: citedEntryIds,
+    titles: citedEntryIds.map(id => knowledgeEntries.value.find(e => e.id === id)?.title ?? id),
   }) : undefined;
   const entry: NotebookEntry = {
     id: crypto.randomUUID(),
@@ -449,13 +478,13 @@ onActivated(async () => {
         <!-- Filter bar -->
         <div class="space-y-2">
           <!-- Tag pills -->
-          <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
+          <!-- <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
             <button v-for="tag in allTags" :key="tag" class="badge capitalize transition-colors" :class="filters.tag === tag
               ? getTagClass(tag)
               : 'badge-neutral'" @click="filters.tag = filters.tag === tag ? null : tag">
               {{ tag }}
             </button>
-          </div>
+          </div> -->
           <!-- Category pills -->
           <div v-if="stats.categories.length > 0" class="flex flex-wrap gap-1.5 items-center">
             <button v-if="filters.category" class="badge badge-neutral" @click="filters.category = null">
@@ -531,7 +560,7 @@ onActivated(async () => {
               <p>Xóa vĩnh viễn {{ selectedIds.size }} mục đã chọn?</p>
               <div class="flex gap-2">
                 <button class="btn btn-sm text-xs px-2 bg-(--color-error-text) text-white" @click="applyBulkDelete">Xóa</button>
-                <button class="btn btn-ghost btn-sm text-xs px-2" @click="bulkDeleteConfirm = false">Huỷ</button>
+                <button class="btn btn-ghost btn-sm text-xs px-2" @click="bulkDeleteConfirm = false">Hủy</button>
               </div>
             </div>
           </template>
@@ -698,6 +727,18 @@ onActivated(async () => {
           <template v-else>{{ knowledgeEntries.length }}</template>
           mục
         </p>
+        <!-- Sort + group controls -->
+        <div v-if="knowledgeEntries.length > 0" class="flex items-center gap-2 text-xs flex-wrap">
+          <span class="text-(--color-text-secondary)">Sắp xếp:</span>
+          <button v-for="opt in [
+            { value: 'recent' as const, label: 'Mới nhất' },
+            { value: 'title' as const, label: 'Tên A-Z' },
+            { value: 'sources' as const, label: 'Nhiều nguồn' },
+          ]" :key="opt.value" class="badge transition-colors" :class="knowledgeSort === opt.value ? 'badge-accent' : 'badge-neutral'"
+            @click="knowledgeSort = opt.value">
+            {{ opt.label }}
+          </button>
+        </div>
       </div>
 
       <LoadingSpinner v-if="knowledgeLoading" text="Đang tải kho kiến thức..." />
@@ -709,19 +750,29 @@ onActivated(async () => {
         </p>
       </div>
 
-      <div v-else class="space-y-2">
-        <div v-for="entry in knowledgeFiltered" :key="entry.id" :id="`knowledge-global-${entry.id}`">
-          <KnowledgeEntryCard
-            :entry="normalizeKnowledgeEntry(entry)"
-            :expanded="knowledgeExpandedIds.has(entry.id)"
-            :show-pin="true"
-            :show-category="true"
-            :show-merged-info="true"
-            :show-post-link="true"
-            @toggle-expand="id => knowledgeExpandedIds.has(id) ? knowledgeExpandedIds.delete(id) : knowledgeExpandedIds.add(id)"
-            @toggle-pin="id => { const e = findKnowledgeEntry(id); if (e) pinToNotebook(e); }"
-          />
-        </div>
+      <div v-else class="space-y-4">
+        <template v-for="group in knowledgeGrouped" :key="group.key">
+          <div>
+            <h4 class="section-heading mb-2">
+              {{ group.key }}
+              <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
+            </h4>
+          </div>
+          <div class="space-y-2">
+            <div v-for="entry in group.entries" :key="entry.id" :id="`knowledge-global-${entry.id}`">
+              <KnowledgeEntryCard
+                :entry="normalizeKnowledgeEntry(entry)"
+                :expanded="knowledgeExpandedIds.has(entry.id)"
+                :show-pin="true"
+                :show-category="true"
+                :show-merged-info="true"
+                :show-post-link="true"
+                @toggle-expand="id => knowledgeExpandedIds.has(id) ? knowledgeExpandedIds.delete(id) : knowledgeExpandedIds.add(id)"
+                @toggle-pin="id => { const e = findKnowledgeEntry(id); if (e) pinToNotebook(e); }"
+              />
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>

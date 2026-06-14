@@ -510,9 +510,9 @@ async function toggleBookmark(topic: CachedTopic) {
           </button>
           <button
             class="btn btn-sm btn-secondary"
-            @click="addForumByHostname('otofun.net')"
+            @click="addForumByHostname('www.otofun.net')"
           >
-            Thêm otofun.net
+            Thêm www.otofun.net
           </button>
         </div>
         <p class="text-xs text-(--color-text-muted)">

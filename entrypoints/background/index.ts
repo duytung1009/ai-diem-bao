@@ -114,16 +114,23 @@ export default defineBackground(() => {
 
         case 'FETCH_HTML': {
           const { url } = message.payload as { url: string };
-          fetch(url, { credentials: 'include' })
-            .then(async (res) => {
-              if (!res.ok) {
-                sendResponse({ ok: false, status: res.status, html: '', finalUrl: res.url });
-                return;
-              }
-              const html = await res.text();
-              sendResponse({ ok: true, status: res.status, html, finalUrl: res.url });
-            })
-            .catch((err) => sendResponse({ ok: false, status: 0, html: '', error: String(err) }));
+          const origin = new URL(url).origin + '/*';
+          chrome.permissions.contains({ origins: [origin] }, (hasPerm) => {
+            if (!hasPerm) {
+              sendResponse({ needPermission: true, origin: new URL(url).origin + '/*' });
+              return;
+            }
+            fetch(url, { credentials: 'include' })
+              .then(async (res) => {
+                if (!res.ok) {
+                  sendResponse({ ok: false, status: res.status, html: '', finalUrl: res.url });
+                  return;
+                }
+                const html = await res.text();
+                sendResponse({ ok: true, status: res.status, html, finalUrl: res.url });
+              })
+              .catch((err) => sendResponse({ ok: false, status: 0, html: '', error: String(err) }));
+          });
           return true;
         }
 
@@ -443,19 +450,26 @@ export default defineBackground(() => {
           const req = message.payload as { forumUrl: string; page?: number };
           const cleanUrl = req.forumUrl.replace(/\/$/, '');
           const pageUrl = req.page && req.page > 1 ? `${cleanUrl}/page-${req.page}` : cleanUrl;
+          const origin = new URL(req.forumUrl).origin + '/*';
 
-          fetch(pageUrl, { credentials: 'include' })
-            .then(async (res) => {
-              if (!res.ok) {
-                sendResponse({ ok: false, status: res.status, html: '', forumUrl: req.forumUrl, errors: [`HTTP ${res.status}`] });
-                return;
-              }
-              const html = await res.text();
-              sendResponse({ ok: true, status: res.status, html, forumUrl: req.forumUrl, errors: [] });
-            })
-            .catch((err) => {
-              sendResponse({ ok: false, status: 0, html: '', forumUrl: req.forumUrl, errors: [String(err)] });
-            });
+          chrome.permissions.contains({ origins: [origin] }, (hasPerm) => {
+            if (!hasPerm) {
+              sendResponse({ needPermission: true, origin: new URL(req.forumUrl).origin + '/*', forumUrl: req.forumUrl });
+              return;
+            }
+            fetch(pageUrl, { credentials: 'include' })
+              .then(async (res) => {
+                if (!res.ok) {
+                  sendResponse({ ok: false, status: res.status, html: '', forumUrl: req.forumUrl, errors: [`HTTP ${res.status}`] });
+                  return;
+                }
+                const html = await res.text();
+                sendResponse({ ok: true, status: res.status, html, forumUrl: req.forumUrl, errors: [] });
+              })
+              .catch((err) => {
+                sendResponse({ ok: false, status: 0, html: '', forumUrl: req.forumUrl, errors: [String(err)] });
+              });
+          });
           return true;
         }
 

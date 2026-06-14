@@ -195,11 +195,16 @@ if (wxt.config.manifestVersion === 3) addPermission(manifest, "scripting");
 
 `tabs` permission chỉ cần nếu muốn đọc `tab.url` từ `tabs.query`. Alternative: luôn lấy URL từ content script.
 
-**3. Không thêm `host_permissions: ['<all_urls>']`**
-Extension hoạt động trên mọi XenForo forum mà không cần host_permissions vì:
-- Content script inject declaratively qua `matches: ['*://*/*']` — không cần host_permissions
-- Background `FETCH_HTML` dùng `fetch()` — service worker không bị same-origin policy
-- `activeTab` cấp quyền tạm thời khi user tương tác với extension
+**3. Dùng `optional_host_permissions` + runtime request thay vì `host_permissions` cứng**
+Extension hoạt động trên mọi XenForo forum mà không cần `host_permissions` tĩnh vì:
+- `optional_host_permissions: ['https://*/*', 'http://*/*']` trong manifest cho phép xin quyền động
+- Background `FETCH_HTML` / `FETCH_FORUM_LIST` kiểm tra `chrome.permissions.contains()` trước mỗi fetch; nếu chưa có, trả `needPermission` cho caller
+- Sidepanel hiển thị prompt → user click "Cấp quyền" → `chrome.permissions.request()` (phải có user gesture)
+- `lib/permissions.ts`: `hasOriginPermission()`, `requestOriginPermission()`, `requestOriginsPermission()`
+- `useForumManager.ts`: dùng `requestOriginsPermission` khi thêm forum mới
+- `useSummarize.ts` / `NewsFeedView.vue`: pre-flight check + prompt fallback khi fetch bị CORS
+
+**Lưu ý:** Background service worker trong Chrome MV3 **cần** `host_permissions` để bypass CORS khi `fetch()` cross-origin — không giống MV2. `optional_host_permissions` + `chrome.permissions.request()` là giải pháp thay thế an toàn cho Chrome Web Store.
 
 **4. `activeTab` là quyền mạnh nhất cần thiết**
 Khi user mở Side Panel, `activeTab` cấp quyền tạm thời để:
@@ -446,6 +451,45 @@ for (let i = 0; i < allFlat.length; i += maxPerCall * 2) {
 - Floor `Math.max(10, ...)` cho entry cap — con số 10 cứng này bỏ qua budget thực tế của model nhỏ (2K-4K tokens). Luôn tính cap từ `maxOutputTokens`, để multi-call path xử lý overflow.
 - Split theo chunk count thay vì entry count trong map-reduce — chunk count không phản ánh khối lượng công việc thực tế. Luôn flatten và split theo số lượng entries.
 - Gọi reduce mà không truyền `entryCap` — default 20 thường quá cao. Luôn tính cap từ output budget và truyền tường minh.
+
+---
+
+### KH6: Background Service Worker Không Tự Động Bypass CORS — Cần `host_permissions` hoặc `optional_host_permissions` + Runtime Request
+
+**Triệu chứng:**
+- `fetch()` từ sidepanel hoặc background đến XenForo forum bị CORS block: `No 'Access-Control-Allow-Origin' header is present on the requested resource`
+- Lỗi chỉ xảy ra với một số forum (otofun.net), không xảy ra với forum khác (voz.vn có CORS headers)
+
+**Root cause:**
+- AGENTS.md trước đây ghi sai: "service worker không bị same-origin policy" — thực tế Chrome MV3 service workers **cần** `host_permissions` để bypass CROSS khi `fetch()` cross-origin
+- Một số forum (voz.vn) trả `Access-Control-Allow-Origin: *` nên hoạt động dù không có `host_permissions`
+- Otofun.net không trả CORS headers → fetch thất bại
+
+**Fix:**
+- `optional_host_permissions: ['https://*/*', 'http://*/*']` trong manifest → xin quyền động qua `chrome.permissions.request()`
+- `lib/permissions.ts`: `hasOriginPermission()` + `requestOriginPermission()` — kiểm tra và xin quyền trước khi fetch
+- Background handler `FETCH_HTML`/`FETCH_FORUM_LIST`: kiểm tra `chrome.permissions.contains()` trước fetch, trả `{ needPermission: true, origin }` nếu chưa có
+- Sidepanel (`NewsFeedView.vue`, `useSummarize.ts`): nhận `needPermission` → hiển thị prompt → user click "Cấp quyền" → retry
+
+```typescript
+// Background handler pattern:
+case 'FETCH_HTML': {
+  const { url } = message.payload;
+  const origin = new URL(url).origin + '/*';
+  chrome.permissions.contains({ origins: [origin] }, (hasPerm) => {
+    if (!hasPerm) {
+      sendResponse({ needPermission: true, origin });
+      return;
+    }
+    // proceed with fetch...
+  });
+}
+```
+
+**Anti-pattern:**
+- Giả định background service worker tự động bypass CORS không cần `host_permissions` — sai cho Chrome MV3
+- Gọi `fetch()` cross-origin từ sidepanel/popup/options page trực tiếp — luôn route qua background
+- Dùng `host_permissions: ['*://*/*']` cứng trong manifest — nên dùng `optional_host_permissions` + runtime request để qua Chrome Web Store review
 
 ---
 

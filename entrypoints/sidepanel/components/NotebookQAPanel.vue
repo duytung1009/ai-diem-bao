@@ -20,7 +20,7 @@ const emit = defineEmits<{
   cancelConfirm: [];
   cancelQA: [];
   citationClick: [entryId: string];
-  saveAsNote: [question: string, answer: string, selectedEntryIds: string[]];
+  saveAsNote: [question: string, answer: string, selectedEntryIds: string[], citedEntryIds?: string[]];
   clearHistory: [];
 }>();
 
@@ -76,12 +76,19 @@ function getPairedQuestion(assistantIdx: number): string {
 
 function saveAsNote(msg: QAMessage, idx: number) {
   savedIds.value = new Set([...savedIds.value, msg.id]);
-  emit('saveAsNote', getPairedQuestion(idx), msg.text, msg.selectedEntryIds ?? []);
+  emit('saveAsNote', getPairedQuestion(idx), msg.text, msg.selectedEntryIds ?? [], msg.usedEntryIds);
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-3 flex-1 min-h-0">
+    <!-- Header: Clear history -->
+    <div v-if="history.length > 0" class="flex justify-end">
+      <button class="btn btn-ghost btn-sm text-xs" @click="emit('clearHistory')">
+        Xóa lịch sử
+      </button>
+    </div>
+
     <!-- Conversation area — flex-1 fills available height -->
     <div class="flex-1 min-h-0 flex flex-col gap-3">
       <!-- Empty state -->
@@ -124,7 +131,7 @@ function saveAsNote(msg: QAMessage, idx: number) {
             </div>
           </div>
 
-          <div class="flex justify-between gap-2">
+          <div>
             <!-- Save as note -->
             <button
               class="btn btn-ghost btn-sm text-xs"
@@ -132,13 +139,6 @@ function saveAsNote(msg: QAMessage, idx: number) {
               @click="saveAsNote(item.msg, idx)"
             >
               {{ savedIds.has(item.msg.id) ? '✓ Đã lưu' : 'Lưu thành ghi chú' }}
-            </button>
-            <button
-              v-if="history.length > 0"
-              class="btn btn-ghost btn-sm text-xs"
-              @click="emit('clearHistory')"
-            >
-              Xóa lịch sử
             </button>
           </div>
         </div>
@@ -166,21 +166,22 @@ function saveAsNote(msg: QAMessage, idx: number) {
         :disabled="isEmpty || isLoading"
         @keydown="handleKeydown"
       ></textarea>
-      <div v-if="isLoading" class="flex items-center justify-between">
+      <template v-if="!isLoading">
+        <button class="btn-llm" :disabled="!canAsk" @click="submit">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
+          </svg>
+          Hỏi đáp
+        </button>
+      </template>
+      <template v-else>
         <button
-          v-if="isLoading"
-          class="btn btn-ghost btn-sm text-xs text-(--color-error-text)"
+          class="w-full btn btn-sm btn-secondary text-xs"
           @click="emit('cancelQA')"
         >
           Hủy
         </button>
-      </div>
-      <button class="btn-llm" :disabled="!canAsk" @click="submit">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
-        </svg>
-        {{ isLoading ? 'Đang tra cứu...' : 'Hỏi đáp' }}
-      </button>
+      </template>
     </div>
   </div>
 

@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-06-12T17:10:43.893Z",
+		"generatedAt": "2026-06-14T10:44:01.205Z",
 		"tasksAnalyzed": 10,
-		"totalTasks": 31,
+		"totalTasks": 41,
 		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 379,
-			"taskTitle": "Data Model - Định nghĩa GlobalKnowledgeEntry",
-			"complexityScore": 4,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tách thành 2 subtask: 1) Định nghĩa interface GlobalKnowledgeEntry mới trong lib/types.ts. 2) Cập nhật KnowledgeSource thành interface riêng và sửa các tham chiếu cho phù hợp.",
-			"reasoning": "Task định nghĩa kiểu dữ liệu đơn giản, chỉ thêm và sửa interface, ít phức tạp."
-		},
-		{
-			"taskId": 380,
-			"taskTitle": "Cache Layer - Thêm object store knowledge vào IndexedDB",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tách thành 3 subtask: 1) Bump DB version và tạo object store 'knowledge' trong onupgradeneeded. 2) Triển khai các hàm API: getAllKnowledge, upsertKnowledgeEntry, deleteKnowledgeEntry trong cache-manager.ts. 3) Thêm message handlers cho background để sidepanel giao tiếp.",
-			"reasoning": "Task liên quan đến IndexedDB, cần xử lý version, tạo store, viết API và handler, độ phức tạp trung bình."
-		},
-		{
-			"taskId": 381,
-			"taskTitle": "Migration - Backfill kho knowledge global từ dữ liệu cũ",
-			"complexityScore": 6,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tách thành 3 subtask: 1) Viết hàm migrateKnowledge đọc CachedTopic và tạo GlobalKnowledgeEntry. 2) Tích hợp gọi migration sau khi nâng cấp DB version. 3) Viết unit test kiểm tra tính idempotent.",
-			"reasoning": "Cần xử lý dữ liệu cũ, đảm bảo không trùng lặp, và tích hợp với upgrade flow, độ phức tạp khá cao."
-		},
-		{
-			"taskId": 382,
-			"taskTitle": "Text Similarity Utility - Tách hàm tokenize và tính similarity",
+			"taskId": 389,
+			"taskTitle": "Xây dựng module stopword tiếng Việt",
 			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ, có thể thực hiện trực tiếp.",
+			"reasoning": "Tương đối đơn giản, chỉ cần tạo file export Set, dựa trên tài liệu có sẵn. Cần chú ý đến việc không loại bỏ từ kỹ thuật, nhưng không phức tạp."
+		},
+		{
+			"taskId": 390,
+			"taskTitle": "Xây dựng hàm tokenizeForSearch",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
+			"reasoning": "Hàm đơn giản, chỉ gọi tokenize và lọc stopword. Không có xử lý phức tạp."
+		},
+		{
+			"taskId": 391,
+			"taskTitle": "Xây dựng hàm buildBm25Index",
+			"complexityScore": 5,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tách thành 2 subtask: 1) Tạo module lib/text-similarity.ts với hàm tokenize. 2) Thêm hàm keywordSimilarity tính Jaccard similarity và unit test.",
-			"reasoning": "Task tách hàm thuần utility, không phụ thuộc Vue, dễ thực hiện."
+			"expansionPrompt": "Chia task thành: 1) Xây dựng cấu trúc dữ liệu Bm25Index và tính df, độ dài field; 2) Xử lý các trường hợp đặc biệt (field null, rỗng) và viết test đơn vị cho từng phần.",
+			"reasoning": "Cần xây dựng index duyệt nhiều document, tính toán df và avgFieldLength, có nhiều edge case. Có thể chia để dễ quản lý và kiểm thử."
 		},
 		{
-			"taskId": 383,
-			"taskTitle": "Knowledge Merge - Triển khai insertWithDedup",
-			"complexityScore": 7,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tách thành 3 subtask: 1) Xây dựng logic tìm entry trùng lặp dùng keywordSimilarity. 2) Triển khai merge sources, topicRefs, tags, content và tăng mergedCount. 3) Viết unit test với các kịch bản merge, tạo mới, và gộp.",
-			"reasoning": "Thuật toán merge phức tạp, cần xử lý nhiều trường hợp biên và đảm bảo tính đúng đắn."
-		},
-		{
-			"taskId": 384,
-			"taskTitle": "Extraction Flow - Ghi kết quả vào kho global qua insertWithDedup",
+			"taskId": 392,
+			"taskTitle": "Xây dựng hàm scoreBm25",
 			"complexityScore": 6,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tách thành 3 subtask: 1) Xác định vị trí gọi extractKnowledge và thay bằng insertWithDedup. 2) Loại bỏ lưu per-topic (hoặc giữ tạm) và cập nhật luồng dữ liệu. 3) Cập nhật composable useKnowledge để lấy từ global store.",
-			"reasoning": "Cần sửa đổi logic trích xuất hiện tại, đảm bảo tương thích và chuyển đổi dữ liệu."
-		},
-		{
-			"taskId": 385,
-			"taskTitle": "Q&A trên kho global - Tổng quát hóa useNotebookQA",
-			"complexityScore": 7,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Tách thành 4 subtask: 1) Tham số hóa nguồn dữ liệu trong useNotebookQA. 2) Cập nhật hàm scoreEntry để khớp với GlobalKnowledgeEntry. 3) Sửa prompt và xử lý citation với sources từ GlobalKnowledgeEntry. 4) Xử lý trường hợp kho rỗng và giới hạn TOP_K.",
-			"reasoning": "Cần tổng quát hóa composable, thay đổi logic scoring và prompt, độ phức tạp cao."
-		},
-		{
-			"taskId": 386,
-			"taskTitle": "UI - Thêm 3 tab Sổ tay / Hỏi đáp / Kiến thức trong Notebook",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tách thành 3 subtask: 1) Thêm tab navigation trong NotebookView.vue. 2) Tạo component cho tab Kiến thức hiển thị danh sách GlobalKnowledgeEntry. 3) Tích hợp Q&A tab với dữ liệu global.",
-			"reasoning": "Task giao diện, cần thiết kế tab, load dữ liệu và tích hợp các component, độ phức tạp trung bình."
-		},
-		{
-			"taskId": 387,
-			"taskTitle": "Pin to Notebook - Nút ghim từ tab Kiến thức",
-			"complexityScore": 4,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tách thành 2 subtask: 1) Thêm nút ghim trong tab Kiến thức. 2) Triển khai hàm createNotebookEntry và kiểm tra idempotent.",
-			"reasoning": "Task thêm nút và xử lý ghim, logic đơn giản, chỉ cần đảm bảo không trùng."
+			"expansionPrompt": "Chia thành: 1) Triển khai công thức BM25 cơ bản với các tham số k1, b, IDF; 2) Thêm field boost, xử lý trường hợp df=0, field rỗng và tối ưu hiệu năng.",
+			"reasoning": "Công thức phức tạp, yêu cầu xử lý nhiều trường hợp biên, tham số và field weight. Cần kiểm tra kỹ lưỡng."
 		},
 		{
-			"taskId": 388,
-			"taskTitle": "Per-topic Knowledge View - Lọc global store theo topic",
+			"taskId": 393,
+			"taskTitle": "Xây dựng hàm rankBm25",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ, có thể viết trực tiếp dựa vào các hàm đã có.",
+			"reasoning": "Hàm tích hợp, chủ yếu gọi các hàm khác, xử lý fallback. Đơn giản."
+		},
+		{
+			"taskId": 394,
+			"taskTitle": "Xây dựng module synonym tiếng Việt (tùy chọn)",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
+			"reasoning": "Tạo map và hàm expand, rất đơn giản. Không phụ thuộc nhiều."
+		},
+		{
+			"taskId": 395,
+			"taskTitle": "Tích hợp BM25 vào useNotebookQA",
 			"complexityScore": 5,
 			"recommendedSubtasks": 2,
-			"expansionPrompt": "Tách thành 2 subtask: 1) Sửa KnowledgeView.vue để lấy dữ liệu từ global store và lọc theo topicRefs. 2) Giữ action 'Trích xuất' và xử lý fallback nếu cần.",
-			"reasoning": "Cần chuyển đổi nguồn dữ liệu và đảm bảo các action hoạt động đúng, độ phức tạp trung bình."
+			"expansionPrompt": "Chia thành: 1) Sửa logic trong useNotebookQA để sử dụng rankBm25; 2) Kiểm thử tích hợp và đảm bảo không ảnh hưởng chức năng cũ.",
+			"reasoning": "Cần hiểu code hiện tại, thay thế đúng vị trí, import module, và giữ nguyên behavior. Có thể ảnh hưởng đến các phần khác nên cần kiểm tra kỹ."
+		},
+		{
+			"taskId": 396,
+			"taskTitle": "Viết unit test cho lexical-search và stopwords",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task viết test, không cần chia nhỏ.",
+			"reasoning": "Viết test cho các hàm đã xây dựng, dựa trên test strategy có sẵn. Có thể thực hiện theo từng module nhưng gộp chung vào một file test."
+		},
+		{
+			"taskId": 397,
+			"taskTitle": "Kiểm tra hồi quy và chạy thủ công",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ.",
+			"reasoning": "Chạy lại bộ test và thử nghiệm thủ công. Công việc kiểm thử đơn giản."
+		},
+		{
+			"taskId": 398,
+			"taskTitle": "Dọn dẹp code và cập nhật decision log",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ.",
+			"reasoning": "Xóa code thừa, thêm comment deprecated, kiểm tra build. Công việc nhẹ nhàng."
 		}
 	]
 }

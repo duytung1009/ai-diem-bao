@@ -21,10 +21,10 @@
 Đọc toàn bộ topic (kể cả thớt kéo dài cả thập kỷ) rồi tóm lại trong vài dòng. Ý kiến nổi bật, tranh luận tâm điểm, kết luận chung — AI lo hết, thím chỉ cần API key.
 
 ### 🧠 Trích xuất kiến thức — Nhặt mẹo hay bỏ túi
-Từ đống 700 bài reply lộn xộn, tự động rút ra các tips, kinh nghiệm, công thức, địa chỉ ngon — lưu thành kho kiến thức có cấu trúc. Không còn cảnh "mình đọc ở đâu đó mà không nhớ trang mấy".
+Từ đống 700 bài reply lộn xộn, tự động rút ra các tips, kinh nghiệm, công thức, địa chỉ ngon. Mỗi thớt trích xong tự gom vào **một kho kiến thức tổng hợp dùng chung** — mục nào trùng giữa nhiều thớt thì gộp lại, đếm số nguồn. Không còn cảnh "mình đọc ở đâu đó mà không nhớ trang mấy".
 
-### 🔍 Tra cứu Q&A — Hỏi thẳng, khỏi Ctrl+F
-Đặt câu hỏi cụ thể về nội dung topic, AI trả lời kèm trích dẫn đến bài gốc. Kiểu "thím nào đề cập đến vụ X?" thay vì phải mò thủ công.
+### 🔍 Hỏi đáp xuyên thớt — Hỏi thẳng cả kho, khỏi Ctrl+F
+Đặt câu hỏi và AI trả lời **dựa trên toàn bộ kho kiến thức** (gom từ tất cả thớt đã trích), kèm trích dẫn `[n]` về ghi chú nguồn. Kiểu "kinh nghiệm thuê giúp việc chăm bé?" → AI tổng hợp tips + chi phí từ nhiều thớt khác nhau, không phải mò từng topic. Xem chi tiết ở [mục dưới](#-kho-kiến-thức--hỏi-đáp--sổ-tay-biết-trả-lời).
 
 ### 🕵️ Phân tích thread — Đọc vị luồng tranh luận
 - **User profiling:** Gom user thành 2-4 nhóm theo hành vi trong thớt (phe ủng hộ, phe phản đối, nhóm kháy, nhóm hóng), kèm quote đại diện mỗi nhóm. AI phân loại dựa trên nội dung bài viết, không phải metadata account.
@@ -41,6 +41,53 @@ Markdown, plain text, hoặc tải file `.md` về. Dán vào Notion, Obsidian, 
 
 ### ⚙️ Map-Reduce tự động — Thớt 1000 bài cũng không sợ
 Tự chia nhỏ topic thành chunk phù hợp với context window của model. Xử lý song song rồi gộp lại. Thím không cần biết map-reduce là gì, chỉ cần bấm nút.
+
+---
+
+## 🧠 Kho kiến thức + Hỏi đáp — Sổ tay biết trả lời
+
+Đây là tính năng "trí nhớ dài hạn" của extension. Mỗi lần thím trích xuất kiến thức từ một thớt, các mục đó **không nằm lẻ trong từng topic** mà được gom hết về một **kho kiến thức tổng hợp dùng chung** — rồi thím hỏi thẳng cả kho như hỏi một người đã đọc giùm thím cả forum.
+
+### Luồng hoạt động
+
+```
+Thớt A ─┐
+Thớt B ─┼─► [Trích xuất kiến thức]  ──►  Kho kiến thức tổng hợp  ──►  [Hỏi đáp]
+Thớt C ─┘        (mỗi thớt vài chục mục)      (gộp mục trùng,            (AI trả lời
+                                               đếm số nguồn)             kèm trích dẫn [n])
+```
+
+1. **Trích xuất** ở tab Kiến thức của từng thớt → ra các mục (tip, kinh nghiệm, chi phí, địa chỉ…).
+2. **Gom + gộp tự động:** mục được đẩy vào kho chung. Hai thớt nói cùng một ý → **gộp thành một mục, giữ nhiều nguồn** (hiện badge "X nguồn · Y thớt"), không bị trùng lặp lủng củng.
+3. **Hỏi đáp** chạy trên **toàn bộ kho** (không phải một thớt): AI chọn các ghi chú liên quan rồi trả lời, mỗi ý kèm `[n]` trỏ về ghi chú nguồn để thím bấm xem gốc.
+
+### Ba tab trong "Sổ tay"
+
+| Tab | Là gì |
+|---|---|
+| **Sổ tay** | Ghi chú thím chủ động ⭐ lưu lại (đã chọn lọc) + ghi chú tự tạo tay |
+| **Hỏi đáp** | Hỏi thẳng trên toàn kho, AI trả lời kèm nguồn |
+| **Kiến thức** | Toàn bộ kho tổng hợp từ mọi thớt — tìm kiếm, ghim mục hay lên Sổ tay |
+
+### Ví dụ thực tế
+
+**Hỏi:** *"Kinh nghiệm thuê giúp việc chăm bé"*
+
+> **Trả lời:**
+> - **Chi phí:** Tại TP.HCM, thuê theo giờ (7h–18h) khoảng **8–9 triệu/tháng** `[1]`. Khu vực nông thôn ~**250k/ngày** (1 bé 180–200k, 2 bé tới 250k) `[1]`.
+> - **Lời khuyên:** Nếu không có ông bà hỗ trợ, cân nhắc thuê theo giờ để tập trung chăm bé và nghỉ ngơi `[2]`.
+>
+> **Nguồn:** `[1]` Chi phí thuê người giúp việc chăm bé · `[2]` Kinh nghiệm nuôi con khi chỉ có hai vợ chồng
+
+→ Để ý: hai nguồn `[1]` và `[2]` đến từ **hai thớt khác nhau** — AI tự gom lại trong một câu trả lời.
+
+**Hỏi:** *"Build PC tầm 20 triệu nên ưu tiên gì?"*
+
+> **Trả lời:** Ưu tiên CPU + GPU cân bằng, đừng dồn hết vào card `[1]`; RAM 32GB giờ là chuẩn nếu làm việc nặng `[2]`; nên để dư ngân sách cho nguồn (PSU) xịn tránh hỏng cả dàn `[1]`.
+>
+> **Nguồn:** `[1]` Thread tư vấn cấu hình 20tr · `[2]` Thớt hỏi RAM 16 hay 32GB
+
+> **Lưu ý kỳ vọng:** cùng một ý nhưng hỏi bằng hai cách khác nhau ("thuê **giúp việc**" vs "thuê **người chăm**") có thể ra danh sách ghi chú hơi khác — AI đánh giá độ liên quan theo câu chữ. Tìm kiếm hiện dựa trên từ khóa; bản nâng cấp ngữ nghĩa (embeddings) đang để dành cho sau.
 
 ---
 
@@ -136,6 +183,7 @@ OpenRouter là một cổng tổng hợp (Aggregator) hàng trăm model lớn nh
 8. **Phân tích** → Bắt bài, profile user, phân tích luồng tranh luận
 9. **Tra cứu** → Hỏi thẳng về nội dung topic, AI trả lời kèm nguồn
 10. **Xuất** → Copy Markdown hoặc download file `.md`
+11. **Sổ tay** (tab chính, không thuộc topic) → Kho kiến thức gom từ **mọi thớt** đã trích + **Hỏi đáp xuyên thớt**. Xem [mục riêng](#-kho-kiến-thức--hỏi-đáp--sổ-tay-biết-trả-lời).
 
 > Extension không có quyền truy cập bất cứ website nào khi mới cài đặt. Bạn chủ động cấp quyền cho từng forum (qua onboarding hoặc Settings) và từng LLM provider (qua Save/Test Connection).
 

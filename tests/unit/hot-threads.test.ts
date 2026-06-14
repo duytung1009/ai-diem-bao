@@ -25,30 +25,33 @@ describe('filterToday', () => {
       makeThread({ lastPostTime: '2026-06-03T10:00:00Z' }),
       makeThread({ lastPostTime: '2026-06-02T13:00:00Z' }),
     ];
-    const result = filterToday(threads, 24);
+    const result = filterToday(threads, 24, now);
     expect(result).toHaveLength(2);
   });
 
   it('loại thread có lastPost > 24h', () => {
+    const now = new Date('2026-06-03T12:00:00Z');
     const threads = [
       makeThread({ lastPostTime: '2026-06-01T08:00:00Z' }),
       makeThread({ lastPostTime: '2026-06-03T10:00:00Z' }),
     ];
-    const result = filterToday(threads, 24);
+    const result = filterToday(threads, 24, now);
     expect(result).toHaveLength(1);
     expect(result[0].lastPostTime).toBe('2026-06-03T10:00:00Z');
   });
 
   it('trả về mảng rỗng nếu không có thread nào trong 24h', () => {
+    const now = new Date('2026-06-03T12:00:00Z');
     const threads = [
       makeThread({ lastPostTime: '2026-05-01T00:00:00Z' }),
     ];
-    const result = filterToday(threads, 24);
+    const result = filterToday(threads, 24, now);
     expect(result).toHaveLength(0);
   });
 
   it('trả về mảng rỗng nếu input rỗng', () => {
-    const result = filterToday([], 24);
+    const now = new Date('2026-06-03T12:00:00Z');
+    const result = filterToday([], 24, now);
     expect(result).toHaveLength(0);
   });
 });

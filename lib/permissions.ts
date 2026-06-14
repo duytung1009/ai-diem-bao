@@ -36,6 +36,8 @@ export async function requestOriginsPermission(origins: string[]): Promise<boole
 }
 
 export async function hasOriginPermission(origin: string): Promise<boolean> {
+  if (import.meta.env.DEV) return true;
+  if (typeof chrome === 'undefined' || !chrome.permissions) return true;
   return new Promise<boolean>((resolve) => {
     chrome.permissions.contains({ origins: [origin] }, (result) => {
       resolve(result);

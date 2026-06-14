@@ -24,6 +24,7 @@ export function keywordSimilarity(text1: string, text2: string): number {
   return jaccardSimilarity(tokenSet(text1), tokenSet(text2));
 }
 
+/** @deprecated Use rankBm25 from lib/lexical-search.ts for Q&A retrieval instead. */
 export function scoreEntryByTokens(
   questionTokens: string[],
   title: string,
@@ -49,6 +50,7 @@ export function scoreEntryByTokens(
   return score;
 }
 
+/** @deprecated Use rankBm25 from lib/lexical-search.ts instead. */
 export function scoreNotebookEntry(questionTokens: string[], entry: NotebookEntryForQA): number {
   return scoreEntryByTokens(questionTokens, entry.title, entry.content, entry.tags, entry.category, entry.userNote);
 }

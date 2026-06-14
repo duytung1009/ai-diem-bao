@@ -103,7 +103,7 @@ function saveAsNote(msg: QAMessage, idx: number) {
       >
         <!-- User message -->
         <div v-if="item.msg.role === 'user'" class="flex justify-end">
-          <div class="bg-(--color-bg-muted) rounded-lg px-3 py-2 max-w-[85%] text-xs text-(--color-text-primary)">
+          <div class="bg-(--color-bg-muted) rounded-lg px-3 py-2 max-w-[85%] text-sm text-(--color-text-primary)">
             {{ item.msg.text }}
           </div>
         </div>

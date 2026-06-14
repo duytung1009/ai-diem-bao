@@ -481,7 +481,6 @@ async function handleConflictGoBack() {
                   </svg>
                   Tóm tắt toàn bộ
                 </button>
-                <p class="text-xs text-(--color-text-muted)">Thớt dài, thời gian tóm tắt có thể lâu</p>
               </div>
             </template>
 

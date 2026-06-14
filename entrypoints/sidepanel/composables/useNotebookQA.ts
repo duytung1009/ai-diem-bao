@@ -2,7 +2,7 @@ import { ref, computed } from 'vue';
 import { useLLM } from './useLLM';
 import type { NotebookEntry, NotebookEntryForQA } from '@/lib/types';
 import type { NotebookQAResult } from '@/lib/llm/summarizer';
-import { tokenize, scoreNotebookEntry } from '@/lib/text-similarity';
+import { rankBm25 } from '@/lib/lexical-search';
 
 export interface QAMessage {
   id: string;
@@ -99,18 +99,17 @@ export function useNotebookQA() {
     history.value = [...history.value, userMsg];
     error.value = '';
 
-    // Project entries and apply client-side keyword scoring
+    // Project entries and apply client-side BM25 ranking
     const projected = allEntries.map(projectEntry);
     let selected: NotebookEntryForQA[];
 
     if (projected.length <= TOP_K) {
       selected = projected;
     } else {
-      const qTokens = tokenize(question);
-      const scored = projected.map(e => ({ e, s: scoreNotebookEntry(qTokens, e) }));
-      const hasScores = scored.some(x => x.s > 0);
+      const ranked = rankBm25(question, projected);
+      const hasScores = ranked.some(x => x.score > 0);
       if (hasScores) {
-        selected = scored.sort((a, b) => b.s - a.s).slice(0, TOP_K).map(x => x.e);
+        selected = ranked.slice(0, TOP_K).map(x => x.entry);
       } else {
         selected = projected;
       }

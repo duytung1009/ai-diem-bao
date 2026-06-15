@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getTagClass } from '@/lib/tag-styles';
+
 export interface KnowledgeCardEntry {
   id: string;
   title: string;
@@ -48,21 +50,6 @@ function formatTimestamp(ts?: string): string {
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-const TAG_CLASSES: Record<string, string> = {
-  'kinh nghiệm': 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
-  'mẹo': 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
-  'cảnh báo': 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
-  'thống kê': 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400',
-  'so sánh': 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400',
-  'hướng dẫn': 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400',
-  'đánh giá': 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
-  'tài nguyên': 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400',
-};
-
-function getTagClass(tag: string): string {
-  return TAG_CLASSES[tag] ?? 'bg-(--color-bg-muted) text-(--color-text-secondary)';
-}
-
 function handlePostClick(postNumber: number) {
   const base = (props.entry.postUrl ?? '').replace(/\/$/, '');
   browser.tabs.create({ url: `${base}/post-${postNumber}` });
@@ -71,32 +58,32 @@ function handlePostClick(postNumber: number) {
 
 <template>
   <div class="card">
-    <div class="flex items-start gap-2 cursor-pointer" @click="emit('toggle-expand', entry.id)">
+    <div class="flex items-center gap-2 cursor-pointer" @click="emit('toggle-expand', entry.id)">
       <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-muted)"
         :class="expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
       </svg>
       <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
-      <button v-if="showSave"
-        class="p-0.5 shrink-0 transition-colors rounded"
-        :class="entry.saved ? 'text-yellow-500' : 'text-(--color-text-muted) hover:text-yellow-500'"
-        :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'" @click.stop="emit('toggle-save', entry.id)">
+      <button v-if="showSave" type="button"
+        class="p-1.5 shrink-0 transition-colors rounded-lg"
+        :class="entry.saved ? 'text-(--color-saved)' : 'text-(--color-text-secondary) hover:text-(--color-saved)'"
+        :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'" :aria-label="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'" @click.stop="emit('toggle-save', entry.id)">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
         </svg>
       </button>
-      <button v-if="showPin"
-        class="p-0.5 shrink-0 transition-colors rounded"
-        :class="entry.pinned ? 'text-yellow-500' : 'text-(--color-text-muted) hover:text-yellow-500'"
-        :title="entry.pinned ? 'Đã ghim' : 'Ghim vào Sổ tay'" :disabled="entry.pinned" @click.stop="emit('toggle-pin', entry.id)">
+      <button v-if="showPin" type="button"
+        class="p-1.5 shrink-0 transition-colors rounded-lg"
+        :class="entry.pinned ? 'text-(--color-saved)' : 'text-(--color-text-secondary) hover:text-(--color-saved)'"
+        :title="entry.pinned ? 'Đã ghim' : 'Ghim vào Sổ tay'" :aria-label="entry.pinned ? 'Đã ghim' : 'Ghim vào Sổ tay'" :disabled="entry.pinned" @click.stop="emit('toggle-pin', entry.id)">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
         </svg>
       </button>
-      <button v-if="showDelete"
-        class="p-0.5 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded" title="Xóa kiến thức"
+      <button v-if="showDelete" type="button"
+        class="p-1.5 text-(--color-text-secondary) hover:text-(--color-error-text) transition-colors rounded-lg" title="Xóa kiến thức" aria-label="Xóa kiến thức"
         @click.stop="emit('delete', entry.id)">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -116,11 +103,11 @@ function handlePostClick(postNumber: number) {
             </span>
             <span v-if="showCategory && entry.category" class="badge badge-accent text-xs">{{ entry.category }}</span>
           </div>
-          <div v-if="showMergedInfo && (entry.mergedCount || (entry.sourcesCount && entry.sourcesCount > 1))" class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-(--color-text-muted)">
+          <div v-if="showMergedInfo && (entry.mergedCount || (entry.sourcesCount && entry.sourcesCount > 1))" class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-(--color-text-secondary)">
             <span v-if="entry.mergedCount">Đã gộp {{ entry.mergedCount }} lần</span>
             <span v-if="entry.sourcesCount && entry.sourcesCount > 1">{{ entry.sourcesCount }} nguồn &middot; {{ entry.topicRefsCount }} thớt</span>
           </div>
-          <p v-if="entry.sourceAuthor" class="text-xs text-(--color-text-muted)">
+          <p v-if="entry.sourceAuthor" class="text-xs text-(--color-text-secondary)">
             {{ entry.sourceAuthor }}<template v-if="entry.sourcePostNumber"> · bài <button v-if="showPostLink" class="font-mono link"
                 @click="handlePostClick(entry.sourcePostNumber)">#{{ entry.sourcePostNumber }}</button><span v-else class="font-mono">#{{ entry.sourcePostNumber }}</span></template><span
               v-if="entry.sourceTimestamp"> · {{ formatTimestamp(entry.sourceTimestamp) }}</span>

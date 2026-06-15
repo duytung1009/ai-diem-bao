@@ -36,7 +36,7 @@ body {
 
   /* Text */
   --color-text-primary: #1c1917;
-  --color-text-secondary: #78716c;
+  --color-text-secondary: #6f685f; /* AA: ≥4.5:1 on bg-muted (neutral pills) & bg-base (section headings) */
   --color-text-muted: #a8a29e;
 
   /* Borders */
@@ -48,6 +48,10 @@ body {
   --color-accent-hover: #1d4ed8;
   --color-accent-soft: #eff6ff;
   --color-accent-text: #2563eb;
+
+  /* Saved / bookmarked — gold */
+  --color-saved: #d97706;
+  --color-saved-hover: #b45309;
 
   /* Secondary — cool violet */
   --color-secondary: #6d28d9;
@@ -86,7 +90,7 @@ body {
   --color-bg-elevated: #343450;
 
   --color-text-primary: #dce0ea;
-  --color-text-secondary: #9498ab;
+  --color-text-secondary: #989cac; /* AA: ≥4.5:1 on dark bg-muted (neutral pills) */
   --color-text-muted: #686c82;
 
   --color-border: #2e2e48;
@@ -96,6 +100,9 @@ body {
   --color-accent-hover: #93c5fd;
   --color-accent-soft: rgba(59, 130, 246, 0.12);
   --color-accent-text: #60a5fa;
+
+  --color-saved: #fbbf24;
+  --color-saved-hover: #fcd34d;
 
   --color-secondary: #a78bfa;
   --color-secondary-hover: #c4b5fd;
@@ -268,7 +275,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @utility badge-neutral {
   background-color: var(--color-bg-muted);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 /* Alert boxes */
@@ -362,7 +369,7 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }

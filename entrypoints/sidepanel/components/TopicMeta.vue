@@ -91,7 +91,7 @@ async function navigateToTopic() {
       <SummaryStatus :status="summaryStatus" />
     </div>
 
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--color-text-secondary)">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--color-text-secondary)">
       <span>
         <template v-if="isPartial">
           {{ formatNumber(topic.summarizedPostCount ?? topic.totalPosts) + (hasForumPostCount ? `/${formatNumber(topic.forumPostCount!)}` : '') }} bài

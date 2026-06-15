@@ -152,7 +152,7 @@ async function handleCopy() {
 </script>
 
 <template>
-  <div class="space-y-3 text-sm">
+  <div class="space-y-2 text-sm">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <slot name="actions" />

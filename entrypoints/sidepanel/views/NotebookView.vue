@@ -14,6 +14,7 @@ import type { KnowledgeCardEntry } from '../components/KnowledgeEntryCard.vue';
 import PillTabs from '../components/PillTabs.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { useNotebookQA } from '../composables/useNotebookQA';
+import { getTagClass } from '@/lib/tag-styles';
 import type { GlobalKnowledgeEntry } from '@/lib/types';
 
 const router = useRouter();
@@ -131,6 +132,11 @@ function findKnowledgeEntry(id: string): GlobalKnowledgeEntry | undefined {
   return knowledgeEntries.value.find(e => e.id === id);
 }
 
+function handleDeleteGlobal(id: string) {
+  knowledgeEntries.value = knowledgeEntries.value.filter(e => e.id !== id);
+  sendMessageQuiet('DELETE_KNOWLEDGE_ENTRY', { id });
+}
+
 // Pin to notebook
 const pinnedEntryIds = ref(new Set<string>());
 async function pinToNotebook(entry: GlobalKnowledgeEntry) {
@@ -172,80 +178,7 @@ function handleCitationClick(entryId: string) {
 const expandedIds = ref<Set<string>>(new Set());
 const editingId = ref<string | null>(null);
 
-// Bulk select
-const isSelectMode = ref(false);
-const selectedIds = ref(new Set<string>());
 
-const selectedEntries = computed(() => entries.value.filter(e => selectedIds.value.has(e.id)));
-const selectedTags = computed(() => {
-  const tags = new Set<string>();
-  for (const e of selectedEntries.value) e.tags.forEach(t => tags.add(t));
-  return [...tags].sort();
-});
-
-const bulkCategory = ref('');
-const bulkAddTag = ref('');
-const bulkRemoveTag = ref('');
-const bulkDeleteConfirm = ref(false);
-
-function toggleSelectMode() {
-  isSelectMode.value = !isSelectMode.value;
-  if (!isSelectMode.value) selectedIds.value = new Set();
-  bulkDeleteConfirm.value = false;
-}
-
-function toggleSelect(id: string) {
-  const s = new Set(selectedIds.value);
-  s.has(id) ? s.delete(id) : s.add(id);
-  selectedIds.value = s;
-}
-
-function selectAll() {
-  selectedIds.value = new Set(filteredEntries.value.map(e => e.id));
-}
-
-async function applyBulkCategory() {
-  const cat = bulkCategory.value.trim() || undefined;
-  const ids = [...selectedIds.value];
-  if (!ids.length) return;
-  try {
-    await sendMessage('BULK_UPDATE_NOTEBOOK_ENTRIES', { ids, patch: { category: cat ?? null, editedAt: Date.now() } });
-    await Promise.all([loadEntries(), loadStats()]);
-    bulkCategory.value = '';
-  } catch (err) { console.warn('[NotebookView] bulk category failed', err); }
-}
-
-async function applyBulkAddTag() {
-  const tag = bulkAddTag.value.trim().toLowerCase();
-  if (!tag) return;
-  const ids = [...selectedIds.value];
-  try {
-    await sendMessage('BULK_UPDATE_NOTEBOOK_ENTRIES', { ids, patch: { addTags: [tag], editedAt: Date.now() } });
-    await Promise.all([loadEntries(), loadStats()]);
-    bulkAddTag.value = '';
-  } catch (err) { console.warn('[NotebookView] bulk add tag failed', err); }
-}
-
-async function applyBulkRemoveTag() {
-  if (!bulkRemoveTag.value) return;
-  const ids = [...selectedIds.value];
-  try {
-    await sendMessage('BULK_UPDATE_NOTEBOOK_ENTRIES', { ids, patch: { removeTags: [bulkRemoveTag.value], editedAt: Date.now() } });
-    await Promise.all([loadEntries(), loadStats()]);
-    bulkRemoveTag.value = '';
-  } catch (err) { console.warn('[NotebookView] bulk remove tag failed', err); }
-}
-
-async function applyBulkDelete() {
-  const ids = [...selectedIds.value];
-  try {
-    await sendMessage('BULK_DELETE_NOTEBOOK_ENTRIES', { ids });
-    entries.value = entries.value.filter(e => !selectedIds.value.has(e.id));
-    selectedIds.value = new Set();
-    bulkDeleteConfirm.value = false;
-    await loadStats();
-  } catch (err) { console.warn('[NotebookView] bulk delete failed', err); }
-}
 
 // Manual entry creation
 const showCreateForm = ref(false);
@@ -283,14 +216,18 @@ async function handleSaveQAAsNote(question: string, answer: string, selectedEntr
     extractedAt: Date.now(),
     sourceTopicUrl: '',
     sourceTopicTitle: '',
-    source: { author: 'Hỏi đáp', postNumber: 0 },
-    manual: 1,
-    category: 'Hỏi đáp',
+    source: { author: '', postNumber: 0 },
+    fromQA: 1,
   };
   await handleCreateEntry(entry);
 }
 
 interface QACitedEntry { id: string; title: string }
+
+// Backward compat: old entries used category='Hỏi đáp', new entries use fromQA=1
+function isQAEntry(entry: NotebookEntry): boolean {
+  return !!entry.fromQA || entry.category === 'Hỏi đáp';
+}
 
 function parseQACitedEntries(userNote: string | undefined): QACitedEntry[] {
   if (!userNote) return [];
@@ -317,18 +254,6 @@ async function handleCreateEntry(entry: NotebookEntry) {
     await loadStats();
   } catch (err) { console.warn('[NotebookView] create manual entry failed', err); }
 }
-
-// Category counts — used by the bulk-actions category datalist
-const categoryCounts = computed<[string, number][]>(() => {
-  const counts = new Map<string, number>();
-  entries.value.forEach(e => {
-    const cat = e.category || 'Khác';
-    counts.set(cat, (counts.get(cat) ?? 0) + 1);
-  });
-  return [...counts.entries()].sort(([a], [b]) =>
-    a === 'Khác' ? 1 : b === 'Khác' ? -1 : a.localeCompare(b, 'vi'),
-  );
-});
 
 function startEdit(entry: NotebookEntry) {
   expandedIds.value = new Set([...expandedIds.value, entry.id]);
@@ -399,21 +324,6 @@ function formatTimestamp(ts: string): string {
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-const TAG_CLASSES: Record<string, string> = {
-  'kinh nghiệm': 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
-  'mẹo': 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
-  'cảnh báo': 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
-  'thống kê': 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400',
-  'so sánh': 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400',
-  'hướng dẫn': 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400',
-  'đánh giá': 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
-  'tài nguyên': 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400',
-};
-
-function getTagClass(tag: string): string {
-  return TAG_CLASSES[tag] ?? 'bg-(--color-bg-muted) text-(--color-text-secondary)';
-}
-
 const viewModes: { value: ViewMode; label: string }[] = [
   { value: 'topic', label: 'Thớt' },
   { value: 'timeline', label: 'Dòng thời gian' },
@@ -421,8 +331,13 @@ const viewModes: { value: ViewMode; label: string }[] = [
   { value: 'tag', label: 'Tag' },
 ];
 
+// Per-entry confirm before unsaving (destructive: manual/Q&A notes are not
+// recoverable from the global store). No window.confirm — blocked in sidepanel.
+const confirmUnsaveId = ref<string | null>(null);
+
 async function handleUnsave(entry: NotebookEntry) {
   await unsaveEntry(entry);
+  confirmUnsaveId.value = null;
 }
 
 onActivated(async () => {
@@ -440,7 +355,7 @@ onActivated(async () => {
 
     <!-- Q&A tab -->
     <div v-show="notebookSubTab === 'qa'" class="flex-1 min-h-0 flex flex-col">
-      <p class="text-xs text-(--color-text-muted)">
+      <p class="text-xs text-(--color-text-secondary)">
         Tra cứu trên toàn bộ kho kiến thức — {{ knowledgeEntries.length }} mục từ tất cả thớt đã trích xuất.
       </p>
       <LoadingSpinner v-if="knowledgeLoading" text="Đang tải kho kiến thức..." />
@@ -454,116 +369,35 @@ onActivated(async () => {
       <!-- Header -->
       <div class="space-y-2">
         <!-- Tab description -->
-        <p class="text-xs text-(--color-text-muted)">
+        <p class="text-xs text-(--color-text-secondary)">
           Ghi chú đã lưu từ các thớt. Nhấn ⭐ trong tab Kiến thức của bất kỳ thớt nào để lưu.
         </p>
         <!-- Search -->
         <div class="relative">
-          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <input v-model="filters.search" type="text" placeholder="Tìm kiếm ghi chú..." class="input pl-8 pr-8 text-xs w-full" />
+          <input v-model="filters.search" type="text" placeholder="Tìm kiếm ghi chú..." aria-label="Tìm kiếm ghi chú" class="input pl-8 text-xs w-full" />
         </div>
 
-        <!-- Stats + create button -->
+        <!-- Stats + create -->
         <div class="flex items-center gap-2">
-          <p class="text-xs text-(--color-text-muted) flex-1">
+          <p class="text-xs text-(--color-text-secondary) flex-1">
             {{ filteredEntries.length }}/{{ stats.totalEntries }} ghi chú
           </p>
-          <button class="btn btn-ghost btn-sm text-xs shrink-0" @click="startCreateEntry">
-            + Ghi chú
+          <button type="button" class="btn btn-ghost btn-sm text-xs shrink-0" @click="startCreateEntry">
+            + Ghi chú thủ công
           </button>
         </div>
 
-        <!-- Filter bar -->
-        <div class="space-y-2">
-          <!-- Tag pills -->
-          <!-- <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
-            <button v-for="tag in allTags" :key="tag" class="badge capitalize transition-colors" :class="filters.tag === tag
-              ? getTagClass(tag)
-              : 'badge-neutral'" @click="filters.tag = filters.tag === tag ? null : tag">
-              {{ tag }}
-            </button>
-          </div> -->
-          <!-- Category pills -->
-          <div v-if="stats.categories.length > 0" class="flex flex-wrap gap-1.5 items-center">
-            <button v-if="filters.category" class="badge badge-neutral" @click="filters.category = null">
-              Tất cả danh mục
-            </button>
-            <button v-for="cat in stats.categories" :key="cat" class="badge capitalize transition-colors" :class="filters.category === cat
-              ? 'badge-accent'
-              : 'badge-neutral'" @click="filters.category = filters.category === cat ? null : cat">
-              {{ cat }}
-            </button>
-          </div>
-        </div>
-
-        <!-- View mode buttons -->
+        <!-- Group-by buttons -->
         <div class="flex items-center gap-2 text-xs flex-wrap">
-          <span class="text-(--color-text-secondary)">Sắp xếp:</span>
+          <span class="text-(--color-text-secondary)">Nhóm theo:</span>
           <button v-for="vm in viewModes" :key="vm.value" class="badge capitalize transition-colors" :class="viewMode === vm.value
             ? 'badge-accent'
             : 'badge-neutral'" @click="viewMode = vm.value">
             {{ vm.label }}
           </button>
-          <button v-if="entries.length > 0" class="badge ml-auto transition-colors" :class="isSelectMode ? 'badge-accent' : 'badge-neutral'"
-            @click="toggleSelectMode">
-            {{ isSelectMode ? 'Thoát chọn' : 'Chọn' }}
-          </button>
-        </div>
-
-        <!-- Bulk actions bar -->
-        <div v-if="isSelectMode" class="card text-xs space-y-2">
-          <!-- Selection count + select all / clear -->
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-(--color-text-secondary) font-medium">{{ selectedIds.size }} đã chọn</span>
-            <button class="link text-xs" @click="selectAll">Chọn tất cả</button>
-            <button v-if="selectedIds.size > 0" class="link text-xs" @click="selectedIds = new Set()">Bỏ chọn</button>
-          </div>
-
-          <template v-if="selectedIds.size > 0">
-            <!-- Bulk category -->
-            <div class="flex items-center gap-1.5">
-              <label class="text-(--color-text-muted) shrink-0">Danh mục:</label>
-              <input v-model="bulkCategory" type="text" :list="`bulk-cat-list`" class="input text-xs flex-1 min-w-0" placeholder="Tên danh mục (trống = xóa)..."
-                @keydown.enter="applyBulkCategory" />
-              <datalist id="bulk-cat-list">
-                <option v-for="[cat] in categoryCounts" :key="cat" :value="cat === 'Khác' ? '' : cat" />
-              </datalist>
-              <button class="btn btn-primary btn-sm text-xs px-2 shrink-0" @click="applyBulkCategory">Áp dụng</button>
-            </div>
-
-            <!-- Bulk add tag -->
-            <div class="flex items-center gap-1.5">
-              <label class="text-(--color-text-muted) shrink-0">Thêm tag:</label>
-              <input v-model="bulkAddTag" type="text" class="input text-xs flex-1 min-w-0" placeholder="Tag mới..." @keydown.enter="applyBulkAddTag" />
-              <button class="btn btn-primary btn-sm text-xs px-2 shrink-0" @click="applyBulkAddTag">Thêm</button>
-            </div>
-
-            <!-- Bulk remove tag -->
-            <div v-if="selectedTags.length > 0" class="flex items-center gap-1.5">
-              <label class="text-(--color-text-muted) shrink-0">Xóa tag:</label>
-              <select v-model="bulkRemoveTag" class="input text-xs flex-1 min-w-0">
-                <option value="">-- Chọn tag --</option>
-                <option v-for="tag in selectedTags" :key="tag" :value="tag">{{ tag }}</option>
-              </select>
-              <button class="btn btn-ghost btn-sm text-xs px-2 shrink-0 text-(--color-error-text)" @click="applyBulkRemoveTag">Xóa</button>
-            </div>
-
-            <!-- Bulk delete -->
-            <div v-if="!bulkDeleteConfirm">
-              <button class="btn btn-ghost btn-sm text-xs text-(--color-error-text)" @click="bulkDeleteConfirm = true">
-                Xóa {{ selectedIds.size }} mục
-              </button>
-            </div>
-            <div v-else class="bg-(--color-error-bg) text-(--color-error-text) rounded p-2 space-y-1.5">
-              <p>Xóa vĩnh viễn {{ selectedIds.size }} mục đã chọn?</p>
-              <div class="flex gap-2">
-                <button class="btn btn-sm text-xs px-2 bg-(--color-error-text) text-white" @click="applyBulkDelete">Xóa</button>
-                <button class="btn btn-ghost btn-sm text-xs px-2" @click="bulkDeleteConfirm = false">Hủy</button>
-              </div>
-            </div>
-          </template>
         </div>
 
         <!-- Loading -->
@@ -576,13 +410,15 @@ onActivated(async () => {
         <div v-if="!isLoading && entries.length === 0" class="card text-center py-10 space-y-3">
           <div class="text-3xl">📝</div>
           <p class="text-sm text-(--color-text-primary) font-medium">Chưa có ghi chú nào</p>
-          <p class="text-xs text-(--color-text-muted)">Vào tab <strong>Kiến thức</strong> của bất kỳ thớt nào, nhấn ⭐ để lưu vào đây.</p>
-          <button class="btn btn-sm btn-primary" @click="startCreateEntry">+ Tạo ghi chú thủ công</button>
+          <p class="text-xs text-(--color-text-secondary)">Vào tab <strong>Kiến thức</strong> của bất kỳ thớt nào, nhấn ⭐ để lưu vào đây.</p>
+          <button type="button" class="btn btn-sm btn-primary" @click="startCreateEntry">
+            Thêm ghi chú
+          </button>
         </div>
 
         <!-- Create manual entry form -->
         <div v-if="showCreateForm && newEntryDraft" class="card">
-          <p class="text-xs text-(--color-text-muted) font-medium mb-1">Tạo ghi chú mới</p>
+          <p class="text-xs text-(--color-text-secondary) font-medium mb-1">Tạo ghi chú mới</p>
           <NotebookEntryEditor :entry="newEntryDraft" :all-categories="stats.categories" @save="handleCreateEntry"
             @cancel="showCreateForm = false; newEntryDraft = null" />
         </div>
@@ -592,67 +428,73 @@ onActivated(async () => {
           <div v-for="group in groupedEntries" :key="group.key + (group.subLabel || '')">
             <div class="flex items-end gap-2 mb-1">
               <h4 class="section-heading flex-1 mb-1">
-                {{ group.key }}
-                <span v-if="group.subLabel" class="text-(--color-text-muted) font-normal normal-case">
-                  · {{ group.subLabel }}
+                {{ group.key ? group.key + ' · ' : '' }}
+                <span v-if="group.subLabel">
+                  {{ group.subLabel }}
                 </span>
                 <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
               </h4>
-              <button class="btn btn-ghost btn-sm text-xs" title="Xuất nhóm này ra file JSON" @click="handleExportGroup(group)">
+              <button type="button" class="btn btn-ghost btn-sm shrink-0" title="Xuất nhóm này ra file JSON" aria-label="Xuất nhóm này ra file JSON" @click="handleExportGroup(group)">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Xuất JSON
               </button>
             </div>
             <div class="space-y-2">
               <div v-for="entry in group.entries" :key="entry.id" class="card transition-colors duration-500"
                 :class="{ 'ring-2 ring-(--color-secondary)': focusEntryId === entry.id }">
                 <!-- Header -->
-                <div class="flex items-start gap-2 cursor-pointer"
-                  @click="isSelectMode ? toggleSelect(entry.id) : editingId !== entry.id && toggleExpand(entry.id)">
-                  <!-- Checkbox (select mode) -->
-                  <input v-if="isSelectMode" type="checkbox" class="mt-0.5 shrink-0 accent-(--color-secondary)" :checked="selectedIds.has(entry.id)" @click.stop
-                    @change="toggleSelect(entry.id)" />
-                  <svg v-else class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-muted)"
+                <div class="flex items-center gap-2 cursor-pointer"
+                  @click="editingId !== entry.id && toggleExpand(entry.id)">
+                  <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-secondary)"
                     :class="expandedIds.has(entry.id) ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-semibold text-(--color-text-primary) leading-snug">{{ entry.title }}</p>
                     <!-- Edited badge -->
-                    <span v-if="entry.editedAt" class="text-xs text-(--color-text-muted) italic"
+                    <span v-if="entry.editedAt" class="text-xs text-(--color-text-secondary) italic"
                       :title="`Đã sửa: ${new Date(entry.editedAt).toLocaleDateString('vi-VN')}`">đã sửa</span>
                   </div>
-                  <!-- Manual badge -->
-                  <span v-if="entry.manual" class="badge badge-neutral shrink-0">✍ Tự tạo</span>
-                  <!-- Edit button -->
-                  <button v-if="!isSelectMode && editingId !== entry.id"
-                    class="p-0.5 text-(--color-text-muted) hover:text-(--color-secondary) transition-colors rounded shrink-0" title="Sửa"
+                  <!-- Entry type badge -->
+                  <span v-if="isQAEntry(entry)" class="badge badge-accent shrink-0">💬 Hỏi đáp</span>
+                  <span v-else-if="entry.manual" class="badge badge-neutral shrink-0">✍ Tự tạo</span>
+                  <!-- Edit button (hidden for Q&A entries — content is HTML with citations) -->
+                  <button v-if="editingId !== entry.id && !isQAEntry(entry)" type="button"
+                    class="p-1.5 text-(--color-text-secondary) hover:text-(--color-secondary) transition-colors rounded-lg shrink-0" title="Sửa" aria-label="Sửa ghi chú"
                     @click.stop="startEdit(entry)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
-                  <!-- Unsave button -->
-                  <button v-if="!isSelectMode && editingId !== entry.id"
-                    class="p-0.5 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded shrink-0" title="Bỏ lưu"
-                    @click.stop="handleUnsave(entry)">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
                   <!-- Export button -->
-                  <button v-if="!isSelectMode && editingId !== entry.id"
-                    class="p-0.5 text-(--color-text-muted) hover:text-(--color-secondary) transition-colors rounded shrink-0" title="Xuất JSON"
+                  <button v-if="editingId !== entry.id" type="button"
+                    class="p-1.5 text-(--color-text-secondary) hover:text-(--color-secondary) transition-colors rounded-lg shrink-0" title="Xuất JSON" aria-label="Xuất ghi chú ra JSON"
                     @click.stop="handleExportEntry(entry)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                   </button>
+                  <!-- Unsave button (filled star → confirm) -->
+                  <button v-if="editingId !== entry.id" type="button"
+                    class="p-1.5 text-(--color-saved) hover:text-(--color-error-text) transition-colors rounded-lg shrink-0"
+                    title="Bỏ lưu" aria-label="Bỏ lưu ghi chú"
+                    @click.stop="confirmUnsaveId = confirmUnsaveId === entry.id ? null : entry.id">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Unsave confirm -->
+                <div v-if="confirmUnsaveId === entry.id" class="mt-2 bg-(--color-error-bg) text-(--color-error-text) rounded-lg p-2 text-xs flex items-center justify-between gap-2">
+                  <span>Bỏ lưu ghi chú này khỏi Sổ tay?</span>
+                  <div class="flex gap-2 shrink-0">
+                    <button type="button" class="btn btn-danger" @click.stop="handleUnsave(entry)">Bỏ lưu</button>
+                    <button type="button" class="btn btn-ghost btn-sm text-xs px-2" @click.stop="confirmUnsaveId = null">Hủy</button>
+                  </div>
                 </div>
 
                 <!-- Body -->
@@ -664,21 +506,21 @@ onActivated(async () => {
                       @cancel="cancelEdit" />
                     <!-- View mode -->
                     <div v-else class="pt-2 space-y-2">
-                      <p v-if="entry.category === 'Hỏi đáp'" class="text-sm text-(--color-text-secondary) leading-relaxed" v-html="entry.content" @click="handleQACitationClick"></p>
+                      <p v-if="isQAEntry(entry)" class="text-sm text-(--color-text-secondary) leading-relaxed" v-html="entry.content" @click="handleQACitationClick"></p>
                       <p v-else class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
                       <!-- Cited entries for Q&A notes -->
-                      <div v-if="entry.category === 'Hỏi đáp' && entry.userNote" class="space-y-0.5">
-                        <p class="text-xs text-(--color-text-muted) font-medium">Nguồn:</p>
+                      <div v-if="isQAEntry(entry) && entry.userNote" class="space-y-0.5">
+                        <p class="text-xs text-(--color-text-secondary) font-medium">Nguồn:</p>
                         <div class="flex flex-wrap gap-1">
-                          <button v-for="item in parseQACitedEntries(entry.userNote)" :key="item.id"
-                            class="badge badge-neutral text-xs hover:badge-accent transition-colors"
+                          <button v-for="item in parseQACitedEntries(entry.userNote)" :key="item.id" type="button"
+                            class="badge badge-accent text-xs hover:underline transition-colors"
                             @click="handleCitationClick(item.id)">
                             {{ item.title }}
                           </button>
                         </div>
                       </div>
                       <!-- User note -->
-                      <p v-if="entry.userNote && entry.category !== 'Hỏi đáp'" class="text-xs text-(--color-text-muted) italic border-l-2 border-(--color-border) pl-2">{{ entry.userNote }}</p>
+                      <p v-if="entry.userNote && !isQAEntry(entry)" class="text-xs text-(--color-text-secondary) italic border-l-2 border-(--color-border) pl-2">{{ entry.userNote }}</p>
                       <!-- Tags -->
                       <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
                         <span v-for="tag in entry.tags" :key="tag" class="badge text-xs capitalize" :class="getTagClass(tag)">
@@ -686,7 +528,7 @@ onActivated(async () => {
                         </span>
                       </div>
                       <!-- Source info -->
-                      <p class="text-xs text-(--color-text-muted)">
+                      <p class="text-xs text-(--color-text-secondary)">
                         {{ entry.source.author }}<template v-if="entry.source.postNumber"> · bài <button class="font-mono link" @click="openPostLink(entry)">#{{
                           entry.source.postNumber }}</button></template><span v-if="entry.source.timestamp"> · {{
                               formatTimestamp(entry.source.timestamp) }}</span>
@@ -710,19 +552,19 @@ onActivated(async () => {
      
     <!-- Knowledge tab (global store) -->
     <div v-show="notebookSubTab === 'knowledge'" class="space-y-3">
-      <p class="text-xs text-(--color-text-muted)">
+      <p class="text-xs text-(--color-text-secondary)">
         Kho kiến thức tổng hợp từ tất cả thớt đã trích xuất. Tab <strong>Hỏi đáp</strong> tra cứu trực tiếp trên kho này.
       </p>
 
       <!-- Knowledge entry list -->
       <div class="space-y-2">
         <div class="relative">
-          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input v-model="knowledgeSearchInput" type="text" placeholder="Tìm kiếm trong kho..." class="input text-xs w-full pl-8" />
         </div>
-        <p class="text-xs text-(--color-text-muted)">
+        <p class="text-xs text-(--color-text-secondary)">
           <template v-if="knowledgeSearchInput">{{ knowledgeFiltered.length }}/{{ knowledgeEntries.length }}</template>
           <template v-else>{{ knowledgeEntries.length }}</template>
           mục
@@ -745,7 +587,7 @@ onActivated(async () => {
 
       <div v-else-if="knowledgeFiltered.length === 0" class="card text-center py-8 space-y-2">
         <div class="text-2xl">{{ knowledgeEntries.length === 0 ? '🧠' : '🔍' }}</div>
-        <p class="text-xs text-(--color-text-muted)">
+        <p class="text-xs text-(--color-text-secondary)">
           {{ knowledgeEntries.length === 0 ? 'Chưa có kiến thức nào. Hãy trích xuất từ một thớt.' : 'Không tìm thấy mục nào khớp.' }}
         </p>
       </div>
@@ -753,7 +595,7 @@ onActivated(async () => {
       <div v-else class="space-y-4">
         <template v-for="group in knowledgeGrouped" :key="group.key">
           <div>
-            <h4 class="section-heading mb-2">
+            <h4 class="section-heading mb-1">
               {{ group.key }}
               <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
             </h4>
@@ -764,11 +606,13 @@ onActivated(async () => {
                 :entry="normalizeKnowledgeEntry(entry)"
                 :expanded="knowledgeExpandedIds.has(entry.id)"
                 :show-pin="true"
+                :show-delete="true"
                 :show-category="true"
                 :show-merged-info="true"
                 :show-post-link="true"
                 @toggle-expand="id => knowledgeExpandedIds.has(id) ? knowledgeExpandedIds.delete(id) : knowledgeExpandedIds.add(id)"
                 @toggle-pin="id => { const e = findKnowledgeEntry(id); if (e) pinToNotebook(e); }"
+                @delete="handleDeleteGlobal"
               />
             </div>
           </div>

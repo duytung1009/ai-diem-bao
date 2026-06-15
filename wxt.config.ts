@@ -9,10 +9,10 @@ export default defineConfig({
       name: 'Lội Thớt Hộ',
       description: 'Cho mấy thím lười lội page. Gom phe kháy đểu, bắt bài seeder, nhặt mẹo hay bỏ túi. Lưu local, tự mang key LLM, hổng có kèm sẵn nha!',
       permissions: isFirefox
-        ? ['storage', 'activeTab', 'tabs']
+        ? ['storage', 'activeTab', 'tabs', 'scripting']
         : ['storage', 'sidePanel', 'activeTab', 'scripting'],
       // host_permissions intentionally empty — LLM provider permissions are requested
-      // dynamically via chrome.permissions.request() at user gesture (save/test).
+      // dynamically via browser.permissions.request() at user gesture (save/test).
       // The wildcard patterns below serve as the allowlist for those requests.
       optional_host_permissions: ['https://*/*', 'http://*/*'],
       action: {},

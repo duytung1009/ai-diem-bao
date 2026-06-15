@@ -108,7 +108,7 @@ const allPostsForCTA = computed(() => {
   return cachedTopic.value.posts?.length ? cachedTopic.value.posts : cachedTopic.value.segments?.flatMap(s => s?.posts ?? []) ?? [];
 });
 
-function handleKnowledgeCTA(action: 'extract' | 'view' | 'restore') {
+function handleKnowledgeCTA(action: 'extract' | 'view') {
   if (action === 'extract') {
     // Segment-mode topics: navigate to knowledge tab so user uses the segment grid.
     // Legacy (non-segment) topics: ?extract=true triggers handleExtract automatically.
@@ -117,10 +117,8 @@ function handleKnowledgeCTA(action: 'extract' | 'view' | 'restore') {
     } else {
       router.push('/knowledge?extract=true');
     }
-  } else if (action === 'view') {
+  } else {
     router.push('/knowledge');
-  } else if (action === 'restore') {
-    router.push('/knowledge?restore=true');
   }
 }
 
@@ -349,8 +347,8 @@ async function handleConflictGoBack() {
                     <span v-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete !== false" class="w-1.5 h-1.5 rounded-full bg-(--color-success-text) shrink-0"
                       title="Đã tóm tắt" />
                     <span v-else-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete === false"
-                      class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Đã tóm tắt — có thể có bài viết mới" />
-                    <span v-else-if="segmentSummaries[i]?.posts?.length" class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+                      class="w-1.5 h-1.5 rounded-full bg-(--color-warning-text) shrink-0" title="Đã tóm tắt — có thể có bài viết mới" />
+                    <span v-else-if="segmentSummaries[i]?.posts?.length" class="w-1.5 h-1.5 rounded-full bg-(--color-warning-text) shrink-0"
                       title="Đã scrape, chưa tóm tắt" />
                   </button>
                 </div>
@@ -395,14 +393,6 @@ async function handleConflictGoBack() {
                     </span>
                     <ForwardLink @click="handleKnowledgeCTA('view')">
                       Xem trong tab Kiến thức
-                    </ForwardLink>
-                  </template>
-                  <template v-else-if="hasKnowledgeChunks">
-                    <span class="text-xs text-(--color-text-secondary)">
-                      Đã có dữ liệu kiến thức nhưng chưa lưu.
-                    </span>
-                    <ForwardLink @click="handleKnowledgeCTA('restore')">
-                      Khôi phục danh sách
                     </ForwardLink>
                   </template>
                 </div>
@@ -461,14 +451,6 @@ async function handleConflictGoBack() {
                     </span>
                     <ForwardLink @click="handleKnowledgeCTA('view')">
                       Xem trong tab Kiến thức
-                    </ForwardLink>
-                  </template>
-                  <template v-else-if="hasKnowledgeChunks">
-                    <span class="text-xs text-(--color-text-secondary)">
-                      Đã có dữ liệu kiến thức nhưng chưa lưu.
-                    </span>
-                    <ForwardLink @click="handleKnowledgeCTA('restore')">
-                      Khôi phục danh sách
                     </ForwardLink>
                   </template>
                 </div>

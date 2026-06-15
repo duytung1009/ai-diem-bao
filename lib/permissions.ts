@@ -8,39 +8,26 @@ export function originFromUrl(url: string): string | null {
 }
 
 export async function requestOriginPermission(origin: string): Promise<boolean> {
-  if (import.meta.env.DEV) return true;
-
-  return new Promise<boolean>((resolve) => {
-    chrome.permissions.request({ origins: [origin] }, (granted) => {
-      if (chrome.runtime.lastError) {
-        resolve(false);
-      } else {
-        resolve(granted);
-      }
-    });
-  });
+  try {
+    return await browser.permissions.request({ origins: [origin] });
+  } catch {
+    return false;
+  }
 }
 
 export async function requestOriginsPermission(origins: string[]): Promise<boolean> {
-  if (import.meta.env.DEV) return true;
-
-  return new Promise<boolean>((resolve) => {
-    chrome.permissions.request({ origins }, (granted) => {
-      if (chrome.runtime.lastError) {
-        resolve(false);
-      } else {
-        resolve(granted);
-      }
-    });
-  });
+  try {
+    return await browser.permissions.request({ origins });
+  } catch {
+    return false;
+  }
 }
 
 export async function hasOriginPermission(origin: string): Promise<boolean> {
-  if (import.meta.env.DEV) return true;
-  if (typeof chrome === 'undefined' || !chrome.permissions) return true;
-  return new Promise<boolean>((resolve) => {
-    chrome.permissions.contains({ origins: [origin] }, (result) => {
-      resolve(result);
-    });
-  });
+  if (!browser.permissions) return true;
+  try {
+    return await browser.permissions.contains({ origins: [origin] });
+  } catch {
+    return true;
+  }
 }

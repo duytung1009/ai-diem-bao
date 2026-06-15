@@ -290,15 +290,15 @@ async function toggleBookmark(topic: CachedTopic) {
           <!-- Bookmark filter toggle -->
           <button
             class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
-            :class="showBookmarkedOnly ? 'text-yellow-500' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
+            :class="showBookmarkedOnly ? 'text-(--color-saved)' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
             :title="showBookmarkedOnly ? 'Xem tất cả' : `Chỉ hiện đã đánh dấu${bookmarkCount > 0 ? ` (${bookmarkCount})` : ''}`"
             @click="showBookmarkedOnly = !showBookmarkedOnly"
           >
             <svg v-if="showBookmarkedOnly" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+              <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
             <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
           </button>
         </div>
@@ -437,22 +437,22 @@ async function toggleBookmark(topic: CachedTopic) {
                   class="absolute top-2 right-2 flex items-center gap-0.5"
                 >
                   <button
-                    class="p-1 transition-colors rounded"
+                    class="p-1 transition-colors rounded-lg"
                     :class="topic.bookmarked
-                      ? 'text-yellow-500'
-                      : 'text-(--color-text-muted) hover:text-yellow-500'"
+                      ? 'text-(--color-saved)'
+                      : 'text-(--color-text-muted) hover:text-(--color-saved)'"
                     title="Đánh dấu"
                     @click.stop="toggleBookmark(topic)"
                   >
                     <svg v-if="topic.bookmarked" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                      <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                     <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                   </button>
                   <button
-                    class="p-1 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded"
+                    class="p-1 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded-lg"
                     title="Xoá thớt"
                     @click.stop="confirmDelete(topic)"
                   >

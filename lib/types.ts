@@ -356,6 +356,7 @@ export interface NotebookEntry extends KnowledgeEntry {
   pinned?: number;      // 1 = ghim lên đầu (number để IDB index được)
   editedAt?: number;    // timestamp lần sửa cuối
   manual?: number;      // 1 = entry user tự tạo, không từ LLM extract
+  fromQA?: number;     // 1 = lưu từ câu trả lời Hỏi đáp
 }
 
 export interface NotebookEntryForQA {

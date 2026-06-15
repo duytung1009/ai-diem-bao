@@ -27,8 +27,12 @@
 | App title | `text-lg font-bold` |
 | Section heading | `text-sm font-semibold` |
 | Body text | `text-sm` |
-| Label/caption | `text-xs font-medium text-[var(--color-text-secondary)]` |
-| Muted hint | `text-xs text-[var(--color-text-muted)]` |
+| Label/caption | `text-xs font-medium text-(--color-text-secondary)` |
+| Muted hint (decorative only) | `text-xs text-(--color-text-muted)` |
+
+**Contrast rule (WCAG AA):**
+- `--color-text-secondary` đã được làm tối để đạt **≥4.5:1** trên cả `--color-bg-muted` lẫn `--color-bg-base` (light + dark). Đây là token mặc định cho **mọi text mang thông tin**: caption, label, author/timestamp, metadata, nội dung phụ.
+- `--color-text-muted` **không đạt AA** trên nền muted — chỉ dùng cho element **thuần trang trí** (chevron expand/collapse, icon resting state có hover rõ ràng). Không dùng cho text người đọc cần đọc được.
 
 ### Badges
 | Class | Dùng khi |
@@ -47,7 +51,7 @@
 ### Spacing conventions
 - Section spacing: `space-y-4`
 - Item spacing trong section: `space-y-2`
-- Padding container chính: `p-4`
+- Padding container chính (view root): `p-3`
 - Padding card/alert: `p-3`
 - Gap giữa buttons: `gap-2`
 
@@ -57,6 +61,48 @@
 - **Không dùng** `rounded`, `rounded-md` — chỉ `rounded-lg` hoặc `rounded-full`
 
 ### Colors
-- **Luôn dùng CSS variables**: `var(--color-*)` hoặc Tailwind arbitrary `[color:var(--color-*)]`
+- **Luôn dùng CSS variables**: `var(--color-*)` hoặc Tailwind arbitrary `[color:var(--color-*)]` / `text-(--color-*)`
 - **Không hard-code** `text-gray-600`, `bg-white`, v.v. trong code mới
 - Ngoại lệ: Tailwind semantic classes (`text-white` cho button text trên nền accent)
+- **Saved / bookmarked / pinned**: dùng token `--color-saved` (vàng gold), không dùng `text-yellow-500`/`text-amber-500`
+- **Tag danh mục kiến thức**: import `getTagClass` từ `@/lib/tag-styles` — không copy palette vào view
+
+## Icon-only buttons (a11y)
+
+Mọi button chỉ chứa icon (lưu, ghim, xóa, sửa, xuất, menu…) PHẢI có đủ:
+- `type="button"` — tránh submit form ngoài ý muốn
+- `:aria-label` (hoặc `aria-label`) mô tả hành động — title tooltip **không** thay được aria-label cho screen reader
+- Padding tối thiểu `p-1.5` — đạt touch target ~26px (≥24px floor). Không dùng `p-0.5`/`p-1`
+- Resting color: `text-(--color-text-secondary)` (không phải `-muted`), `hover:` đổi sang màu ngữ nghĩa (`--color-saved` cho lưu/ghim, `--color-error-text` cho xóa)
+
+```html
+<button type="button" class="p-1.5 rounded-lg text-(--color-text-secondary) hover:text-(--color-saved)"
+  :aria-label="saved ? 'Bỏ lưu' : 'Lưu'" :title="saved ? 'Bỏ lưu' : 'Lưu'" @click="...">
+  <svg class="w-3.5 h-3.5">…</svg>
+</button>
+```
+
+## Biểu tượng "lưu" thống nhất (star)
+
+Toàn app dùng **một** metaphor cho saved/bookmarked/pinned: icon **ngôi sao** (Heroicons star), tô màu `--color-saved` khi active. Không dùng cờ (flag), trái tim, hay bookmark cho cùng ngữ nghĩa này. Trash icon chỉ dành cho **xóa**, không dùng cho "bỏ lưu".
+
+## Inline confirm cho hành động destructive
+
+`window.confirm()` **bị chặn** trong sidepanel extension → không dùng. Với hành động phá hủy/khó hoàn tác (xóa, bỏ lưu, xóa tất cả), render một **hàng confirm inline** thay tại chỗ button gốc:
+
+```html
+<div v-if="confirmId === entry.id" class="flex items-center gap-2">
+  <span class="text-xs text-(--color-text-secondary)">Xác nhận?</span>
+  <button type="button" class="btn btn-danger btn-sm" @click="doDelete">Xóa</button>
+  <button type="button" class="btn btn-ghost btn-sm" @click="confirmId = null">Hủy</button>
+</div>
+```
+
+Đặt action destructive ở **rìa** cụm button (không kẹp giữa hai action an toàn) để giảm mis-click.
+
+## Nhãn "Nhóm theo" vs "Sắp xếp"
+
+- Control **gom nhóm** (group-by danh mục/tag) → nhãn **"Nhóm theo:"**
+- Control **đổi thứ tự** (sort theo ngày/tên) → nhãn **"Sắp xếp:"**
+
+Không dùng "Sắp xếp:" cho control thực chất là grouping.

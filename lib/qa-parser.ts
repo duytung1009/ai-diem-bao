@@ -11,7 +11,7 @@ export function parseAnswerHtml(text: string, selectedEntryIds: string[]): strin
     .replace(/\[(\d+)\]/g, (_, n) => {
       const entryId = selectedEntryIds[parseInt(n, 10) - 1];
       if (!entryId) return `[${n}]`;
-      return `<button class="inline-flex items-center text-xs text-(--color-secondary) hover:underline font-medium" data-entry-id="${entryId}">[${n}]</button>`;
+      return `<button type="button" class="inline-flex items-center text-xs text-(--color-secondary) hover:underline font-medium" data-entry-id="${entryId}" aria-label="Xem nguồn ${n}">[${n}]</button>`;
     })
     .replace(/\n/g, '<br>');
 }

@@ -35,7 +35,7 @@ export default defineBackground(() => {
   // Migration flag: after update, user may need to re-grant LLM provider permissions
   // since static host_permissions were removed. The flag is read by SettingsView to
   // show a banner with "Cấp quyền" button.
-  chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  browser.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'update') {
       await browser.storage.local.set({ [STORAGE_KEYS.NEEDS_PERMISSION_REAUTH]: true });
     }
@@ -114,23 +114,25 @@ export default defineBackground(() => {
 
         case 'FETCH_HTML': {
           const { url } = message.payload as { url: string };
-          const origin = new URL(url).origin + '/*';
-          chrome.permissions.contains({ origins: [origin] }, (hasPerm) => {
+          (async () => {
+            const origin = new URL(url).origin + '/*';
+            const hasPerm = await browser.permissions.contains({ origins: [origin] }).catch(() => false);
             if (!hasPerm) {
               sendResponse({ needPermission: true, origin: new URL(url).origin + '/*' });
               return;
             }
-            fetch(url, { credentials: 'include' })
-              .then(async (res) => {
-                if (!res.ok) {
-                  sendResponse({ ok: false, status: res.status, html: '', finalUrl: res.url });
-                  return;
-                }
-                const html = await res.text();
-                sendResponse({ ok: true, status: res.status, html, finalUrl: res.url });
-              })
-              .catch((err) => sendResponse({ ok: false, status: 0, html: '', error: String(err) }));
-          });
+            try {
+              const res = await fetch(url, { credentials: 'include' });
+              if (!res.ok) {
+                sendResponse({ ok: false, status: res.status, html: '', finalUrl: res.url });
+                return;
+              }
+              const html = await res.text();
+              sendResponse({ ok: true, status: res.status, html, finalUrl: res.url });
+            } catch (err) {
+              sendResponse({ ok: false, status: 0, html: '', error: String(err) });
+            }
+          })();
           return true;
         }
 
@@ -413,7 +415,7 @@ export default defineBackground(() => {
         case 'ADD_USER_FORUM': {
           const forum = message.payload as UserForum;
           (async () => {
-            await chrome.scripting.registerContentScripts([{
+            await browser.scripting.registerContentScripts([{
               id: forum.id,
               matches: [forum.matchPattern],
               js: ['content-scripts/content.js'],
@@ -434,8 +436,8 @@ export default defineBackground(() => {
         case 'REMOVE_USER_FORUM': {
           const { id, origins } = message.payload as { id: string; origins: string[] };
           (async () => {
-            await chrome.scripting.unregisterContentScripts({ ids: [id] }).catch(() => {});
-            await chrome.permissions.remove({ origins }).catch(() => {});
+            await browser.scripting.unregisterContentScripts({ ids: [id] }).catch(() => {});
+            await browser.permissions.remove({ origins }).catch(() => {});
             const result = await browser.storage.local.get(STORAGE_KEYS.USER_FORUMS);
             const forums = (result[STORAGE_KEYS.USER_FORUMS] as UserForum[]) || [];
             await browser.storage.local.set({
@@ -448,28 +450,28 @@ export default defineBackground(() => {
 
         case 'FETCH_FORUM_LIST': {
           const req = message.payload as { forumUrl: string; page?: number };
-          const cleanUrl = req.forumUrl.replace(/\/$/, '');
-          const pageUrl = req.page && req.page > 1 ? `${cleanUrl}/page-${req.page}` : cleanUrl;
-          const origin = new URL(req.forumUrl).origin + '/*';
+          (async () => {
+            const cleanUrl = req.forumUrl.replace(/\/$/, '');
+            const pageUrl = req.page && req.page > 1 ? `${cleanUrl}/page-${req.page}` : cleanUrl;
+            const origin = new URL(req.forumUrl).origin + '/*';
 
-          chrome.permissions.contains({ origins: [origin] }, (hasPerm) => {
+            const hasPerm = await browser.permissions.contains({ origins: [origin] }).catch(() => false);
             if (!hasPerm) {
               sendResponse({ needPermission: true, origin: new URL(req.forumUrl).origin + '/*', forumUrl: req.forumUrl });
               return;
             }
-            fetch(pageUrl, { credentials: 'include' })
-              .then(async (res) => {
-                if (!res.ok) {
-                  sendResponse({ ok: false, status: res.status, html: '', forumUrl: req.forumUrl, errors: [`HTTP ${res.status}`] });
-                  return;
-                }
-                const html = await res.text();
-                sendResponse({ ok: true, status: res.status, html, forumUrl: req.forumUrl, errors: [] });
-              })
-              .catch((err) => {
-                sendResponse({ ok: false, status: 0, html: '', forumUrl: req.forumUrl, errors: [String(err)] });
-              });
-          });
+            try {
+              const res = await fetch(pageUrl, { credentials: 'include' });
+              if (!res.ok) {
+                sendResponse({ ok: false, status: res.status, html: '', forumUrl: req.forumUrl, errors: [`HTTP ${res.status}`] });
+                return;
+              }
+              const html = await res.text();
+              sendResponse({ ok: true, status: res.status, html, forumUrl: req.forumUrl, errors: [] });
+            } catch (err) {
+              sendResponse({ ok: false, status: 0, html: '', forumUrl: req.forumUrl, errors: [String(err)] });
+            }
+          })();
           return true;
         }
 
@@ -543,18 +545,18 @@ async function migrateNormalizedUrls(): Promise<void> {
 }
 
 async function reRegisterUserForums(): Promise<void> {
-  if (!chrome.scripting?.registerContentScripts) return; // Firefox MV2
+  if (!browser.scripting?.registerContentScripts) return;
 
   const result = await browser.storage.local.get(STORAGE_KEYS.USER_FORUMS);
   const forums = (result[STORAGE_KEYS.USER_FORUMS] as UserForum[]) || [];
   if (forums.length === 0) return;
 
-  const registered = await chrome.scripting.getRegisteredContentScripts();
+  const registered = await browser.scripting.getRegisteredContentScripts();
   const registeredIds = new Set(registered.map(s => s.id));
 
   for (const forum of forums) {
     if (registeredIds.has(forum.id)) continue;
-    await chrome.scripting.registerContentScripts([{
+    await browser.scripting.registerContentScripts([{
       id: forum.id,
       matches: [forum.matchPattern],
       js: ['content-scripts/content.js'],

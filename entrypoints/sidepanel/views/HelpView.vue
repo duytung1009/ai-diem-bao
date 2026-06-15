@@ -37,7 +37,7 @@ const tabs = [
         <div class="flex items-center gap-2">
           <span class="badge badge-accent">1.1</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">Gemini API (Google AI Studio)</h3>
-          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
+          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5">Khuyến nghị</span>
         </div>
         <div class="alert alert-success text-xs">
           💡 Nên dùng model <strong>Gemma 4 / Gemma 3</strong> (miễn phí, rate limit cao ~1.500 requests/ngày) — phù hợp sử dụng thường xuyên. Các model Gemini (trả phí) dành cho nhu cầu chất lượng cao hơn.
@@ -88,7 +88,7 @@ const tabs = [
         <div class="flex items-center gap-2">
           <span class="badge badge-accent">1.2</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">Local LLM (LM Studio / Ollama)</h3>
-          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
+          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5">Khuyến nghị</span>
         </div>
         <ol class="space-y-1.5 pl-1">
           <li class="flex gap-2 text-xs text-(--color-text-secondary)">
@@ -149,7 +149,7 @@ const tabs = [
         <div class="flex items-center gap-2">
           <span class="badge badge-accent">1.3</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">OpenRouter (multi-model)</h3>
-          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Khuyến nghị</span>
+          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5">Khuyến nghị</span>
         </div>
         <div class="alert alert-info text-xs">
           Có các model <code class="font-mono">:free</code> hoàn toàn miễn phí, không cần chạy local, không cần thẻ tín dụng. Model <code class="font-mono">:free</code> có rate limit nhưng đủ cho nhu cầu dùng thử.
@@ -239,7 +239,7 @@ const tabs = [
         <div class="flex items-center gap-2">
           <span class="badge badge-accent">1.5</span>
           <h3 class="text-xs font-semibold text-(--color-text-primary)">DeepSeek API</h3>
-          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Giá rẻ</span>
+          <span class="badge bg-(--color-success-text) text-white text-[10px] font-bold px-1.5 py-0.5">Giá rẻ</span>
         </div>
         <div class="alert alert-info text-xs">
           DeepSeek V4 Flash có giá chỉ $0.14/1M input, $0.28/1M output — rẻ hơn GPT-4o-mini. Hỗ trợ 1M context window, output lên đến 384K tokens. Dùng OpenAI-compatible API.

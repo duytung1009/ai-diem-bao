@@ -30,7 +30,7 @@ onMounted(async () => {
   browser.tabs.onActivated.addListener(tabActivatedListener);
 
   tabUpdatedListener = async (tabId, changeInfo) => {
-    if (changeInfo.status !== 'complete' && !changeInfo.url) return;
+    if (changeInfo.status !== 'complete') return;
     const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (activeTab?.id === tabId) {
       await detectActiveTabTopic();
@@ -95,6 +95,7 @@ async function detectActiveTabTopic() {
     }
   } catch (err) {
     console.info('[detectActiveTabTopic] Error detecting topic on active tab:', err);
+    store.setActiveTab(null, null);
   }
 }
 
@@ -237,9 +238,9 @@ const topTabs = [
 const subTabs = [
   { value: 'hub', label: 'Danh sách' },
   { value: 'summary', label: 'Tóm tắt' },
-  { value: 'knowledge', label: 'Kiến thức' },
   { value: 'analysis', label: 'Phân tích' },
   { value: 'research', label: 'Tra cứu' },
+  { value: 'knowledge', label: 'Kiến thức' },
 ];
 
 const activeSubTab = computed(() => (route.name as string) || 'hub');

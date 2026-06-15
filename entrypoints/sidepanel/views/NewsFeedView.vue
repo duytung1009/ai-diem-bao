@@ -188,8 +188,8 @@ onMounted(async () => {
 
     <div v-if="loading" class="space-y-2">
       <div v-for="i in 5" :key="i" class="card animate-pulse-soft space-y-1.5">
-        <div class="h-3.5 bg-(--color-bg-muted) rounded w-3/4"></div>
-        <div class="h-2.5 bg-(--color-bg-muted) rounded w-1/2"></div>
+        <div class="h-3.5 bg-(--color-bg-muted) rounded-lg w-3/4"></div>
+        <div class="h-2.5 bg-(--color-bg-muted) rounded-lg w-1/2"></div>
       </div>
     </div>
 
@@ -212,7 +212,7 @@ onMounted(async () => {
               <span v-if="item.thread.hasPoll" class="text-(--color-text-muted) text-xs">📊</span>
             </div>
 
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--color-text-secondary) mt-0.5">
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--color-text-secondary) mt-0.5">
               <span>{{ item.thread.author }}</span>
               <span class="text-(--color-border-strong)">|</span>
               <span>{{ compactNumber(item.thread.replyCount) }} replies</span>

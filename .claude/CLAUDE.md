@@ -9,60 +9,11 @@
 | Tier 2 — Standard | Sonnet | Implementation, bug logging, review 50-200 LOC, 2-3 files | Thêm API endpoint, filter/sort, bug fix routine |
 | Tier 3 — Deep | Opus | Planning phức tạp, architecture, review > 200 LOC, cross-module, security | Refactor data flow, đổi cache schema, batch planning |
 
-## Planning Template (PRD format — dùng với `task-master parse-prd`)
+## Planning Template
 
-Planning files phải viết theo format PRD để có thể parse bằng `task-master parse-prd --append`. Task-master sẽ đọc file này và tự động generate tasks + subtasks.
+Gọi `/prd-template` để lấy PRD format đầy đủ (Overview, Goals, Requirements, Technical Considerations, Decision Log, Degraded Mode, Batch Planning).
 
-```markdown
-# [Tên feature/bugfix]
-
-## Overview
-Mô tả ngắn gọn: mục tiêu, scope, lý do cần làm.
-
-## Goals
-- Goal 1 (measurable outcome)
-- Goal 2
-
-## Requirements
-
-### [Component / Module A]
-- Requirement 1: mô tả chi tiết
-- Requirement 2
-
-### [Component / Module B]
-- Requirement 3
-
-## Technical Considerations
-- Affected files/modules
-- Dependencies giữa components
-- Edge cases cần xử lý
-- Constraints (performance, backward compat, v.v.)
-
-## Implementation Notes
-Gợi ý cụ thể cho agent implement: patterns cần dùng, files cần sửa, thứ tự ưu tiên.
-
-## Test Plan
-- Cách verify feature hoạt động đúng
-- Edge cases cần test thủ công
-
-## Decision Log
-
-### Quyết định 1: [Tên quyết định]
-- **Đã chọn:** [Approach được chọn]
-- **Lý do:** [Tại sao chọn cái này]
-- **Đã cân nhắc nhưng loại:**
-  - [Alternative A] — loại vì [lý do]
-- **Điều kiện thay đổi:** [Khi nào nên xem xét lại]
-```
-
-**Decision Log BẮT BUỘC** trong mọi planning file. Khi Sonnet implement, tham chiếu Decision Log để hiểu lý do đằng sau mỗi approach. Nếu gặp tình huống không cover → tag `[DECISION_NEEDED]` kèm reasoning và tiếp tục.
-
-## Degraded Mode (khi Opus bị rate limit)
-- Dùng Sonnet với template đầy đủ
-- BẮT BUỘC đọc Decision Log từ planning file liên quan
-- Tag file với `[DRAFT_PENDING_OPUS]`
-- Với decisions mới chưa có trong log: tag `[DECISION_NEEDED]` kèm reasoning
-- Ghi vào MEMORY.md section `Pending Opus Review`
+**Decision Log BẮT BUỘC** trong mọi planning file. Tag `[DECISION_NEEDED]` khi gặp tình huống không có trong log.
 
 ## Task Master — Quản lý task
 
@@ -157,65 +108,13 @@ Output: tier, lý do, và danh sách concerns cần review.
    ```
 3. Không cần cập nhật MEMORY.md "Review Files" — link đã có trong task notes
 
-### QA 2 Phase (sau khi Tùng test)
+### QA 2 Phase + Batch Planning
 
-**Phase A — Bug Hunting (Sonnet):**
-- Input: notes testing của Tùng
-- Output: thêm bug tasks vào task-master (`task-master add-task --prompt "..."`)
-- Theo format `template/bug_report.md`
+Xem chi tiết trong `/review-template` (QA 2 Phase workflow) và `/prd-template` (Batch Planning workflow).
 
-**Phase B — Strategic Review (Opus):**
-- Input: feature vừa hoàn thành + bug list từ Phase A
-- Đánh giá: improvements, feature mới phát sinh, technical debt, priority ranking
-- Items feed ngược vào task-master + `planning/backlog.md`
+## Review Template
 
-### Batch Planning (khi có 2-3 feature liên quan)
-
-1. Gom feature vào `planning/backlog.md` theo nhóm module
-2. Khi đủ 2-3 feature liên quan → gọi Opus 1 lần với prompt:
-   ```
-   Lên kế hoạch implementation cho nhóm feature sau.
-   Chú ý: shared dependencies, thứ tự tối ưu, shared components, potential conflicts.
-   ```
-3. Output: `planning/yyyyMMdd_HHmm_batch_tên_nhóm.md` theo PRD format, gồm:
-   - Dependency graph + implementation order
-   - Shared components cần tạo trước
-   - Requirements chi tiết từng feature (theo Planning Template)
-4. Parse PRD thành tasks:
-   ```bash
-   task-master parse-prd planning/yyyyMMdd_HHmm_batch_tên_nhóm.md --append
-   ```
-5. Cập nhật task dependencies trong tasks.json nếu cần
-6. Cập nhật backlog: chuyển items sang "Đã batch plan"
-
-## Review Template (BẮT BUỘC cho mọi review file)
-
-### Metadata
-- **File reviewed:** [path]
-- **Review tier:** tier1 | tier2 | tier3
-- **Model used:** sonnet | opus
-- **Diff size:** [LOC changed]
-
-### Checklist
-| Category | Status | Notes |
-|----------|--------|-------|
-| Logic correctness | ✅/❌/⚠️/N/A | |
-| Edge cases covered | ✅/❌/⚠️/N/A | |
-| Error handling | ✅/❌/⚠️/N/A | |
-| Performance concerns | ✅/❌/⚠️/N/A | |
-| Security implications | ✅/❌/⚠️/N/A | |
-| Consistency with patterns | ✅/❌/⚠️/N/A | |
-| Type safety | ✅/❌/⚠️/N/A | |
-| Test coverage | ✅/❌/⚠️/N/A | |
-
-### Issues Found
-| # | Severity | Category | Description | Suggestion |
-|---|----------|----------|-------------|------------|
-| 1 | critical/major/minor/nit | [category] | [mô tả] | [gợi ý fix] |
-
-### Summary
-- **Overall:** approve / request-changes / needs-opus-review
-- **Key concern:** [1 dòng tóm tắt concern chính nếu có]
+Gọi `/review-template` để lấy template đầy đủ (metadata, checklist 8 categories, issues table, QA 2-phase workflow).
 
 ## Cập nhật MEMORY.md
 

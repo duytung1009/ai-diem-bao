@@ -12,7 +12,7 @@ const router = useRouter();
 
 <template>
   <button
-    class="btn-ghost inline-flex items-center gap-1 text-xs"
+    class="btn btn-ghost btn-sm text-xs inline-flex items-center gap-1"
     @click="router.push(to)"
   >
     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

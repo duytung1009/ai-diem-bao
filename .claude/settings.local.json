@@ -75,7 +75,10 @@
       "Bash(task-master analyze-complexity *)",
       "Bash(task-master complexity-report *)",
       "Bash(task-master expand *)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Tung\\\\.claude\\\\skills\\\\tm-parse-and-expand\")",
+      "Bash(python -c ' *)",
+      "Bash(task-master set-status *)"
     ]
   },
   "model": "opusplan"

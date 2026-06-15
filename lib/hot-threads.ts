@@ -38,9 +38,10 @@ function hoursAgo(dateStr: string, now: Date): number {
 export function filterToday(
   threads: ForumThreadSummary[],
   maxHoursAgo: number = DEFAULT_MAX_AGE_HOURS,
+  now?: Date,
 ): ForumThreadSummary[] {
-  const now = new Date();
-  return threads.filter((t) => hoursAgo(t.lastPostTime, now) <= maxHoursAgo);
+  const ref = now ?? new Date();
+  return threads.filter((t) => hoursAgo(t.lastPostTime, ref) <= maxHoursAgo);
 }
 
 export function scoreThreads(
@@ -91,7 +92,7 @@ export function getTopThreads(
   const weights = settings?.weights ?? DEFAULT_WEIGHTS;
   const thresholds = settings?.heatThresholds ?? DEFAULT_THRESHOLDS;
 
-  const recent = filterToday(threads, maxAge);
+  const recent = filterToday(threads, maxAge, now);
   const scored = scoreThreads(recent, now, weights, undefined, thresholds);
   return scored.slice(0, topN);
 }

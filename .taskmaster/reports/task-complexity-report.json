@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-06-03T06:14:52.794Z",
+		"generatedAt": "2026-06-14T10:44:01.205Z",
 		"tasksAnalyzed": 10,
-		"totalTasks": 10,
+		"totalTasks": 41,
 		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 358,
-			"taskTitle": "Thêm types và interfaces cho tính năng Điểm báo",
+			"taskId": 389,
+			"taskTitle": "Xây dựng module stopword tiếng Việt",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ, có thể thực hiện trực tiếp.",
+			"reasoning": "Tương đối đơn giản, chỉ cần tạo file export Set, dựa trên tài liệu có sẵn. Cần chú ý đến việc không loại bỏ từ kỹ thuật, nhưng không phức tạp."
+		},
+		{
+			"taskId": 390,
+			"taskTitle": "Xây dựng hàm tokenizeForSearch",
 			"complexityScore": 2,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Công việc đơn giản chỉ thêm các khai báo TypeScript, không có logic xử lý."
+			"expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
+			"reasoning": "Hàm đơn giản, chỉ gọi tokenize và lọc stopword. Không có xử lý phức tạp."
 		},
 		{
-			"taskId": 359,
-			"taskTitle": "Xây dựng Forum Lister Scraper cho XF2",
+			"taskId": 391,
+			"taskTitle": "Xây dựng hàm buildBm25Index",
 			"complexityScore": 5,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Yêu cầu phân tích DOM XF2 và trích xuất nhiều trường, nhưng có thể thực hiện trong một hàm. Có thể tách thành các hàm nhỏ nếu cần."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Chia task thành: 1) Xây dựng cấu trúc dữ liệu Bm25Index và tính df, độ dài field; 2) Xử lý các trường hợp đặc biệt (field null, rỗng) và viết test đơn vị cho từng phần.",
+			"reasoning": "Cần xây dựng index duyệt nhiều document, tính toán df và avgFieldLength, có nhiều edge case. Có thể chia để dễ quản lý và kiểm thử."
 		},
 		{
-			"taskId": 360,
-			"taskTitle": "Xây dựng Hot Thread Scoring Engine",
-			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Thuật toán tính điểm và lọc đơn giản, có thể viết trong một file duy nhất."
-		},
-		{
-			"taskId": 361,
-			"taskTitle": "Thêm background handler cho FETCH_FORUM_LIST",
-			"complexityScore": 5,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Xử lý message background, fetch HTML và parse, có kiểm soát lỗi, nhưng không quá phức tạp."
-		},
-		{
-			"taskId": 362,
-			"taskTitle": "Tạo component NewsFeedView với layout cơ bản",
+			"taskId": 392,
+			"taskTitle": "Xây dựng hàm scoreBm25",
 			"complexityScore": 6,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Component Vue có nhiều state, gọi API background, hiển thị danh sách, tích hợp scoring. Độ phức tạp trung bình."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Chia thành: 1) Triển khai công thức BM25 cơ bản với các tham số k1, b, IDF; 2) Thêm field boost, xử lý trường hợp df=0, field rỗng và tối ưu hiệu năng.",
+			"reasoning": "Công thức phức tạp, yêu cầu xử lý nhiều trường hợp biên, tham số và field weight. Cần kiểm tra kỹ lưỡng."
 		},
 		{
-			"taskId": 363,
-			"taskTitle": "Thêm route /newsfeed và tab 'Điểm báo' trong điều hướng",
+			"taskId": 393,
+			"taskTitle": "Xây dựng hàm rankBm25",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ, có thể viết trực tiếp dựa vào các hàm đã có.",
+			"reasoning": "Hàm tích hợp, chủ yếu gọi các hàm khác, xử lý fallback. Đơn giản."
+		},
+		{
+			"taskId": 394,
+			"taskTitle": "Xây dựng module synonym tiếng Việt (tùy chọn)",
 			"complexityScore": 2,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Cấu hình route và thêm tab đơn giản, chỉ vài dòng code."
+			"expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
+			"reasoning": "Tạo map và hàm expand, rất đơn giản. Không phụ thuộc nhiều."
 		},
 		{
-			"taskId": 364,
-			"taskTitle": "Cài đặt auto-detect forum từ URL tab đang active",
-			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Sử dụng chrome.tabs API, message passing, URL parsing. Có thể tách thành composable nhưng vẫn đơn giản."
-		},
-		{
-			"taskId": 365,
-			"taskTitle": "Hoàn thiện giao diện: relative time, heat indicators, loading skeleton, empty/error states",
-			"complexityScore": 4,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Chia thành 4 subtask: 1) RelativeTime component, 2) HeatIndicator component, 3) SkeletonLoader component, 4) EmptyErrorState component. Mỗi subtask có thể phát triển độc lập.",
-			"reasoning": "Nhiều cải tiến UI riêng biệt, có thể phát triển song song dưới dạng các component nhỏ."
-		},
-		{
-			"taskId": 366,
-			"taskTitle": "Triển khai Forum Lister Scraper cho XF1",
-			"complexityScore": 4,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Tương tự task 359 nhưng với DOM XF1. Cần nghiên cứu selectors, nhưng có thể sử dụng pattern có sẵn."
-		},
-		{
-			"taskId": 367,
-			"taskTitle": "Tích hợp cài đặt News Feed vào Settings",
+			"taskId": 395,
+			"taskTitle": "Tích hợp BM25 vào useNotebookQA",
 			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Chia thành: 1) Sửa logic trong useNotebookQA để sử dụng rankBm25; 2) Kiểm thử tích hợp và đảm bảo không ảnh hưởng chức năng cũ.",
+			"reasoning": "Cần hiểu code hiện tại, thay thế đúng vị trí, import module, và giữ nguyên behavior. Có thể ảnh hưởng đến các phần khác nên cần kiểm tra kỹ."
+		},
+		{
+			"taskId": 396,
+			"taskTitle": "Viết unit test cho lexical-search và stopwords",
+			"complexityScore": 3,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Không cần mở rộng",
-			"reasoning": "Mở rộng type, thêm UI settings, lưu storage.sync, kết nối với scoring engine. Độ phức tạp trung bình."
+			"expansionPrompt": "Task viết test, không cần chia nhỏ.",
+			"reasoning": "Viết test cho các hàm đã xây dựng, dựa trên test strategy có sẵn. Có thể thực hiện theo từng module nhưng gộp chung vào một file test."
+		},
+		{
+			"taskId": 397,
+			"taskTitle": "Kiểm tra hồi quy và chạy thủ công",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ.",
+			"reasoning": "Chạy lại bộ test và thử nghiệm thủ công. Công việc kiểm thử đơn giản."
+		},
+		{
+			"taskId": 398,
+			"taskTitle": "Dọn dẹp code và cập nhật decision log",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task không cần chia nhỏ.",
+			"reasoning": "Xóa code thừa, thêm comment deprecated, kiểm tra build. Công việc nhẹ nhàng."
 		}
 	]
 }

@@ -367,6 +367,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     const newChunks: KnowledgeChunk[] = [...existingChunks];
     totalChunks.value = totalExtracts;
     let truncatedCount = 0;
+    const newEntriesForGlobal: KnowledgeEntry[] = [];
 
     const topicSegments = cachedTopic.value?.segments ?? [];
 
@@ -399,6 +400,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       const chunkEntries = enrichEntries(
         ((llmResult.data as { entries?: KnowledgeEntry[] })?.entries) ?? [],
       );
+      newEntriesForGlobal.push(...chunkEntries);
       const chunkTokens = chunkPosts.reduce(
         (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
         0,
@@ -422,6 +424,14 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
 
       // Persist full set: prefix (other segments) + this run's chunks
       await persistChunks([...prefixChunks, ...newChunks], guardId, topicUrl);
+    }
+
+    // Write per-chunk entries to global knowledge store so they appear in Sổ tay → Kiến thức
+    if (newEntriesForGlobal.length > 0 && !knowledgeGuard.isStale(guardId)) {
+      sendMessage('INSERT_KNOWLEDGE_WITH_DEDUP', {
+        entries: newEntriesForGlobal,
+        topic: { url: topicUrl, title: topicTitle },
+      }).catch((err) => console.warn('[runChunkExtraction] Global knowledge insert failed:', err));
     }
 
     return { allChunks: newChunks, truncatedCount };
@@ -488,6 +498,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       knowledgeChunks: [chunk],
       lastKnowledgePostNumber: chunk.endPostNumber,
     }).catch(() => {});
+    sendMessage('INSERT_KNOWLEDGE_WITH_DEDUP', { entries: newEntries, topic: { url: topicUrl, title: topicTitle } }).catch((err) => console.warn('[runDirectExtract] Global knowledge insert failed:', err));
   }
 
   function updateReduceStepLabel(label: string): void {
@@ -627,6 +638,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
       knowledgeChunks: chunks,
       lastKnowledgePostNumber: chunks[chunks.length - 1].endPostNumber,
     }).catch(() => {});
+    sendMessage('INSERT_KNOWLEDGE_WITH_DEDUP', { entries: finalEntries, topic: { url: topicUrl, title: cachedTopic.value?.title ?? '' } }).catch((err) => console.warn('[runReducePhase] Global knowledge insert failed:', err));
   }
 
   // --- Public orchestration functions ---
@@ -841,6 +853,11 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
+  /** Re-run reduce on existing knowledgeChunks to regenerate the final knowledge list. */
+  async function reExtractAllFromSegments(): Promise<void> {
+    await runReducePhaseManual();
+  }
+
   async function handleClearKnowledgeData() {
     await optimisticUpdate({
       knowledgeChunks: [],
@@ -852,14 +869,14 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     error.value = '';
   }
 
+  // Notebook is the single source of truth for `saved` (F41). Update the local
+  // flag for instant UI, then upsert/remove the notebook entry. On reload the
+  // flag is re-derived from the notebook (see KnowledgeView.applySavedFlag).
   async function toggleSave(entry: KnowledgeEntry) {
     const next = !entry.saved;
-    const updated = entries.value.map(e =>
+    entries.value = entries.value.map(e =>
       e.id === entry.id ? { ...e, saved: next } : e
     ) as KnowledgeEntry[];
-    entries.value = updated;
-    const saved = updated.filter(e => e.saved);
-    await optimisticUpdate({ knowledgeEntries: saved });
 
     const topic = cachedTopic.value;
     if (next && topic) {
@@ -876,31 +893,6 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
-  async function saveAll() {
-    const unsaved = entries.value.filter(e => !e.saved);
-    if (unsaved.length === 0) return;
-
-    const updated = entries.value.map(e =>
-      e.saved ? e : { ...e, saved: true }
-    ) as KnowledgeEntry[];
-    entries.value = updated;
-
-    await optimisticUpdate({ knowledgeEntries: updated });
-
-    const topic = cachedTopic.value;
-    if (!topic) return;
-
-    for (const entry of unsaved) {
-      const notebookEntry: NotebookEntry = {
-        ...entry,
-        saved: true,
-        sourceTopicUrl: topic.url,
-        sourceTopicTitle: topic.title,
-        savedAt: Date.now(),
-      };
-      sendMessageQuiet('UPSERT_NOTEBOOK_ENTRY', notebookEntry);
-    }
-  }
 
   async function handleDelete(entry: KnowledgeEntry) {
     const updated = entries.value.filter(e => e.id !== entry.id) as KnowledgeEntry[];
@@ -1092,7 +1084,6 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     handleCancel,
     handleClearKnowledgeData,
     toggleSave,
-    saveAll,
     handleDelete,
     handleClearTracking,
     progressPercent,
@@ -1107,6 +1098,7 @@ export function useKnowledge(store: ReturnType<typeof useTopicStore>) {
     reExtractSegment,
     runReducePhaseManual,
     extractAllSegments,
+    reExtractAllFromSegments,
     /** @deprecated Gates handleExtract() — use extractAllSegments() for segment-mode topics. */
     onExtractClick() {
       const est = estimatedExtractCost.value;

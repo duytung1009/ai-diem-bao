@@ -47,6 +47,7 @@ const {
   loadTopicData, handleCancel,
   handleSummarizeSegment, generateOverallSummary, handleSegmentUpdate, handleAutoSummarizeAll,
   hasPartialScrape,
+  pendingPermissionOrigin, handleGrantPermission,
 } = useSummarize(store);
 const { getTaskState } = useLLM();
 const { showTrustBadges, loadSetting: loadSeederSetting } = useSeederDetection();
@@ -252,6 +253,12 @@ async function handleConflictGoBack() {
 
         <!-- Error -->
         <ErrorDisplay v-if="error" :message="error" action="none" />
+
+        <!-- Permission prompt -->
+        <div v-if="pendingPermissionOrigin" class="alert alert-warning text-xs flex items-center justify-between gap-2 mt-2">
+          <span>Cần cấp quyền truy cập <strong class="text-(--color-text-primary)">{{ pendingPermissionOrigin }}</strong> để tải nội dung từ forum này.</span>
+          <button class="btn btn-accent btn-xs shrink-0" @click="handleGrantPermission()">Cấp quyền</button>
+        </div>
 
         <!-- Page scraping warnings -->
         <div v-if="scrapingWarnings.length > 0" class="text-xs alert alert-warning space-y-1">
@@ -474,7 +481,6 @@ async function handleConflictGoBack() {
                   </svg>
                   Tóm tắt toàn bộ
                 </button>
-                <p class="text-xs text-(--color-text-muted)">Thớt dài, thời gian tóm tắt có thể lâu</p>
               </div>
             </template>
 

@@ -128,7 +128,7 @@ const displayMessage = computed(() => {
       class="w-full btn btn-sm btn-ghost"
       @click="$emit('cancel')"
     >
-      Huỷ
+      Hủy
     </button>
   </div>
 </template>

@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue';
+import { onMounted, onUnmounted, computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { DetectResult, CachedTopic } from '@/lib/types';
 import { normalizeUrl, isSameTopicUrl } from '@/lib/cache-manager';
 import { sendMessage } from '@/lib/messaging';
+import { hasOriginPermission, requestOriginPermission } from '@/lib/permissions';
 import { useTopicStore } from './composables/useTopicStore';
 import { useTheme } from './composables/useTheme';
 import TopicMeta from './components/TopicMeta.vue';
 import PillTabs from './components/PillTabs.vue';
+import { PermissionRequiredError } from '@/lib/scrapers/page-loader';
 
 const route = useRoute();
 const router = useRouter();
 const store = useTopicStore();
 const { loadTheme } = useTheme();
 
+const pendingDetectOrigin = ref('');
 let tabActivatedListener: ((activeInfo: { tabId: number }) => void) | null = null;
-let tabUpdatedListener: ((tabId: number, changeInfo: { status?: string }) => void) | null = null;
+let tabUpdatedListener: ((tabId: number, changeInfo: { status?: string; url?: string }) => void) | null = null;
 
 onMounted(async () => {
   await loadTheme();
@@ -27,7 +30,7 @@ onMounted(async () => {
   browser.tabs.onActivated.addListener(tabActivatedListener);
 
   tabUpdatedListener = async (tabId, changeInfo) => {
-    if (changeInfo.status !== 'complete') return;
+    if (changeInfo.status !== 'complete' && !changeInfo.url) return;
     const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (activeTab?.id === tabId) {
       await detectActiveTabTopic();
@@ -77,11 +80,12 @@ async function detectActiveTabTopic() {
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
+    pendingDetectOrigin.value = '';
 
     const result = await browser.tabs.sendMessage(tab.id, {
       type: 'DETECT_XF',
     }) as DetectResult | undefined;
-
+    
     if (result && result.version !== 'unknown' && result.url) {
       const cleanUrl = result.url.replace(/#.*$/, '');
       store.setActiveTab({ ...result, url: cleanUrl }, cleanUrl);
@@ -89,8 +93,30 @@ async function detectActiveTabTopic() {
     } else {
       store.setActiveTab(null, null);
     }
-  } catch {
-    store.setActiveTab(null, null);
+  } catch (err) {
+    console.info('[detectActiveTabTopic] Error detecting topic on active tab:', err);
+  }
+}
+
+async function handleGrantDetectPermission() {
+  const origin = pendingDetectOrigin.value;
+  if (!origin) return;
+  const granted = await requestOriginPermission(origin + '/*');
+  pendingDetectOrigin.value = '';
+  if (granted) {
+    // Inject content script into the active tab so DETECT_XF works immediately
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['/content-scripts/content.js'],
+        });
+      }
+    } catch {
+      // Script already injected or injection failed — retry detection anyway
+    }
+    await detectActiveTabTopic();
   }
 }
 
@@ -266,9 +292,17 @@ function navigateTo(path: string) {
     </nav>
 
     <!-- Sub-tab bar -->
-    <nav v-if="hasSelectedTopic && isThreadActive" class="px-3 pt-2.5 pb-0 shrink-0">
+    <nav v-if="isThreadActive" class="px-3 pt-2.5 pb-0 shrink-0">
       <PillTabs :tabs="subTabs" :modelValue="activeSubTab" :loadingTabs="loadingSubTab" @update:modelValue="onSubTabChange" />
     </nav>
+
+    <!-- Permission prompt -->
+    <div v-if="pendingDetectOrigin" class="px-3 pt-3 shrink-0">
+      <div class="alert alert-warning text-xs flex items-center justify-between gap-2">
+        <span>Cần cấp quyền truy cập <strong class="text-(--color-text-primary)">{{ pendingDetectOrigin }}</strong> để phát hiện thớt trên tab hiện tại.</span>
+        <button class="btn btn-accent btn-xs shrink-0" @click="handleGrantDetectPermission()">Cấp quyền</button>
+      </div>
+    </div>
 
     <!-- Content -->
     <main class="flex-1 overflow-y-auto scrollbar-thin">

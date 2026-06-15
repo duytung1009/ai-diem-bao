@@ -211,7 +211,7 @@ const timelineRows = computed<TimelineRow[]>(() => {
       class="mt-2 w-full btn btn-sm btn-secondary text-xs"
       @click="$emit('cancel')"
     >
-      Huỷ
+      Hủy
     </button>
   </div>
 </template>

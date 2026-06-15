@@ -745,13 +745,2009 @@
         "recommendedSubtasks": 0,
         "expansionPrompt": "Không cần mở rộng",
         "updatedAt": "2026-06-03T06:52:24.081Z"
+      },
+      {
+        "id": "368",
+        "title": "Mở rộng schema NotebookEntry và thêm hàm notebook-db cho rename, bulk update, bulk delete",
+        "description": "Thêm các trường mới (userNote, pinned, editedAt, manual) vào NotebookEntry. Thêm các hàm notebookRenameCategory, notebookBulkUpdate, notebookBulkDelete trong lib/notebook-db.ts. Thêm các message types mới. Thêm 3 handlers trong background.",
+        "details": "Cập nhật lib/types.ts với các trường mới và kiểu NotebookEntryForQA. Trong lib/notebook-db.ts, thực hiện notebookRenameCategory bằng cách mở cursor trên index by-category, cập nhật category cho mỗi entry. notebookBulkUpdate nhận ids và patch, dùng transaction readwrite, get từng entry trong ids, merge patch, put. notebookBulkDelete dùng transaction readwrite, delete từng id. Thêm các message types: RENAME_NOTEBOOK_CATEGORY, BULK_UPDATE_NOTEBOOK_ENTRIES, BULK_DELETE_NOTEBOOK_ENTRIES. Trong background/index.ts, thêm handlers cho các message này, gọi các hàm notebook-db tương ứng và trả về số lượng đã xử lý.",
+        "testStrategy": "Kiểm tra bằng unit test nếu có fake-indexeddb, hoặc compile và test thủ công: rename category kiểm tra entries có category mới; bulk update kiểm tra patch được áp dụng đúng; bulk delete kiểm tra entries bị xóa. Đảm bảo npm run compile và npm run test pass.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật kiểu và schema trong lib/types.ts",
+            "description": "Thêm các trường mới (userNote, pinned, editedAt, manual) vào NotebookEntry. Cập nhật kiểu NotebookEntryForQA.",
+            "dependencies": [],
+            "details": "Cập nhật interface NotebookEntry và kiểu NotebookEntryForQA trong lib/types.ts để hỗ trợ các trường mới như userNote, pinned, editedAt, manual. Đảm bảo compile TypeScript pass.",
+            "status": "done",
+            "testStrategy": "Kiểm tra TypeScript types, compile pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T14:54:10.011Z"
+          },
+          {
+            "id": 2,
+            "title": "Thực hiện các hàm notebookRenameCategory, notebookBulkUpdate, notebookBulkDelete trong lib/notebook-db.ts",
+            "description": "Triển khai các hàm xử lý IndexedDB: rename category, bulk update, bulk delete.",
+            "dependencies": [
+              1
+            ],
+            "details": "notebookRenameCategory: mở cursor trên index by-category, cập nhật category cho mỗi entry. notebookBulkUpdate: transaction readwrite, get từng entry trong ids, merge patch, put. notebookBulkDelete: transaction readwrite, delete từng id.",
+            "status": "done",
+            "testStrategy": "Unit test với fake-indexeddb hoặc test thủ công: rename category kiểm tra entries có category mới; bulk update kiểm tra patch được áp dụng đúng; bulk delete kiểm tra entries bị xóa.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T14:54:29.244Z"
+          },
+          {
+            "id": 3,
+            "title": "Định nghĩa các message types mới",
+            "description": "Thêm các message types RENAME_NOTEBOOK_CATEGORY, BULK_UPDATE_NOTEBOOK_ENTRIES, BULK_DELETE_NOTEBOOK_ENTRIES.",
+            "dependencies": [],
+            "details": "Thêm vào file message types (ví dụ lib/messages.ts) các hằng số mới: RENAME_NOTEBOOK_CATEGORY, BULK_UPDATE_NOTEBOOK_ENTRIES, BULK_DELETE_NOTEBOOK_ENTRIES. Đảm bảo compile pass.",
+            "status": "done",
+            "testStrategy": "Kiểm tra compile TypeScript.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T14:54:50.181Z"
+          },
+          {
+            "id": 4,
+            "title": "Thêm handlers trong background/index.ts cho các message types mới",
+            "description": "Thêm handlers cho RENAME_NOTEBOOK_CATEGORY, BULK_UPDATE_NOTEBOOK_ENTRIES, BULK_DELETE_NOTEBOOK_ENTRIES trong background script.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Trong background/index.ts, thêm handlers cho các message types mới. Mỗi handler gọi hàm tương ứng trong notebook-db và trả về số lượng đã xử lý. Đảm bảo message được xử lý đúng.",
+            "status": "done",
+            "testStrategy": "Test background script bằng cách gửi message và kiểm tra response, hoặc kiểm tra thủ công qua console.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T14:55:14.447Z"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chia nhỏ task 368 thành các subtasks: 1) Cập nhật kiểu và schema trong lib/types.ts; 2) Thực hiện các hàm notebookRenameCategory, notebookBulkUpdate, notebookBulkDelete trong lib/notebook-db.ts; 3) Định nghĩa các message types mới; 4) Thêm handlers trong background/index.ts cho các message types này.",
+        "updatedAt": "2026-06-12T14:55:14.447Z"
+      },
+      {
+        "id": "369",
+        "title": "Chỉnh sửa inline notebook entry",
+        "description": "Thêm nút Sửa trên mỗi card entry trong NotebookView, chuyển sang edit mode với các input cho title, content, category, tags, userNote. Lưu set editedAt và cập nhật local entries. Đồng bộ ngược topic cache nếu entry có sourceTopicUrl.",
+        "details": "Tạo component NotebookEntryEditor.vue hỗ trợ edit và create. Tích hợp vào NotebookView: mở rộng entry card, khi bấm Sửa swap content với editor. Sử dụng v-model cho các field. Category bằng input datalist với các category hiện có. Tags editor dạng chip. Lưu gọi message UPSERT_NOTEBOOK_ENTRY (đã có) để cập nhật vào IDB. Sau lưu, cập nhật mảng entries cục bộ. Nếu entry có sourceTopicUrl và sourceTopic còn trong cache, gửi SAVE_CACHED_TOPIC fire-and-forget. Entry đã sửa hiển thị badge 'đã sửa' và tooltip ngày sửa.",
+        "testStrategy": "Test thủ công: sửa từng field, reload sidepanel kiểm tra dữ liệu giữ nguyên. Kiểm tra badge xuất hiện. Kiểm tra đồng bộ với topic cache: sửa entry đã lưu từ KnowledgeView, mở lại KnowledgeView xem bản sao đã cập nhật. Test entry orphaned không gọi sync.",
+        "priority": "high",
+        "dependencies": [
+          "368"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo component NotebookEntryEditor.vue hỗ trợ edit mode",
+            "description": "Phát triển component editor để chỉnh sửa entry, bao gồm các input cho title, content, category, tags, userNote. Sử dụng v-model, datalist cho category, chip editor cho tags.",
+            "dependencies": [],
+            "details": "Tạo file NotebookEntryEditor.vue. Props: entry, categories, editMode. Emit: save, cancel. Sử dụng v-model cho các field: title, content, userNote là textarea; category là input datalist với các category hiện có; tags là chip editor tùy chỉnh hoặc dùng component có sẵn. Có nút Lưu và Hủy.",
+            "status": "done",
+            "testStrategy": "Kiểm tra hiển thị đúng các field khi nhận prop. Test nhập liệu và emit save với dữ liệu đã nhập.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T14:59:42.104Z"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp NotebookEntryEditor vào NotebookView: thêm nút sửa và chuyển đổi view/edit",
+            "description": "Trong NotebookView, thêm nút Sửa trên mỗi card entry. Khi bấm, swap nội dung card với editor component. Quản lý trạng thái editEntryId.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sửa NotebookView.vue: import NotebookEntryEditor. Thêm button 'Sửa' trong mỗi entry card. Giữ ref editEntryId. Khi bấm Sửa, set editEntryId = entry.id. Khi editor emit cancel, clear editEntryId. Khi editor emit save, gọi hàm lưu và rồi clear. Hiển thị badge 'đã sửa' và tooltip ngày sửa cho entry đã sửa.",
+            "status": "done",
+            "testStrategy": "Test chuyển đổi giữa xem và sửa, dữ liệu không bị mất. Badge và tooltip hiển thị đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:00:04.311Z"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý lưu và đồng bộ topic cache",
+            "description": "Khi lưu editor, gọi message UPSERT_NOTEBOOK_ENTRY để cập nhật IDB. Cập nhật local entries. Nếu entry có sourceTopicUrl và sourceTopic còn trong cache, gửi SAVE_CACHED_TOPIC fire-and-forget.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong hàm save của NotebookView: gửi chrome.runtime.sendMessage ({ action: 'UPSERT_NOTEBOOK_ENTRY', payload: entry }). Khi nhận response, cập nhật mảng entries (thay entry cũ bằng entry mới). Kiểm tra entry.sourceTopicUrl và sourceTopic trong cache (từ topicCache). Nếu có, gửi SAVE_CACHED_TOPIC với entry mới. Cập nhật editedAt tự động.",
+            "status": "done",
+            "testStrategy": "Test lưu entry mới và verify trong IDB. Test đồng bộ: sửa entry có sourceTopicUrl, kiểm tra cache được cập nhật. Test trường hợp orphaned không gọi sync.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:00:27.837Z"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia nhỏ task 369: 1) Tạo component NotebookEntryEditor.vue hỗ trợ edit mode; 2) Tích hợp vào NotebookView: thêm nút sửa và chuyển đổi giữa view/edit; 3) Xử lý lưu (gọi UPSERT_NOTEBOOK_ENTRY) và đồng bộ topic cache nếu có.",
+        "updatedAt": "2026-06-12T15:00:27.837Z"
+      },
+      {
+        "id": "370",
+        "title": "Ghim entry và bộ lọc ghim",
+        "description": "Thêm nút ghim trên card entry, toggle trường pinned. Sắp xếp entries ghim lên đầu trong mọi view mode. Thêm filter nhanh 'Đã ghim' cạnh toggle 'Mồ côi'.",
+        "details": "Trong NotebookView, mỗi entry card thêm icon 📌 để toggle pinned. Khi nhấn, gửi message UPDATE_NOTEBOOK_ENTRY với patch { pinned: 1 } hoặc { pinned: 0 }. Sort entries: trong mỗi group, sắp xếp pinned xuống trước (pinned desc). Thêm một filter button để chỉ hiển thị entries có pinned=1.",
+        "testStrategy": "Test thủ công: ghim 2-3 entry, kiểm tra chúng nổi lên đầu group ở cả 4 view mode. Filter 'Đã ghim' chỉ hiện các entry đã ghim. Bỏ ghim kiểm tra trở lại vị trí cũ.",
+        "priority": "medium",
+        "dependencies": [
+          "368"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm nút ghim trên card entry và toggle trạng thái pinned",
+            "description": "Thêm icon 📌 trên mỗi entry card trong NotebookView, khi nhấn gửi message UPDATE_NOTEBOOK_ENTRY với patch { pinned: 1 } hoặc { pinned: 0 } để toggle trạng thái pinned. Cập nhật UI ngay lập tức.",
+            "dependencies": [],
+            "details": "Trong NotebookView, mỗi entry card thêm icon 📌 để toggle pinned. Khi nhấn, gửi message UPDATE_NOTEBOOK_ENTRY với patch { pinned: 1 } hoặc { pinned: 0 }. Cần xác định vị trí pin icon thích hợp trên card (góc phải hay đầu card).",
+            "status": "done",
+            "testStrategy": "Test thủ công: ghim 2-3 entry, kiểm tra trạng thái pinned được lưu. Bỏ ghim kiểm tra trở lại. Kiểm tra UI cập nhật đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:03:58.787Z"
+          },
+          {
+            "id": 2,
+            "title": "Thêm filter nút 'Đã ghim' và sắp xếp entries ghim lên đầu",
+            "description": "Thêm một filter button 'Đã ghim' cạnh toggle 'Mồ côi' để chỉ hiển thị entries có pinned=1. Trong mọi view mode, sắp xếp entries ghim lên đầu mỗi group (pinned desc).",
+            "dependencies": [
+              1
+            ],
+            "details": "Sort entries: trong mỗi group, sắp xếp pinned xuống trước (pinned desc) khi lấy danh sách entries. Filter button bổ sung để toggle chỉ hiện entries có pinned=1.",
+            "status": "done",
+            "testStrategy": "Test thủ công: ghim 2-3 entry, kiểm tra chúng nổi lên đầu group ở cả 4 view mode. Filter 'Đã ghim' chỉ hiện các entry đã ghim. Bỏ ghim kiểm tra trở lại vị trí cũ.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:04:26.785Z"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia nhỏ task 370: 1) Thêm nút ghim trên card entry và toggle trạng thái pinned; 2) Thêm filter nút 'Đã ghim' và sắp xếp entries ghim lên đầu.",
+        "updatedAt": "2026-06-12T15:04:26.785Z"
+      },
+      {
+        "id": "371",
+        "title": "Quản lý category (rename, merge, delete)",
+        "description": "Thêm panel quản lý category từ nút ⚙️ cạnh pills. Cho phép rename category (nếu trùng tên đã có thì merge), merge category A vào B, xóa category (entries về Khác).",
+        "details": "Trong NotebookView, bỏ giới hạn slice(6) cho categories hiển thị. Thêm nút ⚙️ Quản lý mở modal với danh sách category kèm count. Mỗi category có nút rename (input inline), nút merge (chọn category đích từ dropdown), nút xóa (confirm). Rename gửi message RENAME_NOTEBOOK_CATEGORY với from, to. Nếu to đã tồn tại, hiển thị confirm merge và thực hiện rename (background handler đã xử lý merge bằng cách cập nhật category). Xóa category: gửi RENAME_NOTEBOOK_CATEGORY với to=null (hoặc xử lý riêng) đặt category của entries thành undefined. Cập nhật danh sách categories sau mỗi action.",
+        "testStrategy": "Test rename category, kiểm tra entries đã đổi category. Test rename sang tên đã tồn tại, confirm merge và kiểm tra gộp đúng count. Test xóa category, entries chuyển sang 'Khác'. Kiểm tra stats cập nhật.",
+        "priority": "high",
+        "dependencies": [
+          "368"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo modal quản lý category hiển thị danh sách và count",
+            "description": "Xây dựng modal quản lý category, hiển thị danh sách các category kèm số lượng entries, có nút đóng và nút action cho mỗi category.",
+            "dependencies": [],
+            "details": "Tạo một modal component mới (CategoryManagerModal) trong NotebookView. Modal chứa danh sách các category với count, mỗi category hiển thị tên và số lượng. Thêm nút ⚙️ cạnh pills để mở modal. Sử dụng categories state từ store.",
+            "status": "done",
+            "testStrategy": "Test mở modal, kiểm tra danh sách category hiển thị đúng count, đóng modal được.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:10:01.766Z"
+          },
+          {
+            "id": 2,
+            "title": "Thêm chức năng rename category (với confirm nếu trùng tên)",
+            "description": "Cho phép người dùng rename một category, nếu tên mới đã tồn tại thì hiển thị confirm và thực hiện merge.",
+            "dependencies": [
+              1
+            ],
+            "details": "Mỗi category trong modal có nút rename. Khi click, hiển thị input inline để nhập tên mới. Gửi message RENAME_NOTEBOOK_CATEGORY với from (tên cũ) và to (tên mới). Nếu to đã tồn tại, hiển thị dialog confirm merge và thực hiện. Sau thành công, cập nhật danh sách categories.",
+            "status": "done",
+            "testStrategy": "Test rename category thường, kiểm tra entries đổi category. Test rename sang tên đã tồn tại, confirm và kiểm tra gộp count.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:10:21.800Z"
+          },
+          {
+            "id": 3,
+            "title": "Thêm chức năng merge và xóa category",
+            "description": "Thêm chức năng merge category A vào B (chọn từ dropdown) và xóa category (entries về 'Khác').",
+            "dependencies": [
+              1
+            ],
+            "details": "Mỗi category có nút merge: click hiển thị dropdown chọn category đích, xác nhận và gửi RENAME_NOTEBOOK_CATEGORY với from=A, to=B. Nút xóa: confirm và gửi RENAME_NOTEBOOK_CATEGORY với to=null (hoặc xử lý riêng) để đặt category entries thành undefined (sẽ hiển thị 'Khác'). Cập nhật UI sau mỗi action.",
+            "status": "done",
+            "testStrategy": "Test merge: chọn category A merge vào B, kiểm tra entries A chuyển sang B và count cập nhật. Test xóa: xóa category, kiểm tra entries chuyển thành 'Khác'.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:10:42.014Z"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia nhỏ task 371: 1) Tạo modal quản lý category hiển thị danh sách và count; 2) Thêm chức năng rename category (với confirm nếu trùng tên); 3) Thêm chức năng merge và xóa category.",
+        "updatedAt": "2026-06-12T15:10:42.014Z"
+      },
+      {
+        "id": "372",
+        "title": "Bulk actions (multi-select, bulk update/delete)",
+        "description": "Thêm chế độ chọn nhiều entries, cung cấp các action: đổi category, thêm tag, xóa tag, xóa entries. Sử dụng các message BULK_UPDATE và BULK_DELETE.",
+        "details": "Thêm nút 'Chọn' trên toolbar NotebookView. Khi kích hoạt, mỗi entry card hiển thị checkbox, header hiển thị số lượng đã chọn. Khi có selection, hiển thị thanh actions với: Đổi category (combobox), Thêm tag (input), Xóa tag (chọn từ union tags của selection), Xóa (confirm), Bỏ chọn. Mỗi action gửi message BULK_UPDATE_NOTEBOOK_ENTRIES hoặc BULK_DELETE_NOTEBOOK_ENTRIES. Sau khi hoàn tất, reload entries và stats.",
+        "testStrategy": "Test chọn 5 entries, đổi category, kiểm tra tất cả được cập nhật. Test thêm tag và xóa tag. Test bulk delete: xóa 3 entries, kiểm tra biến mất. Test không chọn gì thì actions disabled.",
+        "priority": "medium",
+        "dependencies": [
+          "368",
+          "369"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm chế độ chọn nhiều entries với checkbox",
+            "description": "Thêm nút 'Chọn' trên toolbar NotebookView, khi kích hoạt mỗi entry card hiển thị checkbox và header hiển thị số lượng đã chọn.",
+            "dependencies": [
+              368,
+              369
+            ],
+            "details": "Cài đặt state selection trong NotebookView, thêm checkbox component cho mỗi entry card, cập nhật header hiển thị count. Xử lý select/deselect all.",
+            "status": "done",
+            "testStrategy": "Test bật/tắt chế độ chọn, kiểm tra checkbox hiển thị. Test chọn từng entry và select all, kiểm tra count đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:17:22.334Z"
+          },
+          {
+            "id": 2,
+            "title": "Xây thanh công cụ bulk actions",
+            "description": "Khi có selection, hiển thị thanh actions với các nút: Đổi category (combobox), Thêm tag (input), Xóa tag (chọn từ union tags), Xóa (confirm), Bỏ chọn.",
+            "dependencies": [
+              1,
+              368,
+              369
+            ],
+            "details": "Xây dựng BulkActionsBar component với các controls. Lấy danh sách category và tags từ selection. Hiển thị combobox category, input thêm tag, dropdown xóa tag, nút xóa, nút bỏ chọn. Disable khi không có selection.",
+            "status": "done",
+            "testStrategy": "Test hiển thị thanh actions khi có selection. Test chọn nhiều entry, kiểm tra union tags hiển thị đúng. Test không chọn gì thì actions disabled.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:17:44.086Z"
+          },
+          {
+            "id": 3,
+            "title": "Kết nối actions với các message BULK_UPDATE và BULK_DELETE",
+            "description": "Mỗi action khi được thực thi gửi message BULK_UPDATE_NOTEBOOK_ENTRIES hoặc BULK_DELETE_NOTEBOOK_ENTRIES. Sau khi hoàn tất, reload entries và stats.",
+            "dependencies": [
+              2,
+              368,
+              369
+            ],
+            "details": "Xử lý sự kiện cho từng action: gọi hàm gửi message với payload phù hợp (selectedIds, category, tag, etc.). Xử lý response và reload data. Cập nhật stats.",
+            "status": "pending",
+            "testStrategy": "Test chọn 5 entries, đổi category, kiểm tra tất cả được cập nhật. Test thêm tag và xóa tag. Test bulk delete: xóa 3 entries, kiểm tra biến mất.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia nhỏ task 372: 1) Thêm chế độ chọn nhiều entries với checkbox; 2) Xây thanh công cụ bulk actions (đổi category, thêm/xóa tag, xóa); 3) Kết nối actions với các message BULK_UPDATE và BULK_DELETE.",
+        "updatedAt": "2026-06-12T15:18:05.765Z"
+      },
+      {
+        "id": "373",
+        "title": "Tạo ghi chú thủ công (manual entry)",
+        "description": "Thêm nút '+ Ghi chú' trên header NotebookView, mở form tạo mới entry với các field tương tự edit. Entry không có source topic, badge 'Tự tạo'. unsave xóa hẳn.",
+        "details": "Thêm nút '+ Ghi chú' cạnh toolbar. Khi nhấn, mở NotebookEntryEditor ở mode create (manual=1). Form yêu cầu title và content bắt buộc. Sau khi tạo, gửi message UPSERT_NOTEBOOK_ENTRY với id là crypto.randomUUID(), manual=1, sourceTopicUrl='', sourceTopicTitle='', source: { author: 'Bạn', postNumber: 0 }. Entry mới hiện badge '✍️ Tự tạo', không có link post. Unsave dùng DELETE_NOTEBOOK_ENTRY và skip sync topic cache.",
+        "testStrategy": "Test tạo manual entry, kiểm tra xuất hiện trong tab Sổ tay với badge đúng. Test unsave, entry bị xóa hoàn toàn. Test export entry này có đủ fields.",
+        "priority": "medium",
+        "dependencies": [
+          "369"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm nút '+ Ghi chú' và hiển thị form tạo mới",
+            "description": "Thêm nút '+ Ghi chú' trên header NotebookView, cạnh toolbar. Khi nhấn, mở NotebookEntryEditor ở mode create với tham số manual=1.",
+            "dependencies": [
+              369
+            ],
+            "details": "Cập nhật NotebookView để hiển thị nút '+ Ghi chú'. Khi click, gọi openNotebookEntryEditor ở mode create, truyền manual=1. Form yêu cầu title và content bắt buộc.",
+            "status": "done",
+            "testStrategy": "Kiểm tra nút hiển thị, khi nhấn mở form tạo mới.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:20:32.330Z"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý tạo entry với manual=1 và badge 'Tự tạo'",
+            "description": "Xử lý sự kiện tạo mới entry: gửi UPSERT_NOTEBOOK_ENTRY với id randomUUID, manual=1, source rỗng. Entry hiển thị badge '✍️ Tự tạo'. Xử lý unsave bằng DELETE_NOTEBOOK_ENTRY và skip sync.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong NotebookEntryEditor, khi submit form create, tạo message UPSERT_NOTEBOOK_ENTRY với id là crypto.randomUUID(), manual=1, sourceTopicUrl='', sourceTopicTitle='', source: { author: 'Bạn', postNumber: 0 }. Entry mới hiện badge '✍️ Tự tạo'. Khi unsave, gửi DELETE_NOTEBOOK_ENTRY và không đồng bộ topic cache.",
+            "status": "done",
+            "testStrategy": "Test tạo manual entry, kiểm tra badge và dữ liệu. Test unsave, entry bị xóa hoàn toàn.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:20:55.048Z"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia nhỏ task 373: 1) Thêm nút '+ Ghi chú' và hiển thị form tạo mới (tái sử dụng NotebookEntryEditor ở mode create); 2) Xử lý tạo entry với manual=1 và badge 'Tự tạo'.",
+        "updatedAt": "2026-06-12T15:20:55.048Z"
+      },
+      {
+        "id": "374",
+        "title": "Thêm notebook_qa task type, prompts, và hàm answerFromNotebook",
+        "description": "Mở rộng LLMTaskRequest với taskType 'notebook_qa'. Thêm prompts NOTEBOOK_QA_PROMPT và NOTEBOOK_QA_SELECT_PROMPT trong lib/prompts.ts. Thêm hàm answerFromNotebook trong lib/llm/summarizer.ts.",
+        "details": "Trong lib/types.ts, thêm taskType 'notebook_qa' và kiểu NotebookEntryForQA (id, title, content, userNote, category, tags, sourceTopicTitle, source). Trong lib/prompts.ts, tạo NOTEBOOK_QA_PROMPT: system prompt yêu cầu trả lời chỉ dựa vào ghi chú, kèm citation [n], và dòng SOURCES: [...]. Tạo NOTEBOOK_QA_SELECT_PROMPT: yêu cầu trả về JSON { ids: [] } của các ghi chú liên quan. Trong lib/llm/summarizer.ts, thêm hàm answerFromNotebook(question, entries, config, onProgress, prompts, signal) thực hiện call LLM với prompt đã build, parse output: lấy text và dòng SOURCES để xác định entryIds.",
+        "testStrategy": "Test unit prompts và parse function. Mock LLM response có markdown với citation và dòng SOURCES, kiểm tra parse đúng. Test edge case không có citation, ngoài range.",
+        "priority": "high",
+        "dependencies": [
+          "368"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm taskType 'notebook_qa' và kiểu NotebookEntryForQA trong lib/types.ts",
+            "description": "Mở rộng LLMTaskRequest union type với 'notebook_qa' và định nghĩa interface NotebookEntryForQA gồm id, title, content, userNote, category, tags, sourceTopicTitle, source.",
+            "dependencies": [],
+            "details": "Trong lib/types.ts, thêm 'notebook_qa' vào taskType. Tạo interface NotebookEntryForQA với các trường theo yêu cầu. Cập nhật type definitions cho LLMRequest.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:25:22.415Z"
+          },
+          {
+            "id": 2,
+            "title": "Tạo prompts NOTEBOOK_QA_PROMPT và NOTEBOOK_QA_SELECT_PROMPT trong lib/prompts.ts",
+            "description": "Viết system prompt cho answer và select. NOTEBOOK_QA_PROMPT yêu cầu trả lời dựa trên ghi chú có citation [n] và dòng SOURCES. NOTEBOOK_QA_SELECT_PROMPT yêu cầu JSON { ids: [] }.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm prompts vào lib/prompts.ts. Đảm bảo prompt format phù hợp với LLM. NOTEBOOK_QA_PROMPT: system instruction trích dẫn nguồn. NOTEBOOK_QA_SELECT_PROMPT: instruction trả về JSON.",
+            "status": "done",
+            "testStrategy": "Test prompts bằng unit test với mock LLM response để kiểm tra parsing.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:25:40.557Z"
+          },
+          {
+            "id": 3,
+            "title": "Xây dựng hàm answerFromNotebook trong lib/llm/summarizer.ts",
+            "description": "Triển khai hàm answerFromNotebook nhận question, entries, config, onProgress, prompts, signal. Xây dựng prompt, call LLM, parse kết quả lấy text và SOURCES để xác định entryIds.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Hàm answerFromNotebook: build prompt từ user question và entries. Gọi LLM stream với progress. Parse output markdown: lấy phần text trước dòng SOURCES, và parse dòng SOURCES để lấy mảng id. Trả về { answer, entryIds }. Xử lý edge case không có SOURCES hoặc citation ngoài range.",
+            "status": "done",
+            "testStrategy": "Test với mock LLM responses: có SOURCES đúng, thiếu SOURCES, citation ngoài range. Kiểm tra parse đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:26:01.702Z"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia nhỏ task 374: 1) Thêm taskType 'notebook_qa' và kiểu NotebookEntryForQA trong types; 2) Tạo prompts NOTEBOOK_QA_PROMPT và NOTEBOOK_QA_SELECT_PROMPT; 3) Xây hàm answerFromNotebook trong summarizer.ts.",
+        "updatedAt": "2026-06-12T15:26:01.702Z"
+      },
+      {
+        "id": "375",
+        "title": "Triển khai useNotebookQA composable với retrieval 2 tầng",
+        "description": "Tạo composable useNotebookQA.ts xử lý tải entries, token estimation, client-side scoring, 2-stage orchestration (select + answer).",
+        "details": "Tạo composable với các chức năng: load entries từ useNotebook (đã có), projection thành NotebookEntryForQA, estimateTokens và tính budget dựa trên contextLimit và maxTokens. Hàm scoreEntry tính match giữa question tokens và entry fields (title x3, tags x2, category x2, content x1, userNote x1). Dùng hàm tokenize (lowercase, bỏ dấu câu). Xác định strategy: nếu tổng tokens entries <= budget thì gửi hết 1 call; nếu không, lấy top-K theo score; nếu score toàn 0 hoặc top-K vẫn vượt budget, thực hiện selection call với index gọn (id, title, tags, category), nhận ids, gọi answer call với full entries đó. Cung cấp phương thức ask(question) trả về kết quả và danh sách entryIds. Quản lý session history bằng ref array.",
+        "testStrategy": "Unit test scoring function. Test budget tính đúng. Mock LLM responses cho 2-stage và 1-stage. Kiểm tra số lượng call đúng. Test edge case: entries rỗng, score 0 dẫn đến selection call, fallback nếu ids rỗng.",
+        "priority": "high",
+        "dependencies": [
+          "374"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây hàm scoreEntry tính điểm match",
+            "description": "Xây dựng hàm scoreEntry để tính điểm phù hợp giữa câu hỏi và mỗi entry dựa trên các trường với trọng số khác nhau.",
+            "dependencies": [],
+            "details": "Hàm scoreEntry nhận vào question tokens và entry các fields: title (trọng số 3), tags (2), category (2), content (1), userNote (1). Sử dụng hàm tokenize với lowercase và bỏ dấu câu. Tính match bằng đếm số token chung và nhân trọng số.",
+            "status": "done",
+            "testStrategy": "Unit test với nhiều trường hợp: match từng trường, match hỗn hợp, không match, kiểm tra trọng số.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:29:13.239Z"
+          },
+          {
+            "id": 2,
+            "title": "Xây logic estimateTokens và budget",
+            "description": "Phát triển hàm estimateTokens để ước tính token của các entry và tính budget dựa trên contextLimit và maxTokens.",
+            "dependencies": [],
+            "details": "Dùng hàm tokenize hoặc ước lượng token (character based). Tính budget = contextLimit - maxTokens - overhead. Nếu budget < 0, gán budget = 0. Cần xem xét cả prompt tokens.",
+            "status": "done",
+            "testStrategy": "Test ước tính tokens với entry có nội dung mẫu. Kiểm tra budget đúng với các giá trị contextLimit, maxTokens khác nhau.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:29:31.999Z"
+          },
+          {
+            "id": 3,
+            "title": "Xây orchestration 2 tầng (select + answer)",
+            "description": "Triển khai logic lựa chọn chiến lược: 1-stage nếu tổng tokens <= budget, top-K theo score nếu vượt, selection call nếu cần.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Sử dụng scoreEntry và estimateTokens. Xác định strategy: nếu tổng tokens <= budget: gửi hết 1 call. Nếu không, lấy top-K theo score; nếu score toàn 0 hoặc top-K vẫn vượt budget, thực hiện selection call với index gọn, nhận ids, gọi answer call với full entries đó.",
+            "status": "done",
+            "testStrategy": "Mock LLM responses. Kiểm tra số lượng call đúng (1-stage, 2-stage). Test edge case: entries rỗng, score 0, ids rỗng từ selection.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:29:51.209Z"
+          },
+          {
+            "id": 4,
+            "title": "Quản lý session history",
+            "description": "Thêm chức năng lưu trữ lịch sử hỏi đáp trong phiên làm việc bằng ref array.",
+            "dependencies": [],
+            "details": "Trong composable useNotebookQA, khai báo ref array history. Mỗi lần gọi ask, thêm đối tượng { question, answer, entryIds } vào history. Cung cấp phương thức clearHistory.",
+            "status": "done",
+            "testStrategy": "Test rằng history được cập nhật đúng sau mỗi lần gọi ask. Test clearHistory xóa hết.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:30:10.370Z"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chia nhỏ task 375: 1) Xây hàm scoreEntry tính điểm match; 2) Xây logic estimateTokens và budget; 3) Xây orchestration 2 tầng (select + answer); 4) Quản lý session history.",
+        "updatedAt": "2026-06-12T15:30:10.370Z"
+      },
+      {
+        "id": "376",
+        "title": "Xây dựng NotebookQAPanel UI và tích hợp sub-tabs",
+        "description": "Tạo component NotebookQAPanel.vue cho tab Hỏi đáp, thêm sub-tab bar trong NotebookView. Hiển thị textarea câu hỏi, empty state, progress, kết quả markdown với citations clickable, nút 'Lưu thành ghi chú'.",
+        "details": "Trong NotebookView, thêm sub-tab bar với [Sổ tay] [Hỏi đáp] dùng local ref. Tab Hỏi đáp chứa NotebookQAPanel. Panel có textarea cho câu hỏi, nút Hỏi (disabled khi entries trống hoặc đang chạy). Khi submit, gọi useNotebookQA.ask(), hiển thị progress (LLM_PROGRESS) và nút Hủy. Kết quả render markdown dùng component tái sử dụng (SummaryContent hoặc self-built), citations [n] là nút click chuyển sang tab Sổ tay và scroll/highlight entry (dùng ref focusEntryId). Hiển thị panel nguồn bên dưới. Nút 'Lưu thành ghi chú' gọi createManualEntry với title=question, content=answer, category='Hỏi đáp', manual=1. Lưu session history trong ref.",
+        "testStrategy": "Test UI: nhập câu hỏi, nhấn Hỏi, thấy progress, kết quả hiển thị. Click citation → chuyển tab và scroll. Lưu thành ghi chú kiểm tra manual entry xuất hiện. Empty state khi sổ tay trống. Đổi tab giữ lại history.",
+        "priority": "medium",
+        "dependencies": [
+          "375",
+          "373"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm sub-tab bar trong NotebookView",
+            "description": "Thêm sub-tab bar với các tab [Sổ tay] và [Hỏi đáp] sử dụng local ref để quản lý tab active. Tích hợp NotebookQAPanel vào tab Hỏi đáp.",
+            "dependencies": [],
+            "details": "Trong NotebookView, thêm một thanh sub-tab bar phía dưới thanh tiêu đề chính. Sử dụng local ref để lưu tab active (mặc định là 'notebook'). Component NotebookQAPanel sẽ được lazy-loaded khi tab 'ask' được kích hoạt.",
+            "status": "done",
+            "testStrategy": "Kiểm tra chuyển đổi giữa hai tab, đảm bảo nội dung tương ứng được hiển thị.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:33:14.658Z"
+          },
+          {
+            "id": 2,
+            "title": "Tạo NotebookQAPanel với textarea và nút Hỏi",
+            "description": "Xây dựng component NotebookQAPanel.vue bao gồm textarea nhập câu hỏi, nút 'Hỏi' (disabled khi entries trống hoặc đang chạy), và hiển thị progress khi đang xử lý.",
+            "dependencies": [
+              1
+            ],
+            "details": "Panel có textarea với placeholder 'Nhập câu hỏi của bạn...'. Nút Hỏi bị disabled nếu danh sách entries trong notebook trống (kiểm tra qua useNotebook) hoặc nếu có request đang chạy. Khi submit, gọi useNotebookQA.ask() và hiển thị thanh progress với nút Hủy để hủy request.",
+            "status": "done",
+            "testStrategy": "Nhập câu hỏi và nhấn Hỏi, kiểm tra progress hiển thị. Kiểm tra nút disabled khi entries trống.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:33:33.617Z"
+          },
+          {
+            "id": 3,
+            "title": "Hiển thị kết quả markdown và citations clickable",
+            "description": "Khi có kết quả từ API, hiển thị nội dung markdown với các citation [n] là các nút có thể click, chuyển sang tab Sổ tay và scroll đến entry tương ứng.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng component Markdown render (có sẵn hoặc tự xây) để hiển thị câu trả lời. Các số citation [n] được render thành nút, khi click thì emit event để chuyển tab và scroll đến entry bằng cách sử dụng ref focusEntryId. Hiển thị panel nguồn bên dưới kết quả (danh sách các entry được trích dẫn).",
+            "status": "pending",
+            "testStrategy": "Click vào citation, kiểm tra tab chuyển và scroll đúng entry.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Thêm nút Lưu thành ghi chú",
+            "description": "Thêm nút để lưu cặp câu hỏi-câu trả lời thành một manual entry trong notebook với category 'Hỏi đáp'.",
+            "dependencies": [
+              3
+            ],
+            "details": "Nút 'Lưu thành ghi chú' xuất hiện khi có kết quả. Gọi phương thức createManualEntry với title là câu hỏi, content là câu trả lời, category='Hỏi đáp', manual=1. Sau khi lưu, có thể hiển thị thông báo thành công và cập nhật danh sách entries.",
+            "status": "pending",
+            "testStrategy": "Nhấn nút lưu, kiểm tra entry mới xuất hiện trong tab Sổ tay với đúng nội dung và category.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chia nhỏ task 376: 1) Thêm sub-tab bar trong NotebookView; 2) Tạo NotebookQAPanel với textarea, nút Hỏi, progress; 3) Hiển thị kết quả markdown và citations clickable; 4) Thêm nút 'Lưu thành ghi chú'.",
+        "updatedAt": "2026-06-12T15:33:53.288Z"
+      },
+      {
+        "id": "377",
+        "title": "Tích hợp cost guard và xử lý edge cases cho Q&A",
+        "description": "Đảm bảo cost guard hiển thị ước tính trước khi chạy Q&A nếu vượt threshold. Xử lý các edge case: finish_reason length, hủy Q&A, lỗi LLM.",
+        "details": "Trước khi gọi LLM task, kiểm tra token estimate và số lượng calls dự kiến. Nếu vượt LLM_WARN_THRESHOLD_CALLS hoặc token threshold, hiển thị ConfirmInline ước tính. User phải xác nhận để tiếp tục. Nếu câu hỏi nhỏ (1 call, ít token) chạy thẳng. Xử lý finish_reason: length: hiển thị answer partial + truncation warning (dùng pattern có sẵn). Hủy task: gửi CANCEL_LLM_TASK, reset UI. Xử lý lỗi: hiển thị thông báo lỗi, nút thử lại.",
+        "testStrategy": "Test cost guard: mock nhiều entries để vượt threshold, kiểm tra hiện confirm. Test finish_reason length: mock response truncation, kiểm tra warning. Test hủy: hủy giữa chừng, UI reset.",
+        "priority": "medium",
+        "dependencies": [
+          "376"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Hiển thị cost guard confirm trước khi gọi LLM nếu vượt threshold",
+            "description": "Kiểm tra token estimate và số lượng calls dự kiến trước khi gọi LLM. Nếu vượt LLM_WARN_THRESHOLD_CALLS hoặc token threshold, hiển thị ConfirmInline ước tính. Nếu câu hỏi nhỏ, chạy thẳng.",
+            "dependencies": [
+              376
+            ],
+            "details": "Cần thêm logic kiểm tra token estimate và số lượng calls trong phần xác thực trước khi gọi LLM. Sử dụng component ConfirmInline để hiển thị ước tính cost. User xác nhận để tiếp tục hoặc hủy.",
+            "status": "done",
+            "testStrategy": "Mock dữ liệu entries để vượt threshold, kiểm tra hiển thị confirm. Mock dữ liệu nhỏ để chạy thẳng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:41:22.190Z"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý finish_reason length với truncation warning",
+            "description": "Khi LLM trả về finish_reason là length, hiển thị answer partial kèm cảnh báo truncation.",
+            "dependencies": [
+              376
+            ],
+            "details": "Trong handler response, kiểm tra finish_reason. Nếu là 'length', hiển thị phần answer có được và thêm warning về việc kết quả bị cắt ngắn. Dùng pattern có sẵn.",
+            "status": "pending",
+            "testStrategy": "Mock response với finish_reason='length' và answer bị cắt, kiểm tra hiển thị warning.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xử lý hủy task và lỗi LLM",
+            "description": "Xử lý khi user hủy task: gửi CANCEL_LLM_TASK, reset UI. Xử lý lỗi LLM: hiển thị thông báo lỗi và nút thử lại.",
+            "dependencies": [
+              376
+            ],
+            "details": "Khi user hủy, phát event CANCEL_LLM_TASK và reset trạng thái. Khi LLM gặp lỗi, hiển thị dialog lỗi với thông tin và nút thử lại gọi LLM.",
+            "status": "pending",
+            "testStrategy": "Test hủy task giữa chừng, kiểm tra UI reset. Test mock lỗi từ LLM, kiểm tra hiển thị lỗi và nút thử lại.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Chia nhỏ task 377: 1) Hiển thị cost guard confirm trước khi gọi LLM nếu vượt threshold; 2) Xử lý finish_reason length với truncation warning; 3) Xử lý hủy task và lỗi LLM.",
+        "updatedAt": "2026-06-12T15:41:41.049Z"
+      },
+      {
+        "id": "378",
+        "title": "Thêm background handler cho notebook_qa và pipeline entry",
+        "description": "Xử lý message notebook_qa trong background. Định nghĩa pipeline cho task type.",
+        "details": "Trong background/index.ts, thêm case 'notebook_qa' cho processLLMTask. Nhận payload { question, entries, mode } với mode 'select' hoặc 'answer'. Gọi selection prompt hoặc answer prompt tương ứng. Đối với mode 'select', parse JSON response để lấy ids; trả về { ids }. Đối với mode 'answer', parse markdown, trích xuất dòng SOURCES, trả về { answer, entryIds }. Trong buildPipeline, thêm pipeline cho notebook_qa: workflow 'research', steps [pendingStep('qa', 'Tra cứu sổ tay')].",
+        "testStrategy": "Test background handler với mock payload. Kiểm tra parse selection JSON. Kiểm tra parse answer markdown lấy SOURCES.",
+        "priority": "high",
+        "dependencies": [
+          "374",
+          "368"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm case 'notebook_qa' trong processLLMTask để xử lý mode select và answer",
+            "description": "Trong background/index.ts, bổ sung case 'notebook_qa' cho hàm processLLMTask. Nhận payload { question, entries, mode } và gọi prompt tương ứng: NOTEBOOK_QA_SELECT_PROMPT cho mode 'select', NOTEBOOK_QA_PROMPT cho mode 'answer'. Parse response JSON cho select, trích xuất SOURCES cho answer.",
+            "dependencies": [
+              374,
+              368
+            ],
+            "details": "Mở rộng switch/case trong processLLMTask. Đối với mode 'select', gọi LLM với NOTEBOOK_QA_SELECT_PROMPT, parse JSON response lấy ids, trả về { ids }. Đối với mode 'answer', gọi LLM với NOTEBOOK_QA_PROMPT, parse markdown, tìm dòng SOURCES, trả về { answer, entryIds }.",
+            "status": "done",
+            "testStrategy": "Unit test với mock payload. Kiểm tra parse selection JSON, parse answer markdown, trường hợp lỗi.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:38:02.630Z"
+          },
+          {
+            "id": 2,
+            "title": "Thêm pipeline cho notebook_qa trong buildPipeline",
+            "description": "Trong buildPipeline, thêm pipeline mới cho taskType 'notebook_qa' với workflow 'research' và các steps phù hợp.",
+            "dependencies": [
+              374,
+              368
+            ],
+            "details": "Trong hàm buildPipeline, thêm case 'notebook_qa', tạo pipeline với workflow 'research', steps: [pendingStep('qa', 'Tra cứu sổ tay')].",
+            "status": "done",
+            "testStrategy": "Kiểm tra pipeline được tạo đúng workflow, steps, pendingStep.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T15:38:22.531Z"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia nhỏ task 378: 1) Thêm case 'notebook_qa' trong processLLMTask, xử lý mode select và answer; 2) Thêm pipeline cho notebook_qa trong buildPipeline.",
+        "updatedAt": "2026-06-12T15:38:22.531Z"
+      },
+      {
+        "id": "379",
+        "title": "Data Model - Định nghĩa GlobalKnowledgeEntry",
+        "description": "Thêm kiểu GlobalKnowledgeEntry vào lib/types.ts, mở rộng KnowledgeSource thành mảng sources, thêm topicRefs, mergedCount, vector?",
+        "details": "Trong lib/types.ts, định nghĩa interface GlobalKnowledgeEntry: { id: string; title: string; content: string; tags: string[]; category?: string; sources: KnowledgeSource[]; topicRefs: string[]; extractedAt: number; updatedAt: number; mergedCount?: number; vector?: number[] }. Đổi KnowledgeSource thành interface riêng với trường timestamp? (có sẵn). Giữ nguyên KnowledgeEntry cũ cho đầu ra LLM. Đảm bảo `vector?` là optional.",
+        "testStrategy": "Kiểm tra TypeScript compiles, kiểu dữ liệu sử dụng đúng mảng sources, object có đủ trường bắt buộc.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Định nghĩa interface GlobalKnowledgeEntry trong lib/types.ts",
+            "description": "Thêm interface GlobalKnowledgeEntry với các trường: id, title, content, tags, category?, sources: KnowledgeSource[], topicRefs, extractedAt, updatedAt, mergedCount?, vector?.",
+            "dependencies": [],
+            "details": "Mở file lib/types.ts, thêm định nghĩa interface GlobalKnowledgeEntry như mô tả, đảm bảo vector là optional. Giữ nguyên KnowledgeEntry cũ.",
+            "status": "done",
+            "testStrategy": "Kiểm tra TypeScript compiles thành công, kiểu dữ liệu có đủ trường bắt buộc.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:17:13.059Z"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật KnowledgeSource thành interface riêng và sửa các tham chiếu",
+            "description": "Chuyển KnowledgeSource thành interface riêng (nếu chưa có), thêm trường timestamp (có sẵn). Cập nhật các tham chiếu đến KnowledgeSource trong codebase cho phù hợp.",
+            "dependencies": [
+              1
+            ],
+            "details": "Xác định vị trí hiện tại của KnowledgeSource, tách thành interface riêng nếu cần, thêm trường timestamp. Sửa tất cả các file import và sử dụng KnowledgeSource để sử dụng interface mới. Đảm bảo GlobalKnowledgeEntry.sources sử dụng KnowledgeSource[].",
+            "status": "done",
+            "testStrategy": "Kiểm tra TypeScript compiles, các tham chiếu được cập nhật đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:17:13.489Z"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 379,
+            "updatedAt": "2026-06-12T17:18:33.104Z",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tách thành 2 subtask: 1) Định nghĩa interface GlobalKnowledgeEntry mới trong lib/types.ts. 2) Cập nhật KnowledgeSource thành interface riêng và sửa các tham chiếu cho phù hợp.",
+        "updatedAt": "2026-06-12T17:18:33.104Z"
+      },
+      {
+        "id": "380",
+        "title": "Cache Layer - Thêm object store knowledge vào IndexedDB",
+        "description": "Trong lib/cache-db.ts, bump DB version, tạo store 'knowledge' với keyPath 'id' và index 'updatedAt'. Triển khai API getAllKnowledge, upsertKnowledgeEntry, deleteKnowledgeEntry trong cache-manager.ts.",
+        "details": "Thêm code trong onupgradeneeded: db.createObjectStore('knowledge', { keyPath: 'id' }); const store = transaction.objectStore('knowledge'); store.createIndex('updatedAt', 'updatedAt', { unique: false });. Trong cache-manager.ts, viết hàm getAllKnowledge: dùng getAll từ IDB; upsertKnowledgeEntry: dùng put; deleteKnowledgeEntry: dùng delete. Export các hàm. Thêm message handlers cho background để sidepanel có thể gọi qua sendMessage.",
+        "testStrategy": "Tạo DB mới, ghi 2 entry, gọi getAllKnowledge trả về đúng, xóa 1 entry, kiểm tra còn 1. Nhập trùng id thì upsert ghi đè. Đảm bảo không lỗi khi DB chưa có store.",
+        "priority": "high",
+        "dependencies": [
+          "379"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Bump DB version và tạo object store 'knowledge' trong onupgradeneeded",
+            "description": "Tăng DB version và thêm mã tạo object store knowledge với keyPath 'id' và index 'updatedAt' trong onupgradeneeded của cache-db.ts",
+            "dependencies": [
+              379
+            ],
+            "details": "Trong lib/cache-db.ts, tăng version và thêm: db.createObjectStore('knowledge', { keyPath: 'id' }); const store = transaction.objectStore('knowledge'); store.createIndex('updatedAt', 'updatedAt', { unique: false });",
+            "status": "done",
+            "testStrategy": "Mở database, kiểm tra store 'knowledge' tồn tại và index 'updatedAt' được tạo.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:20:02.285Z"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai API getAllKnowledge, upsertKnowledgeEntry, deleteKnowledgeEntry trong cache-manager.ts",
+            "description": "Viết các hàm tương tác với knowledge store sử dụng IDB operations: getAll, put, delete. Export các hàm.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement: getAllKnowledge dùng store.getAll(); upsertKnowledgeEntry dùng store.put(); deleteKnowledgeEntry dùng store.delete(). Export các hàm từ cache-manager.ts.",
+            "status": "done",
+            "testStrategy": "Sau khi tạo store, ghi 2 entry, gọi getAllKnowledge trả về đúng, xóa 1 entry, kiểm tra còn 1. Nhập trùng id thì upsert ghi đè.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:20:24.831Z"
+          },
+          {
+            "id": 3,
+            "title": "Thêm message handlers cho background để sidepanel giao tiếp",
+            "description": "Thêm handlers cho các message type: 'knowledge:getAll', 'knowledge:upsert', 'knowledge:delete' trong background script, gọi các hàm từ cache-manager.ts",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong background, lắng nghe message, kiểm tra type và gọi hàm tương ứng từ cache-manager (sau khi import). Gửi kết quả về cho sidepanel.",
+            "status": "done",
+            "testStrategy": "Gửi message từ sidepanel, kiểm tra response đúng dữ liệu hoặc xác nhận thành công.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:21:20.730Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 380,
+            "updatedAt": "2026-06-12T17:21:38.707Z",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tách thành 3 subtask: 1) Bump DB version và tạo object store 'knowledge' trong onupgradeneeded. 2) Triển khai các hàm API: getAllKnowledge, upsertKnowledgeEntry, deleteKnowledgeEntry trong cache-manager.ts. 3) Thêm message handlers cho background để sidepanel giao tiếp.",
+        "updatedAt": "2026-06-12T17:21:38.707Z"
+      },
+      {
+        "id": "381",
+        "title": "Migration - Backfill kho knowledge global từ dữ liệu cũ",
+        "description": "Viết hàm backfill để đọc CachedTopic.knowledgeEntries từ DB cũ, map sang GlobalKnowledgeEntry và chèn vào store 'knowledge' dùng insertWithDedup tạm thời (hoặc upsert) sao cho idempotent.",
+        "details": "Trong lib/cache-manager.ts hoặc file mới lib/migration.ts, tạo hàm migrateKnowledge(). Duyệt tất cả CachedTopic từ store topics, với mỗi topic lấy knowledgeEntries (nếu có). Tạo GlobalKnowledgeEntry từ mỗi entry: sources=[{topicUrl, topicTitle, author, postNumber}], topicRefs=[topicUrl], extractedAt=updatedAt. Gửi lần lượt vào global store. Đảm bảo chạy nhiều lần không trùng: dùng insertWithDedup với threshold thấp hoặc kiểm tra id tồn tại. Gọi migration sau khi DB version nâng cấp.",
+        "testStrategy": "Giả lập DB cũ có 2 topic mỗi topic 1 entry, chạy migration, kiểm tra kho có 2 entry. Chạy lại migration, kho không tăng. Xóa 1 topic, migration không xóa entry global.",
+        "priority": "high",
+        "dependencies": [
+          "380"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Viết hàm migrateKnowledge đọc CachedTopic và tạo GlobalKnowledgeEntry",
+            "description": "Tạo hàm migrateKnowledge trong lib/migration.ts hoặc lib/cache-manager.ts để duyệt tất cả CachedTopic từ store topics, lấy knowledgeEntries, map sang GlobalKnowledgeEntry và chèn vào global store knowledge dùng insertWithDedup hoặc upsert.",
+            "dependencies": [],
+            "details": "Duyệt tất cả CachedTopic từ store topics. Với mỗi topic, lấy knowledgeEntries (nếu có). Tạo GlobalKnowledgeEntry từ mỗi entry với sources=[{topicUrl, topicTitle, author, postNumber}], topicRefs=[topicUrl], extractedAt=updatedAt. Gửi lần lượt vào global store dùng insertWithDedup hoặc upsert. Đảm bảo idempotent.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:23:20.909Z"
+          },
+          {
+            "id": 2,
+            "title": "Tích hợp gọi migration sau khi nâng cấp DB version",
+            "description": "Trong code xử lý nâng cấp DB version, gọi hàm migrateKnowledge() sau khi version được nâng lên để backfill dữ liệu cũ.",
+            "dependencies": [
+              1
+            ],
+            "details": "Xác định vị trí gọi migration trong flow nâng cấp DB version. Đảm bảo chỉ gọi một lần khi version thay đổi. Có thể thêm điều kiện kiểm tra version cũ và mới.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:23:21.370Z"
+          },
+          {
+            "id": 3,
+            "title": "Viết unit test kiểm tra tính idempotent",
+            "description": "Viết unit test giả lập DB cũ có 2 topic mỗi topic 1 entry, chạy migration kiểm tra kết quả, chạy lại không tăng, xóa 1 topic không ảnh hưởng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng mock store. Tạo 2 CachedTopic với knowledgeEntries. Chạy migrateKnowledge(). Kiểm tra global store có 2 entry. Chạy lại, kiểm tra số lượng không đổi. Xóa 1 topic, chạy lại, kiểm tra số lượng không giảm. Kiểm tra các trường dữ liệu đúng.",
+            "status": "done",
+            "testStrategy": "Sử dụng Jest/Mocha test framework. Mock các module store và insertWithDedup để kiểm tra hành vi.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:24:39.624Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 381,
+            "updatedAt": "2026-06-12T17:24:59.524Z",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tách thành 3 subtask: 1) Viết hàm migrateKnowledge đọc CachedTopic và tạo GlobalKnowledgeEntry. 2) Tích hợp gọi migration sau khi nâng cấp DB version. 3) Viết unit test kiểm tra tính idempotent.",
+        "updatedAt": "2026-06-12T17:24:59.524Z"
+      },
+      {
+        "id": "382",
+        "title": "Text Similarity Utility - Tách hàm tokenize và tính similarity",
+        "description": "Trích các hàm tokenize (tách từ) và scoreEntry (tính độ tương tự) từ useNotebookQA.ts thành module dùng chung lib/text-similarity.ts.",
+        "details": "Tạo lib/text-similarity.ts. Export hàm tokenize(text: string): string[] (lowercase, split whitespace, loại bỏ dấu câu, có thể dùng stopwords). Export hàm keywordSimilarity(text1: string, text2: string): number (tính Jaccard similarity trên set token hoặc TF-IDF đơn giản). Đảm bảo không phụ thuộc vào Vue/component. Dùng trong useNotebookQA và knowledge-merge.",
+        "testStrategy": "Viết unit test: tokenize('Hello world') trả về ['hello','world']; similarity('mèo chó', 'chó mèo') ~1; similarity('mèo', 'chó') ≈ 0. Kiểm tra với chữ hoa/thường.",
+        "priority": "medium",
+        "dependencies": [
+          "379"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo module lib/text-similarity.ts với hàm tokenize",
+            "description": "Tạo file lib/text-similarity.ts, export hàm tokenize(text: string): string[] giúp lowercasing, tách từ bằng whitespace, loại bỏ dấu câu và có thể áp dụng stopwords. Đảm bảo module không phụ thuộc vào Vue.",
+            "dependencies": [],
+            "details": "Tạo thư mục lib nếu chưa có. Viết hàm tokenize: chuyển thành chữ thường, tách theo khoảng trắng, loại bỏ các dấu câu như .,!?;:'\"... Có thể tích hợp danh sách stopwords tùy chọn (có thể bỏ qua hoặc dùng danh sách đơn giản). Export mảng các token.",
+            "status": "done",
+            "testStrategy": "Viết unit test cho tokenize: 'Hello world' -> ['hello','world']; 'Xin chào!' -> ['xin','chào']; kiểm tra chữ hoa/thường, dấu câu.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:27:07.667Z"
+          },
+          {
+            "id": 2,
+            "title": "Thêm hàm keywordSimilarity và unit test",
+            "description": "Bổ sung hàm keywordSimilarity(text1, text2) tính Jaccard similarity trên set token sử dụng tokenize. Xuất hàm từ lib/text-similarity.ts. Viết unit test kiểm tra similarity.",
+            "dependencies": [
+              1
+            ],
+            "details": "Hàm keywordSimilarity: lấy token của cả hai văn bản, tính intersection / union. Có thể cân nhắc TF-IDF đơn giản nếu cần. Đảm bảo kết quả trả về số thực từ 0 đến 1. Thêm vào module đã tạo từ subtask 1.",
+            "status": "done",
+            "testStrategy": "Viết unit test: 'mèo chó' vs 'chó mèo' ~1; 'mèo' vs 'chó' ≈ 0; kiểm tra với chữ hoa/thường, dấu câu.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:27:07.937Z"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 382,
+            "updatedAt": "2026-06-12T17:27:25.887Z",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tách thành 2 subtask: 1) Tạo module lib/text-similarity.ts với hàm tokenize. 2) Thêm hàm keywordSimilarity tính Jaccard similarity và unit test.",
+        "updatedAt": "2026-06-12T17:27:25.887Z"
+      },
+      {
+        "id": "383",
+        "title": "Knowledge Merge - Triển khai insertWithDedup",
+        "description": "Viết module lib/knowledge-merge.ts với hàm insertWithDedup(newEntries, topic) thực hiện keyword similarity giữa entry mới và kho global để gộp hoặc chèn.",
+        "details": "Tạo lib/knowledge-merge.ts. Hàm insertWithDedup(newEntries, topic): với mỗi entry mới, gọi getAllKnowledge() để lấy tất cả (hoặc lọc theo keyword?). Tính candidateMatch bằng keywordSimilarity(title+content) với từng entry trong kho, lấy max. Nếu max >= MERGE_THRESHOLD (0.6? tùy chỉnh), merge: cập nhật sources (append nếu topicUrl chưa có), topicRefs (union), tags (union), content (giữ bản dài hơn hoặc nếu độ dài gần bằng nhau thì giữ mới? PRD nói giữ bản dài hơn), tăng mergedCount. Ngược lại tạo entry mới với id ngẫu nhiên (uuid). Trả về {inserted, merged}. Dùng transaction trong IndexedDB nếu cần.",
+        "testStrategy": "Insert entry A (title 'Mèo'), kho rỗng → tạo mới. Insert entry B (title 'Mèo con', nội dung tương tự) → similarity cao → gộp, sources có 2 nguồn, mergedCount=1. Insert entry C (title 'Chó') → similarity thấp → tạo mới. Kiểm tra dedup chính xác.",
+        "priority": "high",
+        "dependencies": [
+          "380",
+          "382"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng hàm keywordSimilarity và logic tìm candidate match",
+            "description": "Phát triển hàm tính độ tương đồng giữa hai entry dựa trên từ khóa, và logic để tìm entry trùng lặp trong kho global với độ tương đồng cao nhất.",
+            "dependencies": [],
+            "details": "Viết hàm computeKeywordSimilarity(title1, content1, title2, content2) trả về giá trị 0-1. Sử dụng kỹ thuật so khớp từ khóa đơn giản. Trong insertWithDedup, với mỗi entry mới, gọi getAllKnowledge() và lặp qua tất cả entry, tính similarity, lấy max. Hằng số MERGE_THRESHOLD mặc định 0.6.",
+            "status": "done",
+            "testStrategy": "Viết unit test cho hàm keywordSimilarity với các cặp văn bản giống nhau, tương tự và khác nhau; kiểm tra kết quả trong khoảng hợp lý.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:30:01.342Z"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai merge các trường và cập nhật entry",
+            "description": "Thực hiện merge các trường sources, topicRefs, tags, content khi phát hiện entry trùng lặp, và tăng mergedCount.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong nhánh merge, cập nhật sources: nếu topicUrl chưa có trong sources thì thêm mới. topicRefs: union với mảng mới. tags: union. content: giữ bản dài hơn, nếu xấp xỉ nhau thì giữ bản mới. Tăng mergedCount lên 1. Dùng transaction IDB nếu cần. Đảm bảo cập nhật updatedAt.",
+            "status": "done",
+            "testStrategy": "Kiểm tra merge với các trường hợp: sources có thêm, topicRefs union, tags union, content giữ bản dài, mergedCount tăng đúng.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:30:01.518Z"
+          },
+          {
+            "id": 3,
+            "title": "Viết unit test cho toàn bộ insertWithDedup",
+            "description": "Xây dựng unit test cho hàm insertWithDedup bao gồm các kịch bản: kho rỗng, tạo mới, merge, gộp nhiều lần, xử lý các trường hợp biên.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Sử dụng mock cho getAllKnowledge và IndexedDB. Viết test cho: insert entry mới vào kho rỗng -> tạo mới; insert entry tương tự -> merge; insert entry khác -> tạo mới; merge nhiều lần; kiểm tra tính đúng đắn của mergedCount, content dài nhất, sources không trùng. Đảm bảo test passing.",
+            "status": "done",
+            "testStrategy": "Chạy test suite và xác nhận tất cả kịch bản test đều pass.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:30:01.833Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 383,
+            "updatedAt": "2026-06-12T17:30:17.443Z",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tách thành 3 subtask: 1) Xây dựng logic tìm entry trùng lặp dùng keywordSimilarity. 2) Triển khai merge sources, topicRefs, tags, content và tăng mergedCount. 3) Viết unit test với các kịch bản merge, tạo mới, và gộp.",
+        "updatedAt": "2026-06-12T17:30:17.443Z"
+      },
+      {
+        "id": "384",
+        "title": "Extraction Flow - Ghi kết quả vào kho global qua insertWithDedup",
+        "description": "Sửa composables/useKnowledge.ts hoặc module trích xuất để sau khi LLM trả về KnowledgeEntry[], gọi insertWithDedup thay vì lưu vào CachedTopic.",
+        "details": "Tìm trong extractKnowledge hoặc summarizer.ts nơi ghi knowledgeEntries vào CachedTopic. Thay bằng gọi insertWithDedup từ knowledge-merge.ts. Loại bỏ lưu per-topic (hoặc giữ tạm để backward compat, nhưng ưu tiên ghi global). Đảm bảo gửi message qua background nếu sidepanel (theo pattern hiện tại). Cập nhật useKnowledge để lấy dữ liệu từ global store sau khi extract.",
+        "testStrategy": "Extract topic 'Mèo', sau đó extract topic 'Mèo con' → kho chỉ có 1 entry gộp. Kiểm tra sources có đúng 2 topicUrls. Extract lại topic 'Mèo' → mergedCount tăng lên 2. Xác nhận không còn entry per-topic (nếu đã xoá).",
+        "priority": "high",
+        "dependencies": [
+          "383",
+          "381"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xác định vị trí gọi extractKnowledge và thay bằng insertWithDedup",
+            "description": "Tìm trong extractKnowledge hoặc summarizer.ts nơi ghi knowledgeEntries vào CachedTopic. Thay bằng gọi insertWithDedup từ knowledge-merge.ts.",
+            "dependencies": [],
+            "details": "Tìm hàm extractKnowledge trong codebase, xác định nơi lưu kết quả vào CachedTopic. Thay thế bằng lời gọi insertWithDedup với tham số là mảng KnowledgeEntry. Đảm bảo chuyển đổi kiểu dữ liệu phù hợp.",
+            "status": "done",
+            "testStrategy": "Kiểm tra extract topic và xác nhận dữ liệu được lưu vào global store thay vì CachedTopic.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:33:14.408Z"
+          },
+          {
+            "id": 2,
+            "title": "Loại bỏ lưu per-topic (hoặc giữ tạm) và cập nhật luồng dữ liệu",
+            "description": "Loại bỏ các đoạn code lưu kết quả riêng cho từng topic hoặc giữ tạm với cờ backward compat. Cập nhật luồng xử lý để sau khi extract, dữ liệu đồng bộ qua background nếu đang sidepanel.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sau khi đã chuyển sang insertWithDedup, xóa hoặc comment phần lưu vào cachedTopics. Thêm xử lý gửi message qua background để cập nhật sidepanel nếu cần. Duy trì backward compat nếu cần.",
+            "status": "done",
+            "testStrategy": "Kiểm tra không còn dư thừa dữ liệu per-topic, và nếu đang sidepanel thì có message cập nhật.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:33:14.578Z"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật composable useKnowledge để lấy từ global store",
+            "description": "Sửa composables/useKnowledge.ts để sau khi extract, dữ liệu được lấy từ global store (getAllKnowledge) thay vì từ CachedTopic.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong useKnowledge, sử dụng hàm getAllKnowledge từ knowledge-store để lấy danh sách entries. Đảm bảo reactive và cập nhật sau khi extract.",
+            "status": "done",
+            "testStrategy": "Extract topic, sau đó kiểm tra useKnowledge trả về entries mới từ global store.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T17:33:15.049Z"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 384,
+            "updatedAt": "2026-06-12T17:33:34.966Z",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tách thành 3 subtask: 1) Xác định vị trí gọi extractKnowledge và thay bằng insertWithDedup. 2) Loại bỏ lưu per-topic (hoặc giữ tạm) và cập nhật luồng dữ liệu. 3) Cập nhật composable useKnowledge để lấy từ global store.",
+        "updatedAt": "2026-06-12T17:33:34.966Z"
+      },
+      {
+        "id": "385",
+        "title": "Q&A trên kho global - Tổng quát hóa useNotebookQA",
+        "description": "Sửa useNotebookQA để lấy dữ liệu từ getAllKnowledge() thay vì notebook entries; tham số hóa nguồn dữ liệu; đổi tên answerFromNotebook thành answerFromKnowledge nếu cần.",
+        "details": "Trong useNotebookQA.ts, thay thế hàm getContext (hoặc tương tự) để gọi getAllKnowledge(). Sửa scoreEntry để khớp với GlobalKnowledgeEntry. Giữ nguyên pipeline: lấy TOP_K=30 entry có điểm cao nhất, gửi cho LLM với prompt phù hợp. Đảm bảo citation [n] hiển thị nguồn từ sources. Nếu kho rỗng, báo 'chưa có kiến thức' và không gọi LLM. Generalize type đầu vào nếu cần.",
+        "testStrategy": "Kho có 5 entry → query → gọi LLM với 5 entry (vì <= TOP_K). Kho có 50 entry → chỉ gửi 30 entry. Kho rỗng → không gọi LLM, trả về thông báo. Kiểm tra citation hiển thị topicUrl.",
+        "priority": "high",
+        "dependencies": [
+          "380",
+          "382"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tham số hóa nguồn dữ liệu trong useNotebookQA",
+            "description": "Sửa composable useNotebookQA để chấp nhận tham số nguồn dữ liệu, cho phép sử dụng getAllKnowledge() thay vì notebook entries.",
+            "dependencies": [],
+            "details": "Thêm tham số 'source' cho composable, mặc định 'notebook' hoặc 'knowledge'. Khi 'knowledge', gọi getAllKnowledge() để lấy entries. Đảm bảo type đầu vào tổng quát và đổi tên answerFromNotebook thành answerFromKnowledge nếu cần.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:44:25.779Z"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật hàm scoreEntry để khớp với GlobalKnowledgeEntry",
+            "description": "Sửa hàm scoreEntry trong useNotebookQA để hoạt động với kiểu GlobalKnowledgeEntry, sử dụng các trường title, tags, category, content.",
+            "dependencies": [],
+            "details": "Chỉnh sửa scoreEntry để tính điểm dựa trên các trường của GlobalKnowledgeEntry: title x3, tags x2, category x2, content x1. Loại bỏ userNote nếu không có. Đảm bảo hàm trả về số điểm phù hợp.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:44:36.333Z"
+          },
+          {
+            "id": 3,
+            "title": "Sửa prompt và xử lý citation với sources từ GlobalKnowledgeEntry",
+            "description": "Cập nhật prompt để hiển thị nguồn từ trường sources của GlobalKnowledgeEntry, đảm bảo citation [n] hoạt động đúng.",
+            "dependencies": [],
+            "details": "Sửa prompt answer để bao gồm thông tin sources từ mỗi entry (topicUrl). Trích xuất topicUrl từ sources để hiển thị citation. Đảm bảo định dạng markdown và parse đúng.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:44:46.075Z"
+          },
+          {
+            "id": 4,
+            "title": "Xử lý trường hợp kho rỗng và giới hạn TOP_K",
+            "description": "Xử lý khi kho kiến thức rỗng: trả về thông báo 'chưa có kiến thức' và không gọi LLM. Giữ nguyên giới hạn TOP_K=30.",
+            "dependencies": [],
+            "details": "Kiểm tra nếu mảng entries rỗng, trả về phản hồi thích hợp. Đảm bảo chỉ gửi tối đa TOP_K=30 entry cho LLM. Nếu ít hơn, gửi tất cả. Xử lý edge case entries null hoặc undefined.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 385,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:45:00.630Z"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Tách thành 4 subtask: 1) Tham số hóa nguồn dữ liệu trong useNotebookQA. 2) Cập nhật hàm scoreEntry để khớp với GlobalKnowledgeEntry. 3) Sửa prompt và xử lý citation với sources từ GlobalKnowledgeEntry. 4) Xử lý trường hợp kho rỗng và giới hạn TOP_K.",
+        "updatedAt": "2026-06-13T08:52:28.990Z"
+      },
+      {
+        "id": "386",
+        "title": "UI - Thêm 3 tab Sổ tay / Hỏi đáp / Kiến thức trong Notebook",
+        "description": "Trong NotebookView.vue, thêm tab navigation (có thể dùng el-tabs hoặc custom) với 3 tab; tab Hỏi đáp tích hợp Q&A từ global, tab Kiến thức hiển thị danh sách global knowledge.",
+        "details": "Sửa NotebookView.vue: thêm template với v-tabs hoặc component tabs. Tab 'Sổ tay' giữ nguyên notebook entries. Tab 'Hỏi đáp' render component Q&A hiện tại nhưng lấy dữ liệu từ global (dùng useGlobalKnowledgeQA). Tab 'Kiến thức' render component mới hiển thị GlobalKnowledgeEntry list: fetch từ getAllKnowledge, cho phép search/filter theo category/tag. Hiển thị mergedCount và số nguồn. App.vue cập nhật route nếu cần.",
+        "testStrategy": "Chuyển tab, mỗi tab hiển thị đúng nội dung. Tab Kiến thức load danh sách entry, search giảm list. Tab Hỏi đáp gọi câu hỏi trả lời. Đảm bảo không lag khi nhiều entry.",
+        "priority": "medium",
+        "dependencies": [
+          "385"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết lập cấu trúc tab navigation trong NotebookView.vue",
+            "description": "Thêm thanh điều hướng tab (Sổ tay, Hỏi đáp, Kiến thức) và tổ chức lại giao diện hiện tại của NotebookView.",
+            "dependencies": [],
+            "details": "Sử dụng el-tabs hoặc component custom để tạo 3 tab. Di chuyển phần hiển thị notebook entries hiện tại vào tab 'Sổ tay'. Thiết lập trạng thái (ref) để quản lý tab hiện hành và đảm bảo việc chuyển đổi mượt mà không làm mất dữ liệu nhập liệu dở dang.",
+            "status": "done",
+            "testStrategy": "Kiểm tra việc chuyển đổi qua lại giữa 3 tab; xác nhận tab 'Sổ tay' vẫn hiển thị đầy đủ danh sách ghi chú cũ; kiểm tra giao diện responsive trên các kích thước màn hình.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:47:14.881Z"
+          },
+          {
+            "id": 2,
+            "title": "Xây dựng component hiển thị danh sách Kiến thức toàn cục",
+            "description": "Tạo component hiển thị GlobalKnowledgeEntry với các tính năng tìm kiếm, lọc và thống kê.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tạo component mới trong thư mục components. Sử dụng hàm getAllKnowledge để lấy dữ liệu. Triển khai thanh tìm kiếm và bộ lọc theo category/tag. Hiển thị thông tin mergedCount và số lượng nguồn (sources). Component này sẽ được nhúng vào tab 'Kiến thức'.",
+            "status": "done",
+            "testStrategy": "Kiểm tra dữ liệu load từ IndexedDB/API; test tính năng search theo từ khóa và filter theo tag; xác nhận các thông số mergedCount hiển thị chính xác.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:47:25.134Z"
+          },
+          {
+            "id": 3,
+            "title": "Tích hợp tính năng Hỏi đáp (Q&A) với dữ liệu Global Knowledge",
+            "description": "Kết nối tab 'Hỏi đáp' với hệ thống Q&A sử dụng dữ liệu từ toàn bộ kho tri thức.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng composable useGlobalKnowledgeQA để thực hiện các truy vấn LLM trên phạm vi toàn cục. Tái sử dụng hoặc kế thừa logic từ NotebookQAPanel.vue để hiển thị giao diện hỏi đáp, progress bar và kết quả markdown kèm trích dẫn nguồn (citations).",
+            "status": "pending",
+            "testStrategy": "Gửi câu hỏi trong tab 'Hỏi đáp' và kiểm tra xem kết quả có dựa trên dữ liệu từ Global Knowledge hay không; kiểm tra các liên kết trích dẫn nguồn có hoạt động đúng không.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Tu dong hoan tat",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 386,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:47:52.140Z"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tách thành 3 subtask: 1) Thêm tab navigation trong NotebookView.vue. 2) Tạo component cho tab Kiến thức hiển thị danh sách GlobalKnowledgeEntry. 3) Tích hợp Q&A tab với dữ liệu global.",
+        "updatedAt": "2026-06-13T08:52:38.516Z"
+      },
+      {
+        "id": "387",
+        "title": "Pin to Notebook - Nút ghim từ tab Kiến thức",
+        "description": "Thêm nút ⭐ vào mỗi item tab Kiến thức; khi click tạo NotebookEntry từ GlobalKnowledgeEntry và thêm vào notebook store; idempotent.",
+        "details": "Trong tab Kiến thức, với mỗi GlobalKnowledgeEntry, thêm button 'Ghim vào Sổ tay'. Click: gọi hàm createNotebookEntry(globalEntry) trong composables/useNotebook.ts hoặc tương tự. Map: id mới, title, content, source lấy từ sources[0] (topicUrl, topicTitle), savedAt, sourceTopicUrl, sourceTopicTitle. Kiểm tra xem entry đã ghim chưa (có thể dùng lookup bằng nội dung hoặc id) để disable button. Thông báo 'Đã ghim'.",
+        "testStrategy": "Ấn ghim → entry xuất hiện trong tab Sổ tay. Ấn lại → không ghim thêm (button disabled). Ghim entry đã có → không nhân đôi.",
+        "priority": "medium",
+        "dependencies": [
+          "386"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm nút ghim trong tab Kiến thức",
+            "description": "Thêm nút ⭐ vào mỗi item trong tab Kiến thức, khi click gọi hàm createNotebookEntry và hiển thị thông báo Đã ghim.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong tab Kiến thức, với mỗi GlobalKnowledgeEntry, thêm button 'Ghim vào Sổ tay'. Khi click, gọi hàm createNotebookEntry(globalEntry). Kiểm tra xem entry đã ghim chưa để disable button. Hiển thị thông báo 'Đã ghim'.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:49:24.642Z"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai hàm createNotebookEntry và kiểm tra idempotent",
+            "description": "Tạo hàm createNotebookEntry trong composables/useNotebook.ts để tạo NotebookEntry từ GlobalKnowledgeEntry, đảm bảo idempotent.",
+            "dependencies": [],
+            "details": "Tạo hàm createNotebookEntry nhận GlobalKnowledgeEntry, map thành NotebookEntry với các trường: id mới, title, content, source từ sources[0] (topicUrl, topicTitle), savedAt, sourceTopicUrl, sourceTopicTitle. Kiểm tra idempotent: trước khi thêm, kiểm tra entry đã tồn tại trong store chưa (so sánh bằng nội dung hoặc id). Nếu đã tồn tại, không thêm và trả về false. Hỗ trợ UI disable button khi đã ghim.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tách thành 2 subtask: 1) Thêm nút ghim trong tab Kiến thức. 2) Triển khai hàm createNotebookEntry và kiểm tra idempotent.",
+        "updatedAt": "2026-06-13T08:52:48.040Z"
+      },
+      {
+        "id": "388",
+        "title": "Per-topic Knowledge View - Lọc global store theo topic",
+        "description": "Sửa KnowledgeView.vue để hiển thị knowledge của topic hiện tại bằng cách lọc global store theo topicRefs; giữ action 'Trích xuất'.",
+        "details": "Trong KnowledgeView.vue, thay vì lấy knowledgeEntries từ CachedTopic, gọi getAllKnowledge() và lọc theo topicRefs.includes(currentTopicUrl). Hiển thị danh sách kèm nguồn. Action 'Trích xuất' vẫn gọi extractKnowledge và cập nhật global store (đã làm ở task 384). Có thể giữ per-topic cache cũ để fallback.",
+        "testStrategy": "Mở topic A, chỉ thấy entry có topicRefs chứa url A. Mở topic B, không thấy entry của A. Trích xuất topic A → entry mới xuất hiện. Xóa topic A → danh sách không thay đổi (nhưng filter không còn topic A nên không hiển thị).",
+        "priority": "medium",
+        "dependencies": [
+          "380",
+          "384"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Sửa KnowledgeView.vue để lấy dữ liệu từ global store và lọc theo topicRefs",
+            "description": "Thay đổi nguồn dữ liệu trong KnowledgeView.vue từ CachedTopic sang gọi getAllKnowledge() từ global store và lọc các entry có topicRefs bao gồm currentTopicUrl.",
+            "dependencies": [],
+            "details": "Trong KnowledgeView.vue, sửa computed property hoặc method để thay vì lấy knowledgeEntries từ CachedTopic, sử dụng getAllKnowledge() và filter với topicRefs.includes(currentTopicUrl). Hiển thị danh sách kèm nguồn (sources). Giữ nguyên giao diện hiển thị.",
+            "status": "done",
+            "testStrategy": "Mở topic A, chỉ thấy entry có topicRefs chứa url A. Mở topic B, không thấy entry của A. Kiểm tra danh sách hiển thị đúng với từng topic.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:51:54.023Z"
+          },
+          {
+            "id": 2,
+            "title": "Giữ action 'Trích xuất' và xử lý fallback trong KnowledgeView.vue",
+            "description": "Đảm bảo action 'Trích xuất' trong KnowledgeView.vue vẫn gọi extractKnowledge và cập nhật global store, đồng thời xử lý fallback nếu cần (ví dụ: khi global store chưa có dữ liệu).",
+            "dependencies": [],
+            "details": "Action 'Trích xuất' phải gọi extractKnowledge (đã được cập nhật ở task 384) để thêm knowledge mới vào global store. Có thể giữ per-topic cache cũ để fallback trong trường hợp global store bị lỗi hoặc chưa sẵn sàng. Đảm bảo sau khi trích xuất, danh sách hiển thị được cập nhật tự động (reactive).",
+            "status": "done",
+            "testStrategy": "Trích xuất topic A → entry mới xuất hiện trong danh sách. Xóa topic A → danh sách không thay đổi (nhưng filter không còn topic A nên không hiển thị). Kiểm tra fallback khi global store trống.",
+            "parentId": "undefined",
+            "updatedAt": "2026-06-13T08:52:03.422Z"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Tách thành 2 subtask: 1) Sửa KnowledgeView.vue để lấy dữ liệu từ global store và lọc theo topicRefs. 2) Giữ action 'Trích xuất' và xử lý fallback nếu cần.",
+        "updatedAt": "2026-06-13T08:52:03.422Z"
+      },
+      {
+        "id": "389",
+        "title": "Xây dựng module stopword tiếng Việt",
+        "description": "Tạo file lib/stopwords-vi.ts xuất Set STOPWORDS_VI chứa các stopword tiếng Việt phổ biến (function words, đại từ, liên từ, giới từ) và kèm chú thích nguồn. Danh sách gọn, không over-aggressive.",
+        "details": "Tạo Set STOPWORDS_VI với các từ như 'của', 'là', 'và', 'có', 'được', 'cho', 'trong', 'với', 'không', 'đã', 'sẽ', 'đang', 'này', 'đó', 'tôi', 'bạn', 'các', 'những', 'một', 'vì', 'nếu', 'thì', 'khi', 'như', 'lại', 'ra', 'vào', 'lên', 'xuống', 'đi', 'về', 'từ', 'tại', 'theo', 'đến', 'sau', 'trước', 'giữa', 'thông qua', ... Dựa trên tài liệu xử lý ngôn ngữ tự nhiên tiếng Việt. Không lọc các từ có thể mang nghĩa trong ngữ cảnh kỹ thuật.",
+        "testStrategy": "Viết unit test kiểm tra: (1) Các từ chức năng bị lọc đúng, (2) Từ nội dung như 'máy', 'học' không bị lọc, (3) Cạnh biên như đầu danh sách, danh sách rỗng.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Nghiên cứu và tổng hợp danh sách stopword tiếng Việt",
+            "description": "Tìm kiếm và chọn lọc các stopword tiếng Việt phổ biến từ các nguồn uy tín trong xử lý ngôn ngữ tự nhiên, đảm bảo danh sách gọn, không over-aggressive.",
+            "dependencies": [],
+            "details": "Xem xét các tài liệu NLP tiếng Việt như từ VLSP, các thư viện open source. Lọc ra các từ chức năng, đại từ, liên từ, giới từ. Loại bỏ các từ có thể mang nghĩa kỹ thuật (ví dụ: 'máy', 'học', 'dữ liệu'). Danh sách dự kiến bao gồm: 'của', 'là', 'và', 'có', 'được', 'cho', 'trong', 'với', 'không', 'đã', 'sẽ', 'đang', 'này', 'đó', 'tôi', 'bạn', 'các', 'những', 'một', 'vì', 'nếu', 'thì', 'khi', 'như', 'lại', 'ra', 'vào', 'lên', 'xuống', 'đi', 'về', 'từ', 'tại', 'theo', 'đến', 'sau', 'trước', 'giữa', 'thông qua', ...",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo file lib/stopwords-vi.ts với Set STOPWORDS_VI",
+            "description": "Tạo file TypeScript xuất Set chứa các stopword đã tổng hợp, kèm chú thích ngắn về nguồn.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tạo file tại path lib/stopwords-vi.ts. Xuất const STOPWORDS_VI = new Set<string>([...]). Thêm comment về nguồn tham khảo. Đảm bảo TypeScript compile.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Thêm chú thích nguồn và ghi chú về việc tránh lọc từ kỹ thuật",
+            "description": "Bổ sung chú thích trong file nguồn về danh sách stopword và cảnh báo không lọc các từ có thể mang nghĩa kỹ thuật.",
+            "dependencies": [
+              2
+            ],
+            "details": "Viết comment ở đầu file giải thích tiêu chí chọn stopword, nguồn tham khảo, và lưu ý về từ kỹ thuật.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết unit test kiểm tra lọc stopword cơ bản",
+            "description": "Viết test kiểm tra rằng các từ chức năng bị loại bỏ đúng khi sử dụng Set.",
+            "dependencies": [
+              2
+            ],
+            "details": "Sử dụng framework test (Jest). Viết test case: một mảng chứa từ stopword và từ nội dung, assert kết quả sau khi lọc.",
+            "status": "pending",
+            "testStrategy": "Sử dụng Jest: khai báo mảng test chứa cả stopword và từ nội dung, gọi hàm lọc dựa trên Set STOPWORDS_VI, kiểm tra mảng kết quả không chứa stopword.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit test cho các trường hợp đặc biệt",
+            "description": "Viết test kiểm tra từ nội dung không bị lọc, cạnh biên (đầu danh sách, danh sách rỗng).",
+            "dependencies": [
+              2,
+              4
+            ],
+            "details": "Test 1: Từ nội dung 'máy', 'học' không bị loại bỏ. Test 2: Mảng rỗng trả về rỗng. Test 3: Mảng chỉ gồm stopword trả về rỗng.",
+            "status": "pending",
+            "testStrategy": "Thực hiện các test case với assertion chi tiết: đầu vào là mảng từ, đầu ra là mảng đã lọc, kiểm tra kết quả đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 389,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Task không cần chia nhỏ, có thể thực hiện trực tiếp.",
+        "updatedAt": "2026-06-14T14:55:56.622Z"
+      },
+      {
+        "id": "390",
+        "title": "Xây dựng hàm tokenizeForSearch",
+        "description": "Tạo hàm tokenizeForSearch trong lib/lexical-search.ts. Hàm sử dụng lại tokenize() từ text-similarity.ts (tách token, lowercase), sau đó lọc các token qua STOPWORDS_VI. Mỗi token được xử lý đồng thời kiểm tra dấu câu? Không, giữ nguyên token. Hướng đến mục đích tái sử dụng riêng biệt cho search, không ảnh hưởng dedup.",
+        "details": "export function tokenizeForSearch(text: string): string[] { const tokens = tokenize(text); return tokens.filter(t => !STOPWORDS_VI.has(t) && t.length > 0); }. Có thể thêm xử lý nếu chuỗi đầu vào null/undefined trả về mảng rỗng.",
+        "testStrategy": "Unit test: (1) So sánh tokenizeForSearch với tokenize gốc trên câu có stopword, (2) Đảm bảo không loại bỏ từ nội dung, (3) Kiểm tra với chuỗi rỗng, null, undefined.",
+        "priority": "high",
+        "dependencies": [
+          "389"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo file lexical-search.ts và thiết lập import",
+            "description": "Tạo file lib/lexical-search.ts, import hàm tokenize từ lib/text-similarity.ts và Set STOPWORDS_VI từ lib/stopwords-vi.ts.",
+            "dependencies": [
+              389,
+              382
+            ],
+            "details": "Tạo file rỗng, thêm import { tokenize } from './text-similarity' và import { STOPWORDS_VI } from './stopwords-vi'.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý input null/undefined cho tokenizeForSearch",
+            "description": "Bổ sung xử lý đầu vào null/undefined, trả về mảng rỗng để tránh lỗi runtime.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm kiểm tra if (!text) return [] ở đầu hàm tokenizeForSearch.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra với null, undefined, chuỗi rỗng đều trả về [].",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Triển khai lọc stopword và token rỗng",
+            "description": "Viết logic chính: gọi tokenize(text) và lọc các token không nằm trong STOPWORDS_VI và có độ dài > 0.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "const tokens = tokenize(text); return tokens.filter(t => !STOPWORDS_VI.has(t) && t.length > 0);",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết unit test cho tokenizeForSearch",
+            "description": "Viết test: so sánh với tokenize gốc, đảm bảo không loại bỏ từ nội dung, kiểm tra với chuỗi rỗng/null/undefined.",
+            "dependencies": [
+              3
+            ],
+            "details": "Sử dụng framework test hiện tại (Jest), viết ít nhất 3 test case.",
+            "status": "pending",
+            "testStrategy": "Chạy npm test, xác nhận tất cả test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Xuất hàm tokenizeForSearch và cập nhật index nếu cần",
+            "description": "Đảm bảo hàm được export từ file và thêm vào barrel export (lib/index.ts) nếu có.",
+            "dependencies": [
+              3
+            ],
+            "details": "Thêm export function tokenizeForSearch; kiểm tra barrel export và tái cấu trúc import nếu cần.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra import thành công từ file khác.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 390,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
+        "updatedAt": "2026-06-14T14:56:21.230Z"
+      },
+      {
+        "id": "391",
+        "title": "Xây dựng hàm buildBm25Index",
+        "description": "Tạo hàm buildBm25Index(docs: NotebookEntryForQA[]): Bm25Index. Duyệt từng doc, tokenize từng field (title, content, tags, category, userNote) bằng tokenizeForSearch, đếm document frequency (df) cho mỗi term và độ dài theo field. Lưu trữ df, avgFieldLength, và có thể totalDocs. Corpus nhỏ, xây in-memory.",
+        "details": "interface Bm25Index { df: Map<string, number>; totalDocs: number; avgFieldLengths: Record<string, number>; fieldLengths: Array<Record<string, number>>; docs: Array<{ ... }> }. Xây dựng bằng cách duyệt từng doc: với mỗi term trong field, tăng df (tần suất document, không phải tần suất xuất hiện). Tính độ dài từng field cho từng doc, sau đó tính trung bình cho toàn corpus. Edge case: field rỗng coi như độ dài 0.",
+        "testStrategy": "Unit test: (1) Thử với 2-3 doc đơn giản, kiểm tra df của term chỉ xuất hiện 1 doc =1, xuất hiện 2 doc =2. (2) Độ dài trung bình field tính đúng. (3) Xử lý doc thiếu field.",
+        "priority": "high",
+        "dependencies": [
+          "390"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng cấu trúc dữ liệu Bm25Index và tính df, độ dài field",
+            "description": "Tạo interface Bm25Index, duyệt từng doc, tokenize các field, đếm document frequency cho mỗi term, tính độ dài từng field cho từng doc và trung bình toàn corpus.",
+            "dependencies": [
+              390
+            ],
+            "details": "Implement hàm buildBm25Index: duyệt docs, với mỗi field (title, content, tags, category, userNote), tokenize bằng tokenizeForSearch, cập nhật df (tần suất document) cho mỗi term, lưu độ dài field của doc vào mảng fieldLengths, cuối cùng tính avgFieldLengths bằng tổng độ dài mỗi field chia totalDocs.",
+            "status": "pending",
+            "testStrategy": "Unit test: kiểm tra df đếm đúng (vd: term xuất hiện 1 doc thì df=1, 2 doc thì df=2), kiểm tra fieldLengths cho từng doc, kiểm tra avgFieldLengths đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xử lý các trường hợp đặc biệt và viết test đơn vị",
+            "description": "Xử lý edge case field null, rỗng, doc thiếu field và viết test đơn vị bao phủ toàn bộ hàm buildBm25Index.",
+            "dependencies": [
+              1
+            ],
+            "details": "Bổ sung xử lý: nếu field null/undefined thì coi độ dài 0, không tokenize. Nếu tokenize trả về mảng rỗng thì độ dài 0. Đảm bảo mọi doc đều có đủ các field trong avgFieldLengths. Viết test đơn vị kiểm tra df, fieldLengths, avgFieldLengths, totalDocs, và xử lý doc thiếu field.",
+            "status": "pending",
+            "testStrategy": "Unit test: dùng doc có field null, field rỗng, doc bình thường, kiểm tra không lỗi và kết quả đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 391,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia task thành: 1) Xây dựng cấu trúc dữ liệu Bm25Index và tính df, độ dài field; 2) Xử lý các trường hợp đặc biệt (field null, rỗng) và viết test đơn vị cho từng phần.",
+        "updatedAt": "2026-06-14T14:56:45.458Z"
+      },
+      {
+        "id": "392",
+        "title": "Xây dựng hàm scoreBm25",
+        "description": "Tạo hàm scoreBm25(queryTokens: string[], doc: NotebookEntryForQA, index: Bm25Index, opts?): number. Tính điểm BM25F-lite với TF saturation (k1=1.2), length normalization (b=0.75), field boost (title=3, tags=2, category=2, content=1, note=1). IDF từ index.df và index.totalDocs. Exact token match: chỉ xét token trong query xuất hiện trong doc.",
+        "details": "Công thức BM25 cho mỗi field: score = IDF * (TF / (TF + k1)) * (1 - b + b * (fieldLength / avgFieldLength)). IDF = ln((N - df + 0.5) / (df + 0.5)). Với field boost, nhân thêm boost. Điểm tổng = sum of field scores. Xử lý trường hợp term không nằm trong index thì IDF = 0? Nếu term không xuất hiện trong corpus, df=0, IDF tính mặc định? Thực tế nếu term không có trong df map thì IDF rất cao, nên thêm handling: nếu df=0 thì IDF = ln((N + 0.5) / 0.5). Có thể giới hạn IDF tối đa. Các tham số có thể truyền qua opts. Edge case: doc field rỗng => điểm field đó =0.",
+        "testStrategy": "Unit test: (1) Term hiếm (df=1) > term phổ biến (df=3) khi cùng TF. (2) Entry ngắn khớp chính xác > entry dài chứa từ. (3) Trùng title > trùng content. (4) 'ca' không match 'café'. (5) Nhiều field xuất hiện đều tính điểm.",
+        "priority": "high",
+        "dependencies": [
+          "390",
+          "391"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Triển khai công thức BM25 cơ bản với các tham số k1, b, IDF và exact token match",
+            "description": "Xây dựng logic tính điểm BM25 cho mỗi field dựa trên k1=1.2, b=0.75. Sử dụng IDF từ index.df và index.totalDocs. Chỉ xét token xuất hiện trong doc.",
+            "dependencies": [],
+            "details": "Cài đặt hàm scoreField: IDF = ln((N - df + 0.5)/(df + 0.5)). TF saturation với k1. Length normalization với b. Tính tổng điểm các field.",
+            "status": "pending",
+            "testStrategy": "Unit test các case: (1) Term hiếm (df=1) > term phổ biến (df=3) khi cùng TF. (2) Entry ngắn khớp chính xác > entry dài chứa từ. (3) 'ca' không match 'café'.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thêm field boost, xử lý trường hợp df=0, field rỗng và tối ưu hiệu năng",
+            "description": "Bổ sung field boost cho title (3), tags (2), category (2), content (1), note (1). Xử lý term không trong index (df=0) với IDF mặc định. Xử lý field rỗng. Có thể giới hạn IDF tối đa.",
+            "dependencies": [
+              1
+            ],
+            "details": "Nhân thêm boost vào score mỗi field. Nếu term không trong df map, tính IDF = ln((N+0.5)/0.5). Nếu field length = 0, score = 0. Tối ưu bằng cách cache avgFieldLength và precompute boost.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra df=0 cho term không tồn tại. Kiểm tra field rỗng cho điểm 0. Kiểm tra field boost: trùng title > trùng content.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 392,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia thành: 1) Triển khai công thức BM25 cơ bản với các tham số k1, b, IDF; 2) Thêm field boost, xử lý trường hợp df=0, field rỗng và tối ưu hiệu năng.",
+        "updatedAt": "2026-06-14T14:57:11.551Z"
+      },
+      {
+        "id": "393",
+        "title": "Xây dựng hàm rankBm25",
+        "description": "Tạo hàm rankBm25(question: string, docs: NotebookEntryForQA[], opts?): { doc: NotebookEntryForQA; score: number }[]. Hàm này là API cấp cao: tokenize câu hỏi bằng tokenizeForSearch (với stopword), build index từ docs nếu có, score từng doc, sắp xếp giảm dần theo điểm. Fallback: nếu query rỗng (toàn stopword) hoặc docs ≤ TOP_K thì trả về toàn bộ docs với score=0.",
+        "details": "export function rankBm25(question: string, docs: NotebookEntryForQA[], opts?: Bm25Opts) { const queryTokens = tokenizeForSearch(question); if (queryTokens.length === 0 || docs.length <= TOP_K) return docs.map(d => ({ doc: d, score: 0 })); const index = buildBm25Index(docs); const scored = docs.map(doc => ({ doc, score: scoreBm25(queryTokens, doc, index, opts) })); return scored.sort((a,b) => b.score - a.score); }. Có thể thêm tùy chọn trả về top K sau khi sort. Giữ tham số mặc định.",
+        "testStrategy": "Unit test: (1) Với 3 doc, test thứ tự ranking. (2) Query rỗng (toàn stopword) trả về toàn bộ. (3) Corpus ≤ TOP_K (ví dụ 5) nhưng query có token → vẫn rank và trả về. (4) Corpus rỗng trả về mảng rỗng.",
+        "priority": "high",
+        "dependencies": [
+          "392"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xử lý fallback khi query rỗng hoặc docs ≤ TOP_K",
+            "description": "Kiểm tra tokenizeForSearch(question) và docs.length, nếu query không có token hoặc docs.length <= TOP_K thì trả về tất cả docs với score=0.",
+            "dependencies": [
+              392
+            ],
+            "details": "Sử dụng tokenizeForSearch(question) để tokenize câu hỏi. Nếu queryTokens.length === 0 hoặc docs.length <= TOP_K, trả về mảng {doc, score: 0}.",
+            "status": "pending",
+            "testStrategy": "Viết unit test: query rỗng → tất cả score 0; corpus nhỏ hơn TOP_K → tất cả score 0.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xây dựng BM25 index cho tất cả docs",
+            "description": "Gọi buildBm25Index(docs) để tạo chỉ mục BM25 cho toàn bộ danh sách tài liệu.",
+            "dependencies": [
+              392,
+              393
+            ],
+            "details": "Sử dụng hàm buildBm25Index có sẵn từ task 392. Index được dùng để tính điểm cho mỗi doc.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra index được tạo và không ảnh hưởng đến dữ liệu gốc.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tính điểm BM25 cho từng tài liệu",
+            "description": "Với mỗi tài liệu, gọi scoreBm25(queryTokens, doc, index, opts) và thu thập kết quả vào mảng scored.",
+            "dependencies": [
+              392,
+              393
+            ],
+            "details": "Duyệt qua tất cả docs, tính điểm dựa trên token câu hỏi và index. Giữ nguyên điểm số.",
+            "status": "pending",
+            "testStrategy": "Đảm bảo scoreBm25 được gọi đúng số lần và điểm hợp lệ.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Sắp xếp và trả về top K kết quả",
+            "description": "Sắp xếp mảng scored theo score giảm dần, tùy chọn chỉ lấy top K (nếu opts.topK được chỉ định). Trả về mảng đã sắp xếp.",
+            "dependencies": [
+              393
+            ],
+            "details": "Dùng sort(a,b) => b.score - a.score. Nếu opts.topK có giá trị, lấy K phần tử đầu.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thứ tự giảm dần và giới hạn top K hoạt động đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit tests cho hàm rankBm25",
+            "description": "Thêm các test case: (1) 3 docs kiểm tra thứ tự ranking, (2) query rỗng trả về toàn bộ, (3) corpus ≤ TOP_K vẫn rank, (4) corpus rỗng trả về [].",
+            "dependencies": [
+              393,
+              394
+            ],
+            "details": "Tạo test file rankBm25.test.ts, mock tokenizeForSearch, buildBm25Index, scoreBm25 nếu cần. Chạy đủ 4 scenario.",
+            "status": "pending",
+            "testStrategy": "Unit test: kiểm tra kết quả trả về đúng cấu trúc và điểm số.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 393,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Task không cần chia nhỏ, có thể viết trực tiếp dựa vào các hàm đã có.",
+        "updatedAt": "2026-06-14T14:57:36.583Z"
+      },
+      {
+        "id": "394",
+        "title": "Xây dựng module synonym tiếng Việt (tùy chọn)",
+        "description": "Tạo lib/synonyms-vi.ts với seed map đồng nghĩa tiếng Việt nhỏ (vd 'xe máy'↔'mô tô', 'điện thoại'↔'đt', 'máy tính'↔'computer') và hàm expandQueryTokens(tokens: string[]): string[]. Module có flag bật/tắt (dùng trong opts).",
+        "details": "Tạo file xuất SYNORPH_MAP: Map<string, string[]>. Hàm expandQueryTokens: duyệt tokens, nếu token trong map thì thêm các từ đồng nghĩa vào cuối mảng (trừ token gốc). Có thể dùng trong rankBm25 như một tùy chọn. Giới hạn số lượng synonym để tránh nhiễu.",
+        "testStrategy": "Unit test: (1) expandQueryTokens với token có synonym, kiểm tra mảng kết quả chứa token gốc và synonym. (2) Token không có synonym giữ nguyên. (3) Mảng rỗng trả về rỗng.",
+        "priority": "low",
+        "dependencies": [
+          "390"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo file lib/synonyms-vi.ts và định nghĩa SYNORPH_MAP",
+            "description": "Tạo file lib/synonyms-vi.ts với một Map đồng nghĩa tiếng Việt nhỏ (seed).",
+            "dependencies": [],
+            "details": "Tạo file và xuất một Map<string, string[]> chứa các cặp đồng nghĩa, ví dụ 'xe máy' ↔ 'mô tô', 'điện thoại' ↔ 'đt', 'máy tính' ↔ 'computer'.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Triển khai hàm expandQueryTokens",
+            "description": "Viết hàm expandQueryTokens(tokens: string[]): string[] duyệt mảng tokens, nếu token có trong map thì thêm các đồng nghĩa vào cuối mảng (trừ token gốc).",
+            "dependencies": [
+              1
+            ],
+            "details": "Hàm nhận mảng token, trả về mảng mới với các token đồng nghĩa được mở rộng. Xử lý trường hợp token không có đồng nghĩa (giữ nguyên), mảng rỗng (trả về rỗng).",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Thêm flag bật/tắt cho module synonym",
+            "description": "Bổ sung flag sử dụng trong opts (ví dụ enableSynonyms: boolean) để điều khiển việc mở rộng đồng nghĩa.",
+            "dependencies": [
+              2
+            ],
+            "details": "Flag này sẽ được dùng khi gọi expandQueryTokens hoặc trong rankBm25, giúp dễ dàng bật/tắt tính năng synonym.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Tích hợp synonym vào rankBm25",
+            "description": "Tùy chọn sử dụng expandQueryTokens trong hàm rankBm25 để mở rộng query tokens.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Khi flag enableSynonyms được bật, trước khi xếp hạng, mở rộng query tokens bằng expandQueryTokens. Nếu tắt, dùng tokens gốc.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit test cho module synonym",
+            "description": "Tạo unit test kiểm tra expandQueryTokens và flag bật/tắt.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Test 1: token có synonym → kết quả chứa token gốc và synonym. Test 2: token không có synonym → giữ nguyên. Test 3: mảng rỗng → kết quả rỗng. Test 4: flag bật/tắt hoạt động.",
+            "status": "pending",
+            "testStrategy": "Viết test với Jest, kiểm tra đúng output.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 394,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
+        "updatedAt": "2026-06-14T14:58:00.045Z"
+      },
+      {
+        "id": "395",
+        "title": "Tích hợp BM25 vào useNotebookQA",
+        "description": "Trong useNotebookQA.ts, thay thế nhánh scoring cũ (scoreNotebookEntry) bằng rankBm25 khi số lượng candidate > TOP_K. Giữ nguyên TOP_K=30, QA_DIRECT_THRESHOLD=20. Khi corpus ≤ TOP_K, gửi toàn bộ (giống cũ). Build index mỗi câu hỏi từ danh sách NotebookEntryForQA hiện tại (tùy chọn có thể cache nhưng không bắt buộc).",
+        "details": "Tìm dòng if (projected.length > TOP_K) { ... } và thay thế logic xếp hạng: const ranked = rankBm25(question, projected); const topCandidates = ranked.slice(0, TOP_K).map(r => r.doc); // và có thể dùng score để quyết định threshold? Giữ nguyên. Nếu muốn, có thể dùng QA_DIRECT_THRESHOLD và score từ BM25? PRD giữ nguyên, không đổi. Do đó chỉ thay selection. Đảm bảo import đúng module. Xem xét xóa code cũ tạm thời chưa vì task 398.",
+        "testStrategy": "Chạy lại tests/unit/use-knowledge-helpers.test.ts. Kiểm tra hành vi không đổi: khi corpus <= TOP_K gửi toàn bộ; khi > TOP_K gửi TOP_K. Có thể test thủ công xem có lỗi không.",
+        "priority": "high",
+        "dependencies": [
+          "393"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Sửa logic trong useNotebookQA để sử dụng rankBm25",
+            "description": "Thay thế logic xếp hạng cũ bằng rankBm25 khi số lượng candidate > TOP_K, giữ nguyên các hằng số và hành vi gửi toàn bộ khi corpus ≤ TOP_K.",
+            "dependencies": [
+              393
+            ],
+            "details": "Tìm vị trí if (projected.length > TOP_K) trong useNotebookQA.ts, thay thế bằng const ranked = rankBm25(question, projected); const topCandidates = ranked.slice(0, TOP_K).map(r => r.doc); Đảm bảo import đúng module từ nơi chứa rankBm25 (sau task 393). Giữ nguyên TOP_K=30 và QA_DIRECT_THRESHOLD=20. Không xóa code cũ vì task 398.",
+            "status": "pending",
+            "testStrategy": "Chạy lại unit test use-knowledge-helpers.test.ts và kiểm tra hành vi không đổi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm thử tích hợp và đảm bảo không ảnh hưởng chức năng cũ",
+            "description": "Kiểm tra tích hợp sau khi thay đổi: khi corpus ≤ TOP_K vẫn gửi toàn bộ; khi > TOP_K gửi TOP_K; không có lỗi biên dịch hay runtime.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện kiểm thử tự động và thủ công: chạy toàn bộ unit test liên quan; kiểm tra các trường hợp biên như dữ liệu rỗng, query rỗng, số lượng candidate chính xác; xác nhận không ảnh hưởng đến chức năng Q&A hiện tại.",
+            "status": "pending",
+            "testStrategy": "Chạy bộ test hiện có và bổ sung test nếu cần. Đảm bảo coverage cho hành vi cũ.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 395,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia thành: 1) Sửa logic trong useNotebookQA để sử dụng rankBm25; 2) Kiểm thử tích hợp và đảm bảo không ảnh hưởng chức năng cũ.",
+        "updatedAt": "2026-06-14T14:58:22.815Z"
+      },
+      {
+        "id": "396",
+        "title": "Viết unit test cho lexical-search và stopwords",
+        "description": "Tạo file tests/unit/lexical-search.test.ts với test cho tokenizeForSearch, buildBm25Index, scoreBm25, rankBm25. Test stopwords nằm sẵn trong test tokenizeForSearch. Đảm bảo coverage các trường hợp cạnh lề (rỗng, null, thiếu field). Chạy với Jest.",
+        "details": "import { tokenizeForSearch, buildBm25Index, scoreBm25, rankBm25 } from '@/lib/lexical-search'; import { STOPWORDS_VI } from '@/lib/stopwords-vi'; // test stopwords. Viết test suite: describe('stopwords')... Dùng mock data. Chạy npm run test:unit -t lexical-search.",
+        "testStrategy": "Chạy tất cả test, xác nhận passed. Đo coverage (có thể bổ sung sau).",
+        "priority": "high",
+        "dependencies": [
+          "389",
+          "390",
+          "391",
+          "392"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo cấu trúc file test và import các module",
+            "description": "Tạo file tests/unit/lexical-search.test.ts và import các hàm cần test từ lexical-search và stopwords.",
+            "dependencies": [
+              389,
+              390,
+              391,
+              392
+            ],
+            "details": "Tạo file rỗng, thêm import statements: import { tokenizeForSearch, buildBm25Index, scoreBm25, rankBm25 } from '@/lib/lexical-search'; import { STOPWORDS_VI } from '@/lib/stopwords-vi';. Đảm bảo alias @ được resolve đúng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Viết test cho tokenizeForSearch bao gồm stopwords",
+            "description": "Viết test suite tokenizeForSearch, kiểm tra token hóa với stopwords tiếng Việt, xử lý null/rỗng.",
+            "dependencies": [
+              389,
+              390,
+              391,
+              392
+            ],
+            "details": "Sử dụng mock data, kiểm tra output array. Test case: bỏ stopwords, không có stopwords, input rỗng/null, ký tự đặc biệt.",
+            "status": "pending",
+            "testStrategy": "Chạy Jest với -t lexical-search, đảm bảo passed.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết test cho buildBm25Index",
+            "description": "Viết test suite buildBm25Index, kiểm tra xây dựng index BM25 từ danh sách documents, xử lý rỗng/null.",
+            "dependencies": [
+              389,
+              390,
+              391,
+              392
+            ],
+            "details": "Input là mảng documents, output là Map. Kiểm tra số lượng terms, tần số trong index. Test documents rỗng, null, thiếu field.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết test cho scoreBm25",
+            "description": "Viết test suite scoreBm25, kiểm tra tính score BM25 cho term và document, các trường hợp cạnh biên.",
+            "dependencies": [
+              389,
+              390,
+              391,
+              392
+            ],
+            "details": "Input term, doc, index, total docs. Output số. Test term không trong index, doc không có từ, giá trị số dương.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết test cho rankBm25 và edge cases toàn bộ",
+            "description": "Viết test suite rankBm25, kiểm tra xếp hạng tài liệu, edge cases input không hợp lệ, thiếu field.",
+            "dependencies": [
+              389,
+              390,
+              391,
+              392
+            ],
+            "details": "Kiểm tra output là mảng tài liệu đã sắp xếp. Test query rỗng/null, documents rỗng, không có từ nào match.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 396,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Task viết test, không cần chia nhỏ.",
+        "updatedAt": "2026-06-14T14:58:44.611Z"
+      },
+      {
+        "id": "397",
+        "title": "Kiểm tra hồi quy và chạy thủ công",
+        "description": "Chạy lại bộ test hiện tại (use-knowledge-helpers.test.ts, ...) để đảm bảo không regression. Chạy thủ công 5-10 câu hỏi paraphrase trên kho kiến thức mẫu, kiểm tra entry đúng lọt TOP_K sau nâng cấp. Ghi nhận kết quả.",
+        "details": "Sử dụng mock hoặc kho thực tế. So sánh kết quả trước và sau. Nếu có lỗi, fix ngay. Có thể chạy benchmark latency (BM25 <5ms).",
+        "testStrategy": "Pass existing test suite, xác nhận entry đúng xuất hiện trong ranked list.",
+        "priority": "medium",
+        "dependencies": [
+          "395",
+          "396"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chuẩn bị môi trường kiểm thử",
+            "description": "Đảm bảo môi trường chạy test và kho kiến thức mẫu đã sẵn sàng.",
+            "dependencies": [],
+            "details": "Kiểm tra dependency 395, 396 đã hoàn thành. Chuẩn bị mock hoặc kho thực tế cho kiểm thử.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Chạy bộ test tự động hiện tại",
+            "description": "Chạy lại các test file như use-knowledge-helpers.test.ts để đảm bảo không regression.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện chạy toàn bộ test suite, ghi nhận kết quả pass/fail.",
+            "status": "pending",
+            "testStrategy": "Pass existing test suite.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra thủ công với câu hỏi paraphrase",
+            "description": "Chạy thủ công 5-10 câu hỏi paraphrase trên kho kiến thức mẫu.",
+            "dependencies": [
+              2
+            ],
+            "details": "Tạo danh sách câu hỏi paraphrase, chạy từng câu, kiểm tra entry đúng lọt TOP_K.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "So sánh kết quả trước và sau nâng cấp",
+            "description": "Đối chiếu kết quả kiểm tra với phiên bản trước khi nâng cấp BM25.",
+            "dependencies": [
+              3
+            ],
+            "details": "So sánh độ chính xác và thứ hạng của các entry, đảm bảo không suy giảm.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Ghi nhận kết quả và fix lỗi",
+            "description": "Ghi lại kết quả kiểm thử, nếu có lỗi thì fix ngay lập tức.",
+            "dependencies": [
+              4
+            ],
+            "details": "Nếu phát hiện lỗi, tiến hành sửa và chạy lại test. Có thể chạy benchmark latency BM25 <5ms.",
+            "status": "pending",
+            "testStrategy": "Fix ngay nếu lỗi, build sạch.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 397,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Task không cần chia nhỏ.",
+        "updatedAt": "2026-06-14T14:59:07.675Z"
+      },
+      {
+        "id": "398",
+        "title": "Dọn dẹp code và cập nhật decision log",
+        "description": "Sau khi BM25 verified, giữ lại các hàm cũ (scoreEntryByTokens) nhưng đánh dấu deprecated trong comments. Cập nhật decision log trong PRD (nếu cần). Xóa biến không dùng, import thừa. Đảm bảo build clean.",
+        "details": "Kiểm tra không có lỗi/ warning trong quá trình build. Có thể tham khảo quyết định 6 trong PRD: 100% client-side. Viết comment rõ ràng. Nếu thấy cần xóa hẳn sau một thời gian thì ghi note.",
+        "testStrategy": "Chạy npm run compile, npm run lint để không lỗi.",
+        "priority": "medium",
+        "dependencies": [
+          "397"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Đánh dấu deprecated cho các hàm cũ",
+            "description": "Tìm các hàm cũ như scoreEntryByTokens và thêm comment deprecated kèm lý do và ngày.",
+            "dependencies": [],
+            "details": "Duyệt codebase, thêm comment @deprecated sử dụng JSdoc. Ghi rõ thời gian và lý do thay thế bằng BM25.",
+            "status": "pending",
+            "testStrategy": "Đảm bảo build không lỗi, kiểm tra comment xuất hiện trong IDE.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Xóa biến không dùng và import thừa",
+            "description": "Rà soát và xóa các biến, tham số, import không được sử dụng trong code.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng lint và kiểm tra thủ công để loại bỏ code thừa. Giữ lại nếu cần cho deprecated function.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run lint và npm run compile để xác nhận không lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật decision log trong PRD",
+            "description": "Xem xét PRD và cập nhật decision log nếu cần ghi nhận quyết định giữ lại deprecated code.",
+            "dependencies": [
+              1
+            ],
+            "details": "Cập nhật file PRD, tham khảo quyết định 6 (100% client-side). Thêm ghi chú về deprecated functions.",
+            "status": "pending",
+            "testStrategy": "Đọc lại PRD đảm bảo thông tin chính xác, không cần test chạy.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Ghi note nếu cần xóa hẳn deprecated code sau này",
+            "description": "Nếu có kế hoạch xóa hẳn các hàm deprecated, ghi note trong code hoặc task tracker.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm comment #TODO: Remove after version X hoặc tạo task mới. Ghi rõ điều kiện và thời điểm.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra note có tồn tại trong codebase.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra build clean không lỗi/warning",
+            "description": "Chạy npm run compile và npm run lint để đảm bảo build thành công, không warning.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Kiểm tra kỹ output, sửa lỗi nếu có. Ghi nhận kết quả.",
+            "status": "pending",
+            "testStrategy": "npm run compile và npm run lint pass hoàn toàn.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 398,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Task không cần chia nhỏ.",
+        "updatedAt": "2026-06-14T14:59:29.358Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-03T06:56:53.624Z",
-      "taskCount": 10,
-      "completedCount": 10,
+      "lastModified": "2026-06-14T14:59:29.360Z",
+      "taskCount": 41,
+      "completedCount": 41,
       "tags": [
         "master"
       ]

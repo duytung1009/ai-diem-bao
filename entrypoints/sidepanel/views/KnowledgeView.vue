@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onActivated, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { CachedTopic, KnowledgeEntry, LLMConfig } from '@/lib/types';
+import type { CachedTopic, KnowledgeEntry, LLMConfig, GlobalKnowledgeEntry, NotebookEntry } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging';
+import { globalToKnowledgeEntry } from '@/lib/text-similarity';
 import { buildKnowledgeExport, downloadJson, safeFilename } from '@/lib/exporter';
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
@@ -13,6 +14,8 @@ import { useAlertSettings } from '../composables/useAlertSettings';
 const { hideInfoAlerts, hideWarningAlerts } = useAlertSettings();
 import { useSummarize } from '../composables/useSummarize';
 import BackButton from '../components/BackButton.vue';
+import KnowledgeEntryCard from '../components/KnowledgeEntryCard.vue';
+import type { KnowledgeCardEntry } from '../components/KnowledgeEntryCard.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
 import { estimateExtractCost } from '@/lib/llm/cost-estimator';
@@ -36,13 +39,13 @@ const {
   estimatedReduceCost,
   allPosts,
   handleExtract, handleRestore, handleCancel,
-  handleClearKnowledgeData, toggleSave, saveAll, handleDelete, handleClearTracking,
+  handleClearKnowledgeData, toggleSave, handleDelete, handleClearTracking,
   onExtractClick, onRestoreClick,
   knowledgeGuard,
   // F33 additions
   knowledgeSegments, isReduceStale, hasAnyExtractedSegment,
   extractSegment, reExtractSegment, runReducePhaseManual,
-  isBatchExtracting, extractAllSegments, progressPercent,
+  isBatchExtracting, extractAllSegments, reExtractAllFromSegments, progressPercent,
 } = knowledge;
 
 // UI state (local to view)
@@ -163,23 +166,29 @@ function getTagClass(tag: string): string {
   return TAG_CLASSES[tag] ?? 'bg-(--color-bg-muted) text-(--color-text-secondary)';
 }
 
+function normalizeEntry(entry: KnowledgeEntry): KnowledgeCardEntry {
+  return {
+    id: entry.id,
+    title: entry.title,
+    content: entry.content,
+    tags: entry.tags,
+    category: entry.category,
+    sourceAuthor: entry.source.author,
+    sourcePostNumber: entry.source.postNumber,
+    sourceTimestamp: entry.source.timestamp,
+    saved: entry.saved,
+    postUrl: cachedTopic.value?.url,
+  };
+}
+
+function findEntry(id: string): KnowledgeEntry | undefined {
+  return entries.value.find(e => e.id === id);
+}
+
 function toggleExpand(id: string) {
   const s = new Set(expandedIds.value);
   s.has(id) ? s.delete(id) : s.add(id);
   expandedIds.value = s;
-}
-
-function openPostLink(postNumber: number) {
-  if (!cachedTopic.value) return;
-  const base = cachedTopic.value.url.replace(/\/$/, '');
-  browser.tabs.create({ url: `${base}/post-${postNumber}` });
-}
-
-function formatTimestamp(ts: string): string {
-  if (!ts) return '';
-  const d = new Date(ts);
-  if (isNaN(d.getTime())) return ts;
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function toggleTag(tag: string) {
@@ -263,6 +272,40 @@ const groupedEntries = computed(() => {
   return keys.map(key => ({ category: key, entries: groups[key] }));
 });
 
+// Notebook is the single source of truth for which knowledge entries are saved.
+// We fetch the saved ids once per load and derive each entry's `saved` flag.
+const notebookSavedIds = ref<Set<string>>(new Set());
+
+async function refreshNotebookSavedIds(): Promise<void> {
+  try {
+    const nb = await sendMessage<NotebookEntry[]>('GET_NOTEBOOK_ENTRIES') ?? [];
+    notebookSavedIds.value = new Set(nb.map(e => e.id));
+  } catch { /* keep previous ids */ }
+}
+
+// Dedup entries by id (cache + global store can overlap) and re-derive `saved`
+// from notebook membership — never from the stale per-topic cache.
+function applySavedFlag(): void {
+  const seen = new Set<string>();
+  const deduped: KnowledgeEntry[] = [];
+  for (const e of entries.value) {
+    if (seen.has(e.id)) continue;
+    seen.add(e.id);
+    deduped.push({ ...e, saved: notebookSavedIds.value.has(e.id) });
+  }
+  entries.value = deduped;
+}
+
+// Fetch global knowledge entries belonging to `url` and append them to the
+// view's entries (fire-and-forget; guards against a topic switch mid-fetch).
+async function appendGlobalKnowledge(url: string): Promise<void> {
+  const all = await sendMessage<GlobalKnowledgeEntry[]>('GET_ALL_KNOWLEDGE').catch(() => null);
+  if (!all || loadedTopicUrl.value !== url) return;
+  const converted = all.filter(e => e.topicRefs.includes(url)).map(globalToKnowledgeEntry);
+  if (converted.length > 0) entries.value = [...entries.value, ...converted];
+  applySavedFlag();
+}
+
 async function loadTopicData() {
   const topic = store.selectedTopic.value;
   if (!topic) return;
@@ -288,12 +331,22 @@ async function loadTopicData() {
   showSavedOnly.value = false;
   if (topic.knowledgeEntries?.length) entries.value = topic.knowledgeEntries as KnowledgeEntry[];
 
+  // Notebook = source of truth for `saved`: fetch ids, then derive + dedup.
+  await refreshNotebookSavedIds();
+  applySavedFlag();
+
+  // Load global knowledge entries for this topic (dedups + re-applies saved flag)
+  appendGlobalKnowledge(topic.url);
+
   try {
     const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', topic.url);
     if (loadedTopicUrl.value !== topic.url) return;
     if (fresh) {
       store.updateSelectedTopic(fresh);
-      if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
+      if (fresh.knowledgeEntries?.length) {
+        entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
+        applySavedFlag();
+      }
     }
   } catch { /* no cache */ }
 }
@@ -324,11 +377,16 @@ onActivated(async () => {
     await loadTopicData();
   } else {
     try {
+      // Notebook may have changed while away — re-derive `saved` from it.
+      await refreshNotebookSavedIds();
       const fresh = await sendMessage<CachedTopic | null>('GET_CACHED_TOPIC', url);
       if (fresh) {
         store.updateSelectedTopic(fresh);
         if (fresh.knowledgeEntries?.length) entries.value = fresh.knowledgeEntries as KnowledgeEntry[];
       }
+      applySavedFlag();
+      // Reload global knowledge for this topic (dedups + re-applies saved flag)
+      appendGlobalKnowledge(url);
     } catch { /* ignore */ }
   }
 });
@@ -627,20 +685,6 @@ onActivated(async () => {
           <div class="flex items-center justify-start">
             <!-- Notebook navigation -->
             <div class="flex items-center gap-2">
-              <button class="btn btn-ghost btn-sm flex items-center gap-1" @click="router.push('/notebook')">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                Sổ tay
-              </button>
-              <button v-if="savedCount < entries.length" class="btn btn-ghost btn-sm flex items-center gap-1" title="Lưu tất cả kiến thức"
-                :disabled="isLoading" @click="saveAll()">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
-                </svg>
-                Lưu tất cả <span class="text-(--color-text-muted)">({{ entries.length - savedCount }})</span>
-              </button>
               <!-- Task 292: Extract dropdown when segments exist -->
               <template v-if="cachedTopic?.segments?.length">
                 <div class="relative">
@@ -657,14 +701,18 @@ onActivated(async () => {
                   </button>
                   <div v-if="showExtractDropdown"
                     class="absolute left-0 top-full mt-1 z-10 bg-(--color-bg-surface) border border-(--color-border) rounded shadow-elevated min-w-max">
-                    <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                      @click="showExtractDropdown = false; onExtractClick()">
-                      Trích xuất đoạn chưa xong
-                    </button>
-                    <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                      @click="showExtractDropdown = false; handleClearKnowledgeData().then(() => handleExtract())">
-                      Trích xuất lại tất cả
-                    </button>
+                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; onExtractClick()">
+                    Trích xuất đoạn chưa xong
+                  </button>
+                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; reExtractAllFromSegments()">
+                    Trích xuất lại kiến thức
+                  </button>
+                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                    @click="showExtractDropdown = false; handleClearKnowledgeData().then(() => handleExtract())">
+                    Trích xuất lại tất cả
+                  </button>
                   </div>
                 </div>
               </template>
@@ -721,58 +769,17 @@ onActivated(async () => {
                   <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
                 </h4>
                 <div class="space-y-2">
-                  <div v-for="entry in group.entries" :key="entry.id" :id="`knowledge-entry-${entry.id}`" class="card">
-                    <!-- Header: always visible, click to expand -->
-                    <div class="flex items-start gap-2 cursor-pointer" @click="toggleExpand(entry.id)">
-                      <!-- Chevron icon -->
-                      <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-muted)"
-                        :class="expandedIds.has(entry.id) ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                      <p class="text-sm font-semibold text-(--color-text-primary) flex-1 leading-snug">{{ entry.title }}</p>
-                      <!-- Save button -->
-                      <button class="p-0.5 transition-colors rounded" :class="entry.saved
-                        ? 'text-yellow-500'
-                        : 'text-(--color-text-muted) hover:text-yellow-500'" :title="entry.saved ? 'Bỏ lưu' : 'Lưu kiến thức'" @click.stop="toggleSave(entry)">
-                        <svg v-if="entry.saved" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
-                        </svg>
-                        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z" />
-                        </svg>
-                      </button>
-                      <!-- Delete button -->
-                      <button class="p-0.5 text-(--color-text-muted) hover:text-(--color-error-text) transition-colors rounded" title="Xóa kiến thức"
-                        @click.stop="handleDelete(entry)">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <!-- Body: collapsible with CSS Grid animation -->
-                    <div class="grid transition-[grid-template-rows] duration-200 ease-in-out"
-                      :class="expandedIds.has(entry.id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
-                      <div class="overflow-hidden">
-                        <div class="pt-2 space-y-2">
-                          <p class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
-                          <!-- Tags -->
-                          <div v-if="entry.tags.length > 0" class="flex flex-wrap gap-1">
-                            <span v-for="tag in entry.tags" :key="tag" class="badge text-xs capitalize" :class="getTagClass(tag)">
-                              {{ tag }}
-                            </span>
-                          </div>
-                          <!-- Source citation with timestamp -->
-                          <p class="text-xs text-(--color-text-muted)">
-                            {{ entry.source.author }}<template v-if="entry.source.postNumber"> · bài <button class="font-mono link"
-                                @click="openPostLink(entry.source.postNumber)">#{{ entry.source.postNumber }}</button></template><span
-                              v-if="entry.source.timestamp"> · {{ formatTimestamp(entry.source.timestamp)
-                              }}</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                  <div v-for="entry in group.entries" :key="entry.id" :id="`knowledge-entry-${entry.id}`">
+                    <KnowledgeEntryCard
+                      :entry="normalizeEntry(entry)"
+                      :expanded="expandedIds.has(entry.id)"
+                      :show-save="true"
+                      :show-delete="true"
+                      :show-post-link="true"
+                      @toggle-expand="toggleExpand"
+                      @toggle-save="id => { const e = findEntry(id); if (e) toggleSave(e); }"
+                      @delete="id => { const e = findEntry(id); if (e) handleDelete(e); }"
+                    />
                   </div>
                 </div>
               </div>

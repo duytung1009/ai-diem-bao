@@ -1278,14 +1278,14 @@ async function onImportFileSelected(event: Event) {
         </div>
       </div>
 
-      <div v-if="!userForums.find(f => f.hostname === 'voz.vn') || !userForums.find(f => f.hostname === 'otofun.net')" class="space-y-1">
+      <div v-if="!userForums.find(f => f.hostname === 'voz.vn') || !userForums.find(f => f.hostname === 'www.otofun.net')" class="space-y-1">
         <p class="text-xs text-(--color-text-secondary)">Thêm nhanh:</p>
         <div class="flex gap-3">
           <button v-if="!userForums.find(f => f.hostname === 'voz.vn')" class="text-xs link" @click="addForumByHostname('voz.vn')">
             + Thêm voz.vn
           </button>
-          <button v-if="!userForums.find(f => f.hostname === 'otofun.net')" class="text-xs link" @click="addForumByHostname('otofun.net')">
-            + Thêm otofun.net
+          <button v-if="!userForums.find(f => f.hostname === 'www.otofun.net')" class="text-xs link" @click="addForumByHostname('www.otofun.net')">
+            + Thêm www.otofun.net
           </button>
         </div>
       </div>

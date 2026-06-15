@@ -2,7 +2,7 @@ import { ref, readonly } from 'vue';
 import { sendMessage } from '@/lib/messaging';
 import { estimateTokens } from '@/lib/token-estimator';
 import { STORAGE_KEYS, FALLBACK_MS_PER_TOKEN, LLM_TASK_CLEANUP_DELAY_MS } from '@/lib/constants';
-import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON, PipelineDefinition } from '@/lib/types';
+import type { ScrapedPost, LLMTaskRequest, LLMProgressMessage, LLMResultMessage, ModelSpeedStats, KnowledgeEntry, SummaryJSON, PipelineDefinition, NotebookEntryForQA } from '@/lib/types';
 import { markStepDone, markStepError, markFirstStepRunning } from '@/lib/pipeline-builder';
 
 interface LLMTaskState {
@@ -201,6 +201,10 @@ function threadAnalysisTask(summaryJson: SummaryJSON, meta: { title: string; tot
   return createTask('thread_analysis', { summaryJson, meta });
 }
 
+function notebookQATask(question: string, entries: NotebookEntryForQA[]) {
+  return createTask('notebook_qa', { question, entries });
+}
+
 function cancelTask(taskId: string) {
   sendMessage('CANCEL_LLM_TASK', { taskId }).catch(() => {});
 }
@@ -242,6 +246,7 @@ export function useLLM() {
     extractKnowledgeChunkTask,
     reduceKnowledgeChunksTask,
     threadAnalysisTask,
+    notebookQATask,
     cancelTask,
     getTaskState,
     getETA,

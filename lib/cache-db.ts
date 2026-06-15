@@ -1,9 +1,11 @@
 import type { CachedTopic } from './types';
+import type { GlobalKnowledgeEntry } from './types';
 
 const DB_NAME = 'loi-thot-ho-cache';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = 'topics';
 const NOTEBOOK_STORE_NAME = 'notebookEntries';
+const KNOWLEDGE_STORE_NAME = 'knowledge';
 
 let db: IDBDatabase | null = null;
 let openingPromise: Promise<IDBDatabase> | null = null;
@@ -33,6 +35,10 @@ export function getDB(): Promise<IDBDatabase> {
         store.createIndex('by-category', 'category', { unique: false, multiEntry: false });
         store.createIndex('by-tags', 'tags', { unique: false, multiEntry: true });
         store.createIndex('by-orphaned', 'orphaned', { unique: false, multiEntry: false });
+      }
+      if (oldVersion < 4) {
+        const store = database.createObjectStore(KNOWLEDGE_STORE_NAME, { keyPath: 'id' });
+        store.createIndex('by-updatedAt', 'updatedAt', { unique: false });
       }
     };
     request.onsuccess = () => {
@@ -95,6 +101,36 @@ export async function dbClear(): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = database.transaction(STORE_NAME, 'readwrite');
     tx.objectStore(STORE_NAME).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function dbGetAllKnowledge(): Promise<GlobalKnowledgeEntry[]> {
+  const database = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(KNOWLEDGE_STORE_NAME, 'readonly');
+    const request = tx.objectStore(KNOWLEDGE_STORE_NAME).getAll();
+    request.onsuccess = () => resolve(request.result ?? []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function dbUpsertKnowledge(entry: GlobalKnowledgeEntry): Promise<void> {
+  const database = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(KNOWLEDGE_STORE_NAME, 'readwrite');
+    tx.objectStore(KNOWLEDGE_STORE_NAME).put(entry);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function dbDeleteKnowledge(id: string): Promise<void> {
+  const database = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(KNOWLEDGE_STORE_NAME, 'readwrite');
+    tx.objectStore(KNOWLEDGE_STORE_NAME).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

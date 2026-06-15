@@ -3,10 +3,9 @@ import { sendMessage } from '@/lib/messaging';
 import { parseSummaryJSON } from '@/lib/llm/summarizer';
 import { isSameTopicUrl } from '@/lib/cache-manager';
 import { detectNewsThread } from '@/lib/scrapers/news-detector';
-import type { ArticleContent } from '@/lib/scrapers/article-extractor';
 import type { DetectResult, ScrapedPost, CachedTopic, CacheFreshness, LLMConfig, XenForoVersion, TopicSegment, SummaryJSON, CustomPrompts, ThreadAnalysisJSON } from '@/lib/types';
 
-import { scrapePageRange } from '@/lib/scrapers/page-loader';
+import { scrapePageRange, PermissionRequiredError } from '@/lib/scrapers/page-loader';
 import { estimateTokens, willExceedContext, getThinkingOverhead } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
 import { computeSegmentBudget, computeResumeState as computeResumeStateFromModule, isCompletedSegment, planDynamicSegments } from '@/lib/segment-planner';
@@ -19,6 +18,7 @@ import { useTopicStore } from './useTopicStore';
 import { useLLM } from './useLLM';
 import { useTopicScraper } from './useTopicScraper';
 import { usePipeline } from './usePipeline';
+import { hasOriginPermission, requestOriginPermission } from '@/lib/permissions';
 
 /** Deduplicate by postNumber and sort ascending. Local copy avoids import from mocked page-loader. */
 function deduplicatePosts(posts: ScrapedPost[]): ScrapedPost[] {
@@ -53,6 +53,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const activeSegmentIndex = ref<number | null>(null);
   const loadedTopicUrl = ref<string | null>(null);
   const dynamicSegmentBoundaries = ref<{ start: number; end: number; label: string }[]>([]);
+  const pendingPermissionOrigin = ref('');
 
   // Non-reactive
   const summarizeGuard = createRunGuard();
@@ -698,6 +699,102 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     await reduceOverall(thisId);
   }
 
+  // --- Segment integrity check ---
+
+  function logSegmentIntegrity(scrapeSource: 'fresh' | 'incremental', allScrapedPosts: ScrapedPost[], forumPostCount: number, totalPages: number): void {
+    const segs = segmentSummaries.value;
+    const segPostCountSum = segs.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
+    const uniquePostNums = new Set<number>();
+    let totalSegPosts = 0;
+    const pageDistribution: Record<number, number> = {};
+    const perSeg: { idx: number; pages: string; postCount: number; actualPosts: number }[] = [];
+    const coveredPages = new Set<number>();
+
+    for (let i = 0; i < segs.length; i++) {
+      const seg = segs[i];
+      const count = seg?.postCount ?? 0;
+      perSeg.push({ idx: i, pages: seg ? `${seg.startPage}-${seg.endPage}` : 'null', postCount: count, actualPosts: seg?.posts?.length ?? 0 });
+      if (seg?.posts) {
+        totalSegPosts += seg.posts.length;
+        for (const p of seg.posts) {
+          uniquePostNums.add(p.postNumber);
+          const pg = p.page ?? 1;
+          pageDistribution[pg] = (pageDistribution[pg] || 0) + 1;
+        }
+      }
+      if (seg) {
+        for (let p = seg.startPage; p <= seg.endPage; p++) coveredPages.add(p);
+      }
+    }
+
+    // Detect page coverage gaps
+    const missingPages: number[] = [];
+    for (let p = 1; p <= totalPages; p++) {
+      if (!coveredPages.has(p)) missingPages.push(p);
+    }
+
+    console.log(`[runSummarizeJob] ${scrapeSource} — segment integrity:`, {
+      segPostCountSum,
+      uniquePostNumsAcrossSegs: uniquePostNums.size,
+      totalSegPosts,
+      allScrapedTotal: allScrapedPosts.length,
+      forumPostCount,
+      totalPages,
+      coveredPages: coveredPages.size,
+      missingPages: missingPages.length > 0 ? missingPages : 'none',
+      segments: perSeg,
+      pageDistribution: Object.entries(pageDistribution).map(([k, v]) => `p${k}=${v}`).join(', '),
+    });
+
+    if (segPostCountSum !== uniquePostNums.size) {
+      console.warn(`[runSummarizeJob] ${scrapeSource} — POST COUNT MISMATCH (seg postCounts vs unique posts):`, {
+        segPostCountSum,
+        uniquePostsInSegs: uniquePostNums.size,
+        diff: uniquePostNums.size - segPostCountSum,
+      });
+    }
+
+    if (forumPostCount > 0 && segPostCountSum !== forumPostCount) {
+      console.warn(`[runSummarizeJob] ${scrapeSource} — FORUM COUNT MISMATCH: segments have ${segPostCountSum} posts but forum reports ${forumPostCount} (diff: ${forumPostCount - segPostCountSum})`);
+    }
+
+    if (missingPages.length > 0) {
+      console.warn(`[runSummarizeJob] ${scrapeSource} — PAGE GAP: ${missingPages.length} pages not covered by any segment:`, {
+        missingPages,
+        totalPages,
+        segments: perSeg,
+      });
+    }
+
+    if (allScrapedPosts.length > 0) {
+      const allUniquePostNums = new Set<number>();
+      for (const p of allScrapedPosts) allUniquePostNums.add(p.postNumber);
+
+      const missingFromSegs = new Set<number>();
+      for (const pn of allUniquePostNums) {
+        if (!uniquePostNums.has(pn)) missingFromSegs.add(pn);
+      }
+
+      if (missingFromSegs.size > 0) {
+        console.warn(`[runSummarizeJob] ${scrapeSource} — MISSING POSTS: ${missingFromSegs.size} unique posts in scraped data not found in any segment:`, {
+          missingSample: [...missingFromSegs].slice(0, 20),
+          allScrapedUnique: allUniquePostNums.size,
+          uniqueInSegs: uniquePostNums.size,
+        });
+      }
+
+      const extraInSegs = new Set<number>();
+      for (const pn of uniquePostNums) {
+        if (!allUniquePostNums.has(pn)) extraInSegs.add(pn);
+      }
+      if (extraInSegs.size > 0 && scrapeSource === 'fresh') {
+        console.warn(`[runSummarizeJob] ${scrapeSource} — EXTRA POSTS: ${extraInSegs.size} posts in segments not in scraped data:`, {
+          extraSample: [...extraInSegs].slice(0, 10),
+        });
+      }
+    }
+  }
+
   // --- Driver helpers ---
 
   type ResumeMode = { mode: 'fresh' } | { mode: 'resume'; resume: DynamicResumeState } | { mode: 'skip' };
@@ -998,6 +1095,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
         // Phase 6: Overall summary (incremental)
         if (!summarizeGuard.isStale(thisId) && !error.value) {
+          logSegmentIntegrity('incremental', postsToPlan, getLiveForumPostCount(), totalPages);
           const completed = segmentSummaries.value.filter(isCompletedSegment).length;
           console.log('[runSummarizeJob] Incremental — before generateOverallSummary:', {
             completedSegments: completed,
@@ -1077,6 +1175,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
         // Phase 6: Overall summary (fresh)
         if (!summarizeGuard.isStale(thisId) && !error.value) {
+          logSegmentIntegrity('fresh', allPosts, getLiveForumPostCount(), totalPages);
           const completed = segmentSummaries.value.filter(isCompletedSegment).length;
           console.log('[runSummarizeJob] Fresh — before generateOverallSummary:', {
             completedSegments: completed,
@@ -1341,6 +1440,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const delayMs = currentConfig.value?.scrapeDelayMs ?? 2000;
     const allPosts: ScrapedPost[] = [];
     let totalPostsScraped = 0;
+    const MAX_RETRIES = 3;
 
     for (let page = fromPage; page <= totalPages; page++) {
       if (summarizeGuard.isStale(thisId)) return null;
@@ -1352,36 +1452,62 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
         postsScraped: totalPostsScraped,
       };
 
-      let pagePosts: ScrapedPost[];
-      let pageErrors: string[];
+      let pagePosts: ScrapedPost[] = [];
+      let pageErrors: string[] = [];
       let pageThreadDeleted = false;
       let pageThreadLocked = false;
-      try {
-        const pageAbortCtrl = new AbortController();
-        scraper.getAbortSignal()?.addEventListener('abort', () => pageAbortCtrl.abort(), { once: true });
+      let pageSucceeded = false;
 
-        const result = await scrapePageRange(
-          version as XenForoVersion,
-          topicUrl,
-          page,
-          page,
-          (_current, _total, postsScraped) => {
-            scraper.scrapeProgress.value = {
-              currentPage: page,
-              totalPages,
-              postsScraped: totalPostsScraped + postsScraped,
-            };
-          },
-          pageAbortCtrl.signal,
-          delayMs,
-        );
-        pagePosts = result.posts;
-        pageErrors = result.errors;
-        pageThreadDeleted = result.threadDeleted ?? false;
-        pageThreadLocked = result.threadLocked ?? false;
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') throw err;
-        throw err;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        if (summarizeGuard.isStale(thisId)) return null;
+        if (attempt > 0) {
+          const retryDelay = delayMs * Math.pow(2, attempt - 1);
+          simpleLoadingText.value = `Đang thử lại trang ${page} (lần ${attempt + 1}/${MAX_RETRIES})...`;
+          await new Promise((r) => setTimeout(r, retryDelay));
+        }
+
+        try {
+          const pageAbortCtrl = new AbortController();
+          scraper.getAbortSignal()?.addEventListener('abort', () => pageAbortCtrl.abort(), { once: true });
+
+          const result = await scrapePageRange(
+            version as XenForoVersion,
+            topicUrl,
+            page,
+            page,
+            (_current, _total, postsScraped) => {
+              scraper.scrapeProgress.value = {
+                currentPage: page,
+                totalPages,
+                postsScraped: totalPostsScraped + postsScraped,
+              };
+            },
+            pageAbortCtrl.signal,
+            delayMs,
+          );
+          pagePosts = result.posts;
+          pageErrors = result.errors;
+          pageThreadDeleted = result.threadDeleted ?? false;
+          pageThreadLocked = result.threadLocked ?? false;
+
+          if (pagePosts.length > 0 || pageErrors.length === 0) {
+            pageSucceeded = true;
+            break;
+          }
+
+          console.warn(`[scrapeAllPages] Page ${page} attempt ${attempt + 1}: 0 posts scraped, ${pageErrors.length} errors — ${pageErrors.join('; ')}`);
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') throw err;
+          if (err instanceof PermissionRequiredError) {
+            pendingPermissionOrigin.value = err.origin;
+            return null;
+          }
+          console.warn(`[scrapeAllPages] Page ${page} attempt ${attempt + 1}: exception — ${String(err)}`);
+        }
+      }
+
+      if (!pageSucceeded) {
+        scraper.scrapingWarnings.value.push(`Trang ${page}: Thất bại sau ${MAX_RETRIES} lần thử — mất ${pagePosts.length} bài`);
       }
       scraper.isScraping.value = false;
 
@@ -1533,12 +1659,31 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     const configCheck = await checkLLMConfigured();
     if (!configCheck.ok) { error.value = configCheck.error!; return; }
 
+    const origin = new URL(topic.url).origin + '/*';
+    const hasPerm = await hasOriginPermission(origin);
+    if (!hasPerm) {
+      pendingPermissionOrigin.value = new URL(topic.url).origin;
+      return;
+    }
+
     const totalPages = Math.max(
       topicInfo.value.pageCount,
       store.activeTabDetect.value?.pageCount ?? 0,
     );
 
     await runSummarizeJob(totalPages, forceRegenerate);
+  }
+
+  async function handleGrantPermission() {
+    const origin = pendingPermissionOrigin.value;
+    if (!origin) return;
+    const granted = await requestOriginPermission(origin + '/*');
+    pendingPermissionOrigin.value = '';
+    if (granted) {
+      await handleAutoSummarizeAll();
+    } else {
+      error.value = 'Chưa cấp quyền truy cập forum.';
+    }
   }
 
   async function handleGenerateAnalysis(): Promise<void> {
@@ -1620,8 +1765,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     nextPendingSegmentIndex,
     isNewsTopic,
     hasPartialScrape,
+    pendingPermissionOrigin,
     // functions
     loadTopicData,
+    handleGrantPermission,
     evaluateFreshness,
     handleCancel,
     handleRetry,

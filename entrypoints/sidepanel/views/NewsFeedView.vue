@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { filterToday, scoreThreads } from '@/lib/hot-threads';
 import { scrapeForumList } from '@/lib/scrapers/forum-lister';
+import { requestOriginPermission } from '@/lib/permissions';
 import type { HotThreadScore } from '@/lib/hot-threads';
 import { useActiveForum } from '../composables/useActiveForum';
 import { STORAGE_KEYS } from '@/lib/constants';
@@ -16,6 +17,7 @@ const loading = ref(false);
 const error = ref('');
 const hasLoaded = ref(false);
 const forumHistory = ref<string[]>([]);
+const pendingPermissionOrigin = ref('');
 
 function openThread(url: string) {
   browser.tabs.create({ url }).then(tab => {
@@ -48,11 +50,16 @@ async function loadForum() {
   if (!forumUrl.value) return;
   loading.value = true;
   error.value = '';
+  pendingPermissionOrigin.value = '';
 
   try {
-    const result = await sendMessage<{ ok: boolean; status: number; html: string; forumUrl: string; errors: string[] }>(
+    const result = await sendMessage<{ ok: boolean; status: number; html: string; forumUrl: string; errors: string[]; needPermission?: boolean; origin?: string }>(
       'FETCH_FORUM_LIST', { forumUrl: forumUrl.value },
     );
+    if (result.needPermission && result.origin) {
+      pendingPermissionOrigin.value = result.origin;
+      return;
+    }
     if (result.errors.length > 0) {
       error.value = result.errors.join('; ');
       return;
@@ -72,7 +79,19 @@ async function loadForum() {
     error.value = String(err);
     threads.value = [];
   } finally {
-    loading.value = false;
+    if (!pendingPermissionOrigin.value) loading.value = false;
+  }
+}
+
+async function handleGrantPermission() {
+  const origin = pendingPermissionOrigin.value;
+  if (!origin) return;
+  const granted = await requestOriginPermission(origin);
+  pendingPermissionOrigin.value = '';
+  if (granted) {
+    await loadForum();
+  } else {
+    error.value = 'Chưa cấp quyền truy cập forum.';
   }
 }
 
@@ -142,7 +161,7 @@ onMounted(async () => {
       </button>
     </div>
 
-    <div v-if="forumHistory.length > 0 && !threads.length" class="flex flex-wrap gap-1.5">
+    <div v-if="forumHistory.length > 0" class="flex flex-wrap gap-1.5">
       <button
         v-for="url in forumHistory"
         :key="url"
@@ -156,6 +175,11 @@ onMounted(async () => {
     <div v-if="error" class="alert alert-error text-xs flex items-center justify-between gap-2">
       <span>{{ error }}</span>
       <button class="btn btn-ghost btn-xs shrink-0" @click="loadForum">Thử lại</button>
+    </div>
+
+    <div v-if="pendingPermissionOrigin" class="alert alert-warning text-xs flex items-center justify-between gap-2">
+      <span>Cần cấp quyền truy cập <strong class="text-(--color-text-primary)">{{ pendingPermissionOrigin }}</strong> để tải danh sách thớt.</span>
+      <button class="btn btn-accent btn-xs shrink-0" @click="handleGrantPermission">Cấp quyền</button>
     </div>
 
     <div v-if="!loading && !error && threads.length === 0 && hasLoaded" class="alert alert-info text-xs">

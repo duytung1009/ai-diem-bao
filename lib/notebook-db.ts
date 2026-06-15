@@ -127,6 +127,69 @@ export async function notebookDeleteByTopic(topicUrl: string): Promise<void> {
   });
 }
 
+export interface NotebookBulkPatch {
+  category?: string | null;
+  addTags?: string[];
+  removeTags?: string[];
+  pinned?: number | null;
+  editedAt?: number;
+}
+
+export async function notebookBulkUpdate(ids: string[], patch: NotebookBulkPatch): Promise<number> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    if (ids.length === 0) { resolve(0); return; }
+    const tx = db.transaction(NOTEBOOK_STORE_NAME, 'readwrite');
+    const objStore = tx.objectStore(NOTEBOOK_STORE_NAME);
+    let count = 0;
+    for (const id of ids) {
+      const getReq = objStore.get(id);
+      getReq.onsuccess = () => {
+        const entry = getReq.result;
+        if (entry) {
+          if ('category' in patch) {
+            if (patch.category === null) delete entry.category;
+            else entry.category = patch.category;
+          }
+          if (patch.addTags?.length) {
+            const existing = new Set(entry.tags ?? []);
+            for (const t of patch.addTags) existing.add(t);
+            entry.tags = [...existing];
+          }
+          if (patch.removeTags?.length) {
+            const remove = new Set(patch.removeTags);
+            entry.tags = (entry.tags ?? []).filter((t: string) => !remove.has(t));
+          }
+          if ('pinned' in patch) {
+            if (patch.pinned === null) delete entry.pinned;
+            else entry.pinned = patch.pinned;
+          }
+          if (patch.editedAt !== undefined) entry.editedAt = patch.editedAt;
+          objStore.put(entry);
+          count++;
+        }
+      };
+    }
+    tx.oncomplete = () => resolve(count);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function notebookBulkDelete(ids: string[]): Promise<number> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTEBOOK_STORE_NAME, 'readwrite');
+    const objStore = tx.objectStore(NOTEBOOK_STORE_NAME);
+    let count = 0;
+    for (const id of ids) {
+      const delReq = objStore.delete(id);
+      delReq.onsuccess = () => { count++; };
+    }
+    tx.oncomplete = () => resolve(count);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function notebookGetStats(): Promise<NotebookStats> {
   const all = await notebookGetAll();
   const topicSet = new Set<string>();

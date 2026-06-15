@@ -19,8 +19,8 @@ defineProps<{
     <span class="w-1.5 h-1.5 rounded-full bg-(--color-warning-text) inline-block shrink-0"></span>
     Một phần
   </span>
-  <span v-else-if="status === 'locked'" class="badge badge-warning">
-    <span class="w-1.5 h-1.5 rounded-full bg-(--color-warning-text) inline-block shrink-0"></span>
+  <span v-else-if="status === 'locked'" class="badge badge-info">
+    <span class="w-1.5 h-1.5 rounded-full bg-(--color-info-text) inline-block shrink-0"></span>
     Đã khóa
   </span>
   <span v-else-if="status === 'deleted'" class="badge badge-neutral line-through">

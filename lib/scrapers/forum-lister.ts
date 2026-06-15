@@ -64,7 +64,9 @@ function xf2ExtractLastPost(item: Element): { author: string; time: string; url?
 
 function xf2ExtractTitleAndUrl(item: Element, forumUrl: string): { title: string; url: string } {
   const titleLink = item.querySelector<HTMLAnchorElement>(
-    '.structItem-title a[data-tp-primary="on"], .structItem-title a',
+    '.structItem-title a[data-tp-primary="on"]',
+  ) || item.querySelector<HTMLAnchorElement>(
+    '.structItem-title a:not(.labelLink)',
   );
   if (!titleLink) return { title: 'Unknown', url: forumUrl };
 

@@ -3,6 +3,11 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
+  // Force MV3 on all targets. WXT defaults Firefox to MV2, where the MV3-only
+  // `optional_host_permissions` key is dropped from the manifest — leaving zero
+  // optional permissions declared, so `browser.permissions.request({ origins })`
+  // always fails on Firefox. Firefox 128+ supports MV3 + optional_host_permissions.
+  manifestVersion: 3,
   manifest: (env) => {
     const isFirefox = env.browser === 'firefox';
     return {
@@ -21,6 +26,12 @@ export default defineConfig({
           gecko: {
             id: 'loithotho@extension',
             strict_min_version: '128.0',
+            // Required by Firefox for all new extensions. This extension stores
+            // everything locally (settings, cache, API key) and sends nothing to
+            // any server we control — no data collection. See PRIVACY.md.
+            data_collection_permissions: {
+              required: ['none'],
+            },
           },
         },
       }),

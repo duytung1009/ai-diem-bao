@@ -237,3 +237,62 @@ case 'FETCH_HTML': {
 - Giả định background service worker tự động bypass CORS — sai cho Chrome MV3
 - Gọi `fetch()` cross-origin từ sidepanel/popup/options page trực tiếp — luôn route qua background
 - Dùng `host_permissions: ['*://*/*']` cứng trong manifest
+
+---
+
+### KH7: Cross-Browser Firefox — MV2 Build + Mất User-Activation + `DataCloneError` Vue Proxy
+
+Migrate `chrome.*` → `browser.*` chỉ giải quyết **API surface**. Firefox còn 3 khác biệt platform độc lập làm extension chạy ngon trên Chrome nhưng fail. Cả 3 cùng xuất hiện ở luồng Settings nên dễ tưởng là một bug — thực ra phải fix riêng từng cái.
+
+**Triệu chứng:**
+- `browser.permissions.request({ origins })` luôn trả `false` / reject trên Firefox, Chrome bình thường. UI báo "Chưa cấp quyền...", "Permission denied for provider host"
+- Sau khi sửa build, **một số** luồng cấp quyền chạy (nút "Thêm forum") nhưng luồng khác vẫn fail (lưu provider ở Settings)
+- Sau khi sửa activation, luồng lưu lại báo `DataCloneError: Proxy object could not be cloned` (Chrome không bao giờ thấy lỗi này)
+
+**Root cause (BA bug độc lập):**
+1. **Firefox build ra MV2:** WXT mặc định build Firefox ở Manifest V2. Key `optional_host_permissions` là **MV3-only** → bị rớt hoàn toàn khỏi manifest MV2 (WXT không tự dịch sang `optional_permissions`). Manifest kết thúc với 0 optional permission → Firefox reject mọi `permissions.request` vì origin không được khai báo. Chrome chạy vì build MV3, key hợp lệ.
+2. **Mất user-activation qua `await`:** Firefox xóa cờ user-activation sau **mỗi** `await`. Gọi `await permissions.contains()` (pre-check) *trước* `permissions.request()` → lúc `request()` chạy activation đã mất → reject. Chrome khoan dung hơn. Đây là lý do "Thêm forum" (gọi `request` ngay) chạy, còn Settings (check `contains` trước) fail.
+3. **`DataCloneError` khi gửi Vue proxy qua message:** `config.value` / store state là Vue reactive (hoặc readonly) Proxy. Structured-clone của Firefox **không** clone được Proxy → throw. Chrome tự clone target bên dưới nên im. Lỗi xảy ra cả khi spread proxy vào object phẳng (`{ url, ...partial }`) vì giá trị lồng vẫn là proxy.
+
+**Fix:**
+- **Bug 1 — ép MV3 mọi target** trong `wxt.config.ts`:
+  ```typescript
+  export default defineConfig({
+    manifestVersion: 3,   // WXT mặc định Firefox = MV2, làm rớt optional_host_permissions
+    manifest: (env) => ({ ... }),
+  });
+  ```
+  Verify: `cat .output/firefox-mv3/manifest.json` → phải có `"manifest_version":3` + `"optional_host_permissions":[...]`. Firefox 128+ hỗ trợ MV3 + `optional_host_permissions` (từ FF 127) + `scripting` + `sidebar_action`.
+- **Bug 2 — `permissions.request()` là await đầu tiên** trong gesture chain. Bỏ pre-check `contains()` (request idempotent, không hiện dialog nếu đã cấp):
+  ```typescript
+  // ❌ contains() trước request() → mất activation trên Firefox
+  const already = await hasOriginPermission(origin);
+  if (already) return true;
+  return requestOriginPermission(origin);
+  // ✅ request() là await đầu tiên
+  return requestOriginPermission(origin);
+  ```
+- **Bug 3 — unwrap Vue proxy thành plain object trước khi `sendMessage`.** Fix tập trung trong `lib/messaging.ts`, áp cho mọi payload (deep `toRaw`, giữ nguyên class-instance/Date/Map/Set để structured clone xử lý native):
+  ```typescript
+  import { isRef, toRaw, unref } from 'vue';
+  function toPlain<T>(input: T): T {
+    const value = isRef(input) ? unref(input) : input;
+    if (Array.isArray(value)) return value.map(toPlain) as unknown as T;
+    if (value !== null && typeof value === 'object') {
+      const raw = toRaw(value as object) as Record<string, unknown>;
+      const proto = Object.getPrototypeOf(raw);
+      if (proto !== Object.prototype && proto !== null) return raw as unknown as T;
+      const out: Record<string, unknown> = {};
+      for (const k of Object.keys(raw)) out[k] = toPlain(raw[k]);
+      return out as unknown as T;
+    }
+    return value as unknown as T;
+  }
+  // sendMessage: browser.runtime.sendMessage({ type, payload: toPlain(payload) })
+  ```
+
+**Anti-pattern:**
+- Để WXT build Firefox ở MV2 mặc định khi config dùng key MV3 (`optional_host_permissions`, `strict_min_version: 128`) — luôn set `manifestVersion: 3` và verify manifest sinh ra
+- Đặt **bất kỳ** `await` nào (kể cả `permissions.contains`, `storage.get`) trước `permissions.request()` trong cùng handler — Firefox mất user-activation. Request phải là async op đầu tiên sau user gesture
+- Gửi reactive/readonly proxy (`config.value`, `store.*.value`, hay spread của chúng) trực tiếp qua `browser.runtime.sendMessage` — Chrome chịu, Firefox `DataCloneError`. Luôn unwrap về plain object trước
+- Tin rằng "migrate `chrome.*` → `browser.*` là đủ để cross-browser" — polyfill chỉ giải quyết API surface, không xử lý manifest version, user-activation semantics, hay structured-clone của Proxy

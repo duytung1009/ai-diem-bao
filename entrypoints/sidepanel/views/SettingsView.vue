@@ -619,12 +619,13 @@ watch(activePromptTab, () => {
 });
 
 // Request host permission for a custom endpoint at save-time (must be from a user gesture).
+// IMPORTANT: call permissions.request() as the first await in the gesture chain. Firefox drops
+// the user-activation flag across any prior await (e.g. permissions.contains), so a pre-check
+// here would make the request reject with "permission denied". request() is idempotent — it
+// resolves true with no dialog when the origin is already granted, so the pre-check is redundant.
 async function requestProviderPermission(provider: LLMProvider, baseUrl: string): Promise<boolean> {
   const origin = getProviderOrigin(provider, baseUrl);
   if (!origin) return false;
-
-  const already = await hasOriginPermission(origin);
-  if (already) return true;
 
   return requestOriginPermission(origin);
 }

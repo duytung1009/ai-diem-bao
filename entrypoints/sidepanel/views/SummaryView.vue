@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { sendMessage } from '@/lib/messaging';
 import { isSameTopicUrl } from '@/lib/cache-manager';
-import type { LLMConfig, CachedTopic, TopReactItem } from '@/lib/types';
+import type { LLMConfig, CachedTopic, TopReactItem, SummaryJSON } from '@/lib/types';
 import { computeTopReacts } from '@/lib/top-reacts';
 import { calculateSegmentBudget, estimateTokens } from '@/lib/token-estimator';
 import { SUMMARY_PROMPT } from '@/lib/prompts';
@@ -13,6 +13,8 @@ import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { formatNumber } from '@/lib/format';
 import { getModelMaxOutput } from '@/lib/token-estimator';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
+import IconButton from '../components/IconButton.vue';
+import ContentActions from '../components/ContentActions.vue';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
 import { useAlertSettings } from '../composables/useAlertSettings';
@@ -25,7 +27,6 @@ import ErrorDisplay from '../components/ErrorDisplay.vue';
 import BackButton from '../components/BackButton.vue';
 import ForwardLink from '../components/ForwardLink.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
-import ExportButton from '../components/ExportButton.vue';
 
 import { useLLM } from '../composables/useLLM';
 import { useSeederDetection } from '../composables/useSeederDetection';
@@ -92,6 +93,25 @@ function onAutoSummarizeClick() {
   showAutoSummarizeModal.value = true;
 }
 
+function formatSummaryMD(text: string, json?: SummaryJSON | null): string {
+  if (!json) return text;
+  const lines: string[] = [];
+  lines.push('## Tóm tắt', json.summary, '');
+  if (json.opinions?.length) {
+    lines.push('## Quan điểm nổi bật');
+    for (const op of json.opinions) {
+      lines.push(`### ${op.title}`);
+      if (Array.isArray(op.supporters) && op.supporters.length) lines.push(`Ủng hộ: ${op.supporters.join(', ')}`);
+      lines.push(op.description);
+      if (op.quotes?.length) {
+        for (const q of op.quotes) lines.push(`> '${q.text}' — ${q.author} (#${q.postNumber})`);
+      }
+      lines.push('');
+    }
+  }
+  if (json.conclusion) lines.push('## Kết luận', json.conclusion);
+  return lines.join('\n');
+}
 const newPostCount = computed(() => {
   const topic = cachedTopic.value;
   if (!topic) return 0;
@@ -311,14 +331,13 @@ async function handleConflictGoBack() {
 
           <!-- Segment tabs -->
           <div v-if="summary" class="space-y-2">
-            <!-- Row 1: Tổng quan + Tiếp theo -->
+            <!-- Row 1: Tổng quan -->
             <div class="flex justify-between gap-2 flex-wrap">
               <button class="badge capitalize transition-colors" :class="activeSegmentIndex === null
                 ? 'badge-accent'
                 : 'badge-neutral'" @click="activeSegmentIndex = null">
                 Tổng quan
               </button>
-              <ExportButton v-if="cachedTopic && (summary || segmentSummaries.some(s => s?.summary))" :topic="cachedTopic as unknown as CachedTopic" />
             </div>
 
             <!-- Row 2+3: Progress bar + pill grid (chỉ hiển thị khi > 1 segment) -->
@@ -328,12 +347,12 @@ async function handleConflictGoBack() {
                   <span class="text-xs font-semibold text-(--color-text-secondary)">
                     {{ formatNumber(summarizedCount) }} / {{ formatNumber(segments.length) }} đoạn đã tóm tắt
                   </span>
-                  <button class="btn" @click="segmentGridExpanded = !segmentGridExpanded">
+                  <IconButton :label="segmentGridExpanded ? 'Thu gọn' : 'Mở rộng'" @click="segmentGridExpanded = !segmentGridExpanded">
                     <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0" :class="{ 'rotate-180': segmentGridExpanded }"
                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </div>
                 <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
                   <div class="h-full rounded-full bg-(--color-accent) transition-all duration-300" :style="{ width: progressPercent + '%' }" />
@@ -362,21 +381,17 @@ async function handleConflictGoBack() {
             <!-- Single segment: hiển thị summary trực tiếp -->
             <template v-if="segments.length === 1">
               <div v-if="segmentSummaries[0]?.summary" class="space-y-3">
-                <div v-if="modelLabel" class="text-xs text-(--color-text-muted) italic">
-                  Tóm tắt bởi {{ modelLabel }}
-                </div>
+                <ContentActions
+                  :model-label="modelLabel ? `Tóm tắt bởi ${modelLabel}` : undefined"
+                  :copy-content="formatSummaryMD(segmentSummaries[0]?.summary ?? '', segmentSummaries[0]?.summaryJson ?? null)"
+                  :export-topic="cachedTopic as unknown as CachedTopic"
+                  reload-label="Tóm tắt lại"
+                  :reload-disabled="isProcessing"
+                  :on-reload="() => handleSummarizeSegment(0)"
+                ></ContentActions>
                 <SummaryContent :content="segmentSummaries[0].summary" :json="segmentSummaries[0].summaryJson ?? undefined" :topic-url="cachedTopic?.url"
-                  :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
-                  <template #actions>
-                    <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(0)">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Tóm tắt lại
-                    </button>
-                  </template>
-                </SummaryContent>
+                  :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
+
                 <!-- Knowledge CTA -->
                 <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="flex justify-between">
                   <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
@@ -411,30 +426,26 @@ async function handleConflictGoBack() {
             <!-- Multi-segment: overall summary flow -->
             <template v-else>
               <div v-if="summary" class="space-y-3">
-                <div v-if="modelLabel" class="text-xs text-(--color-text-muted) italic">
-                  Tóm tắt bởi {{ modelLabel }}
+                <div class="flex items-center justify-between gap-2">
+                  <ContentActions
+                    :model-label="modelLabel ? `Tóm tắt bởi ${modelLabel}` : undefined"
+                    :copy-content="formatSummaryMD(summary ?? '', summaryJson ?? null)"
+                    :export-topic="cachedTopic as unknown as CachedTopic"
+                    reload-label="Tạo lại tổng quan"
+                    :reload-disabled="isProcessing"
+                    :on-reload="() => generateOverallSummary()"
+                  ></ContentActions>
+                  <IconButton
+                    v-if="segments.length > 1"
+                    :label="'Tóm tắt toàn bộ' + (!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0 ? ` (${formatNumber(segments.length)} phần)` : '')"
+                    @click="onAutoSummarizeClick"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                  </IconButton>
                 </div>
-                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
-                  <template #actions>
-                    <template v-if="segments.length > 1">
-                      <button class="btn btn-ghost btn-sm flex items-center gap-1" @click="onAutoSummarizeClick">
-                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                        </svg>
-                        Tóm tắt toàn bộ<template v-if="!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0"> ({{
-                          formatNumber(segments.length)
-                        }} phần)</template>
-                      </button>
-                    </template>
-                    <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="() => generateOverallSummary()">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Tạo lại tổng quan
-                    </button>
-                  </template>
-                </SummaryContent>
+                <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
                 <!-- Knowledge CTA -->
                 <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="flex justify-between">
                   <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
@@ -478,18 +489,15 @@ async function handleConflictGoBack() {
                 </svg>
                 <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(segmentSummaries[activeSegmentIndex].postCount) }} bài viết</span>
               </div>
+              <ContentActions
+                :copy-content="formatSummaryMD(segmentSummaries[activeSegmentIndex!]?.summary ?? '', segmentSummaries[activeSegmentIndex!]?.summaryJson ?? null)"
+                :export-topic="cachedTopic as unknown as CachedTopic"
+                reload-label="Tóm tắt lại phần này"
+                :reload-disabled="isProcessing"
+                :on-reload="() => handleSummarizeSegment(activeSegmentIndex!)"
+              ></ContentActions>
               <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" :json="segmentSummaries[activeSegmentIndex].summaryJson"
-                :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
-                <template #actions>
-                  <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isProcessing" @click="handleSummarizeSegment(activeSegmentIndex)">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Tóm tắt lại phần này
-                  </button>
-                </template>
-              </SummaryContent>
+                :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
             </div>
             <div v-else class="text-center py-4">
               <button class="btn-llm" :disabled="isProcessing" @click="handleSummarizeSegment(activeSegmentIndex)">

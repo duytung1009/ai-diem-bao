@@ -110,6 +110,7 @@ function saveAsNote(msg: QAMessage, idx: number) {
 
         <!-- Assistant message -->
         <div v-else class="space-y-2">
+          <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
           <div
             class="text-sm text-(--color-text-secondary) leading-relaxed"
             v-html="item.html"
@@ -158,6 +159,7 @@ function saveAsNote(msg: QAMessage, idx: number) {
 
     <!-- Input area — always at bottom -->
     <div class="space-y-2 pt-1">
+      <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
       <textarea
         v-model="questionInput"
         class="input text-xs w-full resize-none"

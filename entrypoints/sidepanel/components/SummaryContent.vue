@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import MarkdownContent from './MarkdownContent.vue';
 import AccordionItem from './AccordionItem.vue';
 import TrustBadge from './TrustBadge.vue';
@@ -92,81 +92,11 @@ const totalJsonSupporters = computed(() =>
   props.json?.opinions.reduce((s, o) => s + (Array.isArray(o.supporters) ? o.supporters.length : 0), 0) ?? 0,
 );
 
-// Copy
-const copied = ref(false);
-
-function formatSummaryAsText(): string {
-  if (props.json) {
-    const lines: string[] = [];
-    lines.push('## Tóm tắt');
-    lines.push(props.json.summary);
-    lines.push('');
-    if (props.json.opinions?.length) {
-      lines.push('## Quan điểm nổi bật');
-      for (const op of props.json.opinions) {
-        lines.push(`### ${op.title}`);
-        if (Array.isArray(op.supporters) && op.supporters.length) lines.push(`Ủng hộ: ${op.supporters.join(', ')}`);
-        lines.push(op.description);
-        if (op.quotes?.length) {
-          for (const q of op.quotes) {
-            lines.push(`  > '${q.text}' — ${q.author} (#${q.postNumber})`);
-          }
-        }
-        lines.push('');
-      }
-    }
-    if (props.json.conclusion) {
-      lines.push('## Kết luận');
-      lines.push(props.json.conclusion);
-    }
-    if (props.topReacts?.length) {
-      lines.push('');
-      lines.push('## Bình luận nổi bật');
-      for (const item of props.topReacts) {
-        const prefix = item.type === 'like' ? 'Top Ưng' : 'Top Gạch';
-        const likeCount = props.topReacts.filter((r) => r.type === 'like').length;
-        const indexInType = item.type === 'like'
-          ? props.topReacts.indexOf(item)
-          : props.topReacts.indexOf(item) - likeCount;
-        const label = indexInType === 0 ? prefix : `${prefix} #${indexInType + 1}`;
-        lines.push(`* ${label} (${item.count}): ${item.author}`);
-      }
-    }
-    return lines.join('\n');
-  }
-  return props.content;
-}
-
-async function handleCopy() {
-  const text = formatSummaryAsText();
-  try {
-    await navigator.clipboard.writeText(text);
-    copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2000);
-  } catch {
-    prompt('Copy nội dung bên dưới:', text);
-  }
-}
-
 
 </script>
 
 <template>
   <div class="space-y-2 text-sm">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <slot name="actions" />
-      </div>
-      <button
-        class="btn btn-sm btn-ghost flex items-center gap-1"
-        @click="handleCopy"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-        {{ copied ? 'Đã copy!' : 'Copy' }}
-      </button>
-    </div>
     
     <div class="card p-4 space-y-5">
       <div v-if="json" class="space-y-5">

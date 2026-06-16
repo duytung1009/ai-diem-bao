@@ -20,7 +20,7 @@ export function useNotebook() {
   const isLoading = ref(false);
   const error = ref('');
   const filters = ref<NotebookFilters>({ search: '', category: null, tag: null, topicUrl: null, orphanOnly: false, pinnedOnly: false });
-  const viewMode = ref<ViewMode>('topic');
+  const viewMode = ref<ViewMode>('timeline');
 
   const allTags = computed(() => {
     const seen = new Map<string, string>();
@@ -60,22 +60,13 @@ export function useNotebook() {
     const items = filteredEntries.value;
     switch (viewMode.value) {
       case 'topic': {
-        const topicGroups: Record<string, Record<string, NotebookEntry[]>> = {};
+        const groups: Record<string, NotebookEntry[]> = {};
         for (const e of items) {
-          const topicKey = e.sourceTopicTitle || e.sourceTopicUrl;
-          const catKey = e.category || 'Khác';
-          if (!topicGroups[topicKey]) topicGroups[topicKey] = {};
-          if (!topicGroups[topicKey][catKey]) topicGroups[topicKey][catKey] = [];
-          topicGroups[topicKey][catKey].push(e);
+          const key = e.sourceTopicTitle || e.sourceTopicUrl;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(e);
         }
-        const result: { key: string; entries: NotebookEntry[]; subLabel: string }[] = [];
-        for (const [topicKey, cats] of Object.entries(topicGroups)) {
-          const catKeys = Object.keys(cats).sort((a, b) => a === 'Khác' ? 1 : b === 'Khác' ? -1 : a.localeCompare(b, 'vi'));
-          for (const catKey of catKeys) {
-            result.push({ key: topicKey, entries: sortPinnedFirst(cats[catKey]), subLabel: catKey });
-          }
-        }
-        return result;
+        return Object.entries(groups).map(([key, entries]) => ({ key, entries: sortPinnedFirst(entries) }));
       }
       case 'category': {
         const groups: Record<string, NotebookEntry[]> = {};
@@ -86,7 +77,7 @@ export function useNotebook() {
         }
         return Object.entries(groups)
           .sort(([a], [b]) => a === 'Khác' ? 1 : b === 'Khác' ? -1 : a.localeCompare(b, 'vi'))
-          .map(([key, entries]) => ({ key, entries: sortPinnedFirst(entries), subLabel: '' }));
+          .map(([key, entries]) => ({ key, entries: sortPinnedFirst(entries) }));
       }
       case 'tag': {
         const groups: Record<string, NotebookEntry[]> = {};
@@ -99,7 +90,7 @@ export function useNotebook() {
         }
         return Object.entries(groups)
           .sort(([a], [b]) => a.localeCompare(b, 'vi'))
-          .map(([key, entries]) => ({ key, entries: sortPinnedFirst(entries), subLabel: '' }));
+          .map(([key, entries]) => ({ key, entries: sortPinnedFirst(entries) }));
       }
       case 'timeline': {
         const groups: Record<string, NotebookEntry[]> = {};
@@ -129,7 +120,7 @@ export function useNotebook() {
             if (bi !== -1) return 1;
             return b.localeCompare(a, 'vi');
           })
-          .map(([key, entries]) => ({ key, entries: sortPinnedFirst(entries), subLabel: '' }));
+          .map(([key, entries]) => ({ key, entries: sortPinnedFirst(entries) }));
       }
       default:
         return [];

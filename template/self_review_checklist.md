@@ -13,6 +13,15 @@
 6. **Hardcoded values:** Có giá trị nên là constant/config trong `lib/constants.ts`?
 7. **TypeScript types:** Có dùng `any`? Có thiếu type annotation?
 8. **Reactive patterns (Vue):** `readonly()` cho exposed state? `computed` thay vì manual watch khi có thể?
+9. **Design token compliance:**
+   - Không dùng Tailwind palette colors (`text-gray-500`, `bg-white`, v.v.) — dùng `text-(--color-*)` hoặc `bg-(--color-*)`
+   - Chỉ dùng `rounded-lg` hoặc `rounded-full` — không dùng bare `rounded` hoặc `rounded-md`
+   - Saved/pinned icon dùng `--color-saved`, không dùng `text-yellow-*`/`text-amber-*`
+   - Icon-only button có `aria-label` + `p-1.5` + `type="button"`
+   - Destructive action dùng `<ConfirmInline>`, không `window.confirm()`
+   - Form control qua component chuẩn (`ToggleSwitch`, `Checkbox`, `RadioGroup`), không raw `<input type=checkbox|radio>`
+   - Form label dùng `label` utility class, không tự chế token
+   - Section header dùng `section-heading` utility, không tự chế `text-sm font-semibold`
 
 ## Output format (ghi vào task report)
 

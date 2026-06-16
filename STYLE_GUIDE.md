@@ -106,3 +106,32 @@ Toàn app dùng **một** metaphor cho saved/bookmarked/pinned: icon **ngôi sao
 - Control **đổi thứ tự** (sort theo ngày/tên) → nhãn **"Sắp xếp:"**
 
 Không dùng "Sắp xếp:" cho control thực chất là grouping.
+
+## Component Inventory
+
+### Common Patterns
+
+| Component | File | Props | Dùng khi |
+|-----------|------|-------|----------|
+| `<IconButton>` | `components/IconButton.vue` | `label` (required), `variant?: 'default'\|'saved'\|'danger'`, `active?`, `disabled?` | Icon-only button (save, pin, delete, expand, close). Wraps SVG as slot content. Tự động ép `type="button"`, `p-1.5`, `rounded-lg`, và `aria-label`. |
+| `<ConfirmInline>` | `components/ConfirmInline.vue` | `message?`, `confirmLabel?`, `cancelLabel?`, `variant?: 'danger'\|'default'` | Inline confirm row thay `window.confirm()`. Destructive ở rìa. Emit `confirm` / `cancel`. |
+| `<OverflowMenu>` | `components/OverflowMenu.vue` | `label?`, `align?: 'left'\|'right'` | Dropdown menu 3-dots với click-outside. Slot `#actions` chứa các action item. |
+
+### Form Components
+
+| Component | File | Props | Dùng khi |
+|-----------|------|-------|----------|
+| `<FormField>` | `components/FormField.vue` | `label?`, `hint?`, `error?` | Wrapper label+control+hint/error. Slot `#default="{ fieldId, describedBy }"` để binding id/aria. Label dùng `label` utility. |
+| `<ToggleSwitch>` | `components/ToggleSwitch.vue` | `v-model:modelValue`, `label?`, `disabled?` | On/off toggle (SettingsView). Gói pattern `sr-only peer`. |
+| `<Checkbox>` | `components/Checkbox.vue` | `v-model:modelValue`, `label?`, `disabled?` | Checkbox với label và a11y. Dùng `checkbox` utility. |
+| `<RadioGroup>` | `components/RadioGroup.vue` | `v-model:modelValue`, `label?`, `options: RadioOption[]`, `disabled?`, `name?` | Nhóm radio button với legend. Dùng `radio` utility. |
+
+### Form Utilities (`assets/main.css`)
+
+| Utility | Dùng khi |
+|---------|----------|
+| `label` | Form label chuẩn: `text-xs font-medium text-(--color-text-secondary)` |
+| `checkbox` | Checkbox token-based với focus ring, checkmark SVG |
+| `radio` | Radio button token-based với radial-gradient checked |
+| `select` | Select có styled arrow, kế thừa `input` tokens |
+| `input-range` | Range slider (thay `.input-range` cũ)

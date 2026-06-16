@@ -24,6 +24,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
+  <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
   <div
     class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
     @click="emit('cancel')"

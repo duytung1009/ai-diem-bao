@@ -75,14 +75,9 @@ async function navigateToTopic() {
   <div class="card space-y-1.5">
     <div class="flex items-start justify-between gap-2">
       <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">
-        {{ topic.title }}
+        <template v-if="topic.topicType === 'news'">📰 </template>{{ topic.title }}
         <span v-if="isCurrentTab" class="badge badge-accent ml-1 shrink-0">
           Tab hiện tại
-        </span>
-        <span v-if="topic.topicType === 'news'"
-          class="text-(--color-accent-text) font-regular text-xs ml-1"
-        >
-          Tin tức
         </span>
       </p>
     </div>

@@ -22,12 +22,15 @@ This ensures alignment with the project's Development Workflow and prevents out-
 npm run dev          # Dev server (Chrome)
 npm run build        # Production build → .output/chrome-mv3/
 npm run compile      # TypeScript type-check only (vue-tsc --noEmit)
+npm run lint         # ESLint — design system token/a11y enforcement
+npm run lint:fix     # ESLint with auto-fix
+npm run verify       # compile + lint + test (full gate)
 npm run zip          # Package for Chrome Web Store
 npm run test         # Run all tests (Vitest)
 npm run test:watch   # Run tests in watch mode
 ```
 
-Primary verification: `npm run compile` (type check) + `npm run test` (unit + E2E tests).
+Primary verification: `npm run verify` (compile + lint + test).
 
 ## Architecture Overview
 
@@ -56,6 +59,7 @@ All cross-context communication goes through typed messages in `lib/messaging.ts
 - **`useThreadAnalysis`** (`composables/useThreadAnalysis.ts`): lightweight composable managing thread analysis state — reads `summaryJson` from store, calls `threadAnalysisTask`, persists result via `SAVE_CACHED_TOPIC`.
 - **`useOptimisticUpdate`** (`composables/useOptimisticUpdate.ts`): wraps `store.updateSelectedTopic + sendMessage(SAVE_CACHED_TOPIC)` with auto-rollback on save failure. Used in KnowledgeView, ResearchView, TopicHubView for user-triggered actions (bookmark, save, delete).
 - **`App.vue`**: 4 top-level tabs (Thớt, Sổ tay, Cài đặt, ?). When a topic is selected on a detail route, renders a sub-tab bar (← Danh sách, Tóm tắt, Kiến thức, Phân tích, Tra cứu). Mounts `<TopicMeta>` once above `<router-view>` (shared across summary/knowledge/analysis/research tabs). Handles tab detection and auto-update of cached topic metadata.
+- **Common components** (`components/`): `IconButton.vue` (icon-only button with required `label` prop for a11y), `ConfirmInline.vue` (inline confirm row), `OverflowMenu.vue` (3-dot dropdown), `FormField.vue` (label+control+hint wrapper), `ToggleSwitch.vue` (on/off toggle), `Checkbox.vue`, `RadioGroup.vue` (radio with options). Form utilities (`checkbox`, `radio`, `select`, `label`, `input-range`) in `assets/main.css`.
 
 ### Data Flow — Single Source of Truth
 
@@ -227,7 +231,7 @@ Khi user yêu cầu "implement task N" hoặc "tiếp tục":
 ```
 
 **Quy tắc implementation:**
-- LUÔN chạy `npm run compile` (type check) sau khi code
+- LUÔN chạy `npm run verify` (compile + lint + test) sau khi code
 - Subtask **Self-review** (subtask cuối) PHẢI được thực hiện sau khi xong mọi subtask implement: chạy `template/self_review_checklist.md`, fix hết issue, rồi mới set task `--status=review`. Không skip subtask này dù task nhỏ.
 - Sau mỗi task done → `task-master next` → hỏi user có muốn tiếp tục không
 - Không tự commit code
@@ -264,7 +268,7 @@ User request
     ├── "implement task N"
     │       → task-master set-status --id=N --status=in-progress
     │       → Implement code
-    │       → npm run compile verify
+    │       → npm run verify
     │       → Log update-subtask + set-status done
     │       → task-master next → hỏi tiếp tục?
     │
@@ -285,7 +289,8 @@ User request
 
 Mỗi lần bắt đầu implement task mới:
 1. `npm run compile` — type check toàn project
-2. Nếu fail → fix trước khi implement task mới
+2. `npm run lint` — ESLint check (design token + a11y enforcement)
+3. Nếu fail → fix trước khi implement task mới
 
 ---
 

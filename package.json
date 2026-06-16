@@ -11,9 +11,13 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "vue-tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "verify": "vue-tsc --noEmit && eslint . && vitest run",
     "test": "vitest run",
     "test:watch": "vitest",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "prepare": "husky"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.8",
@@ -25,15 +29,25 @@
     "vue": "^3.5.29",
     "vue-router": "^4.6.4"
   },
+  "lint-staged": {
+    "*.{vue,ts,mjs,js}": "eslint --fix"
+  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
     "@types/dompurify": "^3.0.5",
     "@wxt-dev/module-vue": "^1.0.3",
+    "eslint": "^9.39.4",
+    "eslint-plugin-vue": "^10.9.2",
+    "eslint-plugin-vuejs-accessibility": "^2.5.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "lint-staged": "^17.0.7",
     "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.61.1",
     "vitest": "^4.1.6",
+    "vue-eslint-parser": "^10.4.1",
     "vue-tsc": "^3.2.5",
     "wxt": "^0.20.18"
   }

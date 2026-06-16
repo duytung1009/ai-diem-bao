@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import type { ThreadAnalysisJSON, TrustScore } from '@/lib/types';
 import TrustBadge from './TrustBadge.vue';
 
@@ -10,8 +10,6 @@ const props = defineProps<{
   userTrustScores?: Record<string, TrustScore>;
   showTrustBadges?: boolean;
 }>();
-
-const copied = ref(false);
 
 // Compute proportion of low-trust users (score < 40) for the warning indicator
 // Exclude no_meta users — score=0 due to missing data shouldn't count as suspicious
@@ -41,116 +39,11 @@ const commentIcon = (type: 'defining' | 'insightful' | 'meme') => {
   return '😂';
 };
 
-function formatAnalysisAsText(analysis: ThreadAnalysisJSON, title: string, totalPages: number): string {
-  const lines: string[] = [];
 
-  lines.push(`# PHÂN TÍCH THREAD: ${title}`);
-  lines.push(`(${totalPages} trang)`);
-  lines.push('');
-
-  // 1. TỔNG QUAN
-  lines.push('## 1. TỔNG QUAN');
-  lines.push(`Độ nóng: ${heatLabel(analysis.overview.heat)}`);
-  lines.push(`Mâu thuẫn chính: ${analysis.overview.coreConflict}`);
-  lines.push('Fact quan trọng:');
-  for (const fact of analysis.overview.keyFacts) {
-    lines.push(`  - ${fact}`);
-  }
-  if (analysis.overview?.misconception) {
-    lines.push(`VOZ hiểu sai: ${analysis.overview.misconception}`);
-  }
-  lines.push('');
-
-  // 2. USER TIÊU BIỂU
-  lines.push('## 2. USER TIÊU BIỂU');
-  for (const profile of analysis.userProfiles) {
-    lines.push(`### ${profile.role}`);
-    lines.push(profile.description);
-    lines.push(`Nhận xét: ${profile.note}`);
-    lines.push(`Quote: '${profile.quote}'`);
-    lines.push('');
-  }
-
-  // 3. LUỒNG TRANH LUẬN
-  lines.push('## 3. LUỒNG TRANH LUẬN');
-  for (const stream of analysis.debateStreams) {
-    lines.push(`${heatIcon(stream.heat)} ${stream.title}`);
-    lines.push(stream.description);
-    lines.push('');
-  }
-
-  // 4. COMBAT TIÊU BIỂU
-  lines.push('## 4. COMBAT TIÊU BIỂU');
-  for (const combat of analysis.combats) {
-    lines.push(`### ${combat.title}`);
-    lines.push(`Phe A: ${combat.sideA}`);
-    lines.push(`Phe B: ${combat.sideB}`);
-    lines.push(`Nhận xét: ${combat.note}`);
-    lines.push('');
-  }
-
-  // 5. TIMELINE
-  lines.push('## 5. TIMELINE');
-  for (const phase of analysis.timeline) {
-    lines.push(`### ${phase.name} (${phase.pageRange})`);
-    for (const event of phase.events) {
-      lines.push(`  - ${event}`);
-    }
-    lines.push('');
-  }
-
-  // 6. COMMENT NỔI BẬT
-  lines.push('## 6. COMMENT NỔI BẬT');
-  for (const comment of analysis.notableComments) {
-    lines.push(`${commentIcon(comment.type)} [${comment.author}]: ${comment.text}`);
-    lines.push('');
-  }
-
-  // 7. KẾT LUẬN
-  lines.push('## 7. KẾT LUẬN');
-  for (const item of analysis.conclusion.breakdown) {
-    lines.push(`  ${item.label}: ${item.percent}%`);
-  }
-  lines.push(`Góc nhìn hệ thống: ${analysis.conclusion.insightPolicy}`);
-  lines.push(`Phản ứng VOZ: ${analysis.conclusion.insightPublic}`);
-  lines.push(`Tổng kết: ${analysis.conclusion.finalNote}`);
-  lines.push('');
-
-  // 8. KIẾM HIỆP
-  lines.push('## 8. KIẾM HIỆP');
-  lines.push(analysis.wuxia);
-
-  return lines.join('\n');
-}
-
-async function handleCopy() {
-  const text = formatAnalysisAsText(props.analysis, props.threadTitle, props.totalPages);
-  try {
-    await navigator.clipboard.writeText(text);
-    copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2000);
-  } catch {
-    // Fallback: prompt để user copy thủ công
-    prompt('Copy nội dung bên dưới:', text);
-  }
-}
 </script>
 
 <template>
   <div class="space-y-2 text-sm">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <slot name="actions"></slot>
-      </div>
-      <button class="btn btn-sm btn-ghost flex items-center gap-1" @click="handleCopy">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-        {{ copied ? 'Đã copy!' : 'Copy' }}
-      </button>
-    </div>
-
     <div class="space-y-3">
       <section class="space-y-2 card p-3">
         <h3 class="section-heading flex items-center gap-2">

@@ -12,14 +12,17 @@ import NotebookQAPanel from '../components/NotebookQAPanel.vue';
 import KnowledgeEntryCard from '../components/KnowledgeEntryCard.vue';
 import type { KnowledgeCardEntry } from '../components/KnowledgeEntryCard.vue';
 import PillTabs from '../components/PillTabs.vue';
+import IconButton from '../components/IconButton.vue';
+import ConfirmInline from '../components/ConfirmInline.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import SearchInput from '../components/SearchInput.vue';
 import { useNotebookQA } from '../composables/useNotebookQA';
 import { getTagClass } from '@/lib/tag-styles';
 import type { GlobalKnowledgeEntry } from '@/lib/types';
 
 const router = useRouter();
 const store = useTopicStore();
-const { entries, stats, isLoading, error, filters, viewMode, allTags, allTopicUrls, filteredEntries, groupedEntries, loadEntries, loadStats, unsaveEntry } = useNotebook();
+const { entries, stats, isLoading, error, filters, viewMode, filteredEntries, groupedEntries, loadEntries, loadStats, unsaveEntry } = useNotebook();
 
 // Sub-tabs
 const notebookSubTab = ref<'entries' | 'qa' | 'knowledge'>('entries');
@@ -305,6 +308,19 @@ async function openInExtension(entry: NotebookEntry) {
   }
 }
 
+async function handleCopyEntry(entry: NotebookEntry) {
+  const stripHtml = (html: string) => html
+    .replace(/<button[^>]*>\[(\d+)\]<\/button>/g, '[$1]')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?strong>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  try {
+    await navigator.clipboard.writeText(`${entry.title}\n\n${stripHtml(entry.content)}`);
+  } catch { /* fallback not needed */ }
+}
+
 function handleExportGroup(group: { key: string; entries: NotebookEntry[] }) {
   const payload = buildNotebookExport(group.entries);
   const name = group.entries[0]?.sourceTopicTitle ?? group.key;
@@ -325,10 +341,10 @@ function formatTimestamp(ts: string): string {
 }
 
 const viewModes: { value: ViewMode; label: string }[] = [
-  { value: 'topic', label: 'Thớt' },
   { value: 'timeline', label: 'Dòng thời gian' },
   { value: 'category', label: 'Danh mục' },
   { value: 'tag', label: 'Tag' },
+  { value: 'topic', label: 'Thớt' },
 ];
 
 // Per-entry confirm before unsaving (destructive: manual/Q&A notes are not
@@ -373,12 +389,7 @@ onActivated(async () => {
           Ghi chú đã lưu từ các thớt. Nhấn ⭐ trong tab Kiến thức của bất kỳ thớt nào để lưu.
         </p>
         <!-- Search -->
-        <div class="relative">
-          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input v-model="filters.search" type="text" placeholder="Tìm kiếm ghi chú..." aria-label="Tìm kiếm ghi chú" class="input pl-8 text-xs w-full" />
-        </div>
+        <SearchInput v-model="filters.search" placeholder="Tìm kiếm ghi chú..." />
 
         <!-- Stats + create -->
         <div class="flex items-center gap-2">
@@ -425,13 +436,10 @@ onActivated(async () => {
 
         <!-- Entry groups -->
         <div v-if="filteredEntries.length > 0" class="space-y-4">
-          <div v-for="group in groupedEntries" :key="group.key + (group.subLabel || '')">
+          <div v-for="group in groupedEntries" :key="group.key">
             <div class="flex items-end gap-2 mb-1">
               <h4 class="section-heading flex-1 mb-1">
-                {{ group.key ? group.key + ' · ' : '' }}
-                <span v-if="group.subLabel">
-                  {{ group.subLabel }}
-                </span>
+                {{ group.key ?? 'Khác' }}
                 <span class="font-normal normal-case ml-1">({{ group.entries.length }})</span>
               </h4>
               <button type="button" class="btn btn-ghost btn-sm shrink-0" title="Xuất nhóm này ra file JSON" aria-label="Xuất nhóm này ra file JSON" @click="handleExportGroup(group)">
@@ -444,6 +452,7 @@ onActivated(async () => {
               <div v-for="entry in group.entries" :key="entry.id" class="card transition-colors duration-500"
                 :class="{ 'ring-2 ring-(--color-secondary)': focusEntryId === entry.id }">
                 <!-- Header -->
+                <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
                 <div class="flex items-center gap-2 cursor-pointer"
                   @click="editingId !== entry.id && toggleExpand(entry.id)">
                   <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform duration-200 text-(--color-text-secondary)"
@@ -460,41 +469,35 @@ onActivated(async () => {
                   <span v-if="isQAEntry(entry)" class="badge badge-accent shrink-0">💬 Hỏi đáp</span>
                   <span v-else-if="entry.manual" class="badge badge-neutral shrink-0">✍ Tự tạo</span>
                   <!-- Edit button (hidden for Q&A entries — content is HTML with citations) -->
-                  <button v-if="editingId !== entry.id && !isQAEntry(entry)" type="button"
-                    class="p-1.5 text-(--color-text-secondary) hover:text-(--color-secondary) transition-colors rounded-lg shrink-0" title="Sửa" aria-label="Sửa ghi chú"
-                    @click.stop="startEdit(entry)">
+                  <IconButton v-if="editingId !== entry.id && !isQAEntry(entry)" label="Sửa" @click.stop="startEdit(entry)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                  </button>
+                  </IconButton>
+                  <IconButton v-if="editingId !== entry.id" label="Copy nội dung" @click.stop="handleCopyEntry(entry)">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </IconButton>
                   <!-- Export button -->
-                  <button v-if="editingId !== entry.id" type="button"
-                    class="p-1.5 text-(--color-text-secondary) hover:text-(--color-secondary) transition-colors rounded-lg shrink-0" title="Xuất JSON" aria-label="Xuất ghi chú ra JSON"
-                    @click.stop="handleExportEntry(entry)">
+                  <IconButton v-if="editingId !== entry.id" label="Xuất JSON" @click.stop="handleExportEntry(entry)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                  </button>
+                  </IconButton>
                   <!-- Unsave button (filled star → confirm) -->
-                  <button v-if="editingId !== entry.id" type="button"
-                    class="p-1.5 text-(--color-saved) hover:text-(--color-error-text) transition-colors rounded-lg shrink-0"
-                    title="Bỏ lưu" aria-label="Bỏ lưu ghi chú"
-                    @click.stop="confirmUnsaveId = confirmUnsaveId === entry.id ? null : entry.id">
+                  <IconButton v-if="editingId !== entry.id" label="Bỏ lưu" variant="saved" @click.stop="confirmUnsaveId = confirmUnsaveId === entry.id ? null : entry.id">
                     <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </div>
 
                 <!-- Unsave confirm -->
-                <div v-if="confirmUnsaveId === entry.id" class="mt-2 bg-(--color-error-bg) text-(--color-error-text) rounded-lg p-2 text-xs flex items-center justify-between gap-2">
-                  <span>Bỏ lưu ghi chú này khỏi Sổ tay?</span>
-                  <div class="flex gap-2 shrink-0">
-                    <button type="button" class="btn btn-danger" @click.stop="handleUnsave(entry)">Bỏ lưu</button>
-                    <button type="button" class="btn btn-ghost btn-sm text-xs px-2" @click.stop="confirmUnsaveId = null">Hủy</button>
-                  </div>
+                <div v-if="confirmUnsaveId === entry.id" class="mt-2 bg-(--color-error-bg) rounded-lg p-2">
+                  <ConfirmInline message="Bỏ lưu ghi chú này khỏi Sổ tay?" confirm-label="Bỏ lưu" cancel-label="Huỷ" variant="danger" @confirm="handleUnsave(entry)" @cancel="confirmUnsaveId = null" />
                 </div>
 
                 <!-- Body -->
@@ -506,6 +509,7 @@ onActivated(async () => {
                       @cancel="cancelEdit" />
                     <!-- View mode -->
                     <div v-else class="pt-2 space-y-2">
+                      <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
                       <p v-if="isQAEntry(entry)" class="text-sm text-(--color-text-secondary) leading-relaxed" v-html="entry.content" @click="handleQACitationClick"></p>
                       <p v-else class="text-xs text-(--color-text-secondary) leading-relaxed">{{ entry.content }}</p>
                       <!-- Cited entries for Q&A notes -->
@@ -558,12 +562,7 @@ onActivated(async () => {
 
       <!-- Knowledge entry list -->
       <div class="space-y-2">
-        <div class="relative">
-          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input v-model="knowledgeSearchInput" type="text" placeholder="Tìm kiếm trong kho..." class="input text-xs w-full pl-8" />
-        </div>
+        <SearchInput v-model="knowledgeSearchInput" placeholder="Tìm kiếm trong kho..." />
         <p class="text-xs text-(--color-text-secondary)">
           <template v-if="knowledgeSearchInput">{{ knowledgeFiltered.length }}/{{ knowledgeEntries.length }}</template>
           <template v-else>{{ knowledgeEntries.length }}</template>

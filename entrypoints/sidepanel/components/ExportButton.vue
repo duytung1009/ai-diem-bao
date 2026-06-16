@@ -1,10 +1,13 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref } from 'vue';
 import type { CachedTopic } from '@/lib/types';
 import { buildSummaryExport, downloadJson, safeFilename } from '@/lib/exporter';
+import IconButton from './IconButton.vue';
 
 const props = defineProps<{
   topic: CachedTopic;
+  jsonData?: unknown;
+  jsonFilename?: string;
 }>();
 
 const showDropdown = ref(false);
@@ -39,42 +42,10 @@ function buildMarkdown(): string {
   return lines.join('\n');
 }
 
-function stripMarkdown(md: string): string {
-  return md
-    .replace(/#{1,6}\s+/g, '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/`{1,3}[^`]*`{1,3}/g, '')
-    .replace(/>\s+/g, '')
-    .replace(/---/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-async function copyMarkdown() {
-  try {
-    await navigator.clipboard.writeText(buildMarkdown());
-    showToast('Đã sao chép Markdown!');
-  } catch {
-    showToast('Không thể sao chép. Thử lại sau.');
-  }
-  showDropdown.value = false;
-}
-
-async function copyText() {
-  try {
-    await navigator.clipboard.writeText(stripMarkdown(buildMarkdown()));
-    showToast('Đã sao chép văn bản!');
-  } catch {
-    showToast('Không thể sao chép. Thử lại sau.');
-  }
-  showDropdown.value = false;
-}
-
-function downloadSummaryJson() {
-  const payload = buildSummaryExport(props.topic);
-  downloadJson(payload, `${safeFilename(props.topic.title)}_summary.json`);
+function downloadJsonExport() {
+  const payload = props.jsonData ?? buildSummaryExport(props.topic);
+  const filename = props.jsonFilename ?? `${safeFilename(props.topic.title)}_summary.json`;
+  downloadJson(payload, filename);
   showToast('Đã tải file JSON!');
   showDropdown.value = false;
 }
@@ -96,40 +67,18 @@ function downloadMd() {
 </script>
 
 <template>
+  <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vue/valid-v-on -- intentional interactive container -->
   <div class="relative" @keydown.escape.window="showDropdown = false">
-    <button
-      class="btn btn-ghost btn-sm"
-      title="Xuất kết quả"
-      @click="showDropdown = !showDropdown"
-    >
+    <IconButton label="Xuất kết quả" @click="showDropdown = !showDropdown">
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
-      Xuất JSON
-    </button>
+    </IconButton>
 
     <div
       v-if="showDropdown"
       class="absolute right-0 top-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-xl shadow-dropdown z-10 min-w-max p-1"
     >
-      <button
-        class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
-        @click="copyMarkdown"
-      >
-        <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-        Sao chép Markdown
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
-        @click="copyText"
-      >
-        <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Sao chép văn bản
-      </button>
       <button
         class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
         @click="downloadMd"
@@ -139,10 +88,9 @@ function downloadMd() {
         </svg>
         Tải file .md
       </button>
-      <div class="border-t border-(--color-border) my-1" />
       <button
         class="w-full text-left px-3 py-2 text-sm text-(--color-text-primary) hover:bg-(--color-accent-soft) rounded-lg flex items-center gap-2 transition-colors"
-        @click="downloadSummaryJson"
+        @click="downloadJsonExport"
       >
         <svg class="w-4 h-4 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -151,6 +99,7 @@ function downloadMd() {
       </button>
     </div>
 
+    <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
     <div
       v-if="showDropdown"
       class="fixed inset-0 z-0"

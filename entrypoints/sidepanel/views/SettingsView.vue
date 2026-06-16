@@ -9,6 +9,8 @@ import { buildCacheExport } from '@/lib/exporter';
 import { validateCacheExport, type ImportConflictMode, type ImportResult } from '@/lib/importer';
 import { getModelThinkingBudget, modelSupportsThinking } from '@/lib/token-estimator';
 import PillTabs from '../components/PillTabs.vue';
+import ToggleSwitch from '../components/ToggleSwitch.vue';
+import RadioGroup from '../components/RadioGroup.vue';
 import { useForumManager } from '../composables/useForumManager';
 import ShowDefaultButton from '../components/ShowDefaultButton.vue';
 import {
@@ -845,11 +847,7 @@ async function onImportFileSelected(event: Event) {
     <div class="card space-y-2">
       <h3 class="section-heading">Hiển thị chỉ số độ tin cậy tài khoản</h3>
       <div class="flex items-start gap-3">
-        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
-          <input :checked="showTrustBadges" @change="setShowTrustBadges(($event.target as HTMLInputElement).checked)" type="checkbox" class="sr-only peer" />
-          <div
-            class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
-        </label>
+        <ToggleSwitch :modelValue="showTrustBadges" @update:modelValue="setShowTrustBadges" />
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary)">Hiển thị chỉ số độ tin cậy tài khoản (Thử nghiệm)</p>
           <p class="text-xs text-(--color-text-muted)">Badge cảnh báo tài khoản mới hoặc ít hoạt động.</p>
@@ -863,8 +861,10 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Provider -->
       <div>
-        <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Provider</label>
-        <select v-model="config.provider" class="input">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in FormField refactor -->
+        <label for="provider-select" class="block text-xs font-medium text-(--color-text-secondary) mb-1">Provider</label>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in FormField refactor -->
+        <select id="provider-select" v-model="config.provider" class="select">
           <option value="custom">Custom (OpenAI-compatible)</option>
           <option value="openrouter">OpenRouter (multi-model)</option>
           <option value="gemini">Google Gemini (Google AI Studio)</option>
@@ -877,10 +877,12 @@ async function onImportFileSelected(event: Event) {
 
       <!-- API Key -->
       <div>
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           {{ isClaude ? 'Anthropic API Key' : isGemini ? 'Google AI API Key' : 'API Key' }}
         </label>
         <div class="relative">
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
           <input v-model="config.apiKey" :type="showApiKey ? 'text' : 'password'" :placeholder="isClaude ? 'sk-ant-...' : isGemini ? 'AIza...' : 'sk-...'"
             class="input" style="padding-right: 2.25rem;" />
           <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
@@ -902,15 +904,19 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Base URL (only for OpenAI/Custom) -->
       <div v-if="!isClaude && !isGemini">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Base URL</label>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input v-model="config.baseUrl" type="text" placeholder="https://api.openai.com/v1" class="input" />
         <p v-if="isOpenRouter" class="text-xs text-(--color-text-muted) mt-1">OpenRouter tự động route đến model bạn chọn. Không cần sửa Base URL.</p>
       </div>
 
       <!-- Model selector for Claude -->
       <div v-if="isClaude">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Model</label>
         <div class="relative">
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
           <input v-model="config.model" type="text" placeholder="claude-sonnet-4-6" class="input pr-7" @focus="showModelDropdown = true"
             @blur="closeModelDropdown" />
           <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-primary) text-xs"
@@ -921,6 +927,7 @@ async function onImportFileSelected(event: Event) {
           </button>
           <ul v-if="showModelDropdown"
             class="absolute z-50 w-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-lg shadow-elevated overflow-hidden">
+            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -- will be fixed in task 407 -->
             <li v-for="model in claudeModels" :key="model" class="px-3 py-1.5 text-xs cursor-pointer hover:bg-(--color-bg-muted) text-(--color-text-primary)"
               :class="config.model === model ? 'font-medium text-(--color-accent)' : ''" @mousedown.prevent="selectModel(model)">{{ model }}</li>
           </ul>
@@ -929,6 +936,7 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Model selector for Gemini -->
       <div v-if="isGemini">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="flex items-center justify-between text-xs font-medium text-(--color-text-secondary) mb-1">
           <span>Model</span>
           <button type="button" class="text-(--color-accent) hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
@@ -942,6 +950,7 @@ async function onImportFileSelected(event: Event) {
         </label>
         <p class="text-xs text-(--color-text-muted) mb-1">Nhập API key rồi bấm "Quét model từ API" để lấy danh sách model thực tế.</p>
         <div class="relative">
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
           <input v-model="config.model" type="text" placeholder="gemini-2.5-flash" class="input pr-7" @focus="showModelDropdown = true"
             @blur="closeModelDropdown" />
           <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-primary) text-xs"
@@ -952,6 +961,7 @@ async function onImportFileSelected(event: Event) {
           </button>
           <ul v-if="showModelDropdown"
             class="absolute z-50 w-full mt-1 bg-(--color-bg-surface) border border-(--color-border) rounded-lg shadow-elevated overflow-hidden">
+            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -- will be fixed in task 407 -->
             <li v-for="model in geminiModels" :key="model" class="px-3 py-1.5 text-xs cursor-pointer hover:bg-(--color-bg-muted) text-(--color-text-primary)"
               :class="config.model === model ? 'font-medium text-(--color-accent)' : ''" @mousedown.prevent="selectModel(model)">{{ model }}</li>
           </ul>
@@ -960,7 +970,9 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Model input for OpenAI/Custom/OpenRouter -->
       <div v-if="!isClaude && !isGemini">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">Model</label>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input v-model="config.model" type="text" placeholder="gpt-4o-mini" class="input" />
         <p v-if="isOpenRouter" class="text-xs text-(--color-text-muted) mt-1">Dùng format <code class="font-mono">provider/model</code>, VD: <code
             class="font-mono">meta-llama/llama-3.1-8b-instruct:free</code>, <code class="font-mono">openai/gpt-4o-mini</code>, <code
@@ -969,11 +981,13 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Temperature -->
       <div>
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           Temperature: {{ config.temperature.toFixed(1) }}
         </label>
         <p class="text-xs text-(--color-text-muted) mb-1">Độ ngẫu nhiên trong câu trả lời. 0 = deterministic (nhất quán), 1 = sáng tạo hơn nhưng dễ hallucinate.
         </p>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input v-model.number="config.temperature" type="range" min="0" max="1" step="0.1" class="input-range" />
         <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
           <span>0</span>
@@ -983,10 +997,12 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Timeout -->
       <div>
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           Timeout: {{ Math.round((config.timeoutMs ?? 120000) / 1000) }}s
         </label>
         <p class="text-xs text-(--color-text-muted) mb-1">Thời gian tối đa chờ phản hồi từ API. Tăng nếu gặp lỗi timeout với topic dài hoặc model chậm.</p>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input v-model.number="config.timeoutMs" type="range" :min="30000" :max="3600000" :step="30000" class="input-range" />
         <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
           <span>30s</span>
@@ -996,6 +1012,7 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Max output tokens (Tóm tắt) -->
       <div>
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           Max output tokens (Tóm tắt): {{ (config.maxTokens ?? 16384).toLocaleString() }}
         </label>
@@ -1003,6 +1020,7 @@ async function onImportFileSelected(event: Event) {
           Giới hạn số token LLM có thể trả về trong một lần gọi tóm tắt. Tăng nếu tóm tắt bị cắt ngắn.
         </p>
         <div class="flex gap-2">
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
           <input v-model.number="config.maxTokens" type="number" min="1024" step="1024" placeholder="16384" class="input flex-1" />
           <button v-if="config.maxTokens" class="btn btn-sm btn-ghost" @click="config.maxTokens = undefined" title="Reset về mặc định">
             Reset
@@ -1012,6 +1030,7 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Max output tokens (Kiến thức) -->
       <div>
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           Max output tokens (Kiến thức): {{ (config.knowledgeMaxTokens ?? ((config.maxTokens ?? 16384) * 2)).toLocaleString() }}
         </label>
@@ -1020,6 +1039,7 @@ async function onImportFileSelected(event: Event) {
           tokens (Tóm tắt) x 2.
         </p>
         <div class="flex gap-2">
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
           <input v-model.number="config.knowledgeMaxTokens" type="number" min="1024" step="1024" placeholder="Dùng giá trị Max output tokens (Tóm tắt) x 2"
             class="input flex-1" />
           <button v-if="config.knowledgeMaxTokens" class="btn btn-sm btn-ghost" @click="config.knowledgeMaxTokens = undefined"
@@ -1038,12 +1058,7 @@ async function onImportFileSelected(event: Event) {
       <div class="space-y-2">
         <!-- Thinking toggle -->
         <div class="flex items-start gap-3">
-          <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
-            <input :checked="config.thinkingEnabled !== false" @change="handleThinkingToggle(($event.target as HTMLInputElement).checked)" type="checkbox"
-              class="sr-only peer" />
-            <div
-              class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
-          </label>
+          <ToggleSwitch :modelValue="config.thinkingEnabled !== false" @update:modelValue="handleThinkingToggle" />
           <div>
             <p class="text-xs font-medium text-(--color-text-secondary)">Thinking mode</p>
             <p class="text-xs text-(--color-text-muted)">Model suy luận nội bộ trước khi trả lời (tốn token output).</p>
@@ -1056,12 +1071,14 @@ async function onImportFileSelected(event: Event) {
 
         <!-- Thinking budget (only when thinking enabled) -->
         <div>
+          <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
           <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
             Thinking budget: {{ thinkingBudgetLabel }}
           </label>
           <p class="text-xs text-(--color-text-muted) mb-1">
             Giới hạn token dành cho suy luận nội bộ (nằm trong Max output tokens). Kéo về 0 = tắt thinking. Nhấn "Tự động" = model tự quyết định.
           </p>
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
           <input v-model.number="thinkingBudgetSlider" type="range" :min="0" :max="thinkingBudgetSliderMax" :step="2048" class="input-range" />
           <div class="flex justify-between text-xs text-(--color-text-muted) mt-0.5">
             <span>0 (tắt)</span>
@@ -1084,6 +1101,7 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Context window override (especially useful for custom/local LLMs) -->
       <div>
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary) mb-1">
           Context window (tokens): {{ config.contextWindow ? config.contextWindow.toLocaleString() : 'Tự động' }}
         </label>
@@ -1092,6 +1110,7 @@ async function onImportFileSelected(event: Event) {
           Quan trọng với LLM local/custom có context nhỏ hơn.
         </p>
         <div class="flex gap-2">
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
           <input v-model.number="config.contextWindow" type="number" min="0" step="1000" placeholder="0 = tự động" class="input flex-1" />
           <button v-if="config.contextWindow" class="btn btn-sm btn-ghost" @click="config.contextWindow = undefined" title="Reset về tự động">
             Reset
@@ -1106,12 +1125,14 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Scrape delay -->
       <div class="space-y-1">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary)">
           Delay giữa các lần tải trang: {{ config.scrapeDelayMs ?? DEFAULT_SCRAPE_DELAY_MS }}ms
         </label>
         <p class="text-xs text-(--color-text-muted)">
           Khoảng cách giữa mỗi request khi đọc topic nhiều trang. Tăng lên nếu bị chặn bởi forum.
         </p>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input v-model.number="config.scrapeDelayMs" type="range" min="500" max="10000" step="500" class="input-range" />
         <div class="flex justify-between text-xs text-(--color-text-muted)">
           <span>500ms</span>
@@ -1121,11 +1142,7 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Dynamic segments toggle -->
       <div class="flex items-start gap-3">
-        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
-          <input v-model="config.dynamicSegments" type="checkbox" class="sr-only peer" />
-          <div
-            class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
-        </label>
+        <ToggleSwitch v-model="config.dynamicSegments" />
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary)">Tự động chia segment theo độ dài nội dung</p>
           <p class="text-xs text-(--color-text-muted)">Tính số trang mỗi phần dựa trên LLM Context window, tránh vượt quá giới hạn context.</p>
@@ -1134,12 +1151,14 @@ async function onImportFileSelected(event: Event) {
 
       <!-- Segment size (chỉ hiển khi dynamic segments tắt) -->
       <div v-if="!config.dynamicSegments" class="space-y-1">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="block text-xs font-medium text-(--color-text-secondary)">
           Số trang mỗi phần (Segment): {{ config.segmentSize ?? DEFAULT_SEGMENT_SIZE }}
         </label>
         <p class="text-xs text-(--color-text-muted)">
           Topic dài hơn giá trị này sẽ được chia thành nhiều phần để tóm tắt riêng.
         </p>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input v-model.number="config.segmentSize" type="range" min="10" max="200" step="10" class="input-range" />
         <div class="flex justify-between text-xs text-(--color-text-muted)">
           <span>10</span>
@@ -1200,6 +1219,7 @@ async function onImportFileSelected(event: Event) {
         <button class="w-full btn btn-sm btn-danger" @click="confirmClearAll">
           Xóa tất cả cache
         </button>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input ref="fileInput" type="file" accept=".json,application/json" class="hidden" @change="onImportFileSelected" />
         <div class="grid grid-cols-2 gap-2">
           <button class="w-full btn btn-sm btn-secondary" :disabled="exporting || importing" @click="exportCache">
@@ -1209,25 +1229,14 @@ async function onImportFileSelected(event: Event) {
             {{ importing ? 'Đang nhập...' : 'Nhập dữ liệu (JSON)' }}
           </button>
         </div>
-        <div class="space-y-1">
-          <p class="block text-xs font-medium text-(--color-text-secondary)">Khi trùng dữ liệu, bạn muốn:</p>
-          <div class="grid grid-cols-1 gap-1.5">
-            <label class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer" :class="conflictMode === 'skip'
-              ? 'text-(--color-text-primary)'
-              : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'">
-              <input v-model="conflictMode" type="radio" name="import-conflict-mode" value="skip"
-                class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30" />
-              <span class="text-xs font-medium text-(--color-text-secondary)">Giữ dữ liệu hiện có</span>
-            </label>
-            <label class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-xs transition-colors cursor-pointer" :class="conflictMode === 'overwrite'
-              ? 'text-(--color-text-primary)'
-              : 'text-(--color-text-primary) hover:bg-(--color-bg-muted)'">
-              <input v-model="conflictMode" type="radio" name="import-conflict-mode" value="overwrite"
-                class="h-4 w-4 shrink-0 appearance-none rounded-full border border-(--color-border-strong) bg-(--color-bg-surface) transition checked:border-(--color-accent) checked:bg-(--color-accent) checked:bg-[radial-gradient(circle,white_30%,transparent_32%)] focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30" />
-              <span class="text-xs font-medium text-(--color-text-secondary)">Ghi đè bằng dữ liệu từ file</span>
-            </label>
-          </div>
-        </div>
+        <RadioGroup
+          v-model="conflictMode"
+          label="Chế độ xử lý xung đột"
+          :options="[
+            { value: 'skip', label: 'Bỏ qua (skip)' },
+            { value: 'overwrite', label: 'Ghi đè (overwrite)' },
+          ]"
+        />
         <div v-if="importResult" class="alert text-xs" :class="importResult.failed > 0 ? 'alert-warning' : 'alert-success'">
           Đã nhập {{ importResult.imported }} topic (bỏ qua {{ importResult.skipped }}, lỗi {{ importResult.failed }}).
         </div>
@@ -1249,13 +1258,17 @@ async function onImportFileSelected(event: Event) {
       <h3 class="section-heading">Điểm báo</h3>
 
       <div class="flex items-center justify-between">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="text-xs text-(--color-text-primary)">Số thớt hiển thị tối đa</label>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input type="number" min="1" max="50" :value="newsFeedMaxThreads" class="input w-20 text-xs text-right"
           @change="setNewsFeedMaxThreads(Number(($event.target as HTMLInputElement).value))" />
       </div>
 
       <div class="flex items-center justify-between">
+        <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- will be fixed in task 407 -->
         <label class="text-xs text-(--color-text-primary)">Giới hạn thời gian (giờ)</label>
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input type="number" min="1" max="168" :value="newsFeedMaxAgeHours" class="input w-20 text-xs text-right"
           @change="setNewsFeedMaxAgeHours(Number(($event.target as HTMLInputElement).value))" />
       </div>
@@ -1291,6 +1304,7 @@ async function onImportFileSelected(event: Event) {
       </div>
 
       <div class="flex gap-2">
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
         <input v-model="newForumUrl" type="text" placeholder="https://forum.example.com" class="input flex-1" @keydown.enter="addForum" />
         <button class="btn btn-sm btn-primary" :disabled="addingForum" @click="addForum">
           {{ addingForum ? 'Đang thêm...' : 'Thêm' }}
@@ -1330,6 +1344,7 @@ async function onImportFileSelected(event: Event) {
                 </button>
               </div>
             </div>
+            <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
             <textarea v-model="summarySections[mode].task" rows="6" class="input font-mono resize-y"
               placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)" />
             <div v-if="showSummaryDefault[mode]" class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-36 overflow-y-auto">
@@ -1361,6 +1376,7 @@ async function onImportFileSelected(event: Event) {
                 </button>
               </div>
             </div>
+            <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
             <textarea v-model="knowledgeSections[mode].task" rows="6" class="input font-mono resize-y"
               placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)" />
             <div v-if="showKnowledgeDefault[mode]" class="border border-(--color-border) rounded-lg p-2 bg-(--color-bg-muted) max-h-36 overflow-y-auto">
@@ -1380,6 +1396,7 @@ async function onImportFileSelected(event: Event) {
         <!-- Other tabs: single textarea (backward compat) -->
         <template v-else>
           <div class="rounded-lg space-y-1">
+            <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
             <textarea v-model="activePromptValue" rows="6" class="input font-mono resize-y"
               placeholder="Nhập prompt tuỳ chỉnh... (bấm 'Xem prompt mặc định' để xem prompt gốc)" />
             <!-- Default prompt viewer -->
@@ -1407,22 +1424,14 @@ async function onImportFileSelected(event: Event) {
     <div class="card space-y-2">
       <h3 class="section-heading">Ẩn thông báo</h3>
       <div class="flex items-start gap-3">
-        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
-          <input :checked="hideInfoAlerts" @change="setHideInfoAlerts(($event.target as HTMLInputElement).checked)" type="checkbox" class="sr-only peer" />
-          <div
-            class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
-        </label>
+        <ToggleSwitch :modelValue="hideInfoAlerts" @update:modelValue="setHideInfoAlerts" />
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary)">Ẩn thông báo thông tin</p>
           <p class="text-xs text-(--color-text-muted)">Ẩn các thông báo dạng <code class="font-mono">alert-info</code> trên toàn app (gợi ý, mẹo, ...).</p>
         </div>
       </div>
       <div class="flex items-start gap-3">
-        <label class="mt-1.5 relative inline-flex items-center cursor-pointer">
-          <input :checked="hideWarningAlerts" @change="setHideWarningAlerts(($event.target as HTMLInputElement).checked)" type="checkbox" class="sr-only peer" />
-          <div
-            class="w-9 h-5 bg-(--color-bg-muted) peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-(--color-accent)" />
-        </label>
+        <ToggleSwitch :modelValue="hideWarningAlerts" @update:modelValue="setHideWarningAlerts" />
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary)">Ẩn cảnh báo</p>
           <p class="text-xs text-(--color-text-muted)">Ẩn các thông báo dạng <code class="font-mono">alert-warning</code> trên toàn app (cảnh báo, lưu ý, ...).</p>

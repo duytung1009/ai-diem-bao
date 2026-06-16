@@ -8,6 +8,7 @@ import { requestOriginPermission } from '@/lib/permissions';
 import type { HotThreadScore } from '@/lib/hot-threads';
 import { useActiveForum } from '../composables/useActiveForum';
 import { STORAGE_KEYS } from '@/lib/constants';
+import IconButton from '../components/IconButton.vue';
 
 const activeForum = useActiveForum();
 const { forumUrl, detected: forumDetected, detect: detectForum, setUrl } = activeForum;
@@ -140,25 +141,27 @@ onMounted(async () => {
       lọc thớt có tương tác trong 24h qua và xếp hạng dựa trên số reply, view và thời gian gần đây.
     </p>
 
-    <div class="flex gap-2">
+    <div class="relative">
+      <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
       <input
         :value="forumUrl"
-        class="input flex-1"
+        class="input pr-9 w-full"
         type="url"
         placeholder="Nhập URL forum, VD: https://voz.vn/f/diem-bao.33/"
         @input="(e: Event) => { const target = e.target as HTMLInputElement; setUrl(target.value) }"
         @keyup.enter="loadForum"
       />
-      <button
-        class="btn btn-accent btn-sm shrink-0"
-        :disabled="loading || !forumUrl"
-        @click="loadForum"
-      >
-        <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        {{ loading ? 'Đang tải...' : hasLoaded ? 'Làm mới' : 'Tải' }}
-      </button>
+      <div class="absolute right-1.5 top-1/2 -translate-y-1/2">
+        <IconButton
+          :label="loading ? 'Đang tải' : hasLoaded ? 'Làm mới dữ liệu' : 'Tải dữ liệu'"
+          :disabled="loading || !forumUrl"
+          @click="loadForum"
+        >
+          <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </IconButton>
+      </div>
     </div>
 
     <div v-if="forumHistory.length > 0" class="flex flex-wrap gap-1.5">
@@ -194,6 +197,7 @@ onMounted(async () => {
     </div>
 
     <div v-if="!loading && threads.length > 0" class="space-y-1.5">
+      <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
       <div v-for="(item, idx) in threads" :key="idx" class="card-interactive" @click="openThread(item.thread.url)">
         <div class="flex items-start gap-2">
           <span

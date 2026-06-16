@@ -2741,13 +2741,714 @@
         "recommendedSubtasks": 0,
         "expansionPrompt": "Task không cần chia nhỏ.",
         "updatedAt": "2026-06-14T14:59:29.358Z"
+      },
+      {
+        "id": "399",
+        "title": "Tiến hành Kiểm toán Hệ thống Thiết kế (L0)",
+        "description": "Kiểm kê toàn bộ token coverage, form-control inventory, component completeness và xác định các màn hình lệch chuẩn. Tạo báo cáo `review/<ts>_design-system-audit.md` và backlog remediation.",
+        "details": "Quét tất cả file `.vue` trong `entrypoints/sidepanel/` bằng script hoặc thủ công. Đếm instance hardcoded color, `rounded`, hex trong class, raw `<input type=checkbox|radio>`, v.v. Ghi nhận vào bảng. Đánh giá từng view/component so với hệ thống. Tạo file markdown với template quy định.",
+        "testStrategy": "Kiểm tra file báo cáo tồn tại và có đủ các phần: token coverage, form-control inventory, component completeness, màn hình lệch chuẩn. Nội dung có cơ sở dựa trên codebase thực tế.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Phát triển script quét mã nguồn",
+            "description": "Viết script (Node.js hoặc shell) để quét tất cả file .vue trong entrypoints/sidepanel/, đếm và ghi lại các instance hardcoded color, rounded, hex trong class, raw input checkbox/radio, v.v. Xuất kết quả dưới dạng bảng dễ xử lý.",
+            "dependencies": [],
+            "details": "Sử dụng regex hoặc AST parser để trích xuất các pattern. Script phải có thể chạy lại được và output ra file JSON hoặc CSV.",
+            "status": "pending",
+            "testStrategy": "Chạy thử trên một vài file mẫu và kiểm tra kết quả khớp với kỳ vọng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thực hiện kiểm kê token coverage và form-control inventory",
+            "description": "Sử dụng kết quả từ script để đánh giá token coverage (bao nhiêu phần trăm sử dụng token so với hardcoded), liệt kê tất cả form-control components đang dùng và so sánh với hệ thống thiết kế, đánh giá component completeness (các component có prop đầy đủ không).",
+            "dependencies": [
+              1
+            ],
+            "details": "Tạo bảng tổng hợp cho từng loại: token coverage, form-control inventory, component completeness. Xác định các màn hình lệch chuẩn (không tuân thủ tokens, dùng raw HTML thay vì component).",
+            "status": "pending",
+            "testStrategy": "Đảm bảo dữ liệu được lấy từ script output và không có sai sót nào.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết báo cáo markdown và tạo backlog remediation",
+            "description": "Tạo file report markdown theo template quy định, bao gồm tất cả kết quả kiểm kê, đánh giá, và danh sách các mục cần sửa chữa (backlog).",
+            "dependencies": [
+              2
+            ],
+            "details": "File report có tên review/<ts>_design-system-audit.md, với đầy đủ các phần: token coverage, form-control inventory, component completeness, màn hình lệch chuẩn. Backlog được ghi dưới dạng task mới hoặc liên kết.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra file report tồn tại và có cấu trúc theo template, nội dung phản ánh đúng kết quả quét.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 399,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tạo subtask cho việc phát triển script quét, thực hiện kiểm kê token coverage, form-control inventory, component completeness, và viết báo cáo markdown.",
+        "updatedAt": "2026-06-16T02:29:35.345Z"
+      },
+      {
+        "id": "400",
+        "title": "Cài đặt ESLint (Cấu hình Flat Config - L3)",
+        "description": "Thêm devDependencies (eslint, vue-eslint-parser, eslint-plugin-vue, eslint-plugin-vuejs-accessibility, typescript-eslint). Tạo `eslint.config.js` với flat config, parser cho SFC và TypeScript, khai báo globals cho WXT auto-imports, ignore patterns. Tạo thư mục `eslint-local-rules/` trống.",
+        "details": "Cập nhật `package.json` với scripts `lint`, `lint:fix`. Cấu hình vue-eslint-parser và parserOptions.parser cho TypeScript. Khai báo globals như `browser`, `ref`, `computed`, `defineProps` dựa trên file `.wxt/types`. Đảm bảo không lint các thư mục không cần thiết (dist, .output, .wxt).",
+        "testStrategy": "Chạy `npm run lint` trên một file `.vue` đơn giản chứa SFC và script ts. Không có lỗi parse. Đảm bảo rule cơ bản (ví dụ: `no-undef`) không báo lỗi với auto-imports (cần cấu hình globals đúng).",
+        "priority": "high",
+        "dependencies": [
+          "399"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm devDependencies và cập nhật scripts lint/lint:fix",
+            "description": "Thêm các gói eslint, vue-eslint-parser, eslint-plugin-vue, eslint-plugin-vuejs-accessibility, typescript-eslint vào devDependencies. Cập nhật package.json với scripts lint và lint:fix.",
+            "dependencies": [],
+            "details": "Cập nhật file package.json: thêm các gói vào devDependencies và thêm hai script 'lint': 'eslint .' và 'lint:fix': 'eslint . --fix'.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo file eslint.config.js với cấu hình flat config cơ bản",
+            "description": "Tạo file eslint.config.js tại thư mục gốc của dự án, sử dụng cấu trúc flat config. Import các plugin và thiết lập cấu hình nền tảng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng cú pháp mảng của flat config. Import eslint, vue-eslint-parser, eslint-plugin-vue, eslint-plugin-vuejs-accessibility, typescript-eslint. Cấu hình cơ bản như extends? (Flat config không có extends, dùng spread).",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cấu hình parser cho SFC và TypeScript và khai báo globals WXT auto-imports",
+            "description": "Cấu hình vue-eslint-parser cho các file .vue và parserOptions.parser cho TypeScript. Thêm globals cho các auto-imports từ WXT như browser, ref, computed, defineProps.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong eslint.config.js, thiết lập languageOptions.parser cho file .vue là vue-eslint-parser; trong parserOptions, parser là typescript-eslint. Thêm globals object với các biến từ file .wxt/types, bao gồm browser, ref, computed, defineProps.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Thiết lập ignore patterns và tạo thư mục eslint-local-rules",
+            "description": "Cấu hình ignores trong eslint.config.js để bỏ qua các thư mục dist, .output, .wxt. Tạo thư mục eslint-local-rules/ trống tại thư mục gốc.",
+            "dependencies": [
+              2
+            ],
+            "details": "Thêm một object vào flat config với thuộc tính ignores: ['dist/**', '.output/**', '.wxt/**']. Tạo thư mục eslint-local-rules/ bằng lệnh mkdir hoặc thủ công.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 400,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Phân rã thành các subtask: thêm dependencies, tạo eslint.config.js với flat config, cấu hình parser cho SFC và TypeScript, khai báo globals cho WXT auto-imports, thiết lập ignore patterns và tạo thư mục eslint-local-rules."
+      },
+      {
+        "id": "401",
+        "title": "Triển khai các Rule ESLint cho Design System",
+        "description": "Thêm rule `vue/no-restricted-class` với regex cấm hardcoded color, `rounded`, hex, `bg-white`/`bg-black`, v.v. Bật các rule từ `vuejs-accessibility`. Tạo 3 local rules: `icon-button-needs-label`, `no-raw-form-control`, `label-token`. Viết test cho local rules bằng `RuleTester`.",
+        "details": "Trong `eslint.config.js`, import `plugin:vuejs-accessibility/recommended`. Viết rule `vue/no-restricted-class` với mảng các object regex như `/^text-(gray|slate|zinc|stone|neutral)-/`. Local rules đặt trong `eslint-local-rules/`, mỗi rule export object có meta và create. Kiểm tra với `RuleTester`.",
+        "testStrategy": "Tạo file `.vue` tạm chứa các vi phạm (hardcoded color, raw checkbox, icon-only button không aria-label) và chạy `npm run lint` phải fail với thông báo đúng. Viết unit test cho local rules bằng RuleTester.",
+        "priority": "high",
+        "dependencies": [
+          "400"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm rule vue/no-restricted-class",
+            "description": "Cấu hình rule vue/no-restricted-class trong eslint.config.js với các regex cấm hardcoded color, rounded, hex, bg-white/bg-black",
+            "dependencies": [
+              400
+            ],
+            "details": "Viết mảng các object regex như /^text-(gray|slate|zinc|stone|neutral)-/, /^bg-/, /^rounded-/, /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})/, /^bg-white$/, /^bg-black$/. Thêm vào rules của eslint.config.js.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Bật plugin vuejs-accessibility",
+            "description": "Import plugin:vuejs-accessibility/recommended và thêm vào cấu hình ESLint để bật các rule accessibility cho Vue",
+            "dependencies": [
+              400
+            ],
+            "details": "Trong eslint.config.js, thêm import plugin:vuejs-accessibility/recommended và merge với cấu hình hiện tại. Đảm bảo các rule accessibility được kích hoạt.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tạo local rules icon-button-needs-label, no-raw-form-control, label-token",
+            "description": "Tạo 3 local rules trong thư mục eslint-local-rules/: icon-button-needs-label, no-raw-form-control, label-token. Mỗi rule export object có meta và create.",
+            "dependencies": [
+              400
+            ],
+            "details": "Tạo file eslint-local-rules/icon-button-needs-label.js, eslint-local-rules/no-raw-form-control.js, eslint-local-rules/label-token.js. Viết logic dựa trên AST để phát hiện: icon button thiếu aria-label, raw input/select không dùng component, label không dùng token.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết test cho local rules bằng RuleTester",
+            "description": "Sử dụng RuleTester từ eslint để viết unit test cho 3 local rules, kiểm tra valid và invalid code",
+            "dependencies": [
+              3,
+              400
+            ],
+            "details": "Tạo file test cho mỗi rule. Dùng RuleTester để kiểm tra các trường hợp valid (không lỗi) và invalid (phát hiện lỗi) với message phù hợp. Chạy test đảm bảo pass.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 401,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chia thành subtask: thêm rule vue/no-restricted-class, bật plugin vuejs-accessibility, tạo local rules (icon-button-needs-label, no-raw-form-control, label-token), viết test với RuleTester.",
+        "updatedAt": "2026-06-16T02:43:10.454Z"
+      },
+      {
+        "id": "402",
+        "title": "Cấu hình Pre-commit Hook và Gate Verify",
+        "description": "Cài đặt husky và lint-staged để chạy ESLint trên file staged. Cập nhật script `verify` bao gồm `lint`. Sửa `AGENTS.md` và `template/self_review_checklist.md` để yêu cầu chạy lint.",
+        "details": "Thêm husky và lint-staged vào devDependencies. Tạo `.husky/pre-commit` với `npx lint-staged`. Trong `package.json`, cấu hình lint-staged: `*.{vue,ts,js}` → `eslint --fix` (nếu có) hoặc `eslint`. Cập nhật script `verify`: `vue-tsc --noEmit && eslint . && vitest run`. Sửa file AGENTS.md và template.",
+        "testStrategy": "Tạo commit với file vi phạm → bị chặn. Commit file sạch → thành công. Chạy `npm run verify` toàn bộ codebase hiện tại (sau khi disable hợp lệ) và đảm bảo exit 0.",
+        "priority": "high",
+        "dependencies": [
+          "401"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cài đặt husky và lint-staged",
+            "description": "Thêm husky và lint-staged vào devDependencies, chạy lệnh khởi tạo husky để tạo thư mục .husky và script prepare.",
+            "dependencies": [],
+            "details": "Mở terminal, chạy npm install --save-dev husky lint-staged. Sau đó chạy npx husky init để tạo thư mục .husky và cập nhật script prepare trong package.json. Xác nhận husky hoạt động.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo cấu hình pre-commit hook và lint-staged",
+            "description": "Tạo file .husky/pre-commit với nội dung npx lint-staged, và cấu hình lint-staged trong package.json để chạy eslint --fix trên các file Vue, TypeScript, JavaScript.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trong .husky/pre-commit, ghi 'npx lint-staged'. Trong package.json, thêm key 'lint-staged' với cấu hình: '*.(vue|ts|js)': 'eslint --fix'. Xóa file .husky/pre-commit mẫu nếu có. Đảm bảo quyền thực thi.",
+            "status": "pending",
+            "testStrategy": "Tạo file .vue có lỗi ESLint, git add và commit thử nghiệm. Kiểm tra commit bị chặn. Sau đó sửa lỗi và commit lại để xác nhận hook hoạt động.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật script verify và tài liệu",
+            "description": "Cập nhật script verify trong package.json và sửa file AGENTS.md, template/self_review_checklist.md để yêu cầu chạy lint.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong package.json, đổi script 'verify' thành 'vue-tsc --noEmit && eslint . && vitest run'. Trong AGENTS.md, thêm bước chạy npm run lint. Trong self_review_checklist.md, thêm item kiểm tra lint.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run verify toàn bộ codebase (sau khi disable lỗi hiện tại nếu cần) và đảm bảo exit 0. Kiểm tra tài liệu đã cập nhật.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 402,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tạo subtask: cài đặt husky và lint-staged, tạo .husky/pre-commit, cập nhật script verify trong package.json, và cập nhật tài liệu AGENTS.md và self_review_checklist.md.",
+        "updatedAt": "2026-06-16T02:45:37.730Z"
+      },
+      {
+        "id": "403",
+        "title": "Thêm Form Utilities và Chuẩn hóa Label (L1)",
+        "description": "Trong `assets/main.css`, thêm `@utility checkbox`, `radio`, `select`, `input-range`. Chuẩn hóa label field: `text-xs font-medium text-(--color-text-secondary)`. Cập nhật `STYLE_GUIDE.md` với bảng Component Inventory.",
+        "details": "Sử dụng `@utility checkbox` với `appearance-none`, `rounded`, `border`, token `--color-*`. `select` có `appearance-none` và custom arrow. Đảm bảo label token dùng secondary, không muted. Viết bảng Component Inventory liệt kê tất cả `@utility` và component Vue dùng chung kèm mô tả.",
+        "testStrategy": "Tạo file Vue test sử dụng các utilities - kiểm tra style render đúng. Chạy lint không báo lỗi. Đọc STYLE_GUIDE.md xem có đầy đủ thông tin.",
+        "priority": "medium",
+        "dependencies": [
+          "399",
+          "400"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm @utility checkbox, radio, select, input-range vào assets/main.css",
+            "description": "Tạo các @utility trong assets/main.css cho checkbox, radio, select, input-range với appearance-none, border, token màu, và custom arrow cho select.",
+            "dependencies": [],
+            "details": "Sử dụng @utility checkbox với appearance-none, rounded, border, token --color-*. select có appearance-none và custom arrow. Đảm bảo tương thích với theme hiện tại.",
+            "status": "pending",
+            "testStrategy": "Tạo file Vue test sử dụng các utilities và kiểm tra style render đúng trong browser. Chạy lint để không báo lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Chuẩn hóa label field với token secondary",
+            "description": "Cập nhật các label field (class) trong assets/main.css với text-xs font-medium và text-(--color-text-secondary) để đồng bộ với design system.",
+            "dependencies": [],
+            "details": "Đảm bảo label token dùng secondary, không dùng muted. Sử dụng utility class đã chuẩn hóa.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra style label trong các form component, đảm bảo màu sắc và font đúng như yêu cầu.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật STYLE_GUIDE.md với Component Inventory",
+            "description": "Viết bảng Component Inventory trong STYLE_GUIDE.md liệt kê tất cả @utility và component Vue dùng chung kèm mô tả.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Liệt kê @utility checkbox, radio, select, input-range, label field chuẩn. Thêm mô tả ngắn gọn và token sử dụng. Cập nhật danh sách component Vue dùng chung.",
+            "status": "pending",
+            "testStrategy": "Đọc STYLE_GUIDE.md để xem có đầy đủ thông tin và đúng định dạng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 403,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Phân rã: thêm @utility checkbox, radio, select, input-range vào assets/main.css; chuẩn hóa label field; cập nhật STYLE_GUIDE.md với Component Inventory.",
+        "updatedAt": "2026-06-16T02:46:48.213Z"
+      },
+      {
+        "id": "404",
+        "title": "Tạo Component Pattern: IconButton, ConfirmInline, OverflowMenu (L2)",
+        "description": "Tạo các component Vue trong `entrypoints/sidepanel/components/`. `IconButton`: required label prop, aria-label, type, variant. `ConfirmInline`: emits confirm/cancel, inline buttons. `OverflowMenu`: trigger IconButton 3-dots, dropdown với click-outside, slot action.",
+        "details": "Sử dụng TypeScript, defineProps, defineEmits. IconButton dùng `rounded-lg`, `p-1.5`, `text-secondary`. ConfirmInline dùng `btn-danger btn-sm`, `btn-ghost`. OverflowMenu dùng `rounded-lg`, `shadow-dropdown`, click-outside directive. Gắn `aria-label` cho các button. Document props trong STYLE_GUIDE.md.",
+        "testStrategy": "Viết test cho IconButton: thiếu label → TS error, render có aria-label. ConfirmInline: click confirm → emit. OverflowMenu: click outside → đóng. Chạy lint để đảm bảo tuân thủ rules.",
+        "priority": "medium",
+        "dependencies": [
+          "401",
+          "403"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo IconButton component và tests",
+            "description": "Tạo component IconButton trong entrypoints/sidepanel/components/IconButton.vue. Sử dụng TypeScript, defineProps, defineEmits. Props: required label, aria-label, type, variant. CSS: rounded-lg, p-1.5, text-secondary. Kiểm tra TypeScript error nếu thiếu label, test render có aria-label.",
+            "dependencies": [],
+            "details": "Sử dụng Vue 3 Composition API, defineProps, defineEmits. Gắn aria-label. CSS classes: rounded-lg, p-1.5, text-secondary. Viết unit test: test render, test required label dẫn đến TypeScript error.",
+            "status": "pending",
+            "testStrategy": "Viết test cho IconButton: thiếu label → TS error, render có aria-label. Chạy lint.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo ConfirmInline component và tests",
+            "description": "Tạo component ConfirmInline.vue. Emits confirm/cancel, inline buttons. Sử dụng btn-danger btn-sm, btn-ghost. Test: click confirm emits confirm.",
+            "dependencies": [],
+            "details": "defineEmits, emit events. CSS classes: btn-danger btn-sm, btn-ghost. Gắn aria-label. Viết unit test cho emit confirm và cancel.",
+            "status": "pending",
+            "testStrategy": "Test click confirm → emit confirm, click cancel → emit cancel.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tạo OverflowMenu component và tests",
+            "description": "Tạo component OverflowMenu.vue với trigger là IconButton 3-dots, dropdown với click-outside directive, slot action. CSS: rounded-lg, shadow-dropdown. Test click outside đóng dropdown.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng IconButton đã tạo, custom directive click-outside. CSS: rounded-lg, shadow-dropdown. Cung cấp slot cho actions. Đảm bảo a11y. Viết unit test cho click outside và slot.",
+            "status": "pending",
+            "testStrategy": "Test click outside → dropdown đóng. Test render slot content.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Cập nhật STYLE_GUIDE.md với props documentation",
+            "description": "Thêm documentation cho props, emits, slots của IconButton, ConfirmInline, OverflowMenu vào STYLE_GUIDE.md.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Ghi lại props, emits, slots cho mỗi component với kiểu dữ liệu và mô tả. Đảm bảo format theo hướng dẫn.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 404,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chia subtask: tạo IconButton, ConfirmInline, OverflowMenu; viết test cho từng component; cập nhật STYLE_GUIDE.md với props documentation.",
+        "updatedAt": "2026-06-16T02:52:09.679Z"
+      },
+      {
+        "id": "405",
+        "title": "Tạo Component Form: FormField, ToggleSwitch, Checkbox, RadioGroup (L2)",
+        "description": "Tạo `FormField.vue` (wrapper label+control+hint, tự động id), `ToggleSwitch.vue` (sr-only peer), `Checkbox.vue`, `RadioGroup.vue`. Tất cả sử dụng FormField và token chuẩn.",
+        "details": "FormField tạo id duy nhất (use useId hoặc random), liên kết for/label. ToggleSwitch dùng hidden checkbox với peer classes. Checkbox và RadioGroup có v-model và label. Đảm bảo a11y và lint pass.",
+        "testStrategy": "Test v-model hai chiều, disabled state, label có htmlFor tương ứng. Kiểm tra aria attributes. Lint không lỗi.",
+        "priority": "medium",
+        "dependencies": [
+          "401",
+          "403"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo Component FormField với tự động sinh id",
+            "description": "Tạo FormField.vue sử dụng useId hoặc random để sinh id duy nhất, liên kết for/label, và hiển thị label, control, hint.",
+            "dependencies": [
+              401,
+              403
+            ],
+            "details": "Sử dụng <script setup lang='ts'>, defineProps, defineSlots. Dùng useId() để tạo id chung. Tự động gắn id vào label và control. Hiển thị hint nếu có. Đảm bảo aria attributes. Token chuẩn như text-secondary, text-basic.",
+            "status": "pending",
+            "testStrategy": "Test render label và control, kiểm tra id duy nhất, test hint slot, test disabled state.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo Component ToggleSwitch",
+            "description": "Tạo ToggleSwitch.vue sử dụng hidden checkbox với peer classes, v-model, và sử dụng FormField làm wrapper.",
+            "dependencies": [
+              401,
+              403,
+              1
+            ],
+            "details": "Sử dụng FormField để bọc. Bên trong là input type checkbox (hidden) với peer classes để tạo giao diện toggle. Liên kết v-model. Thêm aria-label hoặc aria-labelledby thông qua FormField.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra v-model hai chiều, test click toggle, test disabled state, kiểm tra aria attributes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Tạo Component Checkbox với v-model và label",
+            "description": "Tạo Checkbox.vue có v-model, sử dụng FormField để bọc label và input checkbox.",
+            "dependencies": [
+              401,
+              403,
+              1
+            ],
+            "details": "Sử dụng FormField, trong slot control là input checkbox. Nhận v-model thông qua modelValue prop. Hiển thị label bên cạnh. Hỗ trợ indeterminate state. Thêm aria-checked.",
+            "status": "pending",
+            "testStrategy": "Test v-model, test indeterminate state, test disabled, test aria-checked.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Tạo Component RadioGroup với các option",
+            "description": "Tạo RadioGroup.vue quản lý các radio button option, sử dụng FormField cho từng radio hoặc wrapper label.",
+            "dependencies": [
+              401,
+              403,
+              1
+            ],
+            "details": "Sử dụng FormField để bọc group. Truyền mảng options, mỗi option có label và value. Dùng v-model với modelValue là value đã chọn. Mỗi radio input có id từ FormField. Đảm bảo aria-labelledby cho group.",
+            "status": "pending",
+            "testStrategy": "Test v-model, test chọn option, test disabled, test aria attributes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 405,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Phân rã: tạo FormField, ToggleSwitch, Checkbox, RadioGroup; tích hợp v-model; viết test cho từng component; đảm bảo a11y và lint.",
+        "updatedAt": "2026-06-16T02:52:21.023Z"
+      },
+      {
+        "id": "406",
+        "title": "Refactor NotebookEntryEditor về Chuẩn Thiết kế",
+        "description": "Dựa trên backlog audit, thay thế nút X bằng IconButton, sửa label không dùng muted token, thay form controls bằng ToggleSwitch/Checkbox/RadioGroup nếu có. Đảm bảo a11y và nhất quán visual.",
+        "details": "Mở `NotebookEntryEditor.vue`. Tìm tất cả nút icon-only, thay bằng `<IconButton label=\"Đóng\" />`. Sửa label class từ `-muted` thành `text-secondary`. Nếu có raw input[type=checkbox], đổi thành `<Checkbox>`. Thêm type=\"button\" cho button. Kiểm tra visual.",
+        "testStrategy": "Sau refactor, chạy lint, compile, test. So sánh screenshot? Kiểm tra thủ công các chức năng. Đảm bảo label `NotebookEntryEditor` bây giờ dùng token đúng.",
+        "priority": "medium",
+        "dependencies": [
+          "399",
+          "404",
+          "405"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thay thế icon-only buttons bằng IconButton",
+            "description": "Tìm tất cả các nút icon-only trong NotebookEntryEditor.vue, thay thế bằng component <IconButton> với prop label=\"Đóng\" và attribute type=\"button\". Đảm bảo a11y bằng aria-label phù hợp.",
+            "dependencies": [],
+            "details": "Trong file NotebookEntryEditor.vue, tìm các button có class chứa 'icon-only' hoặc chỉ có icon, thay thế bằng <IconButton label=\"Đóng\" type=\"button\" />. Xóa class cũ nếu cần. Giữ nguyên sự kiện @click và các props khác.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công các nút hiển thị đúng, có thể click. Chạy lint, compile không lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Sửa label token từ muted thành secondary",
+            "description": "Thay thế tất cả class label có chứa '-muted' (ví dụ: 'text-muted', 'label-muted') bằng 'text-secondary' để dùng token thiết kế mới.",
+            "dependencies": [],
+            "details": "Tìm kiếm toàn bộ file NotebookEntryEditor.vue cho các class như 'text-muted', 'label-muted' và thay bằng 'text-secondary'. Cập nhật style nếu có. Đảm bảo label hiển thị đúng màu token secondary.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra visual label hiển thị màu secondary. Chạy lint, compile không lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Thay thế raw form controls bằng component chuẩn và kiểm tra tổng thể",
+            "description": "Thay thế các raw input[type=checkbox], input[type=radio], toggle switch bằng component Checkbox, RadioGroup, ToggleSwitch. Sau đó kiểm tra chức năng, lint, visual.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Xác định các raw form controls trong NotebookEntryEditor.vue, thay bằng component tương ứng: <Checkbox>, <RadioGroup>, <ToggleSwitch>. Điều chỉnh v-model và sự kiện. Kiểm tra toàn bộ chức năng của NotebookEntryEditor.",
+            "status": "pending",
+            "testStrategy": "Chạy lint, compile. Kiểm tra thủ công toggle, checkbox, radio. So sánh screenshot với thiết kế. Đảm bảo không lỗi visual hay chức năng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 406,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Tạo subtask: thay thế icon-only buttons bằng IconButton; sửa label token từ muted thành secondary; thay thế raw form controls bằng component mới; kiểm tra chức năng và lint.",
+        "updatedAt": "2026-06-16T03:00:06.572Z"
+      },
+      {
+        "id": "407",
+        "title": "Refactor SettingsView và Các View Khác Dùng Component Chuẩn",
+        "description": "Refactor `SettingsView.vue` dùng ToggleSwitch, Checkbox, RadioGroup. Refactor `KnowledgeEntryCard.vue`, `NotebookView.vue`, `KnowledgeView.vue`, `SummaryView.vue` dùng IconButton, ConfirmInline, OverflowMenu theo danh sách trong PRD.",
+        "details": "Thay thế các toggle/checkbox/radio trong SettingsView bằng component. Thay nút save/pin/delete bằng IconButton. Thay unsave confirm bằng ConfirmInline. Thay menu tùy chọn bằng OverflowMenu. Đảm bảo sự kiện và aria vẫn đúng.",
+        "testStrategy": "Chạy toàn bộ lint, compile, test. Kiểm tra thủ công từng tính năng ở các view đã refactor. Không có lỗi visual hay chức năng.",
+        "priority": "medium",
+        "dependencies": [
+          "399",
+          "404",
+          "405"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Refactor SettingsView sử dụng ToggleSwitch, Checkbox, RadioGroup",
+            "description": "Thay thế các toggle, checkbox, radio tùy chỉnh trong SettingsView.vue bằng components ToggleSwitch, Checkbox, RadioGroup đã chuẩn hóa. Đảm bảo giữ nguyên tính năng và sự kiện.",
+            "dependencies": [
+              399,
+              404,
+              405
+            ],
+            "details": "Mở SettingsView.vue, xác định các controls cần thay thế, import và sử dụng components mới. Kiểm tra v-model, disabled, aria-label.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Refactor KnowledgeEntryCard và NotebookView dùng IconButton, ConfirmInline, OverflowMenu",
+            "description": "Cập nhật KnowledgeEntryCard.vue và NotebookView.vue để sử dụng IconButton cho nút save/pin/delete, ConfirmInline cho unsave confirm, OverflowMenu cho menu tùy chọn.",
+            "dependencies": [
+              399,
+              404,
+              405
+            ],
+            "details": "Thay thế các nút icon cũ bằng <IconButton>, thay confirm xóa/save bằng <ConfirmInline>, thay menu tùy chỉnh bằng <OverflowMenu>.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Refactor KnowledgeView và SummaryView dùng IconButton, ConfirmInline, OverflowMenu",
+            "description": "Tương tự subtask 2 nhưng cho KnowledgeView.vue và SummaryView.vue.",
+            "dependencies": [
+              399,
+              404,
+              405
+            ],
+            "details": "Áp dụng các thay đổi tương tự, đảm bảo đồng bộ với các view khác.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết test tổng hợp cho các view đã refactor và kiểm tra aria",
+            "description": "Viết unit test và kiểm tra thủ công các tính năng ở tất cả các view đã refactor. Đảm bảo không lỗi visual, chức năng và aria attributes chính xác.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Test v-model, sự kiện emit, disabled states. Kiểm tra aria-label, role, focus management.",
+            "status": "pending",
+            "testStrategy": "Chạy lint, compile, test tự động và manual.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 407,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Chia subtask: refactor SettingsView, KnowledgeEntryCard, NotebookView, KnowledgeView, SummaryView; thay thế toggle/checkbox/radio bằng component chuẩn; thay button và menu; viết test tổng hợp.",
+        "updatedAt": "2026-06-16T03:00:17.379Z"
+      },
+      {
+        "id": "408",
+        "title": "Cập nhật Tài liệu và Dọn Dẹp Baseline ESLint",
+        "description": "Hoàn thiện `STYLE_GUIDE.md` với Component Inventory đầy đủ. Cập nhật `AGENTS.md`, `template/self_review_checklist.md`. Chạy `npm run lint` trên toàn bộ codebase, thêm `eslint-disable` hợp lệ cho các trường hợp cần thiết (Tailwind semantic). Đảm bảo hook và CI hoạt động.",
+        "details": "Xem xét tất cả các file, thêm disable comment với lý do chính đáng (ví dụ `text-white` trên nền accent). Đảm bảo không còn disable không cần thiết. Cập nhật tài liệu hướng dẫn cho dev và agent. Kiểm tra lại pre-commit hook.",
+        "testStrategy": "Chạy `npm run lint` thành công (exit 0). Commit một thay đổi nhỏ để kiểm tra pre-commit. Đọc lại tài liệu xem đã đầy đủ chưa.",
+        "priority": "low",
+        "dependencies": [
+          "402",
+          "407"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Hoàn thiện STYLE_GUIDE.md với Component Inventory đầy đủ",
+            "description": "Rà soát và cập nhật STYLE_GUIDE.md để bao gồm danh sách tất cả các component trong dự án, mô tả mục đích, props, slots, v.v., đảm bảo tài liệu đầy đủ và nhất quán.",
+            "dependencies": [],
+            "details": "Liệt kê tất cả các component Vue hiện có trong dự án, kiểm tra xem STYLE_GUIDE.md đã có chưa, bổ sung nếu thiếu. Đảm bảo component inventory bao gồm tên component, mô tả ngắn, các props chính, các slot, và các class sử dụng.",
+            "status": "pending",
+            "testStrategy": "Đọc lại tài liệu và so sánh với danh sách component thực tế. Có thể chạy script tìm tất cả các file .vue và đối chiếu.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật AGENTS.md và template/self_review_checklist.md",
+            "description": "Cập nhật AGENTS.md với hướng dẫn cho dev và agent, và cập nhật template/self_review_checklist.md để phản ánh quy trình kiểm tra mới cho ESLint, component, và style guide.",
+            "dependencies": [],
+            "details": "Xem xét nội dung hiện tại của AGENTS.md và self_review_checklist.md. Bổ sung thông tin về việc đã có STYLE_GUIDE.md với component inventory, quy trình thêm disable comment, và các bước kiểm tra pre-commit.",
+            "status": "pending",
+            "testStrategy": "Đọc lại tài liệu và kiểm tra tính nhất quán với các tài liệu khác.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Chạy lint toàn bộ codebase, thêm eslint-disable hợp lệ, kiểm tra hook và CI",
+            "description": "Thực thi npm run lint trên toàn bộ codebase, thêm eslint-disable comments với lý do chính đáng cho các trường hợp cần thiết, đảm bảo không còn disable không cần thiết, và kiểm tra lại pre-commit hook cùng CI pipeline.",
+            "dependencies": [],
+            "details": "Dùng eslint config từ task 400 và 401. Chạy lint và sửa lỗi. Đối với các trường hợp sử dụng Tailwind semantic classes bị cấm, thêm disable comment và ghi lý do. Xóa các disable cũ không cần thiết. Sau đó chạy lint lại. Kiểm tra pre-commit hook (bằng cách commit thử) và CI.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run lint và xác nhận exit 0. Thực hiện một commit nhỏ để kiểm tra pre-commit hook. Kiểm tra CI logs (nếu có).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 408,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Phân rã: hoàn thiện STYLE_GUIDE.md; cập nhật AGENTS.md và self_review_checklist.md; chạy lint toàn bộ codebase và thêm eslint-disable hợp lệ; kiểm tra hook và CI.",
+        "updatedAt": "2026-06-16T03:02:25.730Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-14T14:59:29.360Z",
-      "taskCount": 41,
-      "completedCount": 41,
+      "lastModified": "2026-06-16T03:02:25.732Z",
+      "taskCount": 51,
+      "completedCount": 50,
       "tags": [
         "master"
       ]

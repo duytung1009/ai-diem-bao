@@ -15,6 +15,9 @@ import { useAlertSettings } from '../composables/useAlertSettings';
 const { hideInfoAlerts, hideWarningAlerts } = useAlertSettings();
 import { useSummarize } from '../composables/useSummarize';
 import BackButton from '../components/BackButton.vue';
+import IconButton from '../components/IconButton.vue';
+import ContentActions from '../components/ContentActions.vue';
+import SearchInput from '../components/SearchInput.vue';
 import KnowledgeEntryCard from '../components/KnowledgeEntryCard.vue';
 import type { KnowledgeCardEntry } from '../components/KnowledgeEntryCard.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
@@ -60,7 +63,6 @@ const pendingConflict = ref<{ newUrl: string; newTitle: string } | null>(null);
 // F33 segment grid UI state
 const segmentGridExpanded = ref(false);
 const expandedSegmentIndex = ref<number | null>(null);
-const showExtractDropdown = ref(false);
 
 // F33 helpers
 function formatRelativeTime(ts: number | null): string {
@@ -467,6 +469,7 @@ onActivated(async () => {
             <div v-if="segmentGridExpanded" class="space-y-1">
               <template v-for="seg in knowledgeSegments" :key="seg.segmentIndex">
                 <!-- Row -->
+                <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
                 <div class="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-(--color-bg-muted) transition-colors"
                   :class="{ 'bg-(--color-accent-soft)': expandedSegmentIndex === seg.segmentIndex }"
                   @click="expandedSegmentIndex = expandedSegmentIndex === seg.segmentIndex ? null : seg.segmentIndex">
@@ -596,12 +599,11 @@ onActivated(async () => {
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <p class="text-sm flex-1">{{ error }}</p>
-            <button class="shrink-0 text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
-              @click="error = ''; showClearDataAction = false">
+            <IconButton label="Đóng" @click="error = ''; showClearDataAction = false">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </IconButton>
           </div>
           <button v-if="showClearDataAction" class="btn btn-sm btn-danger mt-2 text-xs" @click="handleClearKnowledgeData">
             Xoá dữ liệu kiến thức và thử lại
@@ -629,33 +631,25 @@ onActivated(async () => {
         <template v-if="entries.length && !isLoading">
           <!-- Search + Saved filter + Tag filter -->
           <div class="space-y-2">
-            <!-- Search + Saved filter toggle + Export -->
+            <!-- Search + Saved filter toggle -->
             <div class="flex items-center gap-2">
-              <div class="relative flex-1">
-                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input v-model="searchQuery" type="text" placeholder="Tìm kiến thức..." class="input pl-8 pr-8 text-xs w-full" />
-                <!-- Saved filter toggle -->
-                <button v-if="savedCount > 0" class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
-                  :class="showSavedOnly ? 'text-(--color-saved)' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
-                  :title="showSavedOnly ? 'Xem tất cả' : `Chỉ hiện đã lưu (${savedCount})`" @click="showSavedOnly = !showSavedOnly">
-                  <svg v-if="showSavedOnly" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                  <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                </button>
-              </div>
-              <!-- Export knowledge button -->
-              <button class="btn btn-ghost btn-sm" title="Xuất kiến thức ra file JSON" @click="handleExportKnowledge">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Xuất JSON
-              </button>
+              <SearchInput v-model="searchQuery" placeholder="Tìm kiến thức..." class="flex-1">
+                <template #actions>
+                  <button v-if="savedCount > 0"
+                    class="transition-colors"
+                    :class="showSavedOnly ? 'text-(--color-saved)' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
+                    :title="showSavedOnly ? 'Xem tất cả' : `Chỉ hiện đã lưu (${savedCount})`"
+                    @click="showSavedOnly = !showSavedOnly"
+                  >
+                    <svg v-if="showSavedOnly" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  </button>
+                </template>
+              </SearchInput>
             </div>
             <!-- Tag filter pills -->
             <div v-if="allTags.length > 0" class="flex flex-wrap gap-1.5">
@@ -678,70 +672,49 @@ onActivated(async () => {
             </div>
           </div>
 
-          <!-- Entry tools — single consolidated overflow menu (#3 density) -->
-          <div v-if="showEntryToolsMenu" class="flex items-center">
-            <div class="relative">
-              <!-- Backdrop to close dropdown -->
-              <div v-if="showExtractDropdown" class="fixed inset-0 z-40" @click="showExtractDropdown = false" />
-              <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isLoading"
-                @click="showExtractDropdown = !showExtractDropdown">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                Tùy chọn
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div v-if="showExtractDropdown"
-                class="absolute left-0 top-full mt-1 z-50 bg-(--color-bg-surface) border border-(--color-border) rounded-lg shadow-elevated min-w-max overflow-hidden">
-                <!-- Segment-mode extract actions -->
-                <template v-if="cachedTopic?.segments?.length">
-                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                    @click="showExtractDropdown = false; onExtractClick()">
-                    Trích xuất đoạn chưa xong
-                  </button>
-                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                    @click="showExtractDropdown = false; reExtractAllFromSegments()">
-                    Trích xuất lại kiến thức
-                  </button>
-                  <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                    @click="showExtractDropdown = false; handleClearKnowledgeData().then(() => handleExtract())">
-                    Trích xuất lại tất cả
-                  </button>
-                </template>
-                <!-- Non-segment extract actions -->
-                <template v-else>
-                  <button v-if="hasFailed && !truncationWarning"
-                    class="block w-full text-left px-3 py-2 text-xs text-(--color-warning-text) hover:bg-(--color-bg-muted) transition-colors"
-                    @click="showExtractDropdown = false; onExtractClick()">
-                    Trích xuất lại
-                  </button>
-                  <button v-if="allPosts.length && newPostsCount > 0"
-                    class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
-                    @click="showExtractDropdown = false; handleExtract()">
-                    Trích xuất bài mới ({{ newPostsCount }})
-                  </button>
-                </template>
-                <!-- Clear tracking (common, destructive) -->
-                <button v-if="excludedCount > 0"
-                  class="block w-full text-left px-3 py-2 text-xs text-(--color-error-text) border-t border-(--color-border) hover:bg-(--color-bg-muted) transition-colors"
-                  @click="showExtractDropdown = false; handleClearTracking()">
-                  Xóa tracking ({{ excludedCount }} bài đã loại)
+          <!-- Entry tools header — model info + actions -->
+          <ContentActions 
+            v-if="showEntryToolsMenu"
+            :model-label="`${filteredEntries.length}/${entries.length} kiến thức${cachedTopic?.llmConfig?.model ? ` · ${cachedTopic.llmConfig.model}` : ''}`"
+            :export-topic="cachedTopic as unknown as CachedTopic"
+            :copy-content="entries.map(e => `${e.title}\n${e.content}`).join('\n\n---\n\n')"
+            :json-data="entries"
+            :json-filename="`${cachedTopic ? safeFilename(cachedTopic.title) : 'knowledge'}_entries.json`"
+          >
+            <template #reload-actions>
+              <template v-if="cachedTopic?.segments?.length">
+                <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                  @click="onExtractClick()">
+                  Trích xuất đoạn chưa xong
                 </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Stats -->
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-(--color-text-muted)">
-              {{ filteredEntries.length }}/{{ entries.length }} kiến thức
-              <span v-if="cachedTopic?.llmConfig?.model" class="ml-2 italic opacity-70">
-                {{ cachedTopic.llmConfig.model }}
-              </span>
-            </span>
-          </div>
+                <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                  @click="reExtractAllFromSegments()">
+                  Trích xuất lại kiến thức
+                </button>
+                <button class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                  @click="handleClearKnowledgeData().then(() => handleExtract())">
+                  Trích xuất lại tất cả
+                </button>
+              </template>
+              <template v-else>
+                <button v-if="hasFailed && !truncationWarning"
+                  class="block w-full text-left px-3 py-2 text-xs text-(--color-warning-text) hover:bg-(--color-bg-muted) transition-colors"
+                  @click="onExtractClick()">
+                  Trích xuất lại
+                </button>
+                <button v-if="allPosts.length && newPostsCount > 0"
+                  class="block w-full text-left px-3 py-2 text-xs hover:bg-(--color-bg-muted) transition-colors"
+                  @click="handleExtract()">
+                  Trích xuất bài mới ({{ newPostsCount }})
+                </button>
+              </template>
+              <button v-if="excludedCount > 0"
+                class="block w-full text-left px-3 py-2 text-xs text-(--color-error-text) border-t border-(--color-border) hover:bg-(--color-bg-muted) transition-colors"
+                @click="handleClearTracking()">
+                Xóa tracking ({{ excludedCount }} bài đã loại)
+              </button>
+            </template>
+          </ContentActions>
 
           <!-- No results after filter -->
           <div v-if="filteredEntries.length === 0" class="text-center py-6">

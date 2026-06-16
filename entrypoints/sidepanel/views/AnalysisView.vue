@@ -2,12 +2,14 @@
 import { onActivated, computed, ref, onMounted } from 'vue';
 import { useTopicStore } from '../composables/useTopicStore';
 import { sendMessage } from '@/lib/messaging';
-import type { CachedTopic } from '@/lib/types';
+import type { CachedTopic, ThreadAnalysisJSON } from '@/lib/types';
 import { useThreadAnalysis } from '../composables/useThreadAnalysis';
 import { useSeederDetection } from '../composables/useSeederDetection';
 import type { PipelineDefinition } from '@/lib/types';
+import { safeFilename } from '@/lib/exporter';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import ThreadAnalysisContent from '../components/ThreadAnalysisContent.vue';
+import ContentActions from '../components/ContentActions.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import BackButton from '../components/BackButton.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
@@ -19,6 +21,52 @@ const { showTrustBadges, loadSetting: loadSeederSetting } = useSeederDetection()
 onMounted(() => { loadSeederSetting().catch(() => {}); });
 
 const cachedTopic = computed(() => store.selectedTopic.value);
+
+function heatIcon(heat: string) {
+  if (heat === 'high' || heat === 'hot') return '🔥';
+  if (heat === 'medium' || heat === 'normal') return '🧠';
+  return '💬';
+}
+function heatLabel(heat: string) {
+  if (heat === 'hot' || heat === 'high') return 'Nóng bỏng';
+  if (heat === 'normal' || heat === 'medium') return 'Vừa phải';
+  return 'Nhẹ nhàng';
+}
+function commentIcon(type: string) {
+  if (type === 'defining') return '🔥';
+  if (type === 'insightful') return '🧠';
+  return '😂';
+}
+function formatAnalysisAsText(a: ThreadAnalysisJSON, title: string, totalPages: number): string {
+  const lines: string[] = [];
+  lines.push(`# PHÂN TÍCH THREAD: ${title}`, `(${totalPages} trang)`, '');
+  lines.push('## 1. TỔNG QUAN');
+  lines.push(`Độ nóng: ${heatLabel(a.overview.heat)}`, `Mâu thuẫn chính: ${a.overview.coreConflict}`, 'Fact quan trọng:');
+  for (const fact of a.overview.keyFacts) lines.push(`  - ${fact}`);
+  if (a.overview?.misconception) lines.push(`VOZ hiểu sai: ${a.overview.misconception}`);
+  lines.push('');
+  lines.push('## 2. USER TIÊU BIỂU');
+  for (const p of a.userProfiles) {
+    lines.push(`### ${p.role}`, p.description, `Nhận xét: ${p.note}`, `Quote: '${p.quote}'`, '');
+  }
+  lines.push('## 3. LUỒNG TRANH LUẬN');
+  for (const s of a.debateStreams) lines.push(`${heatIcon(s.heat)} ${s.title}`, s.description, '');
+  lines.push('## 4. COMBAT TIÊU BIỂU');
+  for (const c of a.combats) lines.push(`### ${c.title}`, `Phe A: ${c.sideA}`, `Phe B: ${c.sideB}`, `Nhận xét: ${c.note}`, '');
+  lines.push('## 5. TIMELINE');
+  for (const ph of a.timeline) {
+    lines.push(`### ${ph.name} (${ph.pageRange})`);
+    for (const ev of ph.events) lines.push(`  - ${ev}`);
+    lines.push('');
+  }
+  lines.push('## 6. COMMENT NỔI BẬT');
+  for (const c of a.notableComments) lines.push(`${commentIcon(c.type)} [${c.author}]: ${c.text}`, '');
+  lines.push('## 7. KẾT LUẬN');
+  for (const item of a.conclusion.breakdown) lines.push(`  ${item.label}: ${item.percent}%`);
+  lines.push(`Góc nhìn hệ thống: ${a.conclusion.insightPolicy}`, `Phản ứng VOZ: ${a.conclusion.insightPublic}`, `Tổng kết: ${a.conclusion.finalNote}`, '');
+  lines.push('## 8. KIẾM HIỆP', a.wuxia);
+  return lines.join('\n');
+}
 const loadedTopicUrl = ref<string | null>(null);
 const loadedTopicTitle = ref('');
 const pendingConflict = ref<{ newUrl: string; newTitle: string } | null>(null);
@@ -93,17 +141,17 @@ async function handleConflictGoBack() {
         <template v-else>
           <ErrorDisplay v-if="error" :message="error" />
 
-          <ThreadAnalysisContent v-if="threadAnalysis" :analysis="threadAnalysis" :thread-title="cachedTopic.title" :total-pages="cachedTopic.totalPages" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges">
-            <template #actions>
-              <button class="btn btn-ghost btn-sm flex items-center gap-1" :disabled="isAnalyzing" @click="generateAnalysis">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {{ isAnalyzing ? 'Đang phân tích...' : 'Phân tích lại' }}
-              </button>
-            </template>
-          </ThreadAnalysisContent>
+          <ContentActions
+            :model-label="cachedTopic?.llmConfig?.model ? `Phân tích bởi ${cachedTopic.llmConfig.model}` : undefined"
+            :copy-content="formatAnalysisAsText(threadAnalysis!, cachedTopic!.title, cachedTopic!.totalPages)"
+            :export-topic="(cachedTopic as unknown as CachedTopic)"
+            :json-data="threadAnalysis"
+            :json-filename="`${safeFilename(cachedTopic!.title)}_analysis.json`"
+            :reload-label="isAnalyzing ? 'Đang phân tích...' : 'Phân tích lại'"
+            :reload-disabled="isAnalyzing"
+            :on-reload="generateAnalysis"
+          ></ContentActions>
+          <ThreadAnalysisContent v-if="threadAnalysis" :analysis="threadAnalysis" :thread-title="cachedTopic.title" :total-pages="cachedTopic.totalPages" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
 
           <div v-else-if="!isAnalyzing" class="flex flex-col items-center space-y-2">
             <p class="text-sm text-(--color-text-secondary)">Chưa có phân tích cho thớt này.</p>

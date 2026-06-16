@@ -11,6 +11,7 @@ import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryStatus from '../components/SummaryStatus.vue';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
+import SearchInput from '../components/SearchInput.vue';
 import { useForumManager } from '../composables/useForumManager';
 
 const router = useRouter();
@@ -276,32 +277,23 @@ async function toggleBookmark(topic: CachedTopic) {
     <template v-else>
       <!-- Search + Sort controls (only show when there are topics) -->
       <div v-if="allTopics.length > 0" class="space-y-2">
-        <!-- Search input -->
-        <div class="relative">
-          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Tìm kiếm thớt..."
-            class="input pl-8 pr-8 text-xs w-full"
-          />
-          <!-- Bookmark filter toggle -->
-          <button
-            class="absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
-            :class="showBookmarkedOnly ? 'text-(--color-saved)' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
-            :title="showBookmarkedOnly ? 'Xem tất cả' : `Chỉ hiện đã đánh dấu${bookmarkCount > 0 ? ` (${bookmarkCount})` : ''}`"
-            @click="showBookmarkedOnly = !showBookmarkedOnly"
-          >
-            <svg v-if="showBookmarkedOnly" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
-            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
-          </button>
-        </div>
+        <SearchInput v-model="searchQuery" placeholder="Tìm kiếm thớt...">
+          <template #actions>
+            <button
+              class="transition-colors"
+              :class="showBookmarkedOnly ? 'text-(--color-saved)' : 'text-(--color-text-muted) hover:text-(--color-text-secondary)'"
+              :title="showBookmarkedOnly ? 'Xem tất cả' : `Chỉ hiện đã đánh dấu${bookmarkCount > 0 ? ` (${bookmarkCount})` : ''}`"
+              @click="showBookmarkedOnly = !showBookmarkedOnly"
+            >
+              <svg v-if="showBookmarkedOnly" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            </button>
+          </template>
+        </SearchInput>
         <!-- Domain filter pills -->
         <div v-if="allDomains.length > 1" class="flex flex-wrap gap-1.5">
           <button
@@ -354,13 +346,7 @@ async function toggleBookmark(topic: CachedTopic) {
           <span class="text-xs font-medium text-(--color-accent-text)">Tab hiện tại</span>
         </div>
         <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2">
-          {{ store.activeTabDetect.value.title }}
-          <!-- News badge -->
-          <span v-if="activeTabCachedTopic?.topicType === 'news'"
-            class="text-(--color-accent-text) font-regular text-xs ml-1"
-          >
-            Tin tức
-          </span>
+          <template v-if="activeTabCachedTopic?.topicType === 'news'">📰 </template>{{ store.activeTabDetect.value.title }}
         </p>
         <div class="flex items-center gap-2 justify-between">
           <div class="flex items-center gap-2 flex-wrap">
@@ -394,13 +380,8 @@ async function toggleBookmark(topic: CachedTopic) {
                   :title="topic.title"
                   @click="selectTopic(topic)"
                 >
-                  <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">{{ topic.title }}
-                    <!-- News badge -->
-                    <span v-if="topic.topicType === 'news'"
-                      class="text-(--color-accent-text) font-regular text-xs ml-1"
-                    >
-                      Tin tức
-                    </span>
+                  <p class="text-sm font-medium text-(--color-text-primary) line-clamp-2 pr-16">
+                    <template v-if="topic.topicType === 'news'">📰 </template>{{ topic.title }}
                   </p>
                   <div class="flex flex-col items-start gap-2">
                     <div class="flex items-center gap-2 flex-wrap">

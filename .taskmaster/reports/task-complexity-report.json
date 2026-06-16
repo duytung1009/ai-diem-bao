@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2026-06-14T10:44:01.205Z",
+		"generatedAt": "2026-06-15T16:49:42.765Z",
 		"tasksAnalyzed": 10,
-		"totalTasks": 41,
+		"totalTasks": 51,
 		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
@@ -10,84 +10,84 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 389,
-			"taskTitle": "Xây dựng module stopword tiếng Việt",
+			"taskId": 399,
+			"taskTitle": "Tiến hành Kiểm toán Hệ thống Thiết kế (L0)",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task không cần chia nhỏ, có thể thực hiện trực tiếp.",
-			"reasoning": "Tương đối đơn giản, chỉ cần tạo file export Set, dựa trên tài liệu có sẵn. Cần chú ý đến việc không loại bỏ từ kỹ thuật, nhưng không phức tạp."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tạo subtask cho việc phát triển script quét, thực hiện kiểm kê token coverage, form-control inventory, component completeness, và viết báo cáo markdown.",
+			"reasoning": "Công việc chủ yếu là quét mã nguồn và ghi nhận, độ phức tạp thấp, có thể chia nhỏ thành các bước tự động hóa và báo cáo."
 		},
 		{
-			"taskId": 390,
-			"taskTitle": "Xây dựng hàm tokenizeForSearch",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
-			"reasoning": "Hàm đơn giản, chỉ gọi tokenize và lọc stopword. Không có xử lý phức tạp."
-		},
-		{
-			"taskId": 391,
-			"taskTitle": "Xây dựng hàm buildBm25Index",
+			"taskId": 400,
+			"taskTitle": "Cài đặt ESLint (Cấu hình Flat Config - L3)",
 			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chia task thành: 1) Xây dựng cấu trúc dữ liệu Bm25Index và tính df, độ dài field; 2) Xử lý các trường hợp đặc biệt (field null, rỗng) và viết test đơn vị cho từng phần.",
-			"reasoning": "Cần xây dựng index duyệt nhiều document, tính toán df và avgFieldLength, có nhiều edge case. Có thể chia để dễ quản lý và kiểm thử."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Phân rã thành các subtask: thêm dependencies, tạo eslint.config.js với flat config, cấu hình parser cho SFC và TypeScript, khai báo globals cho WXT auto-imports, thiết lập ignore patterns và tạo thư mục eslint-local-rules.",
+			"reasoning": "Yêu cầu hiểu biết về ESLint flat config và tích hợp với Vue/TypeScript, có nhiều bước cấu hình, độ phức tạp trung bình."
 		},
 		{
-			"taskId": 392,
-			"taskTitle": "Xây dựng hàm scoreBm25",
+			"taskId": 401,
+			"taskTitle": "Triển khai các Rule ESLint cho Design System",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Chia thành subtask: thêm rule vue/no-restricted-class, bật plugin vuejs-accessibility, tạo local rules (icon-button-needs-label, no-raw-form-control, label-token), viết test với RuleTester.",
+			"reasoning": "Viết custom rules ESLint đòi hỏi kiến thức sâu về AST, testing phức tạp, và cần đảm bảo tuân thủ design system."
+		},
+		{
+			"taskId": 402,
+			"taskTitle": "Cấu hình Pre-commit Hook và Gate Verify",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tạo subtask: cài đặt husky và lint-staged, tạo .husky/pre-commit, cập nhật script verify trong package.json, và cập nhật tài liệu AGENTS.md và self_review_checklist.md.",
+			"reasoning": "Các bước cấu hình rõ ràng, ít rủi ro, độ phức tạp thấp."
+		},
+		{
+			"taskId": 403,
+			"taskTitle": "Thêm Form Utilities và Chuẩn hóa Label (L1)",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Phân rã: thêm @utility checkbox, radio, select, input-range vào assets/main.css; chuẩn hóa label field; cập nhật STYLE_GUIDE.md với Component Inventory.",
+			"reasoning": "Công việc chủ yếu là viết CSS utility và cập nhật tài liệu, không phức tạp."
+		},
+		{
+			"taskId": 404,
+			"taskTitle": "Tạo Component Pattern: IconButton, ConfirmInline, OverflowMenu (L2)",
 			"complexityScore": 6,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chia thành: 1) Triển khai công thức BM25 cơ bản với các tham số k1, b, IDF; 2) Thêm field boost, xử lý trường hợp df=0, field rỗng và tối ưu hiệu năng.",
-			"reasoning": "Công thức phức tạp, yêu cầu xử lý nhiều trường hợp biên, tham số và field weight. Cần kiểm tra kỹ lưỡng."
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Chia subtask: tạo IconButton, ConfirmInline, OverflowMenu; viết test cho từng component; cập nhật STYLE_GUIDE.md với props documentation.",
+			"reasoning": "Xây dựng các component pattern yêu cầu TypeScript, events, a11y, và test, độ phức tạp trung bình-cao."
 		},
 		{
-			"taskId": 393,
-			"taskTitle": "Xây dựng hàm rankBm25",
-			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task không cần chia nhỏ, có thể viết trực tiếp dựa vào các hàm đã có.",
-			"reasoning": "Hàm tích hợp, chủ yếu gọi các hàm khác, xử lý fallback. Đơn giản."
+			"taskId": 405,
+			"taskTitle": "Tạo Component Form: FormField, ToggleSwitch, Checkbox, RadioGroup (L2)",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Phân rã: tạo FormField, ToggleSwitch, Checkbox, RadioGroup; tích hợp v-model; viết test cho từng component; đảm bảo a11y và lint.",
+			"reasoning": "Tương tự task 404 nhưng có thêm v-model và id generation, độ phức tạp tương đương."
 		},
 		{
-			"taskId": 394,
-			"taskTitle": "Xây dựng module synonym tiếng Việt (tùy chọn)",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task nhỏ, không cần chia nhỏ.",
-			"reasoning": "Tạo map và hàm expand, rất đơn giản. Không phụ thuộc nhiều."
-		},
-		{
-			"taskId": 395,
-			"taskTitle": "Tích hợp BM25 vào useNotebookQA",
+			"taskId": 406,
+			"taskTitle": "Refactor NotebookEntryEditor về Chuẩn Thiết kế",
 			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Chia thành: 1) Sửa logic trong useNotebookQA để sử dụng rankBm25; 2) Kiểm thử tích hợp và đảm bảo không ảnh hưởng chức năng cũ.",
-			"reasoning": "Cần hiểu code hiện tại, thay thế đúng vị trí, import module, và giữ nguyên behavior. Có thể ảnh hưởng đến các phần khác nên cần kiểm tra kỹ."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Tạo subtask: thay thế icon-only buttons bằng IconButton; sửa label token từ muted thành secondary; thay thế raw form controls bằng component mới; kiểm tra chức năng và lint.",
+			"reasoning": "Refactor một component cụ thể, có hướng dẫn rõ, độ phức tạp trung bình."
 		},
 		{
-			"taskId": 396,
-			"taskTitle": "Viết unit test cho lexical-search và stopwords",
+			"taskId": 407,
+			"taskTitle": "Refactor SettingsView và Các View Khác Dùng Component Chuẩn",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Chia subtask: refactor SettingsView, KnowledgeEntryCard, NotebookView, KnowledgeView, SummaryView; thay thế toggle/checkbox/radio bằng component chuẩn; thay button và menu; viết test tổng hợp.",
+			"reasoning": "Refactor nhiều view khác nhau, yêu cầu thay đổi đồng bộ và kiểm thử kỹ, độ phức tạp cao."
+		},
+		{
+			"taskId": 408,
+			"taskTitle": "Cập nhật Tài liệu và Dọn Dẹp Baseline ESLint",
 			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task viết test, không cần chia nhỏ.",
-			"reasoning": "Viết test cho các hàm đã xây dựng, dựa trên test strategy có sẵn. Có thể thực hiện theo từng module nhưng gộp chung vào một file test."
-		},
-		{
-			"taskId": 397,
-			"taskTitle": "Kiểm tra hồi quy và chạy thủ công",
-			"complexityScore": 3,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task không cần chia nhỏ.",
-			"reasoning": "Chạy lại bộ test và thử nghiệm thủ công. Công việc kiểm thử đơn giản."
-		},
-		{
-			"taskId": 398,
-			"taskTitle": "Dọn dẹp code và cập nhật decision log",
-			"complexityScore": 2,
-			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task không cần chia nhỏ.",
-			"reasoning": "Xóa code thừa, thêm comment deprecated, kiểm tra build. Công việc nhẹ nhàng."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Phân rã: hoàn thiện STYLE_GUIDE.md; cập nhật AGENTS.md và self_review_checklist.md; chạy lint toàn bộ codebase và thêm eslint-disable hợp lệ; kiểm tra hook và CI.",
+			"reasoning": "Công việc dọn dẹp và cập nhật tài liệu, độ phức tạp thấp."
 		}
 	]
 }

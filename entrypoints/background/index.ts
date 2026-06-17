@@ -1,9 +1,10 @@
 import { STORAGE_KEYS, DEFAULT_LLM_CONFIG, KEEPALIVE_INTERVAL_MS } from '@/lib/constants';
-import { summarizeTopic, researchTopic, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis, answerFromNotebook } from '@/lib/llm/summarizer';
+import { summarizeTopic, researchTopic, extractKnowledgeChunk, reduceKnowledgeChunks, summarizeSegments, testLLMConnection, generateThreadAnalysis, answerFromNotebook, describeThread } from '@/lib/llm/summarizer';
 import { LLMError, LLMErrorCode } from '@/lib/errors';
 import { computeTrustScores } from '@/lib/trust-scorer';
 import { getCachedTopic, saveCachedTopic, deleteCachedTopic, getCacheSize, getAllCachedTopics, normalizeUrl, mergePartialTopic, getAllKnowledge, upsertKnowledgeEntry, deleteKnowledgeEntry } from '@/lib/cache-manager';
 import { dbPut, dbGet, dbGetAll, dbDelete } from '@/lib/cache-db';
+import { getThreadDescription, saveThreadDescription } from '@/lib/thread-desc-cache';
 import { notebookGetAll, notebookGetByTopic, notebookPut, notebookDelete, notebookOrphanByTopic, notebookDeleteByTopic, notebookGetStats, notebookBulkUpdate, notebookBulkDelete } from '@/lib/notebook-db';
 import type { NotebookBulkPatch } from '@/lib/notebook-db';
 // TODO(Feature 36): SCRAPE_ARTICLE disabled - requires cross-origin host_permissions
@@ -448,6 +449,22 @@ export default defineBackground(() => {
           return true;
         }
 
+        case 'GET_THREAD_DESCRIPTION': {
+          const { url } = message.payload as { url: string };
+          getThreadDescription(url).then(description => {
+            sendResponse({ description: description ?? null });
+          }).catch(() => sendResponse({ description: null }));
+          return true;
+        }
+
+        case 'SAVE_THREAD_DESCRIPTION': {
+          const { url, description } = message.payload as { url: string; description: string };
+          saveThreadDescription(url, description).then(() => {
+            sendResponse({ ok: true });
+          }).catch(() => sendResponse({ ok: false }));
+          return true;
+        }
+
         case 'FETCH_FORUM_LIST': {
           const req = message.payload as { forumUrl: string; page?: number };
           (async () => {
@@ -617,6 +634,8 @@ function buildPipeline(taskType: string): PipelineDefinition | null {
       return { workflow: 'knowledge', steps: [pendingStep('analyze', 'Phân tích thớt')] };
     case 'notebook_qa':
       return { workflow: 'research', steps: [pendingStep('qa', 'Tra cứu sổ tay')] };
+    case 'describe_thread':
+      return { workflow: 'research', steps: [pendingStep('describe', 'Tạo mô tả')] };
     default:
       return null;
   }
@@ -729,6 +748,14 @@ async function processLLMTask(taskId: string, taskType: string, payload: unknown
         const { question, entries } = payload as { question: string; entries: NotebookEntryForQA[] };
         inputTokens = estimateTokens(question + entries.map(e => e.content).join(''));
         result = await answerFromNotebook(question, entries, config, onProgress, signal);
+        break;
+      }
+
+      case 'describe_thread': {
+        const { post } = payload as { post: ScrapedPost };
+        inputTokens = estimateTokens(post.content);
+        const description = await describeThread(post, config, onProgress, prompts, signal);
+        result = { description };
         break;
       }
 

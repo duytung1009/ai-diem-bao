@@ -159,12 +159,12 @@ function saveAsNote(msg: QAMessage, idx: number) {
 
     <!-- Input area — always at bottom -->
     <div class="space-y-2 pt-1">
-      <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
       <textarea
         v-model="questionInput"
         class="input text-xs w-full resize-none"
         rows="3"
         placeholder="Đặt câu hỏi về kho kiến thức... (Ctrl+Enter để gửi)"
+        aria-label="Câu hỏi về kho kiến thức"
         :disabled="isEmpty || isLoading"
         @keydown="handleKeydown"
       ></textarea>

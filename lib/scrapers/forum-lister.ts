@@ -132,6 +132,7 @@ function scrapeXf2(doc: Document, forumUrl: string): ForumThreadSummary[] {
         startDate, replyCount, viewCount,
         lastPostAuthor, lastPostTime, lastPostUrl,
         isSticky: false, isLocked, pageCount, hasPoll,
+        version: 'xf2',
       });
     } catch (err) {
       console.warn('[scrapeXf2] Failed to parse thread item:', err);
@@ -237,6 +238,7 @@ function scrapeXf1(doc: Document, forumUrl: string): ForumThreadSummary[] {
         title, url, author, startDate, replyCount, viewCount,
         lastPostAuthor, lastPostTime,
         isSticky: false, isLocked, pageCount,
+        version: 'xf1',
       });
     } catch (err) {
       console.warn('[scrapeXf1] Failed to parse thread item:', err);

@@ -1,93 +1,109 @@
 {
 	"meta": {
-		"generatedAt": "2026-06-15T16:49:42.765Z",
-		"tasksAnalyzed": 10,
-		"totalTasks": 51,
-		"analysisCount": 10,
+		"generatedAt": "2026-06-17T03:53:37.913Z",
+		"tasksAnalyzed": 12,
+		"totalTasks": 62,
+		"analysisCount": 12,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
 		"usedResearch": true
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 399,
-			"taskTitle": "Tiến hành Kiểm toán Hệ thống Thiết kế (L0)",
-			"complexityScore": 3,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tạo subtask cho việc phát triển script quét, thực hiện kiểm kê token coverage, form-control inventory, component completeness, và viết báo cáo markdown.",
-			"reasoning": "Công việc chủ yếu là quét mã nguồn và ghi nhận, độ phức tạp thấp, có thể chia nhỏ thành các bước tự động hóa và báo cáo."
-		},
-		{
 			"taskId": 400,
 			"taskTitle": "Cài đặt ESLint (Cấu hình Flat Config - L3)",
 			"complexityScore": 5,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Phân rã thành các subtask: thêm dependencies, tạo eslint.config.js với flat config, cấu hình parser cho SFC và TypeScript, khai báo globals cho WXT auto-imports, thiết lập ignore patterns và tạo thư mục eslint-local-rules.",
-			"reasoning": "Yêu cầu hiểu biết về ESLint flat config và tích hợp với Vue/TypeScript, có nhiều bước cấu hình, độ phức tạp trung bình."
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Task đã được phân rã thành các subtask cụ thể, không cần phân rã thêm.",
+			"reasoning": "Cấu hình ESLint flat config có độ phức tạp trung bình, yêu cầu hiểu biết về parser cho SFC và TypeScript, globals cho WXT. Việc phân rã hiện tại là hợp lý. Cần kiểm tra cẩn thận khi chạy lint."
 		},
 		{
-			"taskId": 401,
-			"taskTitle": "Triển khai các Rule ESLint cho Design System",
-			"complexityScore": 7,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Chia thành subtask: thêm rule vue/no-restricted-class, bật plugin vuejs-accessibility, tạo local rules (icon-button-needs-label, no-raw-form-control, label-token), viết test với RuleTester.",
-			"reasoning": "Viết custom rules ESLint đòi hỏi kiến thức sâu về AST, testing phức tạp, và cần đảm bảo tuân thủ design system."
+			"taskId": 409,
+			"taskTitle": "Thêm trường `version` vào `ForumThreadSummary`",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Thay đổi đơn giản, có thể thực hiện trực tiếp mà không cần phân rã.",
+			"reasoning": "Chỉ thêm một trường optional vào interface, không ảnh hưởng code hiện tại, độ phức tạp thấp. Kiểm tra biên dịch là đủ."
 		},
 		{
-			"taskId": 402,
-			"taskTitle": "Cấu hình Pre-commit Hook và Gate Verify",
-			"complexityScore": 4,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tạo subtask: cài đặt husky và lint-staged, tạo .husky/pre-commit, cập nhật script verify trong package.json, và cập nhật tài liệu AGENTS.md và self_review_checklist.md.",
-			"reasoning": "Các bước cấu hình rõ ràng, ít rủi ro, độ phức tạp thấp."
+			"taskId": 410,
+			"taskTitle": "Cập nhật scraper forum list để gán `version`",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Cần sửa hai hàm scrapeXf2 và scrapeXf1 để gán version tương ứng. Có thể thực hiện trong một lần.",
+			"reasoning": "Cần sửa hai hàm với logic rõ ràng, phụ thuộc nhẹ vào task 409. Độ phức tạp thấp."
 		},
 		{
-			"taskId": 403,
-			"taskTitle": "Thêm Form Utilities và Chuẩn hóa Label (L1)",
-			"complexityScore": 4,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Phân rã: thêm @utility checkbox, radio, select, input-range vào assets/main.css; chuẩn hóa label field; cập nhật STYLE_GUIDE.md với Component Inventory.",
-			"reasoning": "Công việc chủ yếu là viết CSS utility và cập nhật tài liệu, không phức tạp."
-		},
-		{
-			"taskId": 404,
-			"taskTitle": "Tạo Component Pattern: IconButton, ConfirmInline, OverflowMenu (L2)",
-			"complexityScore": 6,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Chia subtask: tạo IconButton, ConfirmInline, OverflowMenu; viết test cho từng component; cập nhật STYLE_GUIDE.md với props documentation.",
-			"reasoning": "Xây dựng các component pattern yêu cầu TypeScript, events, a11y, và test, độ phức tạp trung bình-cao."
-		},
-		{
-			"taskId": 405,
-			"taskTitle": "Tạo Component Form: FormField, ToggleSwitch, Checkbox, RadioGroup (L2)",
-			"complexityScore": 6,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Phân rã: tạo FormField, ToggleSwitch, Checkbox, RadioGroup; tích hợp v-model; viết test cho từng component; đảm bảo a11y và lint.",
-			"reasoning": "Tương tự task 404 nhưng có thêm v-model và id generation, độ phức tạp tương đương."
-		},
-		{
-			"taskId": 406,
-			"taskTitle": "Refactor NotebookEntryEditor về Chuẩn Thiết kế",
-			"complexityScore": 5,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Tạo subtask: thay thế icon-only buttons bằng IconButton; sửa label token từ muted thành secondary; thay thế raw form controls bằng component mới; kiểm tra chức năng và lint.",
-			"reasoning": "Refactor một component cụ thể, có hướng dẫn rõ, độ phức tạp trung bình."
-		},
-		{
-			"taskId": 407,
-			"taskTitle": "Refactor SettingsView và Các View Khác Dùng Component Chuẩn",
-			"complexityScore": 7,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Chia subtask: refactor SettingsView, KnowledgeEntryCard, NotebookView, KnowledgeView, SummaryView; thay thế toggle/checkbox/radio bằng component chuẩn; thay button và menu; viết test tổng hợp.",
-			"reasoning": "Refactor nhiều view khác nhau, yêu cầu thay đổi đồng bộ và kiểm thử kỹ, độ phức tạp cao."
-		},
-		{
-			"taskId": 408,
-			"taskTitle": "Cập nhật Tài liệu và Dọn Dẹp Baseline ESLint",
+			"taskId": 411,
+			"taskTitle": "Xây dựng hàm tạo minimal topic từ `HotThreadScore`",
 			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Viết hàm buildMinimalTopic map từ HotThreadScore sang CachedTopic, kiểm tra mapping các trường. Có thể thực hiện như một subtask duy nhất.",
+			"reasoning": "Tạo hàm mới, cần hiểu cấu trúc dữ liệu và test mapping các trường, đặc biệt version, totalPosts. Độ phức tạp thấp đến trung bình."
+		},
+		{
+			"taskId": 412,
+			"taskTitle": "Cài đặt `selectAndSummarize` thay thế `openThread` trong `NewsFeedView.vue`",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Thay thế phương thức openThread bằng selectAndSummarize, bao gồm xử lý browser.tabs, store, router. Đảm bảo keep-alive hoạt động.",
+			"reasoning": "Liên quan đến nhiều component (store, router, background tab), cần đảm bảo keep-alive hoạt động. Độ phức tạp trung bình."
+		},
+		{
+			"taskId": 413,
+			"taskTitle": "Định nghĩa message types mới và cache cho mô tả thread",
+			"complexityScore": 6,
 			"recommendedSubtasks": 3,
-			"expansionPrompt": "Phân rã: hoàn thiện STYLE_GUIDE.md; cập nhật AGENTS.md và self_review_checklist.md; chạy lint toàn bộ codebase và thêm eslint-disable hợp lệ; kiểm tra hook và CI.",
-			"reasoning": "Công việc dọn dẹp và cập nhật tài liệu, độ phức tạp thấp."
+			"expansionPrompt": "Phân rã thành 3 subtask: 1. Cập nhật type TaskType và message types. 2. Tạo module cache IndexedDB với TTL. 3. Thêm messaging handlers.",
+			"reasoning": "Nhiều thành phần mới: types, messaging, cache module với TTL và normalize URL. Cần quản lý độ phức tạp bằng cách phân rã."
+		},
+		{
+			"taskId": 414,
+			"taskTitle": "Cài đặt hàm LLM `describeThread` và prompt",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Phân rã thành 2 subtask: 1. Viết prompt THREAD_DESCRIPTION_PROMPT. 2. Viết hàm describeThread với retry, parse response.",
+			"reasoning": "Tạo prompt và hàm LLM, có xử lý lỗi và retry. Nên tách prompt và logic LLM để dễ kiểm thử."
+		},
+		{
+			"taskId": 415,
+			"taskTitle": "Tích hợp `describeThreadTask` vào composable `useLLM`",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Thêm wrapper function describeThreadTask vào composable useLLM. Có thể thực hiện trong một subtask.",
+			"reasoning": "Đơn giản, chỉ cần gọi createTask với đúng task type, có thể kiểm tra bằng unit test."
+		},
+		{
+			"taskId": 416,
+			"taskTitle": "Cập nhật background script xử lý pipeline `describe_thread` và cache messages",
+			"complexityScore": 7,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Phân rã thành 3 subtask: 1. Thêm step 'Tạo mô tả' vào pipeline. 2. Thêm handler GET_THREAD_DESCRIPTION và SAVE_THREAD_DESCRIPTION. 3. Cập nhật processLLMTask với case describe_thread.",
+			"reasoning": "Nhiều phần trong background script, cần đồng bộ pipeline và messaging. Phân rã giúp dễ quản lý và tránh sai sót."
+		},
+		{
+			"taskId": 417,
+			"taskTitle": "Cập nhật UI `NewsFeedView.vue`: thêm expand chevron và điều phối mô tả lazy",
+			"complexityScore": 8,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Phân rã thành 4 subtask: 1. Thêm nút expand chevron vào card. 2. Xử lý sự kiện click và kiểm tra cache. 3. Tích hợp scrape và gọi LLM khi cache miss. 4. Hiển thị kết quả, loading, lỗi và retry.",
+			"reasoning": "Task UI phức tạp nhất, nhiều tương tác và state management. Cần phân rã chi tiết để đảm bảo thực hiện từng bước."
+		},
+		{
+			"taskId": 418,
+			"taskTitle": "Xử lý lỗi và degraded mode cho mô tả",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Phân rã thành 2 subtask: 1. Xử lý trạng thái provider và fetch lỗi. 2. Xử lý lỗi LLM và cung cấp nút retry với UI message.",
+			"reasoning": "Xử lý nhiều kịch bản lỗi, cần ui message phù hợp. Phân rã theo loại lỗi giúp dễ kiểm thử."
+		},
+		{
+			"taskId": 419,
+			"taskTitle": "Kiểm tra tổng thể và regression",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Chạy npm run verify và manual test tất cả flow. Không cần phân rã thêm.",
+			"reasoning": "Testing tổng thể và regression, không yêu cầu code mới, độ phức tạp thấp."
 		}
 	]
 }

@@ -72,7 +72,7 @@ export class GeminiAdapter implements LLMProvider {
             generationConfig: {
               temperature: this.config.temperature,
               maxOutputTokens: this.config.maxTokens ?? 4096,
-              ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+              ...(jsonMode ? { responseMimeType: 'application/json' } : { responseMimeType: 'text/plain' }),
               ...(this.config.thinkingEnabled
                 ? { thinkingConfig: { thinkingBudget: this.config.thinkingBudget ?? -1 } }
                 : {}),

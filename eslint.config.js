@@ -118,6 +118,9 @@ export default [
       ],
 
       'vuejs-accessibility/form-control-has-label': 'error',
+      // Accept either nesting OR a for/id association (both are valid WCAG label
+      // associations). Default is { every: ['nesting','id'] } which forces both.
+      'vuejs-accessibility/label-has-for': ['error', { required: { some: ['nesting', 'id'] } }],
       'local/icon-button-needs-label': 'error',
       'local/no-raw-form-control': 'error',
 

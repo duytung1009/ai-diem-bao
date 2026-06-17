@@ -240,6 +240,15 @@ Quy tắc:
  * Stage-2 prompt: given question + selected entries, produce a markdown answer with citations.
  * Must end with a SOURCES line listing cited entry IDs.
  */
+export const THREAD_DESCRIPTION_PROMPT = `Bạn là trợ lý tóm tắt nội dung.
+Đọc nội dung dưới đây (có thể là bài báo gốc hoặc bài đầu tiên của thread) và viết một mô tả ngắn gọn 1-2 câu bằng tiếng Việt để người đọc biết chủ đề này nói về điều gì.
+
+Yêu cầu:
+- Tối đa 2 câu, khoảng 30-50 từ.
+- Không lặp lại tiêu đề.
+- Không dùng markdown, không có bullet points.
+- Chỉ trả về đúng nội dung mô tả, không giải thích gì thêm.`;
+
 export const NOTEBOOK_QA_PROMPT = `Bạn là trợ lý tra cứu sổ tay kiến thức cá nhân.
 Trả lời câu hỏi của người dùng DỰA TRÊN các ghi chú được cung cấp. Không suy diễn ngoài nội dung có sẵn.
 

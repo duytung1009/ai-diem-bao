@@ -14,9 +14,13 @@ export interface HotThreadScore {
   heat: HeatLevel;
 }
 
+// `view` is a multiplier on the *logarithm* of the view count (see scoreThreads),
+// so large view numbers (tens of thousands) don't dominate reply/recency. This
+// keeps the ranking engagement-driven and stable across reloads — closer to the
+// forum's own reply-bump ordering than a raw-view sort.
 export const DEFAULT_WEIGHTS = {
   reply: 3,
-  view: 0.1,
+  view: 30,
   page: 10,
 } as const;
 
@@ -25,7 +29,7 @@ export const DEFAULT_THRESHOLDS = {
   hot: 300,
 } as const;
 
-export const DEFAULT_RECENCY_MAX_BONUS = 50;
+export const DEFAULT_RECENCY_MAX_BONUS = 80;
 export const DEFAULT_MAX_AGE_HOURS = 24;
 export const DEFAULT_TOP_N = 10;
 
@@ -59,7 +63,9 @@ export function scoreThreads(
 
   for (const thread of threads) {
     const replyScore = thread.replyCount * w.reply;
-    const viewScore = thread.viewCount * w.view;
+    // Log-scale views so a thread with 10× the views gets ~+log10 worth of score,
+    // not 10× — prevents view count from dwarfing replies/recency.
+    const viewScore = Math.log(Math.max(0, thread.viewCount) + 1) * w.view;
     const pageScore = Math.max(0, thread.pageCount - 1) * w.page;
 
     const ha = hoursAgo(thread.lastPostTime, nowDate);

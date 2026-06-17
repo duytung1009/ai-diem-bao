@@ -114,6 +114,7 @@ function estimateETA(taskType: string, payload: unknown): number {
     if (typeof p.previousSummary === 'string') text += p.previousSummary;
     if (typeof p.question === 'string') text += p.question;
     if (Array.isArray(p.newPosts)) text += (p.newPosts as ScrapedPost[]).map((x: ScrapedPost) => x.content).join('');
+    if (p.post && typeof (p.post as ScrapedPost).content === 'string') text += (p.post as ScrapedPost).content;
     // reduce_knowledge_chunks: { partialEntries: KnowledgeEntry[][], entryCap? }
     if (Array.isArray(p.partialEntries)) {
       text += (p.partialEntries as KnowledgeEntry[][]).flat().map((e: KnowledgeEntry) => e.content).join('');
@@ -205,6 +206,10 @@ function notebookQATask(question: string, entries: NotebookEntryForQA[]) {
   return createTask('notebook_qa', { question, entries });
 }
 
+function describeThreadTask(post: ScrapedPost) {
+  return createTask('describe_thread', { post });
+}
+
 function cancelTask(taskId: string) {
   sendMessage('CANCEL_LLM_TASK', { taskId }).catch(() => {});
 }
@@ -247,6 +252,7 @@ export function useLLM() {
     reduceKnowledgeChunksTask,
     threadAnalysisTask,
     notebookQATask,
+    describeThreadTask,
     cancelTask,
     getTaskState,
     getETA,

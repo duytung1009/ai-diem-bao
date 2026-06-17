@@ -9,6 +9,7 @@ import type { HotThreadScore } from '@/lib/hot-threads';
 import { useActiveForum } from '../composables/useActiveForum';
 import { STORAGE_KEYS } from '@/lib/constants';
 import IconButton from '../components/IconButton.vue';
+import EmptyState from '../components/EmptyState.vue';
 
 const activeForum = useActiveForum();
 const { forumUrl, detected: forumDetected, detect: detectForum, setUrl } = activeForum;
@@ -185,9 +186,10 @@ onMounted(async () => {
       <button class="btn btn-accent btn-xs shrink-0" @click="handleGrantPermission">Cấp quyền</button>
     </div>
 
-    <div v-if="!loading && !error && threads.length === 0 && hasLoaded" class="alert alert-info text-xs">
-      Không tìm thấy thớt nào có hoạt động trong 24h qua.
-    </div>
+    <EmptyState v-if="!loading && !error && threads.length === 0 && hasLoaded"
+      icon="📰"
+      title="Chưa có thớt nổi bật"
+      description="Không tìm thấy thớt nào có hoạt động trong 24h qua." />
 
     <div v-if="loading" class="space-y-2">
       <div v-for="i in 5" :key="i" class="card animate-pulse-soft space-y-1.5">

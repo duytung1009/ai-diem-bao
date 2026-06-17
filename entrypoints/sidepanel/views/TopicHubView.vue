@@ -12,6 +12,7 @@ import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SummaryStatus from '../components/SummaryStatus.vue';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
 import SearchInput from '../components/SearchInput.vue';
+import EmptyState from '../components/EmptyState.vue';
 import { useForumManager } from '../composables/useForumManager';
 
 const router = useRouter();
@@ -502,15 +503,11 @@ async function toggleBookmark(topic: CachedTopic) {
       </div>
 
       <!-- Empty state: have forums but no cached topics yet -->
-      <div
+      <EmptyState
         v-if="allTopics.length === 0 && userForums.length > 0 && !store.activeTabDetect.value"
-        class="text-center py-12 space-y-3"
-      >
-        <div class="text-3xl">📰</div>
-        <p class="text-sm text-(--color-text-secondary)">
-          Chưa tìm thấy thớt nào.
-        </p>
-      </div>
+        icon="📰"
+        title="Chưa tìm thấy thớt nào"
+      />
     </template>
   </div>
 </template>

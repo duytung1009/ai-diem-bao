@@ -12,6 +12,7 @@ import { buildResearchPipeline, markFirstStepRunning } from '@/lib/pipeline-buil
 import { useTopicStore } from '../composables/useTopicStore';
 import { useOptimisticUpdate } from '../composables/useOptimisticUpdate';
 import BackButton from '../components/BackButton.vue';
+import EmptyState from '../components/EmptyState.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 
 const store = useTopicStore();
@@ -158,10 +159,11 @@ function formatDate(ts: number): string {
 <template>
   <div class="p-3 space-y-2">
     <!-- No topic selected -->
-    <div v-if="!cachedTopic" class="text-center py-8">
-      <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
-      <BackButton class="mt-3" />
-    </div>
+    <EmptyState v-if="!cachedTopic" icon="🧵" title="Chưa chọn thớt">
+      <template #action>
+        <BackButton />
+      </template>
+    </EmptyState>
 
     <!-- Topic loaded -->
     <template v-else>

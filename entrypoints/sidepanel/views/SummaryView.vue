@@ -25,6 +25,7 @@ import StepTimeline from '../components/StepTimeline.vue';
 import SummaryContent from '../components/SummaryContent.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import BackButton from '../components/BackButton.vue';
+import EmptyState from '../components/EmptyState.vue';
 import ForwardLink from '../components/ForwardLink.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 
@@ -243,10 +244,11 @@ async function handleConflictGoBack() {
 <template>
   <div class="p-3 space-y-2">
     <!-- No topic selected -->
-    <div v-if="!topicInfo" class="text-center py-8">
-      <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
-      <BackButton class="mt-3" />
-    </div>
+    <EmptyState v-if="!topicInfo" icon="🧵" title="Chưa chọn thớt">
+      <template #action>
+        <BackButton />
+      </template>
+    </EmptyState>
 
     <!-- Topic loaded -->
     <template v-else>
@@ -413,7 +415,6 @@ async function handleConflictGoBack() {
                 </div>
               </div>
               <div v-else class="flex flex-col items-center space-y-2">
-                <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
                 <button class="btn-llm" :disabled="isProcessing" @click="handleSummarizeSegment(0)">
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
@@ -467,7 +468,6 @@ async function handleConflictGoBack() {
                 </div>
               </div>
               <div v-else class="flex flex-col items-center space-y-2">
-                <p class="text-sm text-(--color-text-secondary)">Chưa có tóm tắt cho thread này.</p>
                 <button class="btn-llm" :disabled="isProcessing" @click="handleAutoSummarizeAll()">
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />

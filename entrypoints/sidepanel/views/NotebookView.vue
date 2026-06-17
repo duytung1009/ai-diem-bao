@@ -16,6 +16,7 @@ import IconButton from '../components/IconButton.vue';
 import ConfirmInline from '../components/ConfirmInline.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SearchInput from '../components/SearchInput.vue';
+import EmptyState from '../components/EmptyState.vue';
 import { useNotebookQA } from '../composables/useNotebookQA';
 import { getTagClass } from '@/lib/tag-styles';
 import type { GlobalKnowledgeEntry } from '@/lib/types';
@@ -418,14 +419,19 @@ onActivated(async () => {
         <div v-if="error" class="alert alert-error text-xs">{{ error }}</div>
 
         <!-- Empty state -->
-        <div v-if="!isLoading && entries.length === 0" class="card text-center py-10 space-y-3">
-          <div class="text-3xl">📝</div>
-          <p class="text-sm text-(--color-text-primary) font-medium">Chưa có ghi chú nào</p>
-          <p class="text-xs text-(--color-text-secondary)">Vào tab <strong>Kiến thức</strong> của bất kỳ thớt nào, nhấn ⭐ để lưu vào đây.</p>
-          <button type="button" class="btn btn-sm btn-primary" @click="startCreateEntry">
-            Thêm ghi chú
-          </button>
-        </div>
+        <EmptyState v-if="!isLoading && entries.length === 0" icon="📝" title="Chưa có ghi chú nào">
+          <template #description>
+            <p class="text-xs text-(--color-text-secondary)">
+              Nhấn ⭐ trong tab <strong>Kiến thức</strong> của thớt để lưu, hoặc dùng tab
+              <strong>Hỏi đáp</strong> để tổng hợp câu trả lời và lưu thành ghi chú mới.
+            </p>
+          </template>
+          <template #action>
+            <button type="button" class="btn btn-sm btn-primary" @click="notebookSubTab = 'qa'">
+              Đến Hỏi đáp
+            </button>
+          </template>
+        </EmptyState>
 
         <!-- Create manual entry form -->
         <div v-if="showCreateForm && newEntryDraft" class="card">
@@ -584,12 +590,10 @@ onActivated(async () => {
 
       <LoadingSpinner v-if="knowledgeLoading" text="Đang tải kho kiến thức..." />
 
-      <div v-else-if="knowledgeFiltered.length === 0" class="card text-center py-8 space-y-2">
-        <div class="text-2xl">{{ knowledgeEntries.length === 0 ? '🧠' : '🔍' }}</div>
-        <p class="text-xs text-(--color-text-secondary)">
-          {{ knowledgeEntries.length === 0 ? 'Chưa có kiến thức nào. Hãy trích xuất từ một thớt.' : 'Không tìm thấy mục nào khớp.' }}
-        </p>
-      </div>
+      <EmptyState v-else-if="knowledgeFiltered.length === 0"
+        :icon="knowledgeEntries.length === 0 ? '🧠' : '🔍'"
+        :title="knowledgeEntries.length === 0 ? 'Chưa có kiến thức nào' : 'Không tìm thấy kết quả'"
+        :description="knowledgeEntries.length === 0 ? 'Hãy trích xuất kiến thức từ một thớt.' : 'Không có mục nào khớp với tìm kiếm.'" />
 
       <div v-else class="space-y-4">
         <template v-for="group in knowledgeGrouped" :key="group.key">

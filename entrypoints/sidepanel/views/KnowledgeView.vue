@@ -15,6 +15,7 @@ import { useAlertSettings } from '../composables/useAlertSettings';
 const { hideInfoAlerts, hideWarningAlerts } = useAlertSettings();
 import { useSummarize } from '../composables/useSummarize';
 import BackButton from '../components/BackButton.vue';
+import EmptyState from '../components/EmptyState.vue';
 import IconButton from '../components/IconButton.vue';
 import ContentActions from '../components/ContentActions.vue';
 import SearchInput from '../components/SearchInput.vue';
@@ -393,10 +394,11 @@ onActivated(async () => {
 <template>
   <div class="p-3 space-y-2">
     <!-- No topic selected -->
-    <div v-if="!topicInfo" class="text-center py-8">
-      <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
-      <BackButton class="mt-3" />
-    </div>
+    <EmptyState v-if="!topicInfo" icon="🧵" title="Chưa chọn thớt">
+      <template #action>
+        <BackButton />
+      </template>
+    </EmptyState>
 
     <!-- Topic loaded -->
     <template v-else>

@@ -12,6 +12,7 @@ import ThreadAnalysisContent from '../components/ThreadAnalysisContent.vue';
 import ContentActions from '../components/ContentActions.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import BackButton from '../components/BackButton.vue';
+import EmptyState from '../components/EmptyState.vue';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 
 const store = useTopicStore();
@@ -111,10 +112,11 @@ async function handleConflictGoBack() {
 
 <template>
   <div class="p-3 space-y-2">
-    <div v-if="!cachedTopic" class="text-center py-8">
-      <p class="text-sm text-(--color-text-secondary)">Chưa chọn thớt.</p>
-      <BackButton class="mt-3" />
-    </div>
+    <EmptyState v-if="!cachedTopic" icon="🧵" title="Chưa chọn thớt">
+      <template #action>
+        <BackButton />
+      </template>
+    </EmptyState>
 
     <template v-else>
       <div class="flex items-center justify-between">
@@ -141,20 +143,21 @@ async function handleConflictGoBack() {
         <template v-else>
           <ErrorDisplay v-if="error" :message="error" />
 
-          <ContentActions
-            :model-label="cachedTopic?.llmConfig?.model ? `Phân tích bởi ${cachedTopic.llmConfig.model}` : undefined"
-            :copy-content="formatAnalysisAsText(threadAnalysis!, cachedTopic!.title, cachedTopic!.totalPages)"
-            :export-topic="(cachedTopic as unknown as CachedTopic)"
-            :json-data="threadAnalysis"
-            :json-filename="`${safeFilename(cachedTopic!.title)}_analysis.json`"
-            :reload-label="isAnalyzing ? 'Đang phân tích...' : 'Phân tích lại'"
-            :reload-disabled="isAnalyzing"
-            :on-reload="generateAnalysis"
-          ></ContentActions>
-          <ThreadAnalysisContent v-if="threadAnalysis" :analysis="threadAnalysis" :thread-title="cachedTopic.title" :total-pages="cachedTopic.totalPages" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
+          <template v-if="threadAnalysis">
+            <ContentActions
+              :model-label="cachedTopic?.llmConfig?.model ? `Phân tích bởi ${cachedTopic.llmConfig.model}` : undefined"
+              :copy-content="formatAnalysisAsText(threadAnalysis, cachedTopic!.title, cachedTopic!.totalPages)"
+              :export-topic="(cachedTopic as unknown as CachedTopic)"
+              :json-data="threadAnalysis"
+              :json-filename="`${safeFilename(cachedTopic!.title)}_analysis.json`"
+              :reload-label="isAnalyzing ? 'Đang phân tích...' : 'Phân tích lại'"
+              :reload-disabled="isAnalyzing"
+              :on-reload="generateAnalysis"
+            ></ContentActions>
+            <ThreadAnalysisContent :analysis="threadAnalysis" :thread-title="cachedTopic.title" :total-pages="cachedTopic.totalPages" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
+          </template>
 
           <div v-else-if="!isAnalyzing" class="flex flex-col items-center space-y-2">
-            <p class="text-sm text-(--color-text-secondary)">Chưa có phân tích cho thớt này.</p>
             <button class="btn-llm" @click="generateAnalysis">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />

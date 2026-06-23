@@ -1,6 +1,6 @@
 # Cơ chế Tóm tắt (Summarization)
 
-> Cập nhật: 2026-05-25
+> Cập nhật: 2026-06-17
 
 ## Tổng quan
 
@@ -122,7 +122,8 @@ Tách từ SummaryView.vue, chứa toàn bộ logic scraping + LLM orchestration
 | `llmTaskId` | `string \| null` | ID task LLM đang chạy (null = không chạy) |
 | `pendingPosts` | `ScrapedPost[] \| null` | Posts chờ confirm trước khi gửi LLM |
 | `segmentSummaries` | `TopicSegment[]` | Mảng segment theo index |
-| `activeSegmentIndex` | `number \| null` | Segment đang xem |
+| `runningSegmentIndex` | `number \| null` | Segment đang được tóm tắt (drive spinner trong SegmentGrid) |
+| `segmentErrors` | `Record<number, string>` | Lỗi tóm tắt per-segment (in-memory, không persist) → status `error` + nút "Thử lại" |
 | `cacheFreshness` | `CacheFreshness \| null` | Độ tươi của cache |
 
 **Non-reactive:**
@@ -154,6 +155,54 @@ summary.value = summaryText;
 ```
 
 `++activeSummarizeId` trong `handleCancel` và đầu `loadTopicData` sẽ invalidate mọi LLM callback cũ.
+
+---
+
+## Fault tolerance per-segment (batch summarize)
+
+Khi tóm tắt nhiều segment tuần tự — "Tóm tắt tất cả" (`handleAutoSummarizeAll` → `runSummarizeJob`) hoặc "Cập nhật" (`handleSegmentUpdate`) — một segment lỗi (vd `MALFORMED_RESPONSE`) **không** làm dừng cả batch, giống `extractAllSegments` ở KnowledgeView. Áp dụng cho **cả dynamic và fixed mode**.
+
+**Dynamic mode** — mỗi `summarizeAndSaveSegment` được bọc trong `try/catch` trong vòng lặp:
+
+```typescript
+try {
+  await summarizeAndSaveSegment(i, ...);
+  if (summarizeGuard.isStale(thisId)) return;
+  pl.markDone(segId);
+} catch (err) {
+  if (summarizeGuard.isStale(thisId)) return;          // navigate away → bỏ
+  if (err instanceof DOMException && err.name === 'AbortError') return; // user cancel → dừng cả batch
+  segmentErrors.value = { ...segmentErrors.value, [i]: msg }; // flag riêng segment này
+  pl.markError(segId, msg);                             // step → status 'error'
+  // tiếp tục segment kế tiếp
+}
+```
+
+- Lỗi segment được ghi vào `segmentErrors` (in-memory, không persist) → SegmentGrid hiển thị status `error` (⚠) + nút "Thử lại" cho đúng segment đó.
+- **Không** set global `error.value` → không hiện banner lỗi toàn cục; các segment còn lại vẫn chạy.
+- Sau vòng lặp, `generateOverallSummary` vẫn chạy từ các segment đã hoàn thành (`completed >= 1`).
+- Chỉ **cancel của user** (`AbortError`) hoặc **stale guard** (navigate away) mới dừng toàn bộ batch.
+- `pl.markError(stepId, msg)` (usePipeline → `markStepError`) đánh dấu step thất bại trên StepTimeline thay vì để treo "running".
+
+**Fixed mode** (`dynamicSegments === false`) — vòng lặp dùng lại `handleSummarizeSegment` (vì path này scrape + tóm tắt từng fixed segment). Batch **tự sở hữu một stale-guard token** và truyền vào:
+
+```typescript
+const thisId = summarizeGuard.begin();
+store.setSummarizing(topicUrl);
+for (const i of segmentsToProcess) {
+  if (summarizeGuard.isStale(thisId)) return;
+  runningSegmentIndex.value = i;
+  await handleSummarizeSegment(i, { token: thisId }); // dùng token của batch
+}
+```
+
+Khi nhận `batch.token`, `handleSummarizeSegment`:
+- **không** gọi `summarizeGuard.begin()` (nếu gọi sẽ làm token của batch thành stale → loop dừng sau segment đầu tiên — đây là bug nested-guard cũ);
+- để `store.setSummarizing` cho caller quản lý (không tự set `null` ở `finally`);
+- không reset pipeline giữa các segment (tránh xoá tiến độ segment trước);
+- khi lỗi: chỉ ghi `segmentErrors[i]` + `pl.markError(stepRunning.id)`, **không** set global `error.value` → batch chạy tiếp.
+
+Gọi standalone (nút "Tóm tắt"/"Thử lại" từng dòng) vẫn giữ hành vi cũ: tự `begin()` guard, tự quản `setSummarizing`, và hiện lỗi qua global `error.value`.
 
 ---
 
@@ -256,16 +305,17 @@ budget = floor(contextLimit × CONTEXT_USAGE_RATIO) - systemPromptTokens - RESPO
 - `systemPromptTokens` = `estimateTokens(customPrompt || SUMMARY_PROMPT)` — dùng actual prompt text
 - `contextLimit` = `getContextLimit(model, config.contextWindow)` — hỗ trợ override
 
-**Luồng `autoSummarizeDynamic()`:**
+**Luồng `runSummarizeJob()` (dynamic mode) — 2 phase:**
 ```
-Scrape page 1 → tích lũy tokens → ...page N
-  ├── tokens > budget → cắt segment, gửi LLM tóm tắt
-  │     ├── save segment (complete: true) vào IDB
-  │     └── tiếp tục scrape pages tiếp
-  ├── hết pages, tokens > 0 → segment cuối
-  │     └── save segment (complete: false nếu topic đang mở)
-  └── Sau khi xong → "Tóm tắt tổng quan" nếu ≥2 segments (tree-reduce)
+Phase 1: scrapeAllPages() → scrape toàn bộ trang còn lại (1 phase)
+Phase 2: planDynamicSegments(posts, budget) → cắt segment deterministic theo token budget
+         └── rebuildWithSegments() → dựng lại StepTimeline đủ step 1 lần
+Loop:    với mỗi segment → summarizeAndSaveSegment() (try/catch, fault-tolerant)
+         ├── save segment vào IDB
+         └── lỗi 1 segment → flag segmentErrors[i], tiếp tục segment kế tiếp
+Cuối:    "Tóm tắt tổng quan" nếu ≥1 segment hoàn thành (tree-reduce)
 ```
+(Xem mục "Fault tolerance per-segment" ở trên về xử lý lỗi từng segment.)
 
 **Resume state (`computeResumeState()`):**
 - Nếu có segments đã xong trong `segmentSummaries`:
@@ -282,8 +332,8 @@ Scrape page 1 → tích lũy tokens → ...page N
 | Chưa scrape | Xám | Chưa xử lý |
 
 **`handleSegmentUpdate()` (khi topic có thêm pages):**
-- Dynamic mode: gọi `computeResumeState()` → `autoSummarizeDynamic(resume)`
-- Fixed mode: giữ logic cũ (so sánh `endPage`)
+- Dynamic mode: delegate sang `runSummarizeJob()` — tự xử lý resume qua `computeResumeMode()` / `computeResumeState()`
+- Fixed mode: so sánh `endPage`, tóm tắt các segment còn thiếu (cũng fault-tolerant per-segment)
 
 ### Incremental mode
 

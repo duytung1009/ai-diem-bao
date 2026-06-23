@@ -160,6 +160,7 @@ export function createUsePipelineMock(state: PipelineMockState) {
       markFirstRunning: vi.fn(() => {}),
       markRunning: vi.fn((_id: string) => {}),
       markDone: vi.fn((_id: string) => {}),
+      markError: vi.fn((_id: string, _msg?: string) => {}),
       markNextRunning: vi.fn((_stepId: string) => null),
     })),
   };

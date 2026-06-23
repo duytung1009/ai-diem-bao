@@ -1,109 +1,93 @@
 {
 	"meta": {
-		"generatedAt": "2026-06-17T03:53:37.913Z",
-		"tasksAnalyzed": 12,
-		"totalTasks": 62,
-		"analysisCount": 12,
+		"generatedAt": "2026-06-17T10:39:22.364Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 72,
+		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "AI Điểm Báo",
 		"usedResearch": true
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 400,
-			"taskTitle": "Cài đặt ESLint (Cấu hình Flat Config - L3)",
+			"taskId": 420,
+			"taskTitle": "Tạo Component SegmentGrid.vue chung",
+			"complexityScore": 6,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Không cần mở rộng; task đã đủ chi tiết để thực hiện trực tiếp.",
+			"reasoning": "Xây dựng component generic với props, slots, v-model, icon trạng thái, progress bar, và hành vi expandable. Độ phức tạp trung bình do cần xử lý nhiều trạng thái và tương tác, nhưng đã có markup mẫu từ KnowledgeView."
+		},
+		{
+			"taskId": 421,
+			"taskTitle": "Tái cấu trúc KnowledgeView dùng SegmentGrid",
 			"complexityScore": 5,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Task đã được phân rã thành các subtask cụ thể, không cần phân rã thêm.",
-			"reasoning": "Cấu hình ESLint flat config có độ phức tạp trung bình, yêu cầu hiểu biết về parser cho SFC và TypeScript, globals cho WXT. Việc phân rã hiện tại là hợp lý. Cần kiểm tra cẩn thận khi chạy lint."
+			"expansionPrompt": "Không cần mở rộng; task thay thế trực tiếp markup bằng component mới, cần ánh xạ dữ liệu và slot.",
+			"reasoning": "Thay thế khối F33 bằng SegmentGrid, ánh xạ knowledgeSegments sang SegmentGridItem, giữ nguyên hành vi qua slot. Cần kiểm tra kỹ mapping trạng thái và sự kiện, nhưng đã có hướng dẫn chi tiết."
 		},
 		{
-			"taskId": 409,
-			"taskTitle": "Thêm trường `version` vào `ForumThreadSummary`",
-			"complexityScore": 1,
+			"taskId": 422,
+			"taskTitle": "Thêm trạng thái lỗi và running per-segment trong useSummarize",
+			"complexityScore": 5,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Thay đổi đơn giản, có thể thực hiện trực tiếp mà không cần phân rã.",
-			"reasoning": "Chỉ thêm một trường optional vào interface, không ảnh hưởng code hiện tại, độ phức tạp thấp. Kiểm tra biên dịch là đủ."
+			"expansionPrompt": "Không cần mở rộng; task thay đổi trong một composable duy nhất.",
+			"reasoning": "Bổ sung ref segmentErrors và runningSegmentIndex, cập nhật logic handleSummarizeSegment, handleAutoSummarizeAll, loadTopicData. Xóa activeSegmentIndex. Test kỹ xử lý lỗi và AbortError."
 		},
 		{
-			"taskId": 410,
-			"taskTitle": "Cập nhật scraper forum list để gán `version`",
+			"taskId": 423,
+			"taskTitle": "Tái cấu trúc SummaryView dùng SegmentGrid và xóa Individual Segment View",
+			"complexityScore": 7,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Chia thành: 1) Cập nhật items computed từ segments, runningSegmentIndex, segmentErrors; 2) Thay thế tab/pill bằng SegmentGrid, giữ overall summary; 3) Xóa individual view và activeSegmentIndex, giữ fast-path cho single segment.",
+			"reasoning": "Thay đổi cấu trúc lớn: loại bỏ hoàn toàn individual view, thay tab bằng lưới, tích hợp trạng thái lỗi mới. Cần xử lý điều kiện single segment fast-path. Phức tạp hơn task 421."
+		},
+		{
+			"taskId": 424,
+			"taskTitle": "Đảm bảo compile và lint pass",
 			"complexityScore": 2,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Cần sửa hai hàm scrapeXf2 và scrapeXf1 để gán version tương ứng. Có thể thực hiện trong một lần.",
-			"reasoning": "Cần sửa hai hàm với logic rõ ràng, phụ thuộc nhẹ vào task 409. Độ phức tạp thấp."
+			"expansionPrompt": "Không cần mở rộng; task chạy lệnh verify và sửa lỗi.",
+			"reasoning": "Task đơn giản: chạy npm run verify, sửa lỗi ESLint, TypeScript. Không cần thiết kế hay logic mới."
 		},
 		{
-			"taskId": 411,
-			"taskTitle": "Xây dựng hàm tạo minimal topic từ `HotThreadScore`",
-			"complexityScore": 3,
+			"taskId": 425,
+			"taskTitle": "Cập nhật tài liệu (AGENTS.md và architecture docs)",
+			"complexityScore": 2,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Viết hàm buildMinimalTopic map từ HotThreadScore sang CachedTopic, kiểm tra mapping các trường. Có thể thực hiện như một subtask duy nhất.",
-			"reasoning": "Tạo hàm mới, cần hiểu cấu trúc dữ liệu và test mapping các trường, đặc biệt version, totalPosts. Độ phức tạp thấp đến trung bình."
+			"expansionPrompt": "Không cần mở rộng; task cập nhật tài liệu mô tả component và thay đổi kiến trúc.",
+			"reasoning": "Cập nhật AGENTS.md và architecture docs với thông tin mới. Yêu cầu độ chính xác nhưng không phức tạp."
 		},
 		{
-			"taskId": 412,
-			"taskTitle": "Cài đặt `selectAndSummarize` thay thế `openThread` trong `NewsFeedView.vue`",
+			"taskId": 426,
+			"taskTitle": "Viết unit test cho SegmentGrid.vue",
 			"complexityScore": 4,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Thay thế phương thức openThread bằng selectAndSummarize, bao gồm xử lý browser.tabs, store, router. Đảm bảo keep-alive hoạt động.",
-			"reasoning": "Liên quan đến nhiều component (store, router, background tab), cần đảm bảo keep-alive hoạt động. Độ phức tạp trung bình."
+			"expansionPrompt": "Không cần mở rộng; test đã được mô tả cụ thể.",
+			"reasoning": "Viết unit test cho component với các case: render, slot, emit, behavior. Độ phức tạp trung bình thấp do đã có test strategy chi tiết."
 		},
 		{
-			"taskId": 413,
-			"taskTitle": "Định nghĩa message types mới và cache cho mô tả thread",
-			"complexityScore": 6,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Phân rã thành 3 subtask: 1. Cập nhật type TaskType và message types. 2. Tạo module cache IndexedDB với TTL. 3. Thêm messaging handlers.",
-			"reasoning": "Nhiều thành phần mới: types, messaging, cache module với TTL và normalize URL. Cần quản lý độ phức tạp bằng cách phân rã."
+			"taskId": 427,
+			"taskTitle": "Viết unit test cho useSummarize composable",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Không cần mở rộng; test đã được mô tả cụ thể.",
+			"reasoning": "Viết unit test cho composable với các case: success, error, cancel, retry, reset. Kiểm tra logic state segmentErrors và runningSegmentIndex."
 		},
 		{
-			"taskId": 414,
-			"taskTitle": "Cài đặt hàm LLM `describeThread` và prompt",
-			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Phân rã thành 2 subtask: 1. Viết prompt THREAD_DESCRIPTION_PROMPT. 2. Viết hàm describeThread với retry, parse response.",
-			"reasoning": "Tạo prompt và hàm LLM, có xử lý lỗi và retry. Nên tách prompt và logic LLM để dễ kiểm thử."
-		},
-		{
-			"taskId": 415,
-			"taskTitle": "Tích hợp `describeThreadTask` vào composable `useLLM`",
+			"taskId": 428,
+			"taskTitle": "Kiểm thử hồi quy KnowledgeView",
 			"complexityScore": 3,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Thêm wrapper function describeThreadTask vào composable useLLM. Có thể thực hiện trong một subtask.",
-			"reasoning": "Đơn giản, chỉ cần gọi createTask với đúng task type, có thể kiểm tra bằng unit test."
+			"expansionPrompt": "Không cần mở rộng; task kiểm thử thủ công theo checklist.",
+			"reasoning": "Thực hiện kiểm thử thủ công toàn bộ chức năng KnowledgeView trên trình duyệt. Yêu cầu theo dõi chi tiết nhưng không phức tạp."
 		},
 		{
-			"taskId": 416,
-			"taskTitle": "Cập nhật background script xử lý pipeline `describe_thread` và cache messages",
-			"complexityScore": 7,
-			"recommendedSubtasks": 3,
-			"expansionPrompt": "Phân rã thành 3 subtask: 1. Thêm step 'Tạo mô tả' vào pipeline. 2. Thêm handler GET_THREAD_DESCRIPTION và SAVE_THREAD_DESCRIPTION. 3. Cập nhật processLLMTask với case describe_thread.",
-			"reasoning": "Nhiều phần trong background script, cần đồng bộ pipeline và messaging. Phân rã giúp dễ quản lý và tránh sai sót."
-		},
-		{
-			"taskId": 417,
-			"taskTitle": "Cập nhật UI `NewsFeedView.vue`: thêm expand chevron và điều phối mô tả lazy",
-			"complexityScore": 8,
-			"recommendedSubtasks": 4,
-			"expansionPrompt": "Phân rã thành 4 subtask: 1. Thêm nút expand chevron vào card. 2. Xử lý sự kiện click và kiểm tra cache. 3. Tích hợp scrape và gọi LLM khi cache miss. 4. Hiển thị kết quả, loading, lỗi và retry.",
-			"reasoning": "Task UI phức tạp nhất, nhiều tương tác và state management. Cần phân rã chi tiết để đảm bảo thực hiện từng bước."
-		},
-		{
-			"taskId": 418,
-			"taskTitle": "Xử lý lỗi và degraded mode cho mô tả",
-			"complexityScore": 5,
-			"recommendedSubtasks": 2,
-			"expansionPrompt": "Phân rã thành 2 subtask: 1. Xử lý trạng thái provider và fetch lỗi. 2. Xử lý lỗi LLM và cung cấp nút retry với UI message.",
-			"reasoning": "Xử lý nhiều kịch bản lỗi, cần ui message phù hợp. Phân rã theo loại lỗi giúp dễ kiểm thử."
-		},
-		{
-			"taskId": 419,
-			"taskTitle": "Kiểm tra tổng thể và regression",
+			"taskId": 429,
+			"taskTitle": "Kiểm thử hồi quy SummaryView",
 			"complexityScore": 3,
 			"recommendedSubtasks": 0,
-			"expansionPrompt": "Chạy npm run verify và manual test tất cả flow. Không cần phân rã thêm.",
-			"reasoning": "Testing tổng thể và regression, không yêu cầu code mới, độ phức tạp thấp."
+			"expansionPrompt": "Không cần mở rộng; task kiểm thử thủ công theo checklist.",
+			"reasoning": "Kiểm thử thủ công SummaryView sau khi tái cấu trúc, tập trung vào lưới mới, trạng thái error, loại bỏ individual view. Độ phức tạp thấp."
 		}
 	]
 }

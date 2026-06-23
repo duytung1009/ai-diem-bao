@@ -21,6 +21,9 @@ import ContentActions from '../components/ContentActions.vue';
 import SearchInput from '../components/SearchInput.vue';
 import KnowledgeEntryCard from '../components/KnowledgeEntryCard.vue';
 import type { KnowledgeCardEntry } from '../components/KnowledgeEntryCard.vue';
+import SegmentGrid from '../components/SegmentGrid.vue';
+import type { SegmentGridItem } from '../components/SegmentGrid.vue';
+import { mapKnowledgeSegmentStatus } from '@/lib/segment-grid-status';
 import OperationConflictAlert from '../components/OperationConflictAlert.vue';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
 import { estimateExtractCost } from '@/lib/llm/cost-estimator';
@@ -60,6 +63,10 @@ const selectedCategory = ref<string | null>(null);
 const expandedIds = ref<Set<string>>(new Set());
 const showSavedOnly = ref(false);
 const loadedTopicTitle = ref('');
+
+// Pagination — render entries in batches to avoid huge DOM with many entries.
+const PAGE_SIZE = 50;
+const visibleLimit = ref(PAGE_SIZE);
 const pendingConflict = ref<{ newUrl: string; newTitle: string } | null>(null);
 // F33 segment grid UI state
 const segmentGridExpanded = ref(false);
@@ -76,6 +83,32 @@ function formatRelativeTime(ts: number | null): string {
   if (hrs < 24) return `${hrs} giờ trước`;
   return `${Math.floor(hrs / 24)} ngày trước`;
 }
+
+// F44: map per-segment extraction view → generic SegmentGrid items
+const knowledgeGridItems = computed<SegmentGridItem[]>(() =>
+  knowledgeSegments.value.map(s => {
+    const parts = [`· ${s.postCount} bài`];
+    if (s.rawEntryCount > 0) parts.push(`· ${s.rawEntryCount} mục`);
+    if (s.lastExtractedAt) parts.push(`· ${formatRelativeTime(s.lastExtractedAt)}`);
+    return {
+      index: s.segmentIndex,
+      label: `Trang ${s.startPage}–${s.endPage}`,
+      meta: parts.join(' '),
+      status: mapKnowledgeSegmentStatus(s.status),
+    };
+  }),
+);
+
+const knowledgeHeaderLabel = computed(() => {
+  const total = knowledgeSegments.value.length;
+  const done = knowledgeSegments.value.filter(s => s.status === 'done' || s.status === 'partial').length;
+  return `${done} / ${total} đoạn đã trích xuất`;
+});
+
+// Lookup for the preview slot (segmentIndex → view model)
+const knowledgeSegMap = computed(() =>
+  new Map(knowledgeSegments.value.map(s => [s.segmentIndex, s])),
+);
 
 function onReduceManualClick() {
   const est = estimatedReduceCost.value;
@@ -256,9 +289,19 @@ const filteredEntries = computed(() => {
   return result;
 });
 
+// Reset pagination whenever the active filter/search changes (selectedTags is
+// mutated in place by toggleTag, so we watch its length rather than the ref).
+watch(
+  [searchQuery, selectedCategory, showSavedOnly, () => selectedTags.value.length],
+  () => { visibleLimit.value = PAGE_SIZE; }
+);
+
+const visibleEntries = computed(() => filteredEntries.value.slice(0, visibleLimit.value));
+const hasMoreEntries = computed(() => filteredEntries.value.length > visibleLimit.value);
+
 const groupedEntries = computed(() => {
   const groups: Record<string, typeof entries.value> = {};
-  for (const e of filteredEntries.value) {
+  for (const e of visibleEntries.value) {
     const cat = e.category || 'Khác';
     if (!groups[cat]) groups[cat] = [];
     groups[cat].push(e);
@@ -441,110 +484,63 @@ onActivated(async () => {
               <br/>Có thể bấm <strong>Trích xuất lại</strong> đoạn bị lỗi, hoặc <strong>đổi sang model lớn hơn</strong> trong Cài đặt để trích xuất ổn định hơn.
             </p>
           </div>
-          <div class="card space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-(--color-text-secondary)">
-                {{knowledgeSegments.filter(s => s.status === 'done' || s.status === 'partial').length}} / {{ knowledgeSegments.length }} đoạn đã trích xuất
-              </span>
-              <div class="flex items-center gap-3">
-                <!-- Batch in progress between segments -->
-                <template v-if="isBatchExtracting && !isLoading">
-                  <span class="text-xs text-(--color-text-muted) mr-1">Đang chờ...</span>
-                  <button class="btn text-xs text-(--color-error-text)" @click="handleCancel">Hủy</button>
-                </template>
-                <!-- Extract all button -->
-                <button v-else-if="!isLoading && knowledgeSegments.some(s => s.status === 'pending' || s.status === 'partial')" class="btn text-xs"
-                  @click="onExtractAllClick">
-                  Trích xuất tất cả
-                </button>
-                <button class="btn" @click="segmentGridExpanded = !segmentGridExpanded">
-                  <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200" :class="{ 'rotate-180': segmentGridExpanded }"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+          <SegmentGrid
+            v-model:expanded="segmentGridExpanded"
+            v-model:expanded-index="expandedSegmentIndex"
+            :items="knowledgeGridItems"
+            :header-label="knowledgeHeaderLabel"
+            :progress-percent="progressPercent"
+          >
+            <template #header-actions>
+              <!-- Batch in progress between segments -->
+              <template v-if="isBatchExtracting && !isLoading">
+                <span class="text-xs text-(--color-text-muted) mr-1">Đang chờ...</span>
+                <button class="btn text-xs text-(--color-error-text)" @click="handleCancel">Hủy</button>
+              </template>
+              <!-- Extract all button -->
+              <button v-else-if="!isLoading && knowledgeSegments.some(s => s.status === 'pending' || s.status === 'partial')" class="btn text-xs"
+                @click="onExtractAllClick">
+                Trích xuất tất cả
+              </button>
+            </template>
+
+            <template #row-actions="{ item }">
+              <button v-if="item.status === 'pending' || item.status === 'partial'"
+                class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)" :disabled="isLoading"
+                @click.stop="extractSegment(item.index)">
+                {{ item.status === 'pending' ? 'Trích xuất' : 'Trích xuất lại' }}
+              </button>
+              <button v-else-if="item.status === 'done'"
+                class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)" :disabled="isLoading"
+                @click.stop="reExtractSegment(item.index)">
+                Làm lại
+              </button>
+              <button v-else-if="item.status === 'running'"
+                class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)" @click.stop="handleCancel">
+                Hủy
+              </button>
+            </template>
+
+            <template #preview="{ item }">
+              <div v-if="!knowledgeSegMap.get(item.index)?.chunks.length" class="text-xs text-(--color-text-muted) py-1 pl-2">
+                Chưa có dữ liệu trích xuất.
               </div>
-            </div>
-            <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
-              <div class="h-full rounded-full bg-(--color-accent) transition-all duration-300" :style="{ width: progressPercent + '%' }" />
-            </div>
-            <div v-if="segmentGridExpanded" class="space-y-1">
-              <template v-for="seg in knowledgeSegments" :key="seg.segmentIndex">
-                <!-- Row -->
-                <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions,vuejs-accessibility/click-events-have-key-events -- intentional interactive container -->
-                <div class="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-(--color-bg-muted) transition-colors"
-                  :class="{ 'bg-(--color-accent-soft)': expandedSegmentIndex === seg.segmentIndex }"
-                  @click="expandedSegmentIndex = expandedSegmentIndex === seg.segmentIndex ? null : seg.segmentIndex">
-                  <!-- Status icon -->
-                  <div class="shrink-0 w-4 flex justify-center text-sm leading-none">
-                    <template v-if="seg.status === 'done'">
-                      <svg class="w-3.5 h-3.5 text-(--color-success-text)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </template>
-                    <template v-else-if="seg.status === 'extracting'">
-                      <svg class="w-3.5 h-3.5 animate-spin text-(--color-accent)" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                    </template>
-                    <template v-else-if="seg.status === 'partial'">⚠️</template>
-                    <template v-else>○</template>
-                  </div>
-                  <!-- Label -->
-                  <span class="flex-1 text-xs text-(--color-text-primary)">
-                    Trang {{ seg.startPage }}–{{ seg.endPage }}
-                    <span class="text-(--color-text-muted)">
-                      · {{ seg.postCount }} bài
-                    </span>
-                    <!-- Entry count -->
-                    <span v-if="seg.rawEntryCount > 0" class="text-(--color-text-muted)">
-                      · {{ seg.rawEntryCount }} mục
-                    </span>
-                    <!-- Relative time -->
-                    <span v-if="seg.lastExtractedAt" class="text-(--color-text-muted)">
-                      · {{ formatRelativeTime(seg.lastExtractedAt) }}
-                    </span>
+              <template v-else>
+                <div class="flex items-center gap-2 py-0.5">
+                  <span class="badge badge-warning">
+                    Chưa tổng hợp ({{ knowledgeSegMap.get(item.index)!.rawEntryCount }} mục thô)
                   </span>
-                  <!-- Action button -->
-                  <button v-if="seg.status === 'pending' || seg.status === 'partial'"
-                    class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)" :disabled="isLoading"
-                    @click.stop="extractSegment(seg.segmentIndex)">
-                    {{ seg.status === 'pending' ? 'Trích xuất' : 'Trích xuất lại' }}
-                  </button>
-                  <button v-else-if="seg.status === 'done'"
-                    class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)" :disabled="isLoading"
-                    @click.stop="reExtractSegment(seg.segmentIndex)">
-                    Làm lại
-                  </button>
-                  <button v-if="seg.status === 'extracting'"
-                    class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)" @click.stop="handleCancel">
-                    Hủy
-                  </button>
                 </div>
-                <!-- Task 290: Preview panel for expanded segment -->
-                <div v-if="expandedSegmentIndex === seg.segmentIndex" class="ml-6 mb-1 space-y-1">
-                  <div v-if="seg.chunks.length === 0" class="text-xs text-(--color-text-muted) py-1 pl-2">
-                    Chưa có dữ liệu trích xuất.
-                  </div>
-                  <template v-else>
-                    <div class="flex items-center gap-2 py-0.5">
-                      <span class="badge badge-warning">
-                        Chưa tổng hợp ({{ seg.rawEntryCount }} mục thô)
-                      </span>
-                    </div>
-                    <div v-for="(entry, ei) in seg.chunks.flatMap(c => c.entries).slice(0, 5)" :key="ei"
-                      class="text-xs text-(--color-text-secondary) border-l-2 border-(--color-border) pl-2 py-0.5">
-                      <span class="font-medium text-(--color-text-primary)">{{ entry.title }}</span>
-                    </div>
-                    <div v-if="seg.chunks.flatMap(c => c.entries).length > 5" class="text-xs text-(--color-text-muted) pl-2">
-                      + {{seg.chunks.flatMap(c => c.entries).length - 5}} mục khác
-                    </div>
-                  </template>
+                <div v-for="(entry, ei) in knowledgeSegMap.get(item.index)!.chunks.flatMap(c => c.entries).slice(0, 5)" :key="ei"
+                  class="text-xs text-(--color-text-secondary) border-l-2 border-(--color-border) pl-2 py-0.5">
+                  <span class="font-medium text-(--color-text-primary)">{{ entry.title }}</span>
+                </div>
+                <div v-if="knowledgeSegMap.get(item.index)!.chunks.flatMap(c => c.entries).length > 5" class="text-xs text-(--color-text-muted) pl-2">
+                  + {{ knowledgeSegMap.get(item.index)!.chunks.flatMap(c => c.entries).length - 5 }} mục khác
                 </div>
               </template>
-            </div>
-          </div>
+            </template>
+          </SegmentGrid>
         </template>
 
         <!-- F33: Stale reduce banner + reduce prompt (Task 291) -->
@@ -747,6 +743,13 @@ onActivated(async () => {
                 </div>
               </div>
             </template>
+          </div>
+
+          <!-- Load more -->
+          <div v-if="hasMoreEntries" class="text-center pt-1">
+            <button class="btn btn-sm btn-soft text-xs" @click="visibleLimit += PAGE_SIZE">
+              Xem thêm ({{ filteredEntries.length - visibleLimit }})
+            </button>
           </div>
         </template>
       </template>

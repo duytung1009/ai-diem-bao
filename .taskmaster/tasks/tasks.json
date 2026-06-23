@@ -4312,13 +4312,813 @@
         "recommendedSubtasks": 0,
         "expansionPrompt": "Chạy npm run verify và manual test tất cả flow. Không cần phân rã thêm.",
         "updatedAt": "2026-06-17T04:29:01.964Z"
+      },
+      {
+        "id": "420",
+        "title": "Tạo Component SegmentGrid.vue chung",
+        "description": "Xây dựng component generic SegmentGrid.vue nhận danh sách SegmentGridItem[] và các slot hành động/preview, hiển thị thẻ card với header, progress bar, danh sách đoạn có icon trạng thái (pending/running/done/partial/error), hỗ trợ mở rộng và tương tác.",
+        "details": "Tạo file mới tại entrypoints/sidepanel/components/SegmentGrid.vue. Dựa trên markup từ F33 của KnowledgeView (dòng 444–547), tham số hóa qua props: items, headerLabel, progressPercent, expanded (v-model), expandedIndex (v-model:expandedIndex), expandable. Định nghĩa các slot: #header-actions, #row-actions, #preview. Centralize icon trạng thái theo SegmentStatus (sử dụng SVG/spinner cho running, check cho done, warning cho partial/error). Sử dụng component IconButton với aria-label cho nút toggle. Áp dụng token màu --color-* và class rounded-lg/rounded-full. Tuân thủ ESLint, không import domain logic.",
+        "testStrategy": "Viết unit test với Vue Test Utils: render component với các props khác nhau, kiểm tra hiển thị đúng header, progress bar, icon trạng thái, slot. Kiểm tra emit sự kiện update:expanded, update:expandedIndex. Kiểm tra hành vi expandable và click row.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tạo khung component SegmentGrid.vue với props và slots",
+            "description": "Tạo file SegmentGrid.vue tại entrypoints/sidepanel/components/, định nghĩa các props và slots, import IconButton, xây dựng template cơ bản dựa trên markup từ F33 KnowledgeView (dòng 444–547).",
+            "dependencies": [],
+            "details": "Sử dụng Composition API, defineProps và defineSlots. Các props: items (SegmentGridItem[]), headerLabel (string), progressPercent (number), expanded (boolean), expandedIndex (number), expandable (boolean). Các slot: header-actions, row-actions, preview. Sử dụng v-model cho expanded và expandedIndex.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Hiển thị progress bar trong header",
+            "description": "Thêm progress bar vào phần header của card, hiển thị phần trăm dựa trên prop progressPercent, sử dụng token màu --color-primary.",
+            "dependencies": [
+              1
+            ],
+            "details": "Thêm div với class progress-bar, style width theo phần trăm. Áp dụng màu sắc từ CSS token (--color-primary, --color-bg). Có thể hiển thị label phần trăm nếu cần. Đảm bảo tương thích với rounded-lg và spacing chuẩn.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Xây dựng icon trạng thái cho từng segment",
+            "description": "Tạo mapping từ SegmentStatus (pending/running/done/partial/error) sang icon SVG tương ứng: spinner cho running, check cho done, warning cho partial/error, clock cho pending. Sử dụng inline SVGs hoặc component Icon.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tạo computed property hoặc hàm helper trả về template SVG. Thêm class animate-spin cho spinner. Gắn aria-label mô tả trạng thái. Sử dụng token màu --color-warning, --color-error, --color-success, --color-text-secondary.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Hỗ trợ mở rộng (expandable) với v-model",
+            "description": "Xử lý sự kiện click trên row để toggle expanded và expandedIndex. Emit update:expanded và update:expandedIndex. Hiển thị slot row-actions và preview khi expanded.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Thêm state cục bộ nếu cần, sử dụng watch để đồng bộ với props. Sử dụng component IconButton với aria-label 'Mở rộng' hoặc 'Thu gọn'. Khi expandable=false, không cho phép toggle. Đảm bảo chuyển tiếp mượt mà.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết unit test cho component SegmentGrid",
+            "description": "Viết unit test với Vue Test Utils và vitest để kiểm tra render với các props khác nhau, slot rendering, progress bar, icon trạng thái, và emit sự kiện v-model.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Test các trường hợp: hiển thị header label, progress bar với các giá trị (0, 50, 100), icon trạng thái khác nhau, slot header-actions và row-actions được render đúng, click row emit update:expanded và update:expandedIndex, kiểm tra hành vi expandable. Mock IconButton nếu cần. Chạy lint để đảm bảo tuân thủ ESLint.",
+            "status": "pending",
+            "testStrategy": "Sử dụng vitest + @vue/test-utils, viết test case cho từng tính năng, chạy với lệnh npm run test:unit.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 420,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; task đã đủ chi tiết để thực hiện trực tiếp.",
+        "updatedAt": "2026-06-17T11:02:02.999Z"
+      },
+      {
+        "id": "421",
+        "title": "Tái cấu trúc KnowledgeView dùng SegmentGrid",
+        "description": "Thay thế toàn bộ khối lưới phân đoạn F33 trong KnowledgeView bằng component SegmentGrid mới. Chuyển đổi knowledgeSegments thành SegmentGridItem[], giữ nguyên hành vi trích xuất/làm lại/hủy/preview thông qua slot.",
+        "details": "Sửa file entrypoints/sidepanel/views/KnowledgeView.vue: Bỏ block F33 từ dòng 422–548, thay bằng <SegmentGrid>. Tạo computed items ánh xạ từ knowledgeSegments: label = Trang s.startPage–s.endPage, meta = nối postCount, rawEntryCount, lastExtractedAt. status map: pending/pending, extracting/running, done/done, partial/partial. headerLabel = count đã trích xuất. header-actions chứa nút Trích xuất tất cả/Hủy. row-actions theo status. preview slot giữ nguyên nội dung cũ. Giữ các banner info/partial/stale bên ngoài. Chuyển expandedSegmentIndex và segmentGridExpanded sang props v-model.",
+        "testStrategy": "Kiểm thử thủ công KnowledgeView với nhiều segment: bấm trích xuất từng cái, thấy spinner chạy; bấm Trích xuất tất cả, progress bar tăng; hủy hoạt động; làm lại; preview hiển thị đúng; trạng thái done/partial hiển thị. Đảm bảo không có regression so với bản cũ.",
+        "priority": "high",
+        "dependencies": [
+          "420"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thay thế block F33 bằng component SegmentGrid trong KnowledgeView.vue",
+            "description": "Xóa code từ dòng 422-548 (block F33) và thay thế bằng component SegmentGrid với các prop cần thiết.",
+            "dependencies": [],
+            "details": "Trong file KnowledgeView.vue, tìm và xóa toàn bộ khối lưới phân đoạn F33 cũ. Thay thế bằng <SegmentGrid v-model:expandedIndex='expandedSegmentIndex' v-model:expanded='segmentGridExpanded' :items='segmentGridItems' :headerLabel='headerLabel'>. Import SegmentGrid.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra template render không lỗi, SegmentGrid hiển thị đúng với dữ liệu mẫu.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tạo computed items ánh xạ từ knowledgeSegments",
+            "description": "Tạo computed property segmentGridItems ánh xạ knowledgeSegments thành SegmentGridItem[].",
+            "dependencies": [
+              1
+            ],
+            "details": "Tính toán: label = 'Trang s.startPage–s.endPage', meta = nối postCount, rawEntryCount, lastExtractedAt. statusmap: pending->pending, extracting->running, done->done, partial->partial. headerLabel = số segment đã trích xuất (status done hoặc partial).",
+            "status": "pending",
+            "testStrategy": "Kiểm tra computed trả về đúng số lượng, label, meta, status. HeaderLabel đếm đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Triển khai header-actions: nút Trích xuất tất cả và Hủy",
+            "description": "Thêm vào slot header-actions của SegmentGrid các nút 'Trích xuất tất cả' và 'Hủy' với các handler tương ứng.",
+            "dependencies": [
+              2
+            ],
+            "details": "Trong template, bên trong <template #header-actions>, thêm nút 'Trích xuất tất cả' gọi handleExtractAll, nút 'Hủy' gọi handleCancelBatch. Đảm bảo các hàm tồn tại.",
+            "status": "pending",
+            "testStrategy": "Bấm nút Trích xuất tất cả gọi API, bấm Hủy gọi hủy batch. Kiểm tra không lỗi.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Triển khai row-actions theo status",
+            "description": "Trong slot row-actions, hiển thị nút tương ứng với status: pending->Trích xuất, extracting->spinner/hủy, done->Làm lại, partial->Trích xuất lại.",
+            "dependencies": [
+              3
+            ],
+            "details": "Sử dụng v-if/v-else để hiển thị nút. Các hành động gọi handleExtract(segment), handleReExtract, handleCancel. Import các hàm từ composable/store.",
+            "status": "pending",
+            "testStrategy": "Mỗi status hiển thị đúng nút, click gọi đúng handler. Extracting có spinner và nút hủy.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Gắn preview slot và các banner bên ngoài",
+            "description": "Giữ nguyên preview slot và các banner info/partial/stale bên ngoài SegmentGrid, triển khai v-model cho các expanded state.",
+            "dependencies": [
+              4
+            ],
+            "details": "Trong slot preview, giữ nội dung cũ (hiển thị raw entries). Bên ngoài SegmentGrid, giữ banner info, partial, stale. Sử dụng v-model:expandedIndex và v-model:expanded trên SegmentGrid.",
+            "status": "pending",
+            "testStrategy": "Mở rộng segment, thấy raw entries. Banner info/partial/stale hiển thị đúng.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 421,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; task thay thế trực tiếp markup bằng component mới, cần ánh xạ dữ liệu và slot.",
+        "updatedAt": "2026-06-17T11:02:21.910Z"
+      },
+      {
+        "id": "422",
+        "title": "Thêm trạng thái lỗi và running per-segment trong useSummarize",
+        "description": "Bổ sung hai ref mới: segmentErrors (Record<number, string>) và runningSegmentIndex (number | null) vào composable useSummarize. Xóa activeSegmentIndex khỏi composable và thay thế các tham chiếu nội bộ bằng runningSegmentIndex. Cập nhật catch, reset, và retry logic.",
+        "details": "Sửa entrypoints/sidepanel/composables/useSummarize.ts: Thêm const segmentErrors = ref<Record<number, string>>({}); const runningSegmentIndex = ref<number | null>(null). Trong handleSummarizeSegment: set runningSegmentIndex = segmentIndex đầu hàm, clear segmentErrors[segmentIndex]; catch trừ AbortError set segmentErrors[segmentIndex] = message; finally reset runningSegmentIndex. Trong handleAutoSummarizeAll: cập nhật segmentErrors cho các index thất bại. Trong loadTopicData: reset segmentErrors và runningSegmentIndex. Xóa activeSegmentIndex khỏi trả về, các hàm liên quan dùng runningSegmentIndex. Export segmentErrors và runningSegmentIndex.",
+        "testStrategy": "Viết unit test cho composable: mock summarize function, kiểm tra khi success: segmentErrors không có lỗi, runningSegmentIndex null; khi fail: segmentErrors có lỗi, runningSegmentIndex null; khi cancel: no error (AbortError ignored); kiểm tra reset khi loadTopicData.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thêm ref segmentErrors và runningSegmentIndex, xóa activeSegmentIndex",
+            "description": "Trong composable useSummarize, thêm const segmentErrors = ref<Record<number, string>>({}) và const runningSegmentIndex = ref<number | null>(null). Xóa hoàn toàn activeSegmentIndex (khai báo, tham chiếu nội bộ, và return).",
+            "dependencies": [],
+            "details": "Sửa tệp entrypoints/sidepanel/composables/useSummarize.ts: thêm hai ref mới, loại bỏ activeSegmentIndex và thay thế mọi tham chiếu bằng runningSegmentIndex.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật handleSummarizeSegment với quản lý running và lỗi",
+            "description": "Trong handleSummarizeSegment: gán runningSegmentIndex = segmentIndex đầu hàm, xóa segmentErrors[segmentIndex]; trong catch, nếu không phải AbortError thì gán segmentErrors[segmentIndex] = message; trong finally, đặt runningSegmentIndex = null.",
+            "dependencies": [
+              1
+            ],
+            "details": "Cập nhật logic try-catch-finally của handleSummarizeSegment để quản lý trạng thái running và lỗi per-segment.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật handleAutoSummarizeAll ghi nhận lỗi segmentErrors",
+            "description": "Trong handleAutoSummarizeAll, khi một segment thất bại (catch), cập nhật segmentErrors cho index tương ứng, đảm bảo không ghi lỗi AbortError.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Cập nhật vòng lặp trong handleAutoSummarizeAll để khi xảy ra lỗi (ngoại trừ AbortError), gán segmentErrors[segmentIndex] = error.message.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Cập nhật loadTopicData và các hàm reset khác",
+            "description": "Trong loadTopicData, reset segmentErrors về {} và runningSegmentIndex về null. Cập nhật các hàm khác (nếu có) từng dùng activeSegmentIndex để dùng runningSegmentIndex.",
+            "dependencies": [
+              1
+            ],
+            "details": "Đảm bảo loadTopicData và các hàm liên quan (ví dụ: cancel) reset đúng trạng thái lỗi và running.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Cập nhật export và viết unit test",
+            "description": "Export segmentErrors và runningSegmentIndex từ composable. Viết unit test kiểm tra: success không lỗi, fail có lỗi, cancel bỏ qua AbortError, reset khi loadTopicData.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Sửa return của composable để bao gồm hai ref mới. Thêm unit test với mock summarize function.",
+            "status": "pending",
+            "testStrategy": "Mock summarize function, kiểm tra các ref sau mỗi hành động: success → segmentErrors rỗng, runningSegmentIndex null; fail → segmentErrors có lỗi, runningSegmentIndex null; cancel → không thêm lỗi; loadTopicData → reset.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 422,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; task thay đổi trong một composable duy nhất.",
+        "updatedAt": "2026-06-17T11:02:41.104Z"
+      },
+      {
+        "id": "423",
+        "title": "Tái cấu trúc SummaryView dùng SegmentGrid và xóa Individual Segment View",
+        "description": "Thay thế toàn bộ tab/pill và individual segment view trong SummaryView bằng component SegmentGrid. Thêm mapping trạng thái bao gồm error. Xóa activeSegmentIndex và các thành phần liên quan. Giữ phần tóm tắt tổng quan và fast-path cho single segment.",
+        "details": "Sửa entrypoints/sidepanel/views/SummaryView.vue: Xóa block <!-- Segment tabs --> và <!-- Individual segment view -->. Khi segments.length > 1, thêm <SegmentGrid> với props: items computed từ segments kết hợp segmentSummaries, runningSegmentIndex, segmentErrors; headerLabel = số đã tóm tắt/tổng; header-actions: Tóm tắt tất cả/Hủy; row-actions: Tóm tắt/Thử lại/Làm lại/Hủy; expandable=false. Không cung cấp slot preview. Bỏ hoàn toàn activeSegmentIndex, vùng dưới lưới chỉ hiển thị overall summary. Single segment (length===1) giữ nguyên fast-path hiện tại.",
+        "testStrategy": "Kiểm thử thủ công: Với topic nhiều segment, lưới hiện ra, có thể tóm tắt từng cái hoặc tất cả; trạng thái error hiển thị, nút Thử lại hoạt động; không còn individual view; phần overall summary hiển thị. Single segment không có lưới. Chuyển topic không có lỗi cũ. Đảm bảo scroll/tương tác không bị lỗi.",
+        "priority": "high",
+        "dependencies": [
+          "420",
+          "422"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật computed items và mapping trạng thái SegmentGrid",
+            "description": "Cập nhật computed property `items` trong SummaryView.vue để tạo danh sách SegmentGridItem từ segments, segmentSummaries, runningSegmentIndex và segmentErrors. Mapping trạng thái bao gồm giá trị error.",
+            "dependencies": [
+              420,
+              422
+            ],
+            "details": "Trong SummaryView.vue, sửa computed `items` để trả về mảng objects có cấu trúc SegmentGridItem: { id, label, status (pending/running/done/partial/error dựa trên runningSegmentIndex và segmentErrors), progressPercent (nếu running), ... }. Đảm bảo tích hợp segmentErrors mới từ store.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Thay thế tab/pill và individual view bằng SegmentGrid, giữ overall summary và fast-path single segment",
+            "description": "Xóa các block <!-- Segment tabs --> và <!-- Individual segment view --> trong SummaryView.vue. Khi segments.length > 1, chèn component SegmentGrid với props từ items computed, headerLabel, header-actions, row-actions, expandable=false. Giữ phần overall summary bên dưới. Xóa hoàn toàn biến activeSegmentIndex và logic liên quan. Khi segments.length === 1, giữ nguyên fast-path hiện tại (nút tóm tắt trực tiếp).",
+            "dependencies": [
+              1,
+              420,
+              422
+            ],
+            "details": "Chỉnh sửa template SummaryView.vue: xóa toàn bộ tab/pill và individual view; thêm <SegmentGrid v-if=\"segments.length > 1\" ... /> với các slot header-actions (Tóm tắt tất cả/Hủy), row-actions (Tóm tắt/Thử lại/Làm lại/Hủy); không slot preview. Xóa ref activeSegmentIndex và mọi tham chiếu. Điều chỉnh vùng dưới lưới chỉ hiển thị overall summary. Đảm bảo fast-path cho single segment không bị ảnh hưởng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 423,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Chia thành: 1) Cập nhật items computed từ segments, runningSegmentIndex, segmentErrors; 2) Thay thế tab/pill bằng SegmentGrid, giữ overall summary; 3) Xóa individual view và activeSegmentIndex, giữ fast-path cho single segment.",
+        "updatedAt": "2026-06-17T11:02:59.882Z"
+      },
+      {
+        "id": "424",
+        "title": "Đảm bảo compile và lint pass",
+        "description": "Chạy npm run verify (compile + lint + test) và sửa tất cả lỗi phát sinh. Đảm bảo các file mới và sửa tuân thủ ESLint, design system token, và không có lỗi TypeScript.",
+        "details": "Thực hiện npm run verify, ghi nhận lỗi. Sửa từng lỗi: import không dùng, type không đúng, thiếu aria-label, hardcode màu, v.v. Đặc biệt kiểm tra các file: SegmentGrid.vue, KnowledgeView.vue, SummaryView.vue, useSummarize.ts. Đảm bảo không có lỗi ESLint cho static element interactions (có thể dùng disable comment nếu cần).",
+        "testStrategy": "Chạy npm run verify và kiểm tra trả về exit code 0.",
+        "priority": "high",
+        "dependencies": [
+          "421",
+          "423"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chạy npm run verify và thu thập danh sách lỗi",
+            "description": "Thực hiện lệnh npm run verify để kiểm tra compile, lint và test. Ghi lại tất cả lỗi xuất hiện, tập trung vào các file mục tiêu: SegmentGrid.vue, KnowledgeView.vue, SummaryView.vue, useSummarize.ts.",
+            "dependencies": [],
+            "details": "Chạy npm run verify trong terminal, lưu output vào file log để dễ theo dõi. Xác định số lượng lỗi và phân loại: TypeScript, ESLint, accessibility, design tokens.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Sửa các lỗi TypeScript",
+            "description": "Sửa các lỗi TypeScript được báo cáo, đặc biệt trong file useSummarize.ts. Đảm bảo type chính xác, không còn lỗi về type checking.",
+            "dependencies": [
+              1
+            ],
+            "details": "Xem xét từng lỗi TypeScript, sửa các kiểu không đúng, thêm hoặc sửa type annotation. Kiểm tra các import và đảm bảo type định nghĩa đúng.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run typecheck (nếu có) hoặc npm run build để kiểm tra không còn lỗi TypeScript.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Sửa lỗi ESLint cơ bản (unused imports, conventions)",
+            "description": "Sửa các lỗi ESLint như import không dùng, thiếu dấu chấm phẩy, quy tắc naming convention, v.v. trong các file Vue và TypeScript.",
+            "dependencies": [
+              1
+            ],
+            "details": "Chạy ESLint với --fix nếu có thể. Nếu không tự sửa, chỉnh sửa thủ công. Đảm bảo các rule cơ bản pass.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Sửa lỗi accessibility và design tokens (SegmentGrid.vue, KnowledgeView.vue, SummaryView.vue)",
+            "description": "Kiểm tra và sửa các lỗi về accessibility (thiếu aria-label) và design tokens (hardcode màu sắc, class không đúng) trong các file được chỉ định.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Sử dụng các local rules đã tạo (icon-button-needs-label, no-raw-form-control, label-token). Thêm aria-label cho các nút icon, thay thế hardcode màu bằng token, đảm bảo tuân thủ design system.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Chạy lại npm run verify và đảm bảo pass",
+            "description": "Sau khi sửa tất cả lỗi, chạy lại npm run verify để xác nhận compile, lint và test đều pass với exit code 0.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Thực hiện npm run verify, kiểm tra output không còn lỗi. Nếu còn, quay lại sửa tiếp. Đảm bảo tất cả file sạch lỗi.",
+            "status": "pending",
+            "testStrategy": "npm run verify && echo \"Success\" (exit code 0).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 424,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; task chạy lệnh verify và sửa lỗi.",
+        "updatedAt": "2026-06-17T11:03:19.140Z"
+      },
+      {
+        "id": "425",
+        "title": "Cập nhật tài liệu (AGENTS.md và architecture docs)",
+        "description": "Cập nhật AGENTS.md mục Common components thêm SegmentGrid. Cập nhật docs/architecture/*.md về summarization và sidepanel structure theo thay đổi của Phase 5.",
+        "details": "Sửa file AGENTS.md: thêm dòng mô tả SegmentGrid dưới phần Common components. Sửa docs/architecture/summarization.md và docs/architecture/sidepanel.md: ghi nhận loại bỏ individual view, thay tab bằng SegmentGrid, thêm state segmentErrors và runningSegmentIndex. Đảm bảo cập nhật ngày ở header file.",
+        "testStrategy": "Đọc lại tài liệu, kiểm tra tính chính xác và đầy đủ thông tin.",
+        "priority": "medium",
+        "dependencies": [
+          "424"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cập nhật AGENTS.md: thêm SegmentGrid vào Common components",
+            "description": "Thêm dòng mô tả component SegmentGrid vào mục Common components trong file AGENTS.md.",
+            "dependencies": [],
+            "details": "Mở file AGENTS.md, tìm phần 'Common components', thêm dòng mới: '- **SegmentGrid**: Hiển thị danh sách các đoạn với trạng thái, progress bar và các slot tương tác.'.",
+            "status": "pending",
+            "testStrategy": "Đọc lại tài liệu, kiểm tra dòng mới xuất hiện và hợp lý.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Cập nhật docs/architecture/summarization.md: loại bỏ individual view, thêm SegmentGrid và state",
+            "description": "Cập nhật file summarization.md ghi nhận loại bỏ individual view, thay tab bằng SegmentGrid, thêm state segmentErrors và runningSegmentIndex.",
+            "dependencies": [],
+            "details": "Mở file docs/architecture/summarization.md, sửa nội dung mô tả view: xóa tham chiếu đến individual view, thay bằng SegmentGrid; thêm state segmentErrors và runningSegmentIndex vào phần state management.",
+            "status": "pending",
+            "testStrategy": "Đọc lại tài liệu, đảm bảo không còn nhắc đến individual view và có đầy đủ thông tin mới.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Cập nhật docs/architecture/sidepanel.md: loại bỏ tab, thêm SegmentGrid và state",
+            "description": "Cập nhật file sidepanel.md ghi nhận loại bỏ tab, thay bằng SegmentGrid, thêm state segmentErrors và runningSegmentIndex.",
+            "dependencies": [],
+            "details": "Mở file docs/architecture/sidepanel.md, sửa nội dung: thay cấu trúc tab bằng SegmentGrid; thêm state segmentErrors và runningSegmentIndex vào mô tả state management.",
+            "status": "pending",
+            "testStrategy": "Đọc lại tài liệu, kiểm tra không còn tham chiếu đến tab cũ và có thông tin mới chính xác.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Cập nhật ngày tháng ở header các file đã sửa",
+            "description": "Đảm bảo header của AGENTS.md, summarization.md, sidepanel.md có ngày cập nhật mới.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Mở từng file (AGENTS.md, summarization.md, sidepanel.md) và cập nhật dòng 'Date:' trong header thành ngày hiện tại.",
+            "status": "pending",
+            "testStrategy": "Kiểm tra header của mỗi file có ngày sau ngày hôm nay hoặc ít nhất là mới hơn trước.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Rà soát tổng thể và xác nhận tài liệu hoàn chỉnh",
+            "description": "Đọc lại toàn bộ các tài liệu đã cập nhật, đảm bảo tính nhất quán và chính xác.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Mở từng file và kiểm tra: nội dung phản ánh đúng thay đổi Phase 5, không còn dư thừa, header có ngày đúng.",
+            "status": "pending",
+            "testStrategy": "So sánh với yêu cầu trong task, xác nhận không thiếu sót.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 425,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; task cập nhật tài liệu mô tả component và thay đổi kiến trúc.",
+        "updatedAt": "2026-06-17T11:03:38.312Z"
+      },
+      {
+        "id": "426",
+        "title": "Viết unit test cho SegmentGrid.vue",
+        "description": "Tạo bộ test cho component SegmentGrid kiểm tra render với các trạng thái khác nhau, slot, emit, và hành vi mở rộng.",
+        "details": "Dùng Vitest + Vue Test Utils. Test: render default và expanded; các icon trạng thái; slot header-actions, row-actions, preview; emit update:expanded, update:expandedIndex; progress bar đúng width; expandable false không cho phép click; class highlight khi row mở. Mock slot content nếu cần.",
+        "testStrategy": "Chạy npm run test:unit, đảm bảo tất cả test pass.",
+        "priority": "medium",
+        "dependencies": [
+          "420"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết lập môi trường test và render cơ bản",
+            "description": "Tạo file test SegmentGrid.spec.ts, import Vitest và Vue Test Utils, viết test cho render mặc định và expanded state.",
+            "dependencies": [],
+            "details": "Sử dụng mount từ Vue Test Utils. Test khi không có prop expanded thì component không hiển thị expanded content; test khi prop expanded là true thì nội dung mở rộng hiển thị.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm tra icon trạng thái",
+            "description": "Viết test cho các icon hiển thị theo SegmentStatus: pending, running, done, partial, error.",
+            "dependencies": [
+              1
+            ],
+            "details": "Mock dữ liệu items với từng trạng thái, sử dụng findComponent hoặc html để xác nhận icon tương ứng hiển thị (svg hoặc class).",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm tra slot content",
+            "description": "Viết test cho các slot header-actions, row-actions, preview: kiểm tra slot content được render đúng vị trí.",
+            "dependencies": [
+              1
+            ],
+            "details": "Sử dụng slots option khi mount, dùng find để xác minh text hoặc component trong slot. Mock nếu cần.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm tra emit sự kiện",
+            "description": "Viết test cho emit update:expanded và update:expandedIndex khi click vào row hoặc toggle expanded.",
+            "dependencies": [
+              1
+            ],
+            "details": "Trigger click trên row hoặc nút toggle, dùng wrapper.emitted() kiểm tra event được emit với giá trị đúng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm tra hành vi mở rộng và UI",
+            "description": "Viết test cho progress bar width, expandable false không cho click, class highlight khi row mở.",
+            "dependencies": [
+              1
+            ],
+            "details": "Set prop progressPercent, kiểm tra width style. Set expandable=false, click row không emit. Kiểm tra class active khi expanded item.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 426,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; test đã được mô tả cụ thể.",
+        "updatedAt": "2026-06-17T11:03:57.357Z"
+      },
+      {
+        "id": "427",
+        "title": "Viết unit test cho useSummarize composable",
+        "description": "Tạo bộ test kiểm tra logic segmentErrors và runningSegmentIndex, bao gồm trường hợp success, error, cancel, retry, và reset.",
+        "details": "Dùng Vitest. Mock hàm summarizeSummarizeSegment và handleAutoSummarizeAll. Test: gọi handleSummarizeSegment thành công → runningSegmentIndex null, errors empty; thất bại → errors có message, runningSegmentIndex null; cancel (AbortError) → errors không thêm; retry → clear errors; loadTopicData → reset cả errors lẫn runningSegmentIndex.",
+        "testStrategy": "Chạy npm run test:unit, đảm bảo tất cả test pass.",
+        "priority": "medium",
+        "dependencies": [
+          "422"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết lập môi trường test và mock dependencies",
+            "description": "Tạo file test useSummarize.spec.ts, cấu hình Vitest, mock các hàm summarizeSummarizeSegment và handleAutoSummarizeAll từ service.",
+            "dependencies": [],
+            "details": "Sử dụng vi.mock để mock module chứa các hàm. Đảm bảo môi trường test có thể chạy với Vitest.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Viết test cho trường hợp thành công (success)",
+            "description": "Test khi gọi handleSummarizeSegment thành công, kiểm tra runningSegmentIndex trở về null và segmentErrors là mảng rỗng.",
+            "dependencies": [
+              1
+            ],
+            "details": "Dùng vi.fn().mockResolvedValue để mock trả về thành công. Gọi handleSummarizeSegment, sau đó assert runningSegmentIndex.value === null và segmentErrors.value.length === 0.",
+            "status": "pending",
+            "testStrategy": "Chạy npm run test:unit để xác nhận test pass.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Viết test cho trường hợp thất bại (error)",
+            "description": "Test khi handleSummarizeSegment thất bại, kiểm tra runningSegmentIndex null và segmentErrors có chứa message lỗi.",
+            "dependencies": [
+              1
+            ],
+            "details": "Mock hàm trả về rejected với error message. Gọi handleSummarizeSegment và assert runningSegmentIndex null, segmentErrors có một phần tử với message tương ứng.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Viết test cho trường hợp hủy (cancel/AbortError)",
+            "description": "Test khi handleSummarizeSegment bị abort (AbortError), kiểm tra segmentErrors không thay đổi (không thêm lỗi mới).",
+            "dependencies": [
+              1
+            ],
+            "details": "Mock hàm reject với lỗi AbortError. Gọi handleSummarizeSegment, assert segmentErrors vẫn giữ nguyên trạng thái trước đó.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Viết test cho retry và reset",
+            "description": "Test retry: sau khi có lỗi, retry phải clear segmentErrors. Test reset: loadTopicData phải reset cả segmentErrors và runningSegmentIndex.",
+            "dependencies": [
+              1
+            ],
+            "details": "Cho retry: thêm lỗi vào segmentErrors, gọi retry, assert errors rỗng. Cho reset: set segmentErrors và runningSegmentIndex, gọi loadTopicData, assert cả hai được reset.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 427,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; test đã được mô tả cụ thể.",
+        "updatedAt": "2026-06-17T11:04:16.282Z"
+      },
+      {
+        "id": "428",
+        "title": "Kiểm thử hồi quy KnowledgeView",
+        "description": "Thực hiện kiểm thử thủ công toàn bộ chức năng KnowledgeView để đảm bảo không có regression sau khi dùng SegmentGrid.",
+        "details": "Tạo tài liệu kiểm thử (checklist) các kịch bản: hiển thị lưới với nhiều segment, trạng thái pending/extracting/done/partial, trích xuất từng segment, trích xuất tất cả, hủy batch, làm lại, preview raw entries, banner thông tin, chuyển topic. Ghi chú bất kỳ lỗi nào thấy được.",
+        "testStrategy": "Chạy extension trên trình duyệt, thực hiện từng bước trong checklist. So sánh hành vi với phiên bản cũ (nếu có) hoặc với mô tả trong PRD.",
+        "priority": "medium",
+        "dependencies": [
+          "421",
+          "424"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Xây dựng checklist kiểm thử KnowledgeView",
+            "description": "Tạo tài liệu test case chi tiết cho toàn bộ các tình huống cần kiểm thử hồi quy của KnowledgeView, bao gồm hiển thị lưới, trạng thái segment, thao tác trích xuất, preview, banner và chuyển topic.",
+            "dependencies": [],
+            "details": "Liệt kê các kịch bản: hiển thị lưới với nhiều segment, trạng thái pending/extracting/done/partial, trích xuất từng segment, trích xuất tất cả, hủy batch, làm lại, preview raw entries, banner thông tin, chuyển topic. Mỗi kịch bản mô tả bước kiểm tra cụ thể.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 1,
+            "title": "Xây dựng checklist kiểm thử KnowledgeView",
+            "description": "Tạo tài liệu test case chi tiết cho toàn bộ các tình huống cần kiểm thử hồi quy của KnowledgeView, bao gồm hiển thị lưới, trạng thái segment, thao tác trích xuất, preview, banner và chuyển topic.",
+            "dependencies": [],
+            "details": "Liệt kê các kịch bản: hiển thị lưới với nhiều segment, trạng thái pending/extracting/done/partial, trích xuất từng segment, trích xuất tất cả, hủy batch, làm lại, preview raw entries, banner thông tin, chuyển topic. Mỗi kịch bản mô tả bước kiểm tra cụ thể.",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 428,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; task kiểm thử thủ công theo checklist."
+      },
+      {
+        "id": "429",
+        "title": "Kiểm thử hồi quy SummaryView",
+        "description": "Kiểm thử thủ công SummaryView, đặc biệt là việc thay lưới pill bằng SegmentGrid, trạng thái error, và loại bỏ individual view.",
+        "details": "Tạo checklist: mở topic nhiều segment, lưới hiện ngay, có thể tóm tắt tất cả/cá nhân, progress bar chạy, error xuất hiện khi fake lỗi, nút Thử lại hoạt động, không còn individual view, overall summary hiển thị. Single segment vẫn có nút tóm tắt trực tiếp. Chuyển topic không bị lỗi cũ.",
+        "testStrategy": "Thực hiện trên trình duyệt, ghi nhận hành vi. Đặc biệt kiểm tra state segmentErrors và runningSegmentIndex không bị rò rỉ.",
+        "priority": "medium",
+        "dependencies": [
+          "423",
+          "424"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Thiết lập môi trường kiểm thử và tạo checklist chi tiết",
+            "description": "Chuẩn bị môi trường trình duyệt, thiết lập các topic có số segment khác nhau (nhiều segment, single segment) và viết checklist kiểm thử dựa trên yêu cầu",
+            "dependencies": [],
+            "details": "Mở topic với nhiều segment (≥2) và topic chỉ có 1 segment. Đảm bảo dữ liệu giả lập cho các trạng thái: pending, running, done, error. Tạo checklist chi tiết gồm các bước kiểm tra cụ thể",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Kiểm thử lưới SegmentGrid hiển thị và tương tác cơ bản",
+            "description": "Xác minh lưới hiển thị ngay khi mở topic nhiều segment, các icon trạng thái đúng, progress bar chạy, các nút hành động (Tóm tắt tất cả, Tóm tắt từng cái) hoạt động",
+            "dependencies": [
+              1
+            ],
+            "details": "Thực hiện các bước: mở topic nhiều segment → quan sát lưới xuất hiện, không có pill cũ; bấm Tóm tắt tất cả → progress bar chạy, các icon chuyển từ pending→running→done; bấm Tóm tắt từng segment → chỉ segment đó chạy; kiểm tra emit sự kiện expand nếu có (dù expandable=false, đảm bảo không có toggle)",
+            "status": "pending",
+            "testStrategy": "Ghi nhận hành vi trên trình duyệt, so sánh với yêu cầu thiết kế",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Kiểm thử trạng thái error và nút Thử lại",
+            "description": "Khi fake lỗi, xác nhận error xuất hiện đúng trên segment, nút Thử lại hoạt động, và không ảnh hưởng đến các segment khác",
+            "dependencies": [
+              2
+            ],
+            "details": "Fake lỗi bằng cách mô phỏng hoặc dùng mock backend: thực hiện tóm tắt → xuất hiện icon error; bấm Thử lại → segment chạy lại; kiểm tra segmentErrors state không bị rò rỉ sang topic khác",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công, ghi lại màn hình lỗi và hành vi Thử lại",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Kiểm thử việc loại bỏ Individual Segment View",
+            "description": "Đảm bảo không còn individual view (phần tab và xem cá nhân), chỉ có lưới và overall summary. Tương tác trên lưới không gây ra hiển thị individual segment",
+            "dependencies": [
+              2
+            ],
+            "details": "Sau khi tóm tắt, kiểm tra vùng dưới lưới chỉ hiển thị overall summary; không có nút 'Xem cá nhân' hay tab segment; click vào segment không mở ra view riêng; activeSegmentIndex không còn được dùng",
+            "status": "pending",
+            "testStrategy": "So sánh hành vi với thiết kế mới, chụp ảnh màn hình",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Kiểm thử overall summary, single segment và chuyển topic",
+            "description": "Xác nhận overall summary hiển thị đúng sau khi tóm tắt; single segment vẫn có nút tóm tắt trực tiếp; chuyển topic không bị lỗi cũ (state không bị rò rỉ)",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Thực hiện: tóm tắt tất cả → overall summary hiển thị nội dung tổng hợp; mở topic chỉ 1 segment → thấy nút tóm tắt trực tiếp (không có lưới); chuyển topic khác → không thấy lỗi hay state cũ còn sót",
+            "status": "pending",
+            "testStrategy": "Kiểm tra thủ công sau khi đã hoàn thành các bước trên",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Self-review",
+            "description": "Chạy template/self_review_checklist.md, fix mọi issue, rồi set-status task --status=review",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 429,
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Không cần mở rộng; task kiểm thử thủ công theo checklist."
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-17T07:14:43.506Z",
-      "taskCount": 62,
-      "completedCount": 62,
+      "lastModified": "2026-06-17T11:04:16.286Z",
+      "taskCount": 72,
+      "completedCount": 70,
       "tags": [
         "master"
       ]

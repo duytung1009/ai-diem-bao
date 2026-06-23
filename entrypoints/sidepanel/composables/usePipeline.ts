@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import { buildSummarizePipeline as buildSummaryPipelineSteps, buildDynamicScrapePipeline as buildDynamicScrapeSteps, markStepRunning, markStepDone, markNextStepRunning, markFirstStepRunning } from '@/lib/pipeline-builder';
+import { buildSummarizePipeline as buildSummaryPipelineSteps, buildDynamicScrapePipeline as buildDynamicScrapeSteps, markStepRunning, markStepDone, markStepError, markNextStepRunning, markFirstStepRunning } from '@/lib/pipeline-builder';
 import type { PipelineDefinition, PipelineStep } from '@/lib/types';
 
 export function usePipeline() {
@@ -58,6 +58,10 @@ export function usePipeline() {
     if (pipeline.value) markStepDone(pipeline.value, id);
   }
 
+  function markError(id: string, errorMsg?: string): void {
+    if (pipeline.value) markStepError(pipeline.value, id, errorMsg);
+  }
+
   function markNextRunning(stepId: string): PipelineDefinition | null {
     if (!pipeline.value) return null;
     pipeline.value = markNextStepRunning(pipeline.value, stepId);
@@ -72,6 +76,7 @@ export function usePipeline() {
     markFirstRunning,
     markRunning,
     markDone,
+    markError,
     markNextRunning,
   };
 }

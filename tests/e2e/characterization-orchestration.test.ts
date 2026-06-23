@@ -442,6 +442,107 @@ describe('Characterization: Composable orchestration (Flows 4-5)', () => {
       expect(h.summarize.mock.calls.length).toBeGreaterThanOrEqual(1);
     });
 
+    it('CHAR-11b: 1 segment fails → flagged in segmentErrors, batch continues (mirror KnowledgeView)', async () => {
+      await setupComposable({ totalPages: 25, totalPosts: 5000 });
+
+      const PER_PAGE = 200;
+
+      composable.currentConfig.value = {
+        ...composable.currentConfig.value!,
+        contextWindow: 16384,
+        maxTokens: 2000,
+      };
+
+      for (let p = 1; p <= 25; p++) {
+        h.scrapePageRange.mockResolvedValueOnce(
+          makeScrapeResult(postFactory.custom({ count: PER_PAGE, contentLength: 'long', startPostNumber: (p - 1) * PER_PAGE + 1 })),
+        );
+      }
+
+      // First segment's LLM call fails (MALFORMED_RESPONSE); the rest succeed.
+      let segCall = 0;
+      h.summarize.mockImplementation(() => {
+        const isFirst = segCall++ === 0;
+        return {
+          taskId: 'auto-task-' + Math.random(),
+          result: isFirst
+            ? Promise.reject(new Error('Tóm tắt không hoàn chỉnh (MALFORMED_RESPONSE).'))
+            : Promise.resolve(makeLLMResult(mockSummaryResponses.segment1)),
+        };
+      });
+
+      h.summarizeSegments.mockImplementation(() => ({
+        taskId: 'overall-' + Math.random(),
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      }));
+
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll();
+
+      // The failing segment is flagged per-row (warning), not surfaced as a global error.
+      expect(Object.keys(composable.segmentErrors.value).length).toBeGreaterThanOrEqual(1);
+      expect(composable.segmentErrors.value[0]).toContain('MALFORMED_RESPONSE');
+      expect(composable.error.value).toBe('');
+
+      // The batch did NOT stop at the first failure — later segments were still summarized.
+      expect(h.summarize.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      // Overall summary still generated from the segments that succeeded.
+      expect(h.summarizeSegments.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('CHAR-11c: fixed mode — 1 segment fails, batch processes all segments + overall', async () => {
+      await setupComposable({ totalPages: 3, totalPosts: 60 });
+
+      // Fixed mode, 1 page per segment → 3 fixed segments.
+      composable.currentConfig.value = {
+        ...composable.currentConfig.value!,
+        dynamicSegments: false,
+      };
+      composable.segmentSize.value = 1;
+
+      // One scrape per segment (scrapeRange → scrapePageRange).
+      for (let p = 1; p <= 3; p++) {
+        h.scrapePageRange.mockResolvedValueOnce(
+          makeScrapeResult(postFactory.custom({ count: 20, contentLength: 'short', startPostNumber: (p - 1) * 20 + 1 })),
+        );
+      }
+
+      // First segment's LLM call fails; segments 2 & 3 succeed.
+      let segCall = 0;
+      h.summarize.mockImplementation(() => {
+        const isFirst = segCall++ === 0;
+        return {
+          taskId: 'fixed-task-' + Math.random(),
+          result: isFirst
+            ? Promise.reject(new Error('Tóm tắt không hoàn chỉnh (MALFORMED_RESPONSE).'))
+            : Promise.resolve(makeLLMResult(mockSummaryResponses.segment1)),
+        };
+      });
+
+      h.summarizeSegments.mockImplementation(() => ({
+        taskId: 'overall-' + Math.random(),
+        result: Promise.resolve(makeLLMSegmentResult(mockSummaryResponses.singleSegment)),
+      }));
+
+      h.getTaskState.mockReturnValue(undefined);
+
+      await composable.handleAutoSummarizeAll();
+
+      // Failing segment flagged per-row, no global banner.
+      expect(composable.segmentErrors.value[0]).toContain('MALFORMED_RESPONSE');
+      expect(composable.error.value).toBe('');
+
+      // All 3 segments attempted — proves the nested-guard no longer bails after segment 0.
+      expect(h.summarize.mock.calls.length).toBe(3);
+
+      // 2 segments completed → overall summary still generated.
+      const completed = composable.segmentSummaries.value.filter(s => Boolean(s?.summary)).length;
+      expect(completed).toBe(2);
+      expect(h.summarizeSegments.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+
     it('CHAR-12: forceRegenerate clears existing state and starts fresh', async () => {
       await setupComposable({ totalPages: 2, totalPosts: 40 });
 

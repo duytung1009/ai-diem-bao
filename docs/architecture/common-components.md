@@ -1,6 +1,6 @@
 # Common Components
 
-> Cập nhật: 2026-05-25
+> Cập nhật: 2026-06-17
 
 ## Tổng quan
 
@@ -23,6 +23,30 @@ Inline confirmation dialog — thay thế cho pattern inline confirm ở Summary
 
 **Emits:** `confirm`, `cancel`
 **Style:** block layout, dùng design tokens `btn`, `card`. Không phải modal overlay.
+
+### `SegmentGrid.vue`
+
+Generic per-segment list dùng chung bởi **SummaryView** (tóm tắt) và **KnowledgeView** (trích xuất F33). Component thuần trình bày — không biết domain.
+
+**Props:** `items: SegmentGridItem[]` (`{ index, label, meta?, status }`), `headerLabel` (text đếm, view tự build), `progressPercent`, `expanded` (v-model), `expandedIndex` (v-model:expandedIndex, cho preview), `expandable` (mặc định true; SummaryView truyền `false`).
+
+**Status icon** (centralize): `pending` ○ · `running` spinner · `done` ✓ (success) · `partial` ⚠️ · `error` ⚠ (error color).
+
+**Slots:** `#header-actions` (nút batch — "Tóm tắt tất cả"/"Trích xuất tất cả"/Hủy), `#row-actions="{ item }"` (nút per-row; dùng `@click.stop` để không trigger expand), `#preview="{ item }"` (panel mở rộng; KnowledgeView hiện raw entries, SummaryView không dùng).
+
+**Emits:** `update:expanded`, `update:expandedIndex`.
+
+Status được suy ra bằng helper thuần `lib/segment-grid-status.ts` (`deriveSummarySegmentStatus` cho tóm tắt — precedence running > error > done > partial > pending; `mapKnowledgeSegmentStatus` cho trích xuất — `extracting`→`running`).
+
+```
+┌─────────────────────────────────────────────┐
+│ 3 / 8 đoạn đã tóm tắt   [Tóm tắt tất cả] [⌄] │
+│ ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░          │
+│ ✓ Trang 1–5  · 30 bài              Tóm tắt lại│
+│ ⚠ Trang 6–10 · 28 bài                  Thử lại│
+│ ○ Trang 11–15· 31 bài                  Tóm tắt│
+└─────────────────────────────────────────────┘
+```
 
 ### `AccordionItem.vue`
 

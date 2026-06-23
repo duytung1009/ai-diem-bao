@@ -7,6 +7,7 @@ import { sendMessage } from '@/lib/messaging';
 import { hasOriginPermission, requestOriginPermission } from '@/lib/permissions';
 import { useTopicStore } from './composables/useTopicStore';
 import { useTheme } from './composables/useTheme';
+import { useAlertSettings } from './composables/useAlertSettings';
 import TopicMeta from './components/TopicMeta.vue';
 import PillTabs from './components/PillTabs.vue';
 import { PermissionRequiredError } from '@/lib/scrapers/page-loader';
@@ -15,6 +16,7 @@ const route = useRoute();
 const router = useRouter();
 const store = useTopicStore();
 const { loadTheme } = useTheme();
+const { loadSettings: loadAlertSettings } = useAlertSettings();
 
 const pendingDetectOrigin = ref('');
 let tabActivatedListener: ((activeInfo: { tabId: number }) => void) | null = null;
@@ -22,6 +24,7 @@ let tabUpdatedListener: ((tabId: number, changeInfo: { status?: string; url?: st
 
 onMounted(async () => {
   await loadTheme();
+  await loadAlertSettings();
   await detectActiveTabTopic();
 
   tabActivatedListener = async (_activeInfo) => {

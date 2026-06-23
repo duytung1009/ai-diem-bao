@@ -65,10 +65,17 @@ describe('scoreThreads', () => {
     expect(result[0].scores.replyScore).toBe(300);
   });
 
-  it('tính đúng viewScore: viewCount * 0.1', () => {
+  it('tính đúng viewScore: log-scale view × 30', () => {
     const threads = [makeThread({ viewCount: 5000, lastPostTime: '2026-06-03T11:00:00Z' })];
     const result = scoreThreads(threads, baseTime);
-    expect(result[0].scores.viewScore).toBe(500);
+    expect(result[0].scores.viewScore).toBeCloseTo(Math.log(5001) * 30, 5);
+  });
+
+  it('viewScore không áp đảo replyScore dù view rất lớn', () => {
+    const threads = [makeThread({ viewCount: 100000, replyCount: 200, lastPostTime: '2026-06-03T11:00:00Z' })];
+    const result = scoreThreads(threads, baseTime);
+    // replyScore (200×3=600) phải lớn hơn viewScore log (ln(100001)×30 ≈ 345)
+    expect(result[0].scores.replyScore).toBeGreaterThan(result[0].scores.viewScore);
   });
 
   it('tính đúng pageScore: (pageCount - 1) * 10', () => {
@@ -83,17 +90,17 @@ describe('scoreThreads', () => {
     expect(result[0].scores.pageScore).toBe(0);
   });
 
-  it('recencyBonus giảm theo thời gian: 0h = 50, 12h = 0', () => {
+  it('recencyBonus giảm theo thời gian: 0h = 80, 12h = 0', () => {
     const fresh = makeThread({ lastPostTime: '2026-06-03T12:00:00Z' });
     const old = makeThread({ lastPostTime: '2026-06-03T00:00:00Z' });
     const result = scoreThreads([fresh, old], baseTime);
-    expect(result.find((s) => s.thread === fresh)?.scores.recencyBonus).toBe(50);
+    expect(result.find((s) => s.thread === fresh)?.scores.recencyBonus).toBe(80);
     expect(result.find((s) => s.thread === old)?.scores.recencyBonus).toBe(0);
   });
 
   it('heat: fire >= 1000, hot >= 300, normal < 300', () => {
-    const fireThread = makeThread({ replyCount: 340, lastPostTime: '2026-06-03T12:00:00Z' });  // 340*3+50=1070 >= 1000
-    const hotThread = makeThread({ replyCount: 100, lastPostTime: '2026-06-03T12:00:00Z' });   // 100*3+50=350 >= 300
+    const fireThread = makeThread({ replyCount: 340, lastPostTime: '2026-06-03T12:00:00Z' });  // 340*3+80=1100 >= 1000
+    const hotThread = makeThread({ replyCount: 100, lastPostTime: '2026-06-03T12:00:00Z' });   // 100*3+80=380 >= 300
     const normalThread = makeThread({ replyCount: 10, lastPostTime: '2026-06-03T00:00:00Z' }); // 10*3+0=30 < 300
     const result = scoreThreads([fireThread, hotThread, normalThread], baseTime);
     expect(result.find((s) => s.thread === fireThread)?.heat).toBe('fire');

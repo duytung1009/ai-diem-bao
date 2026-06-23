@@ -50,7 +50,10 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   const cacheFreshness = ref<CacheFreshness | null>(null);
   const segmentSize = ref(20);
   const segmentSummaries = ref<TopicSegment[]>([]);
-  const activeSegmentIndex = ref<number | null>(null);
+  // Index of the segment currently being summarized (drives the per-row spinner).
+  const runningSegmentIndex = ref<number | null>(null);
+  // Per-segment summarize errors (in-memory only — not persisted to cache).
+  const segmentErrors = ref<Record<number, string>>({});
   const loadedTopicUrl = ref<string | null>(null);
   const dynamicSegmentBoundaries = ref<{ start: number; end: number; label: string }[]>([]);
   const pendingPermissionOrigin = ref('');
@@ -240,7 +243,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     scraper.scrapingInfo.value = [];
     cacheFreshness.value = null;
     segmentSummaries.value = [];
-    activeSegmentIndex.value = null;
+    runningSegmentIndex.value = null;
+    segmentErrors.value = {};
     dynamicSegmentBoundaries.value = [];
 
     loadedTopicUrl.value = topic.url;
@@ -375,11 +379,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   }
 
   function handleRetry() {
-    if (activeSegmentIndex.value !== null) {
-      handleSummarizeSegment(activeSegmentIndex.value);
-    } else {
-      handleSummarizeSegment(0);
-    }
+    const idx = runningSegmentIndex.value ?? nextPendingSegmentIndex.value ?? 0;
+    handleSummarizeSegment(idx);
   }
 
   // --- Primitive: LLM call + persist for one segment ---
@@ -439,7 +440,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
     const updatedDense = updated as TopicSegment[];
     segmentSummaries.value = updatedDense;
-    activeSegmentIndex.value = segmentIndex;
 
     const isSingleSegment = segments.value.length === 1;
     const savePayload = buildSegmentSavePayload({
@@ -467,7 +467,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (isSingleSegment) {
       summary.value = newSeg.summary;
       summaryJson.value = newSeg.summaryJson ?? null;
-      activeSegmentIndex.value = null;
       cacheFreshness.value = 'fresh';
       pl.markDone('overall');
     }
@@ -486,7 +485,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const seg = completedSegments[0];
       summary.value = seg.summary;
       summaryJson.value = seg.summaryJson ?? null;
-      activeSegmentIndex.value = null;
       store.updateSelectedTopic({
         summary: seg.summary,
         summaryJson: seg.summaryJson ?? undefined,
@@ -531,7 +529,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
       summary.value = overallSummaryText;
       summaryJson.value = overallSummaryJson;
-      activeSegmentIndex.value = null;
 
       const totalSummarized = segmentSummaries.value.reduce((s, seg) => s + (seg?.postCount ?? 0), 0);
       await sendMessage('SAVE_CACHED_TOPIC', {
@@ -561,7 +558,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     }
   }
 
-  async function handleSummarizeSegment(segmentIndex: number) {
+  /**
+   * Summarize a single fixed-mode segment (scrape → LLM → save).
+   *
+   * When called standalone (per-row "Tóm tắt"/"Thử lại"), it owns its own stale
+   * guard + `store.setSummarizing` lifecycle and surfaces failures via global
+   * `error.value`. When called from a batch loop (`batch.token` provided), it
+   * reuses the caller's guard token (so the caller's loop isn't invalidated by a
+   * nested `summarizeGuard.begin()`), leaves the `setSummarizing` lifecycle to the
+   * caller, and on failure flags only `segmentErrors[segmentIndex]` + the pipeline
+   * step — without setting global `error.value` — so the batch keeps going.
+   */
+  async function handleSummarizeSegment(segmentIndex: number, batch?: { token: number }) {
     const seg = segments.value[segmentIndex];
     if (!seg || !topicInfo.value) return;
     const topic = store.selectedTopic.value!;
@@ -570,11 +578,18 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     if (!configCheck.ok) { error.value = configCheck.error!; return; }
 
     error.value = '';
+    // Clear any prior error for this segment (e.g. user pressed "Thử lại").
+    if (segmentErrors.value[segmentIndex] !== undefined) {
+      const { [segmentIndex]: _cleared, ...rest } = segmentErrors.value;
+      segmentErrors.value = rest;
+    }
     scraper.scrapingWarnings.value = [];
     scraper.scrapingInfo.value = [];
     // Reset pipeline if it's from a previous complete run (all steps resolved).
     // Otherwise the "Tóm tắt lại" button reuses stale "done" states.
-    if (pl.pipeline.value && pl.pipeline.value.steps.every(s => s.status !== 'running')) {
+    // Skip in batch mode: the caller built the multi-segment pipeline once and
+    // resetting it mid-loop would wipe earlier segments' progress.
+    if (!batch && pl.pipeline.value && pl.pipeline.value.steps.every(s => s.status !== 'running')) {
       pl.pipeline.value = null;
     }
     // Build pipeline if not already set by parent (e.g. handleAutoSummarizeAll or handleSegmentUpdate loops)
@@ -592,8 +607,9 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       const step = pl.pipeline.value.steps.find(s => s.id === scrapeStepId);
       if (step) step.etaMs = segPages * (currentConfig.value?.scrapeDelayMs ?? 2000);
     }
-    const thisId = summarizeGuard.begin();
-    store.setSummarizing(topic.url);
+    const thisId = batch ? batch.token : summarizeGuard.begin();
+    if (!batch) store.setSummarizing(topic.url);
+    runningSegmentIndex.value = segmentIndex;
 
     try {
       const existing = segmentSummaries.value[segmentIndex];
@@ -673,10 +689,20 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       scraper.scrapeProgress.value = null;
       if (summarizeGuard.isStale(thisId)) return;
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      error.value = err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
+      // Mark this segment as failed so the grid shows an error status + "Thử lại".
+      segmentErrors.value = { ...segmentErrors.value, [segmentIndex]: message };
+      if (batch) {
+        // Batch: flag the in-progress step and keep going — no global error banner.
+        const running = pl.pipeline.value?.steps.find(s => s.status === 'running');
+        if (running) pl.markError(running.id, message);
+      } else {
+        error.value = message;
+      }
     } finally {
-      store.setSummarizing(null);
+      if (!batch) store.setSummarizing(null);
       if (!summarizeGuard.isStale(thisId)) {
+        runningSegmentIndex.value = null;
         simpleLoadingText.value = '';
         llmTaskId.value = null;
       }
@@ -867,10 +893,12 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       try {
         for (let i = 0; i < segments.value.length; i++) {
           if (summarizeGuard.isStale(thisId)) return;
-          await handleSummarizeSegment(i);
-          if (error.value) return;
+          runningSegmentIndex.value = i;
+          // Pass the batch guard token so a per-segment failure is flagged in
+          // segmentErrors (not a global abort) and the loop continues to the next.
+          await handleSummarizeSegment(i, { token: thisId });
         }
-        if (!summarizeGuard.isStale(thisId) && !error.value) {
+        if (!summarizeGuard.isStale(thisId)) {
           const completed = segmentSummaries.value.filter(isCompletedSegment).length;
           if (completed >= 1) {
             simpleLoadingText.value = 'Đang tạo tóm tắt tổng quan...';
@@ -1042,7 +1070,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
         // Summarize new/changed segments; skip if boundary matches existing completed segment
         for (let j = 0; j < newBoundaries.length; j++) {
-          if (summarizeGuard.isStale(thisId) || error.value) return;
+          if (summarizeGuard.isStale(thisId)) return;
 
           const segIdx = firstNewSegIdx + j;
           const segId = allBoundaries.length <= 1 ? 'summarize' : `summarize_${segIdx}`;
@@ -1084,13 +1112,22 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
           }
 
           pl.markRunning(segId);
+          runningSegmentIndex.value = segIdx;
 
           console.log(`[runSummarizeJob] Incremental segment ${segIdx}: boundary=${boundary.start}-${boundary.end}, segPosts=${segPosts.length}`);
 
-          await summarizeAndSaveSegment(segIdx, boundary.start, boundary.end, segPosts, false, thisId);
-          if (error.value || summarizeGuard.isStale(thisId)) return;
-
-          pl.markDone(segId);
+          try {
+            await summarizeAndSaveSegment(segIdx, boundary.start, boundary.end, segPosts, false, thisId);
+            if (summarizeGuard.isStale(thisId)) return;
+            pl.markDone(segId);
+          } catch (err) {
+            if (summarizeGuard.isStale(thisId)) return;
+            if (err instanceof DOMException && err.name === 'AbortError') return;
+            // Per-segment failure: flag this segment and keep going (mirror KnowledgeView extract-all).
+            const msg = err instanceof Error ? err.message : String(err);
+            segmentErrors.value = { ...segmentErrors.value, [segIdx]: msg };
+            pl.markError(segId, msg);
+          }
         }
 
         // Phase 6: Overall summary (incremental)
@@ -1142,7 +1179,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
 
         // Phase 5: Summarize each segment (skip if boundary unchanged and already summarized)
         for (let i = 0; i < boundaries.length; i++) {
-          if (summarizeGuard.isStale(thisId) || error.value) return;
+          if (summarizeGuard.isStale(thisId)) return;
 
           const segId = boundaries.length <= 1 ? 'summarize' : `summarize_${i}`;
           pl.markRunning(segId);
@@ -1167,10 +1204,19 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
             continue;
           }
 
-          await summarizeAndSaveSegment(i, boundary.start, boundary.end, segPosts, false, thisId);
-          if (error.value || summarizeGuard.isStale(thisId)) return;
-
-          pl.markDone(segId);
+          runningSegmentIndex.value = i;
+          try {
+            await summarizeAndSaveSegment(i, boundary.start, boundary.end, segPosts, false, thisId);
+            if (summarizeGuard.isStale(thisId)) return;
+            pl.markDone(segId);
+          } catch (err) {
+            if (summarizeGuard.isStale(thisId)) return;
+            if (err instanceof DOMException && err.name === 'AbortError') return;
+            // Per-segment failure: flag this segment and keep going (mirror KnowledgeView extract-all).
+            const msg = err instanceof Error ? err.message : String(err);
+            segmentErrors.value = { ...segmentErrors.value, [i]: msg };
+            pl.markError(segId, msg);
+          }
         }
 
         // Phase 6: Overall summary (fresh)
@@ -1198,6 +1244,7 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     } finally {
       store.setSummarizing(null);
       if (!summarizeGuard.isStale(thisId)) {
+        runningSegmentIndex.value = null;
         simpleLoadingText.value = '';
         llmTaskId.value = null;
         scraper.isScraping.value = false;
@@ -1243,23 +1290,40 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       return;
     }
 
-    // Fixed mode: build pipeline once, then summarize pending segments
+    // Fixed mode: build pipeline once, then summarize pending segments.
+    // Own a single batch guard so per-segment failures flag segmentErrors and the
+    // loop continues (mirror dynamic mode) instead of bailing after one segment.
     pl.buildSummarizePipeline(segments.value.map(s => ({ start: s.start, end: s.end })));
     pl.markFirstRunning();
-    for (const idx of segmentsToProcess) {
-      await handleSummarizeSegment(idx);
-      if (error.value) return;
-    }
+    const thisId = summarizeGuard.begin();
+    const topicUrl = store.selectedTopic.value?.url;
+    if (topicUrl) store.setSummarizing(topicUrl);
+    try {
+      for (const idx of segmentsToProcess) {
+        if (summarizeGuard.isStale(thisId)) return;
+        runningSegmentIndex.value = idx;
+        await handleSummarizeSegment(idx, { token: thisId });
+      }
 
-    const completedCount = segmentSummaries.value.filter(isCompletedSegment).length;
-    if (completedCount >= 1) {
-      await generateOverallSummary();
+      if (!summarizeGuard.isStale(thisId)) {
+        const completedCount = segmentSummaries.value.filter(isCompletedSegment).length;
+        if (completedCount >= 1) {
+          await generateOverallSummary(thisId);
+        }
+      }
+    } finally {
+      store.setSummarizing(null);
+      if (!summarizeGuard.isStale(thisId)) {
+        runningSegmentIndex.value = null;
+        simpleLoadingText.value = '';
+        llmTaskId.value = null;
+      }
     }
   }
 
   /**
    * Summarize a single segment's posts and persist to cache.
-   * Used internally by autoSummarizeDynamic.
+   * Used internally by runSummarizeJob's dynamic-mode segment loops.
    * Updates dynamicSegmentBoundaries reactively as segments are created.
    */
   async function summarizeAndSaveSegment(
@@ -1380,7 +1444,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
       storeUpdate.summaryJson = savePayload.summaryJson;
     }
     store.updateSelectedTopic(storeUpdate);
-    activeSegmentIndex.value = segmentIndex;
 
     simpleLoadingText.value = '';
   }
@@ -1579,75 +1642,6 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
   }
 
   /**
-   * Scrape topic page by page, split into segments when token budget is exceeded,
-   * and summarize each segment immediately.
-   * Decision: scrape 1 page at a time for accurate per-post token boundary detection.
-   * Total time is identical to batching since per-page delay dominates.
-   * Optional `resume` allows continuing a previous partial run without re-scraping.
-   */
-  async function autoSummarizeDynamic(
-    topicUrl: string,
-    totalPages: number,
-    budgetTokens: number,
-    thisId: number,
-    resume?: DynamicResumeState,
-  ): Promise<void> {
-    let segmentIndex = resume?.segmentIndex ?? 0;
-    let pendingPosts: ScrapedPost[] = resume?.pendingPosts ? [...resume.pendingPosts] : [];
-    let pendingTokens = resume?.pendingTokens ?? 0;
-    let pendingStartPage = resume?.pendingStartPage ?? 1;
-    const startPage = resume?.fromPage ?? 1;
-
-    // Scrape all remaining pages in one phase
-    const newPosts = await scrapeAllPages(topicUrl, totalPages, startPage, thisId);
-    if (!newPosts || summarizeGuard.isStale(thisId)) return;
-
-    // Combine resume pending posts with newly scraped posts, then re-apply boundary logic
-    // on the complete post set (deterministic — same boundaries as online algorithm).
-    const allPosts = [...pendingPosts, ...newPosts];
-
-    // Group by page to mirror the original per-page boundary algorithm
-    const pageMap = new Map<number, ScrapedPost[]>();
-    for (const post of allPosts) {
-      const pg = post.page ?? 1;
-      if (!pageMap.has(pg)) pageMap.set(pg, []);
-      pageMap.get(pg)!.push(post);
-    }
-    const pageNumbers = [...pageMap.keys()].sort((a, b) => a - b);
-    if (pageNumbers.length === 0) return;
-
-    pendingPosts = [];
-    pendingTokens = 0;
-    pendingStartPage = pageNumbers[0];
-
-    for (const page of pageNumbers) {
-      const pagePosts = pageMap.get(page)!;
-      const pageTokens = pagePosts.reduce(
-        (sum, p) => sum + estimateTokens(`[${p.author}] (#${p.postNumber}):\n${p.content}`),
-        0,
-      );
-
-      if (pendingTokens + pageTokens > budgetTokens && pendingPosts.length > 0) {
-        await summarizeAndSaveSegment(segmentIndex, pendingStartPage, page - 1, pendingPosts, false, thisId);
-        if (error.value || summarizeGuard.isStale(thisId)) return;
-
-        segmentIndex++;
-        pendingPosts = [];
-        pendingTokens = 0;
-        pendingStartPage = page;
-      }
-
-      pendingPosts.push(...pagePosts);
-      pendingTokens += pageTokens;
-    }
-
-    // Summarize remaining posts (last segment — all pages covered, always complete)
-    if (pendingPosts.length > 0 && !summarizeGuard.isStale(thisId)) {
-      await summarizeAndSaveSegment(segmentIndex, pendingStartPage, totalPages, pendingPosts, false, thisId);
-    }
-  }
-
-  /**
    * "Tóm tắt toàn bộ" — scrape + summarize all segments sequentially then generate overall summary.
    * In dynamic mode: scrapes page by page, splits on token budget, summarizes each chunk.
    * In fixed mode: summarizes all existing fixed segments sequentially.
@@ -1750,7 +1744,8 @@ export function useSummarize(store: ReturnType<typeof useTopicStore>) {
     pipeline: pl.pipeline,
     segmentSize,
     segmentSummaries,
-    activeSegmentIndex,
+    runningSegmentIndex,
+    segmentErrors,
     loadedTopicUrl,
     dynamicSegmentBoundaries,
     // computed

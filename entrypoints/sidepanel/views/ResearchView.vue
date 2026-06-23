@@ -193,8 +193,7 @@ function formatDate(ts: number): string {
       <template v-if="allPosts.length">
         <!-- Question input -->
         <div class="space-y-2">
-          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- will be fixed in task 407 -->
-          <textarea v-model="question" rows="3" class="input resize-none" placeholder="Đặt câu hỏi về nội dung thớt..." :disabled="isLoading"
+          <textarea v-model="question" rows="3" class="input resize-none" placeholder="Đặt câu hỏi về nội dung thớt..." aria-label="Câu hỏi về nội dung thớt" :disabled="isLoading"
             @keydown.ctrl.enter="handleResearch" />
           <button class="btn-llm" :disabled="isLoading || !question.trim()" @click="handleResearch">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

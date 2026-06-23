@@ -15,11 +15,13 @@ const level = computed<'suspicious' | 'watch' | 'voz_restricted' | 'otofun_restr
   return null;
 });
 
+// Token-based variants (reuse design-system badge utilities) instead of
+// hardcoded Tailwind palette classes — keeps light/dark theming in main.css.
 const badgeClass = computed(() => {
   if (level.value === 'suspicious' || level.value === 'voz_restricted' || level.value === 'otofun_restricted') {
-    return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-300 dark:border-orange-700';
+    return 'badge-warning';
   }
-  return 'bg-gray-100 text-gray-500 dark:bg-gray-700/50 dark:text-gray-400 border border-gray-300 dark:border-gray-600';
+  return 'badge-neutral';
 });
 
 const badgeLabel = computed(() => {

@@ -59,7 +59,7 @@ All cross-context communication goes through typed messages in `lib/messaging.ts
 - **`useThreadAnalysis`** (`composables/useThreadAnalysis.ts`): lightweight composable managing thread analysis state — reads `summaryJson` from store, calls `threadAnalysisTask`, persists result via `SAVE_CACHED_TOPIC`.
 - **`useOptimisticUpdate`** (`composables/useOptimisticUpdate.ts`): wraps `store.updateSelectedTopic + sendMessage(SAVE_CACHED_TOPIC)` with auto-rollback on save failure. Used in KnowledgeView, ResearchView, TopicHubView for user-triggered actions (bookmark, save, delete).
 - **`App.vue`**: 4 top-level tabs (Thớt, Sổ tay, Cài đặt, ?). When a topic is selected on a detail route, renders a sub-tab bar (← Danh sách, Tóm tắt, Kiến thức, Phân tích, Tra cứu). Mounts `<TopicMeta>` once above `<router-view>` (shared across summary/knowledge/analysis/research tabs). Handles tab detection and auto-update of cached topic metadata.
-- **Common components** (`components/`): `IconButton.vue` (icon-only button with required `label` prop for a11y), `ConfirmInline.vue` (inline confirm row), `OverflowMenu.vue` (3-dot dropdown), `FormField.vue` (label+control+hint wrapper), `ToggleSwitch.vue` (on/off toggle), `Checkbox.vue`, `RadioGroup.vue` (radio with options). Form utilities (`checkbox`, `radio`, `select`, `label`, `input-range`) in `assets/main.css`.
+- **Common components** (`components/`): `IconButton.vue` (icon-only button with required `label` prop for a11y), `ConfirmInline.vue` (inline confirm row), `OverflowMenu.vue` (3-dot dropdown), `FormField.vue` (label+control+hint wrapper), `ToggleSwitch.vue` (on/off toggle), `Checkbox.vue`, `RadioGroup.vue` (radio with options), `SegmentGrid.vue` (generic per-segment list: status icon + progress + batch/`#header-actions` + `#row-actions` + `#preview` slots; shared by SummaryView and KnowledgeView). Form utilities (`checkbox`, `radio`, `select`, `label`, `input-range`) in `assets/main.css`.
 
 ### Data Flow — Single Source of Truth
 
@@ -124,6 +124,10 @@ Settings stored in `browser.storage.sync`; topic cache stored in IndexedDB (migr
 ### Segment Mode
 
 Always active — `isSegmentMode = Boolean(topicInfo)`. Long threads are split into segments for LLM context management. Legacy cached topics (have `summary` but no `segments`) are synthesized into `segmentSummaries[0]`. Dynamic segment sizing uses `lib/token-estimator.ts` to fit within the model's context window.
+
+When `segments.length > 1`, SummaryView renders a `SegmentGrid` (replacing the old per-segment tab UI — there is no longer an "individual segment view"): per-segment status (`pending`/`running`/`done`/`partial`/`error`) + "Tóm tắt tất cả" (header) + per-row "Tóm tắt"/"Tóm tắt lại"/"Thử lại". Per-segment summarize errors live in `useSummarize`'s in-memory `segmentErrors` ref (keyed by index, not persisted); `runningSegmentIndex` tracks the segment being summarized. Status derivation is the pure helper `lib/segment-grid-status.ts` (`deriveSummarySegmentStatus` / `mapKnowledgeSegmentStatus`). KnowledgeView feeds its F33 extraction grid through the same `SegmentGrid`.
+
+Batch summarize ("Tóm tắt tất cả" → `runSummarizeJob`; "Cập nhật" → `handleSegmentUpdate`) is **fault-tolerant per-segment** in both dynamic and fixed mode, like KnowledgeView's `extractAllSegments`: a failing segment is recorded in `segmentErrors[i]` (→ grid `error` status + "Thử lại") and marked via `pl.markError(stepId)`, then the loop **continues** to the next segment. Global `error.value` is not set, so the overall summary still runs from completed segments. Only a user cancel (`AbortError`) or stale guard aborts the whole batch. Dynamic mode wraps each `summarizeAndSaveSegment` in `try/catch`. Fixed mode reuses `handleSummarizeSegment(i, { token })` — the batch owns one stale-guard token and passes it in so the per-call `summarizeGuard.begin()` is skipped (otherwise it would invalidate the batch loop after the first segment); in batch mode `handleSummarizeSegment` flags `segmentErrors` instead of `error.value` and leaves the `setSummarizing` lifecycle to the caller.
 
 ### Styling
 
@@ -336,3 +340,19 @@ Sau khi hoàn thành một phase hoặc một nhóm tasks quan trọng:
 - Khi hỏi user "có muốn tiếp tục không?" → chỉ hỏi 1 lần, không loop
 - Khi error (`npm run compile` fail) → tự fix trước, chỉ hỏi user nếu không fix được sau 2 attempts
 - Output ngắn gọn, tập trung vào kết quả
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues and external PRs live in GitHub Issues (`duytung1009/ai-diem-bao`); external PRs are a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

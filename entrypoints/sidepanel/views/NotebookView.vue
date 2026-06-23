@@ -595,7 +595,7 @@ onActivated(async () => {
         :title="knowledgeEntries.length === 0 ? 'Chưa có kiến thức nào' : 'Không tìm thấy kết quả'"
         :description="knowledgeEntries.length === 0 ? 'Hãy trích xuất kiến thức từ một thớt.' : 'Không có mục nào khớp với tìm kiếm.'" />
 
-      <div v-else class="space-y-4">
+      <div v-else class="space-y-2">
         <template v-for="group in knowledgeGrouped" :key="group.key">
           <div>
             <h4 class="section-heading mb-1">

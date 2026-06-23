@@ -21,12 +21,13 @@ const describedBy = computed(() => [hintId.value, errorId.value].filter(Boolean)
 
 <template>
   <div class="flex flex-col gap-1">
-    <span
+    <label
       v-if="label"
+      :for="fieldId"
       class="label"
     >
       {{ label }}
-    </span>
+    </label>
     <slot
       :fieldId="fieldId"
       :describedBy="describedBy"

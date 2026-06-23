@@ -7,6 +7,7 @@ import {
   THREAD_ANALYSIS_PROMPT,
   NOTEBOOK_QA_SELECT_PROMPT,
   NOTEBOOK_QA_PROMPT,
+  THREAD_DESCRIPTION_PROMPT,
 } from '../prompts';
 import { estimateTokens, getContextLimit, willExceedContext, calculateSegmentBudget, getThinkingOverhead } from '../token-estimator';
 import { MAP_REDUCE_CHUNK_DELAY_MS, RESPONSE_BUFFER_TOKENS, CONTEXT_USAGE_RATIO, KNOWLEDGE_MAX_CHUNK_BUDGET } from '../constants';
@@ -913,4 +914,17 @@ async function summarizeWithMapReduce(
 ): Promise<string> {
   const combined = await summaryChunks(posts, config, onProgress, suggestedChunks, mapPrompt, finalPrompt, signal);
   return combined;
+}
+
+export async function describeThread(
+  post: ScrapedPost,
+  config: LLMConfig,
+  onProgress?: (message: string) => void,
+  _prompts?: CustomPrompts,
+  signal?: AbortSignal,
+): Promise<string> {
+  const provider = createProvider(config);
+  onProgress?.('Đang tạo mô tả...');
+  const result = await provider.summarize([post], THREAD_DESCRIPTION_PROMPT, signal, { jsonMode: false });
+  return result.content.trim();
 }

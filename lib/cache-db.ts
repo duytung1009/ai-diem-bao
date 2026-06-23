@@ -2,10 +2,11 @@ import type { CachedTopic } from './types';
 import type { GlobalKnowledgeEntry } from './types';
 
 const DB_NAME = 'loi-thot-ho-cache';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_NAME = 'topics';
 const NOTEBOOK_STORE_NAME = 'notebookEntries';
 const KNOWLEDGE_STORE_NAME = 'knowledge';
+export const THREAD_DESC_STORE_NAME = 'thread_descriptions';
 
 let db: IDBDatabase | null = null;
 let openingPromise: Promise<IDBDatabase> | null = null;
@@ -39,6 +40,10 @@ export function getDB(): Promise<IDBDatabase> {
       if (oldVersion < 4) {
         const store = database.createObjectStore(KNOWLEDGE_STORE_NAME, { keyPath: 'id' });
         store.createIndex('by-updatedAt', 'updatedAt', { unique: false });
+      }
+      if (oldVersion < 5) {
+        const store = database.createObjectStore(THREAD_DESC_STORE_NAME, { keyPath: 'url' });
+        store.createIndex('by-generatedAt', 'generatedAt', { unique: false });
       }
     };
     request.onsuccess = () => {

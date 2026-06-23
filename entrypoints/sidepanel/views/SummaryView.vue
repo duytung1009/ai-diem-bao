@@ -13,7 +13,6 @@ import { LLM_WARN_THRESHOLD_CALLS } from '@/lib/constants';
 import { formatNumber } from '@/lib/format';
 import { getModelMaxOutput } from '@/lib/token-estimator';
 import CostConfirmModal from '../components/CostConfirmModal.vue';
-import IconButton from '../components/IconButton.vue';
 import ContentActions from '../components/ContentActions.vue';
 import { useTopicStore } from '../composables/useTopicStore';
 import { useSummarize } from '../composables/useSummarize';
@@ -23,6 +22,9 @@ const { hideInfoAlerts, hideWarningAlerts } = useAlertSettings();
 import ProgressIndicator from '../components/ProgressIndicator.vue';
 import StepTimeline from '../components/StepTimeline.vue';
 import SummaryContent from '../components/SummaryContent.vue';
+import SegmentGrid from '../components/SegmentGrid.vue';
+import type { SegmentGridItem } from '../components/SegmentGrid.vue';
+import { deriveSummarySegmentStatus } from '@/lib/segment-grid-status';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 import BackButton from '../components/BackButton.vue';
 import EmptyState from '../components/EmptyState.vue';
@@ -41,7 +43,7 @@ const {
   isScraping, scrapingWarnings, scrapingInfo,
   currentConfig, pipeline: summarizePipeline,
   cachedTopic, cacheFreshness,
-  segmentSize, segmentSummaries, activeSegmentIndex,
+  segmentSize, segmentSummaries, runningSegmentIndex, segmentErrors,
   loadedTopicUrl, dynamicSegmentBoundaries,
   topicInfo, isProcessing,
   isSegmentMode, segments,
@@ -67,6 +69,7 @@ const loadedTopicTitle = ref('');
 const pendingConflict = ref<{ newUrl: string; newTitle: string } | null>(null);
 
 const segmentGridExpanded = ref(false);
+const segmentGridPreviewIndex = ref<number | null>(null);
 const showAutoSummarizeModal = ref(false);
 
 const summaryPromptTokens = estimateTokens(SUMMARY_PROMPT);
@@ -93,6 +96,28 @@ function onAutoSummarizeClick() {
   }
   showAutoSummarizeModal.value = true;
 }
+
+// F44: map segments + per-segment summary/error/running state → generic SegmentGrid items
+const summaryGridItems = computed<SegmentGridItem[]>(() =>
+  segments.value.map((seg, i) => {
+    const ss = segmentSummaries.value[i];
+    return {
+      index: i,
+      label: `Trang ${seg.label}`,
+      meta: ss?.postCount ? `· ${formatNumber(ss.postCount)} bài` : undefined,
+      status: deriveSummarySegmentStatus({
+        running: runningSegmentIndex.value === i,
+        error: Boolean(segmentErrors.value[i]),
+        hasSummary: Boolean(ss?.summary),
+        complete: ss?.complete,
+      }),
+    };
+  }),
+);
+
+const summaryHeaderLabel = computed(
+  () => `${formatNumber(summarizedCount.value)} / ${formatNumber(segments.value.length)} đoạn đã tóm tắt`,
+);
 
 function formatSummaryMD(text: string, json?: SummaryJSON | null): string {
   if (!json) return text;
@@ -121,7 +146,6 @@ const newPostCount = computed(() => {
   return Math.max(0, totalRef - summarized);
 });
 
-const hasSavedKnowledgeEntries = computed(() => (cachedTopic.value?.knowledgeEntries?.length ?? 0) > 0);
 const hasKnowledgeChunks = computed(() => (cachedTopic.value?.knowledgeChunks?.length ?? 0) > 0);
 const savedKnowledgeCount = computed(() => cachedTopic.value?.knowledgeEntries?.length ?? 0);
 const allPostsForCTA = computed(() => {
@@ -264,13 +288,6 @@ async function handleConflictGoBack() {
 
       <template v-if="!pendingConflict">
 
-        <!-- Loading + Cancel -->
-        <StepTimeline v-if="isProcessing && activePipeline" :pipeline="activePipeline" :show-cancel="isProcessing" @cancel="handleCancel" />
-
-        <ProgressIndicator v-else-if="isProcessing" :task-id="llmTaskId" :scrape-progress="scrapeProgress"
-          :scrape-delay-ms="currentConfig?.scrapeDelayMs ?? 2000" :message="simpleLoadingText || undefined" fallback-message="Đang tóm tắt..."
-          :show-cancel="isProcessing" @cancel="handleCancel" />
-
         <!-- Error -->
         <ErrorDisplay v-if="error" :message="error" action="none" />
 
@@ -299,89 +316,103 @@ async function handleConflictGoBack() {
         </div>
 
         <!-- SEGMENT MODE (always) -->
-        <template v-if="isSegmentMode && !isProcessing">
-          <!-- Info banner: chỉ hiển thị khi > 1 segment -->
-          <div v-if="segments.length > 1 && !hideInfoAlerts" class="text-xs alert alert-info">
-            <p class="font-medium">Thớt dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
-            <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần theo độ dài nội dung. Tóm tắt từng phần
-              rồi tạo tổng quan.</p>
-            <p v-else class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần, mỗi phần ~{{ formatNumber(segmentSize) }} trang. Tóm tắt từng phần rồi
-              tạo tổng quan.</p>
-          </div>
-
-          <!-- Resume banner: partial scrape detected from previous interrupted run -->
-          <div v-if="hasPartialScrape && !summary" class="text-xs alert alert-warning flex items-center justify-between">
-            <div>
-              <p class="font-medium">Đã scrape {{ formatNumber(cachedTopic!.posts.length) }} bài viết ({{ formatNumber(cachedTopic!.lastScrapedPage!) }}/{{ formatNumber(topicInfo!.pageCount) }} trang)</p>
-              <p class="mt-0.5">Có thể tiếp tục scrape từ trang {{ formatNumber(cachedTopic!.lastScrapedPage! + 1) }}</p>
+        <template v-if="isSegmentMode">
+          <!-- Banners + update button: chỉ hiển thị khi không đang xử lý -->
+          <template v-if="!isProcessing">
+            <!-- Info banner: chỉ hiển thị khi > 1 segment -->
+            <div v-if="segments.length > 1 && !hideInfoAlerts" class="text-xs alert alert-info">
+              <p class="font-medium">Thớt dài ({{ formatNumber(topicInfo!.pageCount) }} trang)</p>
+              <p v-if="currentConfig?.dynamicSegments" class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần theo độ dài nội dung. Tóm tắt từng phần
+                rồi tạo tổng quan.</p>
+              <p v-else class="mt-0.5">Chia thành {{ formatNumber(segments.length) }} phần, mỗi phần ~{{ formatNumber(segmentSize) }} trang. Tóm tắt từng phần rồi
+                tạo tổng quan.</p>
             </div>
-            <button class="btn-llm btn-sm shrink-0" :disabled="isProcessing" @click="handleAutoSummarizeAll()">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-              </svg>
-              Tiếp tục
-            </button>
-          </div>
 
-          <button v-if="summary && cacheFreshness && cacheFreshness !== 'fresh' && newPostCount > 0" class="btn-llm" @click="handleSegmentUpdate">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
-            </svg>
-            Cập nhật
-            <span v-if="newPostCount > 0">(+{{ formatNumber(newPostCount) }})</span>
-          </button>
-
-          <!-- Segment tabs -->
-          <div v-if="summary" class="space-y-2">
-            <!-- Row 1: Tổng quan -->
-            <div class="flex justify-between gap-2 flex-wrap">
-              <button class="badge capitalize transition-colors" :class="activeSegmentIndex === null
-                ? 'badge-accent'
-                : 'badge-neutral'" @click="activeSegmentIndex = null">
-                Tổng quan
+            <!-- Resume banner: partial scrape detected from previous interrupted run -->
+            <div v-if="hasPartialScrape && !summary" class="text-xs alert alert-warning flex items-center justify-between">
+              <div>
+                <p class="font-medium">Đã scrape {{ formatNumber(cachedTopic!.posts.length) }} bài viết ({{ formatNumber(cachedTopic!.lastScrapedPage!) }}/{{ formatNumber(topicInfo!.pageCount) }} trang)</p>
+                <p class="mt-0.5">Có thể tiếp tục scrape từ trang {{ formatNumber(cachedTopic!.lastScrapedPage! + 1) }}</p>
+              </div>
+              <button class="btn-llm btn-sm shrink-0" @click="handleAutoSummarizeAll()">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+                Tiếp tục
               </button>
             </div>
 
-            <!-- Row 2+3: Progress bar + pill grid (chỉ hiển thị khi > 1 segment) -->
-            <template v-if="segments.length > 1">
-              <div class="card space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-semibold text-(--color-text-secondary)">
-                    {{ formatNumber(summarizedCount) }} / {{ formatNumber(segments.length) }} đoạn đã tóm tắt
-                  </span>
-                  <IconButton :label="segmentGridExpanded ? 'Thu gọn' : 'Mở rộng'" @click="segmentGridExpanded = !segmentGridExpanded">
-                    <svg class="w-4 h-4 text-(--color-text-secondary) transition-transform duration-200 shrink-0" :class="{ 'rotate-180': segmentGridExpanded }"
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </IconButton>
-                </div>
-                <div class="h-1.5 rounded-full bg-(--color-bg-muted) overflow-hidden">
-                  <div class="h-full rounded-full bg-(--color-accent) transition-all duration-300" :style="{ width: progressPercent + '%' }" />
-                </div>
-                <div v-if="segmentGridExpanded"
-                  class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thin">
-                  <button v-for="(seg, i) in segments" :key="i" class="badge capitalize transition-colors flex items-center gap-1" :class="activeSegmentIndex === i
-                    ? 'badge-accent'
-                    : 'badge-neutral'" @click="activeSegmentIndex = i">
-                    {{ seg.label }}
-                    <span v-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete !== false" class="w-1.5 h-1.5 rounded-full bg-(--color-success-text) shrink-0"
-                      title="Đã tóm tắt" />
-                    <span v-else-if="segmentSummaries[i]?.summary && segmentSummaries[i]?.complete === false"
-                      class="w-1.5 h-1.5 rounded-full bg-(--color-warning-text) shrink-0" title="Đã tóm tắt — có thể có bài viết mới" />
-                    <span v-else-if="segmentSummaries[i]?.posts?.length" class="w-1.5 h-1.5 rounded-full bg-(--color-warning-text) shrink-0"
-                      title="Đã scrape, chưa tóm tắt" />
-                  </button>
-                </div>
-              </div>
+            <button v-if="summary && cacheFreshness && cacheFreshness !== 'fresh' && newPostCount > 0" class="btn-llm" @click="handleSegmentUpdate">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
+              </svg>
+              Cập nhật
+              <span v-if="newPostCount > 0">(+{{ formatNumber(newPostCount) }})</span>
+            </button>
+          </template>
+
+          <!-- F44: Segment grid (chỉ khi > 1 segment) — luôn hiển thị kể cả khi đang xử lý -->
+          <SegmentGrid
+            v-if="segments.length > 1"
+            v-model:expanded="segmentGridExpanded"
+            v-model:expandedIndex="segmentGridPreviewIndex"
+            :items="summaryGridItems"
+            :header-label="summaryHeaderLabel"
+            :progress-percent="progressPercent"
+          >
+            <template #header-actions>
+              <!-- Đang xử lý: hiện trạng thái loading + Hủy (giống KnowledgeView) -->
+              <template v-if="isProcessing">
+                <svg class="w-3.5 h-3.5 animate-spin text-(--color-accent)" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span class="text-xs text-(--color-text-muted)">Đang tóm tắt...</span>
+                <button class="btn text-xs text-(--color-error-text)" @click="handleCancel">Hủy</button>
+              </template>
+              <button v-else class="btn text-xs" @click="onAutoSummarizeClick">
+                Tóm tắt tất cả
+              </button>
             </template>
-          </div>
+            <template #preview="{ item }">
+              <SummaryContent
+                v-if="segmentSummaries[item.index]?.summary"
+                :content="segmentSummaries[item.index]?.summary ?? ''"
+                :json="segmentSummaries[item.index]?.summaryJson ?? undefined"
+                :topic-url="cachedTopic?.url"
+                :post-page-map="postPageMap"
+                :top-reacts="topReacts"
+                :user-trust-scores="cachedTopic?.userTrustScores"
+                :show-trust-badges="showTrustBadges"
+              />
+              <span v-else class="text-xs text-(--color-text-muted)">Chưa có tóm tắt</span>
+            </template>
+            <template #row-actions="{ item }">
+              <button v-if="item.status === 'running'"
+                class="text-xs font-medium shrink-0 link" @click.stop="handleCancel">
+                Hủy
+              </button>
+              <button v-else-if="item.status === 'error'"
+                class="text-xs font-medium shrink-0 link text-(--color-error-text) disabled:cursor-not-allowed disabled:text-(--color-text-muted)"
+                :disabled="isProcessing" @click.stop="handleSummarizeSegment(item.index)">
+                Thử lại
+              </button>
+              <button v-else-if="item.status === 'pending'"
+                class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)"
+                :disabled="isProcessing" @click.stop="handleSummarizeSegment(item.index)">
+                Tóm tắt
+              </button>
+              <button v-else
+                class="text-xs font-medium shrink-0 link disabled:cursor-not-allowed disabled:text-(--color-text-muted)"
+                :disabled="isProcessing" @click.stop="handleSummarizeSegment(item.index)">
+                Tóm tắt lại
+              </button>
+            </template>
+          </SegmentGrid>
 
           <!-- Overall summary view -->
-          <template v-if="activeSegmentIndex === null">
-            <!-- Tóm tắt tab -->
-            <!-- Single segment: hiển thị summary trực tiếp -->
-            <template v-if="segments.length === 1">
+          <!-- Single segment: hiển thị summary trực tiếp -->
+          <template v-if="segments.length === 1">
               <div v-if="segmentSummaries[0]?.summary" class="space-y-3">
                 <ContentActions
                   :model-label="modelLabel ? `Tóm tắt bởi ${modelLabel}` : undefined"
@@ -396,7 +427,7 @@ async function handleConflictGoBack() {
 
                 <!-- Knowledge CTA -->
                 <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="flex justify-between">
-                  <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
+                  <template v-if="!hasKnowledgeChunks">
                     <button class="btn-llm" @click="handleKnowledgeCTA('extract')">
                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
@@ -404,18 +435,10 @@ async function handleConflictGoBack() {
                       Trích xuất kiến thức
                     </button>
                   </template>
-                  <template v-else-if="hasSavedKnowledgeEntries">
-                    <span class="text-xs text-(--color-text-secondary)">
-                      Đã lưu <strong>{{ savedKnowledgeCount }}</strong> kiến thức.
-                    </span>
-                    <ForwardLink @click="handleKnowledgeCTA('view')">
-                      Xem trong tab Kiến thức
-                    </ForwardLink>
-                  </template>
                 </div>
               </div>
-              <div v-else class="flex flex-col items-center space-y-2">
-                <button class="btn-llm" :disabled="isProcessing" @click="handleSummarizeSegment(0)">
+              <div v-if="!isProcessing && !segmentSummaries[0]?.summary" class="flex flex-col items-center space-y-2">
+                <button class="btn-llm" @click="handleSummarizeSegment(0)">
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
                   </svg>
@@ -427,29 +450,18 @@ async function handleConflictGoBack() {
             <!-- Multi-segment: overall summary flow -->
             <template v-else>
               <div v-if="summary" class="space-y-3">
-                <div class="flex items-center justify-between gap-2">
-                  <ContentActions
-                    :model-label="modelLabel ? `Tóm tắt bởi ${modelLabel}` : undefined"
-                    :copy-content="formatSummaryMD(summary ?? '', summaryJson ?? null)"
-                    :export-topic="cachedTopic as unknown as CachedTopic"
-                    reload-label="Tạo lại tổng quan"
-                    :reload-disabled="isProcessing"
-                    :on-reload="() => generateOverallSummary()"
-                  ></ContentActions>
-                  <IconButton
-                    v-if="segments.length > 1"
-                    :label="'Tóm tắt toàn bộ' + (!currentConfig?.dynamicSegments || dynamicSegmentBoundaries.length > 0 ? ` (${formatNumber(segments.length)} phần)` : '')"
-                    @click="onAutoSummarizeClick"
-                  >
-                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                    </svg>
-                  </IconButton>
-                </div>
+                <ContentActions
+                  :model-label="modelLabel ? `Tóm tắt bởi ${modelLabel}` : undefined"
+                  :copy-content="formatSummaryMD(summary ?? '', summaryJson ?? null)"
+                  :export-topic="cachedTopic as unknown as CachedTopic"
+                  reload-label="Tạo lại tổng quan"
+                  :reload-disabled="isProcessing"
+                  :on-reload="() => generateOverallSummary()"
+                ></ContentActions>
                 <SummaryContent :content="summary" :json="summaryJson ?? undefined" :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
                 <!-- Knowledge CTA -->
                 <div v-if="allPostsForCTA.length > 0 && !isProcessing" class="flex justify-between">
-                  <template v-if="!hasSavedKnowledgeEntries && !hasKnowledgeChunks">
+                  <template v-if="!hasKnowledgeChunks">
                     <button class="btn-llm" @click="handleKnowledgeCTA('extract')">
                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
@@ -457,58 +469,25 @@ async function handleConflictGoBack() {
                       Trích xuất kiến thức
                     </button>
                   </template>
-                  <template v-else-if="hasSavedKnowledgeEntries">
-                    <span class="text-xs text-(--color-text-secondary)">
-                      Đã lưu <strong>{{ savedKnowledgeCount }}</strong> kiến thức.
-                    </span>
-                    <ForwardLink @click="handleKnowledgeCTA('view')">
-                      Xem trong tab Kiến thức
-                    </ForwardLink>
-                  </template>
                 </div>
               </div>
-              <div v-else class="flex flex-col items-center space-y-2">
-                <button class="btn-llm" :disabled="isProcessing" @click="handleAutoSummarizeAll()">
+              <div v-if="!isProcessing && !summary" class="flex flex-col items-center space-y-2">
+                <button class="btn-llm" @click="handleAutoSummarizeAll()">
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
                   </svg>
                   Tóm tắt toàn bộ
                 </button>
               </div>
-            </template>
-
-          </template>
-
-          <!-- Individual segment view -->
-          <template v-if="activeSegmentIndex !== null">
-            <div v-if="segmentSummaries[activeSegmentIndex]?.summary" class="space-y-3">
-              <div class="flex items-center justify-start gap-2">
-                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span class="text-xs text-(--color-text-secondary)">{{ formatNumber(segmentSummaries[activeSegmentIndex].postCount) }} bài viết</span>
-              </div>
-              <ContentActions
-                :copy-content="formatSummaryMD(segmentSummaries[activeSegmentIndex!]?.summary ?? '', segmentSummaries[activeSegmentIndex!]?.summaryJson ?? null)"
-                :export-topic="cachedTopic as unknown as CachedTopic"
-                reload-label="Tóm tắt lại phần này"
-                :reload-disabled="isProcessing"
-                :on-reload="() => handleSummarizeSegment(activeSegmentIndex!)"
-              ></ContentActions>
-              <SummaryContent :content="segmentSummaries[activeSegmentIndex].summary" :json="segmentSummaries[activeSegmentIndex].summaryJson"
-                :topic-url="cachedTopic?.url" :post-page-map="postPageMap" :top-reacts="topReacts" :user-trust-scores="cachedTopic?.userTrustScores" :show-trust-badges="showTrustBadges" />
-            </div>
-            <div v-else class="text-center py-4">
-              <button class="btn-llm" :disabled="isProcessing" @click="handleSummarizeSegment(activeSegmentIndex)">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
-                </svg>
-                Tóm tắt {{ segments[activeSegmentIndex].label }}
-              </button>
-            </div>
           </template>
         </template>
+
+        <!-- Loading + Cancel -->
+        <StepTimeline v-if="isProcessing && activePipeline" :pipeline="activePipeline" :show-cancel="isProcessing" @cancel="handleCancel" />
+
+        <ProgressIndicator v-else-if="isProcessing" :task-id="llmTaskId" :scrape-progress="scrapeProgress"
+          :scrape-delay-ms="currentConfig?.scrapeDelayMs ?? 2000" :message="simpleLoadingText || undefined" fallback-message="Đang tóm tắt..."
+          :show-cancel="isProcessing" @cancel="handleCancel" />
 
       </template>
     </template>

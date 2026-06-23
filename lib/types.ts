@@ -62,6 +62,7 @@ export interface ForumThreadSummary {
   pageCount: number;
   forumName?: string;
   hasPoll?: boolean;
+  version?: XenForoVersion;
 }
 
 export interface ForumListRequest {
@@ -207,11 +208,13 @@ export type MessageType =
   | 'GET_ALL_KNOWLEDGE'
   | 'UPSERT_KNOWLEDGE_ENTRY'
   | 'DELETE_KNOWLEDGE_ENTRY'
-  | 'INSERT_KNOWLEDGE_WITH_DEDUP';
+  | 'INSERT_KNOWLEDGE_WITH_DEDUP'
+  | 'GET_THREAD_DESCRIPTION'
+  | 'SAVE_THREAD_DESCRIPTION';
 
 export interface LLMTaskRequest {
   taskId: string;
-  taskType: 'summarize' | 'analyze_opinions' | 'research' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks' | 'thread_analysis' | 'notebook_qa';
+  taskType: 'summarize' | 'analyze_opinions' | 'research' | 'summarize_segments' | 'extract_knowledge_chunk' | 'reduce_knowledge_chunks' | 'thread_analysis' | 'notebook_qa' | 'describe_thread';
   payload: unknown;
 }
 

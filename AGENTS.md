@@ -340,3 +340,19 @@ Sau khi hoàn thành một phase hoặc một nhóm tasks quan trọng:
 - Khi hỏi user "có muốn tiếp tục không?" → chỉ hỏi 1 lần, không loop
 - Khi error (`npm run compile` fail) → tự fix trước, chỉ hỏi user nếu không fix được sau 2 attempts
 - Output ngắn gọn, tập trung vào kết quả
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues and external PRs live in GitHub Issues (`duytung1009/ai-diem-bao`); external PRs are a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
